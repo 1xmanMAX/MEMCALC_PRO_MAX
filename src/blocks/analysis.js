@@ -876,13 +876,13 @@ function hingeGlyphs(md, v) {
 }
 function membersLine(md, v, col = '#9aa5b1', w = 1.6) { return md.mems.map(m => { const a = P(v, md.nodes[m.i]), b = P(v, md.nodes[m.j]); return Lne(a[0], a[1], b[0], b[1], col, w); }).join(''); }
 // colocador de etiquetas sin superposición
-function labeler(Wb) {
+function labeler(Wb, Hb) {
   const boxes = [];
-  const inside = (x, w) => !Wb || (x - w / 2 >= 2 && x + w / 2 <= Wb - 2);
+  const inside = (x, w, y, h) => (!Wb || (x - w / 2 >= 2 && x + w / 2 <= Wb - 2)) && (!Hb || y === undefined || (y - h / 2 >= 2 && y + h / 2 <= Hb - 2));
   const hit = (x, y, w, h) => boxes.some(b => Math.abs(b.x - x) < (b.w + w) / 2 + 1 && Math.abs(b.y - y) < (b.h + h) / 2);
   return {
     add(x, y, w, h) { boxes.push({ x, y, w, h }); },
-    place(cands, w, h) { for (const [x, y] of cands) if (inside(x, w) && !hit(x, y, w, h)) { boxes.push({ x, y, w, h }); return [x, y]; } return null; },
+    place(cands, w, h) { for (const [x, y] of cands) if (inside(x, w, y, h) && !hit(x, y, w, h)) { boxes.push({ x, y, w, h }); return [x, y]; } return null; },
   };
 }
 function dims(md, v) {
@@ -1036,7 +1036,7 @@ function drawDiagram(md, sets, key, W, opts = {}) {
   const ord = Math.max(24, Math.min(46, 0.1 * v.span * v.sc));
   const k = ord / amax;
   const col = COL[key], fill = FILL[key];
-  const lb = labeler(W);
+  const lb = labeler(W, v.H);
   lb.add(W / 2, 14, W, 20);
   md.nodes.forEach(n => { const [x, y] = P(v, n); lb.add(x, y, 10, 10); });
   // los ejes de las barras son obstáculos para los rótulos (no escribir valores encima de una barra)
@@ -1444,7 +1444,7 @@ function renderFrame(b, ctx) {
   html += `<div class="figure">${drawModel(md, W)}${caption(ctx, ttl + ' — geometría [m], numeración de nudos (rojo) y barras, apoyos y liberaciones')}</div>`;
   // tabla de secciones
   html += '<table class="tbl"><thead><tr><th>Sección</th><th>Descripción</th><th>E [' + lu + '/m²]</th><th>A [m²]</th><th>I [m⁴]</th><th>Barras</th></tr></thead><tbody>' +
-    md.secs.map((s, i) => `<tr><td>${esc(s.id)}</td><td>${esc(s.desc || '—')}</td><td>${f2(s.E, 0)}</td><td>${f2(s.A, 4)}</td><td>${s.I > 0 ? f2(s.I, 6) : '—'}</td><td>${esc(md.mems.filter(m => m.sec === i).map(m => m.id).join(', ') || '—')}</td></tr>`).join('') + '</tbody></table>';
+    md.secs.map((s, i) => `<tr><td>${esc(s.id)}</td><td>${esc(s.desc || '—')}</td><td>${String(Math.round(s.E)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u2009')}</td><td>${f2(s.A, 4)}</td><td>${s.I > 0 ? f2(s.I, 6) : '—'}</td><td>${esc(md.mems.filter(m => m.sec === i).map(m => m.id).join(', ') || '—')}</td></tr>`).join('') + '</tbody></table>';
   if (want('C')) {
     const nC = md.cases.length, cols = nC > 1 ? 2 : 1, pw = W / cols;
     const panels = md.cases.map((c, ci) => drawLoads(md, ci, pw, nC > 1 ? 300 : 380));

@@ -420,7 +420,7 @@ Cext = -0.7 // Factor de forma exterior, superficie inclinada ≤ 15°, succión
 Cint = 0.3 // Presión interior por aberturas (E.020 Art. 12.5, ±0.3)
 # Presión de viento (E.020 Art. 12)
 Vh = Vv*max(1, (hz/(10 m))^0.22) // Velocidad de diseño Vh = V(h/10)^0.22 ≥ V (E.020 12.3)
-ph = 0.005*abs(Cext - Cint)*(Vh/(1 km/h))^2*1 kgf/m^2 // Presión de succión neta ph = 0.005·C·Vh² (E.020 12.4)
+ph = 0.005*abs(Cext - Cint)*(Vh/(1 km/h))^2*1 kgf/m^2 -> kgf/m^2 // Presión de succión neta ph = 0.005·C·Vh² (E.020 12.4)
 # Metrado por metro de correa
 wD = (wcob + wacc)*sc + peso -> kgf/m // Carga muerta (incluye peso propio)
 wLr = WLr*sc*cos(theta) -> kgf/m // Carga viva sobre la proyección horizontal
@@ -634,7 +634,7 @@ WLr = 30 kgf/m^2 // Carga viva de techo liviano (E.020 Art. 7.1 b)
 ## Viento (E.020 Art. 12)
 Vv = 75 km/h // Velocidad básica a 10 m (E.020 Anexo 2; mínimo 75 km/h)
 Vh = Vv*max(1, ((hc + fr)/(10 m))^0.22) // Velocidad de diseño (E.020 12.3)
-p0 = 0.005*(Vh/(1 km/h))^2*1 kgf/m^2 // Presión dinámica 0.005·Vh² (E.020 12.4)
+p0 = 0.005*(Vh/(1 km/h))^2*1 kgf/m^2 -> kgf/m^2 // Presión dinámica 0.005·Vh² (E.020 12.4)
 Cbar = 0.8 // Muro a barlovento, presión (E.020 Tabla 4)
 Csot = -0.6 // Muro a sotavento, succión (E.020 Tabla 4)
 Ctb = -0.7 // Techo ≤ 15° a barlovento, succión (E.020 Tabla 4)
@@ -1020,7 +1020,7 @@ F1x = ft*a1*Vx -> tonf // Fuerza en el 1.er nivel del pórtico X crítico
 F2x = ft*a2*Vx -> tonf // Fuerza en el techo del pórtico X crítico
 # Viento (E.020 Art. 12) — fachada perpendicular a X
 Vh = 75 km/h // V ≥ 75 km/h, h < 10 m: Vh = V (Art. 12.3)
-pw = 0.005*(0.8 + 0.6)*(Vh/(1 km/h))^2*1 kgf/m^2 // Barlovento 0.8 + sotavento 0.6 (Tabla 4)
+pw = 0.005*(0.8 + 0.6)*(Vh/(1 km/h))^2*1 kgf/m^2 -> kgf/m^2 // Barlovento 0.8 + sotavento 0.6 (Tabla 4)
 W1x = pw*(h1 + h2)/2*Ly/nfx -> tonf // Fuerza de viento en el 1.er nivel por pórtico
 W2x = pw*h2/2*Ly/nfx -> tonf // Fuerza de viento en el techo por pórtico`),
       {

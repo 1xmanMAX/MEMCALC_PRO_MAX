@@ -123,6 +123,7 @@ function inspect() {
     if (/10\^\{\s*[-−]\s*(1[2-9]|[2-9]\d)\s*\}/.test(s)) once('valor', 'E', 'Resto numérico absurdo (×10⁻¹²…) en: ' + s, el);
     if (/(^|[=(\s,])[-−]\s*0\.0+(?!\d*[1-9])(\s|\\|$|\})/.test(s)) once('valor', 'W', 'Cero negativo en fórmula: ' + s, el);
     if (/[぀-ヿ㐀-鿿]/.test(s)) once('glifo', 'W', 'Kanji dentro de una fórmula: ' + s, el);
+    { const um = /(?:^|[^\d.])(0\.00\d+)\\,\\mathrm\{(kgf\/cm\^\{2\}|tonf\/m\^\{2\}|MPa|m)\}/.exec(s); if (um) once('unidad', 'W', `Valor muy pequeño para la unidad mostrada (${um[1]} ${um[2]}); conviene otra unidad: ` + s, el); }
   }
 
   // 3) geometría: ecuaciones, tablas y figuras

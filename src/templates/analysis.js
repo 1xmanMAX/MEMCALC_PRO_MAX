@@ -163,7 +163,7 @@ r_w = 1.57 cm // Montantes y diagonales: radio de giro mínimo
 ## Cargas
 wD = 30 kgf/m^2 // Cubierta + correas + instalaciones (E.020)
 theta = atan(f/(Lt/2)) -> deg // Inclinación del techo
-wLr = max(100 kgf/m^2 - 5 kgf/m^2*(theta/(1 deg) - 3), 50 kgf/m^2) // Sobrecarga de techo inclinado (E.020 7.1)
+wLr = max(100 kgf/m^2 - 5 kgf/m^2*(theta/(1 deg) - 3), 50 kgf/m^2) -> kgf/m^2 // Sobrecarga de techo inclinado (E.020 7.1)
 PD = wD*st*p -> tonf // Carga muerta por nudo interior
 PL = wLr*st*p -> tonf // Carga viva de techo por nudo interior
 "El peso propio de la armadura ($\\gamma_s = 7.85$ t/m³ por el área de cada barra) se agrega al caso CM; en las barras genera flexión local despreciable y se transmite a los nudos.`),
@@ -252,14 +252,14 @@ I_vig = 14150 cm^4 // Viga W14×34: inercia Ix
 ## Cargas de gravedad
 wcub = 25 kgf/m^2 // Cubierta + correas + instalaciones
 pend = atan(hr/(Lb/2)) -> deg // Pendiente del techo
-wlr = max(100 kgf/m^2 - 5 kgf/m^2*(pend/(1 deg) - 3), 50 kgf/m^2) // Carga viva de techo (E.020 7.1)
+wlr = max(100 kgf/m^2 - 5 kgf/m^2*(pend/(1 deg) - 3), 50 kgf/m^2) -> kgf/m^2 // Carga viva de techo (E.020 7.1)
 qD = wcub*sp -> tonf/m // Carga muerta sobre las vigas (por longitud de barra)
 qL = wlr*sp -> tonf/m // Carga viva (por proyección horizontal)
 ## Viento (E.020 Art. 12)
 V = 75 // Velocidad básica a 10 m [km/h] (mapa eólico, mín. 75 km/h)
 hv = hcol + hr // Altura de la edificación
 Vh = V*(hv/(10 m))^0.22 // Velocidad de diseño (E.020 12.3)
-ph = 0.005*Vh^2 kgf/m^2 // Presión dinámica con C = 1 (E.020 12.4)
+ph = 0.005*Vh^2 kgf/m^2 -> kgf/m^2 // Presión dinámica con C = 1 (E.020 12.4)
 qw1 = 0.8*ph*sp -> tonf/m // Muro a barlovento, C = +0.8 (presión)
 qw2 = 0.6*ph*sp -> tonf/m // Muro a sotavento, C = −0.6 (succión)
 qw3 = 0.7*ph*sp -> tonf/m // Techo a barlovento, C = −0.7 (succión, pendiente < 15°)
@@ -486,8 +486,8 @@ R4x = -comp(Q3, 2) // Reacción horizontal en 4
 R1y = comp(Q1, 1) // Reacción vertical en 1
 R4y = comp(Q3, 1) // Reacción vertical en 4
 M1 = comp(Q1, 3) // Momento de empotramiento en 1 [t·m]
-check round(abs(R1x + R4x + H), 9) <= 0.001 // Equilibrio horizontal ΣFx = 0 (residuo redondeado a 1e-9)
-check round(abs(R1y + R4y - w*L), 9) <= 0.001 // Equilibrio vertical ΣFy = 0 (residuo redondeado a 1e-9)
+check round(abs(R1x + R4x + H), 9) <= 0.001 // Equilibrio horizontal ΣFx = 0 (residuo redondeado a 10⁻⁹)
+check round(abs(R1y + R4y - w*L), 9) <= 0.001 // Equilibrio vertical ΣFy = 0 (residuo redondeado a 10⁻⁹)
 @dec 2`),
       text(`# Comprobación con el bloque «Pórtico 2D»
 El mismo modelo se resuelve con el bloque automático; los desplazamientos deben coincidir con los obtenidos paso a paso.`),

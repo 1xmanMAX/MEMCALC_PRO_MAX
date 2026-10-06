@@ -47,6 +47,7 @@ function xDiagram(W, padL, padR, px, xs, ys, o) {
     const x = px(xs[k]), y = py(v), up = o.invert ? v < 0 : v > 0;
     let ty = y + (up ? -6 : 13), tx = x;
     for (let it = 0; it < 4 && placed.some(q => Math.abs(q.x - tx) < 46 && Math.abs(q.y - ty) < 11); it++) tx += 30;
+    tx = Math.max(tx, padL + 20); // no invadir los rótulos del eje vertical
     placed.push({ x: tx, y: ty }); ty = Math.max(10, Math.min(H - 3, ty));
     g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.4" fill="${o.color}"/>` + lab(tx, ty, f2(v), { b: 1, c: o.color });
   };
