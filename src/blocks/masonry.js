@@ -58,7 +58,7 @@ registerBlock('wallplan', {
     F('ea', 'Excentricidad accidental (fracción de la dimensión transversal)', '0.05'),
     F('titulo', 'Título', ''),
   ],
-  hint: 'Planta de muros portantes. Calcula la densidad ΣL·t·n/Ap por dirección y la compara con ZUSN/56 (E.070 Art. 19.2.b; muros con L ≥ 1.20 m, n = Ec/Em para placas). Rigidez k = E·t/(4(h/L)³ + 3(h/L)) (voladizo, G = 0.4E), centro de rigidez, excentricidad real + accidental y reparto del cortante con torsión (sin reducciones). Exporta <b>densX, densY, dmin, Ap, xCM, yCM, xCR, yCR, eX, eY</b> y por dirección los vectores <b>LX, tX, PgX, PmX, kX, rX</b> (rX = fracción del cortante con torsión), igual para Y, e <b>idX, idY</b>.',
+  hint: 'Planta de muros portantes. Calcula la densidad ΣL·t·n/Ap por dirección y la compara con ZUSN/56 (E.070 Art. 19.2.b; muros con L ≥ 1.20 m según Art. 17 c; n = Ec/Em para placas). Rigidez k = E·t/(4(h/L)³ + 3(h/L)) (voladizo, G = 0.4E), centro de rigidez, excentricidad real + accidental y reparto del cortante con torsión (sin reducciones). Exporta <b>densX, densY, dmin, Ap, xCM, yCM, xCR, yCR, eX, eY</b> y por dirección los vectores <b>LX, tX, PgX, PmX, kX, rX</b> (rX = fracción del cortante con torsión), igual para Y, e <b>idX, idY</b>.',
   def: { muros: 'X1 X 0 0 4.2 0.13\nX2 X 0 8 4.2 0.13\nY1 Y 0 0 8 0.13\nY2 Y 6 0 8 0.13', planta: '0 0 6 8', Z: '0.45', U: '1', S: '1.05', N: '3', h: '2.6 m', apoyo: 'voladizo', ea: '0.05' },
   render(b, ctx) {
     const S = ctx.scope, W = parseWalls(b.muros, S);
@@ -76,7 +76,7 @@ registerBlock('wallplan', {
     const dmin = Z * Uf * Sf * N / 56;
     for (const w of W) {
       w.cx = w.dir === 'X' ? w.x + w.L / 2 : w.x; w.cy = w.dir === 'Y' ? w.y + w.L / 2 : w.y;
-      w.ok = w.L >= 1.2 - 1e-9;                     // E.070 6.4: L ≥ 1.20 m para contribuir
+      w.ok = w.L >= 1.2 - 1e-9;                     // E.070 Art. 17 c: L ≥ 1.20 m para contribuir
       const r = h / w.L; w.k = w.ok ? w.n * w.t / (empo ? r ** 3 + 3 * r : 4 * r ** 3 + 3 * r) : 0; // relativo a Em
     }
     const X = W.filter(w => w.dir === 'X'), Y = W.filter(w => w.dir === 'Y');

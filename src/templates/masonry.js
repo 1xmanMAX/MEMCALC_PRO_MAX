@@ -293,7 +293,7 @@ fmt = 6*Ms/t^2 -> kgf/cm^2 // Esfuerzo de tracción por flexión fm = 6 Ms/t²
 ftad = ftE070(1) // Tracción por flexión admisible, albañilería simple (Art. 29.8)
 check fmt <= ftad // Tracción por flexión en el paño (Art. 31.3)
 treq = sqrt(6*Ms/ftad) -> cm // Espesor mínimo requerido t ≥ √(6 Ms/f't)
-check t >= treq // Espesor efectivo del cerco
+check t >= treq // Espesor efectivo del cerco (E.070 Art. 29.8 y 31.3)
 # Diseño de la columna de arriostre (Art. 29.9 y 31.5)
 fcc = 175 kgf/cm^2 // Concreto de columnas y soleras
 fy = 4200 kgf/cm^2
@@ -308,10 +308,10 @@ rhomax = 0.75*0.85*0.85*fcc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy) // ρmax = 0.7
 check rho <= rhomax // Sección de la columna suficiente: ρ ≤ 0.75 ρb (E.060 10.3.4)
 Ascol = max(rho*bcol*dcol, 0.7*sqrtfc(fcc)/fy*bcol*dcol) -> cm^2 // Acero en tracción por cara
 Asc = 2*Ab(3) // 2 φ 3/8" por cara (4 φ 3/8" en total)
-check Asc >= Ascol // Refuerzo de la columna de arriostre
+check Asc >= Ascol // Refuerzo de la columna de arriostre (E.070 Art. 31.5; E.060 Cap. 10)
 Vcol = fu*w*bp*ha -> tonf // Cortante en la base
 phiVc = 0.85*0.53*sqrtfc(fcc)*bcol*dcol -> tonf // Resistencia al corte del concreto
-check Vcol <= phiVc // Corte en la columna
+check Vcol <= phiVc // Corte en la columna (E.060 11.3)
 # Diseño de la viga solera
 bsol = t // Ancho de la solera
 hsol = 20 cm // Peralte de la solera
@@ -414,8 +414,8 @@ Hs = Ss*U*Cz*P -> tonf // H = S U C P
 ## Corte en el plano de los muros (Art. 7.3.1.a)
 tauX = Hs/(1.2*SLX*esp) -> kgf/cm^2 // Área de muros + 20 % por muros transversales (Art. 7.3.1.a.iii)
 tauY = Hs/(1.2*SLY*esp) -> kgf/cm^2
-check tauX <= vmad // Esfuerzo de corte en X
-check tauY <= vmad // Esfuerzo de corte en Y
+check tauX <= vmad // Esfuerzo de corte en X (E.080 Art. 7.3.1 a y 8.5)
+check tauY <= vmad // Esfuerzo de corte en Y (E.080 Art. 7.3.1 a y 8.5)
 ## Compresión en la base del muro más cargado
 At = 2.0 m^2 // Área tributaria de techo por metro de muro
 sigma = (gad*H*esp*1 m + (wt + wl)*At)/(esp*1 m) -> kgf/cm^2 // Peso propio + techo
@@ -474,15 +474,15 @@ w = wd + wl // Carga total de servicio
 # Flexión (E.010 Art. 19.1)
 M = w*Lv^2/8 -> kgf*m // Momento máximo
 sigma = M/Zx -> kgf/cm^2 // Esfuerzo de flexión
-check sigma <= fm // Esfuerzo de flexión admisible
+check sigma <= fm // Esfuerzo de flexión admisible (E.010 Art. 19.1)
 # Corte (E.010 Art. 19.2 b — a una distancia h del apoyo)
 V = w*(Lv/2 - h) -> kgf // Cortante a la distancia h
 tau = 1.5*V/A -> kgf/cm^2 // τ = 1.5 V/(b h)
-check tau <= fv // Esfuerzo de corte admisible
+check tau <= fv // Esfuerzo de corte admisible (E.010 Art. 19.2)
 # Aplastamiento en el apoyo (E.010 Art. 19.3)
 R = w*Lv/2 -> kgf // Reacción
 sap = R/(b*apoyo) -> kgf/cm^2 // Compresión perpendicular a las fibras
-check sap <= fcp // Aplastamiento
+check sap <= fcp // Aplastamiento (E.010 Art. 19.3)
 # Deflexión (E.010 Art. 18)
 weq = 1.8*wd + wl // Carga equivalente: deformación diferida +80 % de la carga permanente (Art. 18.3)
 delta = 5*weq*Lv^4/(384*E*Ix) -> cm // Deflexión máxima
@@ -530,7 +530,7 @@ check lam <= 50 // Esbeltez máxima λ ≤ 50 (E.010 Art. 27)
 Ck = CkE010(Emin, fc) // Esbeltez límite Ck = 0.7025 √(Emin/fc)
 "Columna {si(lam < 10, 1, si(lam <= Ck, 2, 3))} (1 = corta, 2 = intermedia, 3 = larga).
 Nadm = NadmE010(fc, Emin, A, lam, Ck) -> tonf // Carga admisible
-check Nd <= Nadm // Compresión
+check Nd <= Nadm // Compresión (E.010 Art. 30)
 # Flexocompresión (E.010 Art. 31)
 Ncr = pi^2*Emin*Ix/lef^2 -> tonf // Carga crítica de Euler
 check Nd < Ncr/1.5 // Estabilidad: N < Ncr/1.5 para que km sea finito (E.010 Art. 31.2)
@@ -588,12 +588,12 @@ M1 = w1*(Lpan)^2/10 -> kgf*m // Momento entre nudos (cuerda continua)
 Ncr1 = pi^2*Emin*b1*d1^3/12/lef1^2 -> tonf
 km1 = kmE010(Ncs, Ncr1)
 ic1 = Ncs/Nadm1 + km1*M1/(Z1*fm) // Interacción
-check ic1 < 1 // Flexocompresión de la cuerda superior
+check ic1 < 1 // Flexocompresión de la cuerda superior (E.010 Art. 31 y 41.6)
 # Cuerda inferior — tracción (JUNAC 11.4)
 b2 = 4 cm
 d2 = 9 cm // Sección 2" × 4"
 An2 = 0.85*b2*d2 // Área neta (descuento por perforaciones de pernos)
-check Nti/An2 <= ft // Tracción en la cuerda inferior
+check Nti/An2 <= ft // Tracción en la cuerda inferior (E.010 Art. 23)
 check Lpan/b2 <= 80 // Esbeltez máxima en tracción (lef/b ≤ 80, Art. 43.5)
 # Diagonales y montantes — compresión
 b3 = 4 cm
@@ -601,7 +601,7 @@ d3 = 6.5 cm // Sección 2" × 3"
 lam3 = max(0.9*Ldc/d3, Ldc/b3) // Esbeltez: en el plano 0.9 l/d; fuera del plano l/b (sin arriostre intermedio)
 check lam3 <= 50 // Esbeltez máxima de la diagonal (Art. 43.5)
 Nadm3 = NadmE010(fc, Emin, b3*d3, lam3, Ck) -> tonf
-check Ndc <= Nadm3 // Compresión en la diagonal más cargada
+check Ndc <= Nadm3 // Compresión en la diagonal más cargada (E.010 Art. 30 y 43)
 check Ndt/(0.85*b3*d3) <= ft // Tracción en montantes y diagonales
 # Deflexión y contraflecha (E.010 Art. 42)
 "Deflexión admisible de armaduras igual a la de elementos en flexión (Art. 42.2: L/300 con cielo raso de yeso, incluyendo la deformación de los nudos); armaduras de más de 8 m llevan contraflecha mínima L/300 = {Lt/300 -> cm} (Art. 42.3).`),
@@ -654,8 +654,8 @@ Astemp = 0.005*tw*1 m/m -> cm^2/m // Mínimo por contracción y temperatura (ACI
 barh = 5 // Varilla anular (dos caras) [4 : 1/2"|5 : 5/8"|6 : 3/4"]
 sh = 20 cm // Espaciamiento en cada cara
 Ash = 2*Ab(barh)/sh -> cm^2/m // Acero anular colocado (dos caras)
-check Ash >= Ashreq // Refuerzo anular por tracción
-check Ash >= Astemp // Refuerzo mínimo por contracción y temperatura
+check Ash >= Ashreq // Refuerzo anular por tracción (ACI 350-06 9.2.6; PCA)
+check Ash >= Astemp // Refuerzo mínimo por contracción y temperatura (ACI 350-06 Tabla 7.12.2.1)
 check sh <= 30 cm // Espaciamiento máximo 12 in (ACI 350 7.6.5)
 ## Esfuerzo de tracción en el concreto (PCA)
 Csh = 0.0003 // Coeficiente de contracción del concreto
@@ -677,7 +677,7 @@ check 2*Asv >= 0.003*tw*1 m/m // Cuantía vertical mínima 0.3 % (ACI 350 14.3.2
 ## Cortante en la base
 Vu = facv*Vbase -> tonf/m // Cortante último
 phiVc = 0.75*0.53*sqrtfc(fc)*100 cm*dv/(1 m) -> tonf/m // φVc (ACI 350 11.3, φ = 0.75)
-check Vu <= phiVc // Cortante en la unión pared–losa de fondo
+check Vu <= phiVc // Cortante en la unión pared–losa de fondo (ACI 350-06 11.3, φ = 0.75)
 # Análisis sísmico (ACI 350.3-06 con espectro E.030)
 Z = 0.45 // Factor de zona ${ZONA}
 S = 1.05 // Factor de suelo ${SUELO}
@@ -736,12 +736,12 @@ Nwy = Pwy/pi // Tensión anular por inercia de la pared (R6.2)
 Nhy = uv*gw*yTmax*D/2 -> tonf/m // Tensión por aceleración vertical Nhy = üv qhy r (R6.2)
 Ny = sqrt((Niy + Nwy)^2 + Ncy^2 + Nhy^2) -> tonf/m // Tensión anular hidrodinámica combinada (Ec. 6-1)
 Tus = fach/1.4*(1.2*Tmax + 1.0*Ny) -> tonf/m // U = 1.2 F + 1.0 E (ACI 350-06 9.2.1) con el factor de durabilidad (conservador)
-check Tus <= 0.9*fy*Ash // Refuerzo anular con sismo
+check Tus <= 0.9*fy*Ash // Refuerzo anular con sismo (ACI 350.3-06 Ec. 6-1; ACI 350-06 9.2.1)
 ## Transferencia del cortante sísmico en la unión pared–losa de fondo
 qv = Vs/(pi*(D + tw)/2) -> tonf/m // Flujo de corte tangencial máximo q = V/(π R)
 Avf = 2*Asv // Refuerzo vertical que atraviesa la junta (dos caras)
 phiVn = 0.75*1.0*Avf*fy -> tonf/m // Corte-fricción φ μ Avf fy, μ = 1.0 (junta rugosa, E.060 11.7)
-check qv <= phiVn // Corte-fricción en la base de la pared
+check qv <= phiVn // Corte-fricción en la base de la pared (ACI 350.3-06 3.3.2 y R3.3.2; E.060 11.7)
 ## Anclaje de la cubierta frente al oleaje
 pup = gw*max(dmax - fbl, 0 m) -> tonf/m^2 // Presión ascendente estimada: columna de la ola no acomodada (estimación simplificada)
 qup = pup*D/4 - 0.9*gc*er*D/4 -> tonf/m // Tracción por metro en la unión cubierta–pared (placa circular: q = pR/2), descontando 0.9 del peso propio
@@ -819,7 +819,7 @@ check Asp >= max(Ashe, Asmin) // Refuerzo horizontal, cara exterior
 ## Cortante en la base de la pared
 Vu = 1.7*max(Vba, Vbs) -> tonf/m
 phiVc = 0.75*0.53*sqrtfc(fc)*100 cm*d/(1 m) -> tonf/m // φVc (φ = 0.75)
-check Vu <= phiVc // Cortante en la unión con la losa de fondo
+check Vu <= phiVc // Cortante en la unión con la losa de fondo (ACI 350-06 11.3, φ = 0.75)
 # Losa de techo (placa articulada en sus cuatro bordes)
 wt = 2.4 tonf/m^3*tt + 0.10 tonf/m^2 // Peso propio + acabados
 wlt = 0.25 tonf/m^2 // Sobrecarga del techo (E.020)
@@ -921,7 +921,7 @@ Mu = Mbase // Momento último (sismo a nivel de resistencia)
 thf = (Pu + Asf*fy)/(1.7*fc*tf*rm + 2*Asf*fy/pi) // Semiángulo comprimido θ (rad)
 Mn = 1.7*fc*tf*rm^2*sin(thf) + 2*Asf*fy*rm*sin(thf)/pi -> tonf*m // Mn de anillo delgado (bloque plástico)
 phif = max(0.70, min(0.90, 0.90 - 0.20*Pu/(0.1*fc*Ag))) // φ: 0.9 → 0.7 según Pu/(0.1 f'c Ag) (E.060 9.3.2.2)
-check phif*Mn >= Mu // Flexocompresión del fuste
+check phif*Mn >= Mu // Flexocompresión del fuste (E.060 10.2 y 9.3.2.2; anillo plástico ≈ compatibilidad ±2 %)
 Vuf = Vs // Cortante último
 Acw = pi*rm*tf // Área efectiva de corte del tubo (A/2)
 barh = 4 // Refuerzo horizontal (dos capas) [4 : 1/2"|5 : 5/8"]
@@ -929,9 +929,9 @@ shf = 20 cm // Espaciamiento vertical del refuerzo horizontal
 rhoh = 2*Ab(barh)/(shf*tf) // Cuantía horizontal
 check rhoh >= 0.0025 // Cuantía horizontal mínima (E.060 11.10.7)
 phiVf = 0.85*Acw*(0.53*sqrtfc(fc) + rhoh*fy) -> tonf // φVn = φ Acw (0.53√f'c + ρh fy) (E.060 11.10)
-check Vuf <= phiVf // Cortante en el fuste
+check Vuf <= phiVf // Cortante en el fuste (E.060 11.10)
 sigc = (1.25*(Wcuba + Wfus + WL))/Ag -> kgf/cm^2 // Compresión por gravedad
-check sigc <= 0.1*fc // Esfuerzo axial bajo (validez de la fórmula de anillo)`),
+check sigc <= 0.1*fc // Esfuerzo axial bajo: validez de la fórmula de anillo plástico (hipótesis de esta memoria)`),
       summary(),
     ],
   },
