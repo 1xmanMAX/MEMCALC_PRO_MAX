@@ -48,8 +48,8 @@ defineFns({
   DAASHTO93: {
     fn: (W18, ZR, So, dPSI, pt, Sc, Cd, J, Ec, k) => {
       const a = aashtoArgs(ZR, So, dPSI, pt, Sc, Cd, J, Ec, k); const t = Math.log10(n0(W18));
-      let lo = 3, hi = 30; // pulgadas
-      if (logW18AASHTO93(hi, ...a) < t) throw new Error('AASHTO 93: el tráfico exige más de 30 in (76 cm) de losa');
+      let lo = 3, hi = 60; // pulgadas
+      if (logW18AASHTO93(hi, ...a) < t) return mkUnit(hi * 2.54, 'cm'); // fuera de rango: se devuelve 152 cm (la verificación no cumple)
       for (let i = 0; i < 100; i++) { const m = (lo + hi) / 2; if (logW18AASHTO93(m, ...a) >= t) hi = m; else lo = m; }
       return mkUnit(hi * 2.54, 'cm');
     },

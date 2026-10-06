@@ -91,9 +91,10 @@ check Ab(bar)/sep*100 cm >= Asd // Acero colocado ≥ requerido (E.060 10.5.4)
 phiMn = 0.9*Ab(bar)/sep*100 cm*fy*(d - Ab(bar)/sep*100 cm*fy/(2*0.85*fc*100 cm)) -> tonf*m // Resistencia de diseño colocada
 check Mu <= phiMn // Resistencia a flexión (E.060 9.3.2.1)
 Asneg = max(As/2, Asmin) // Acero negativo en los apoyos (práctica: As/2 a As/3 y no menor que el mínimo)
-sepn = rounddown(min(Ab(bar)/Asneg*100 cm, 3*tg, 40 cm), 2.5 cm) // Espaciamiento del negativo
+sepn = rounddown(max(min(Ab(bar)/Asneg*100 cm, 3*tg, 40 cm), 5 cm), 2.5 cm) // Espaciamiento del negativo
+check Ab(bar)/sepn*100 cm >= Asneg // Acero negativo colocado (E.060 10.5.4)
 Ast = 0.0018*100 cm*tg // Acero transversal de temperatura (E.060 9.7.2)
-sept = rounddown(min(Ab(3)/Ast*100 cm, 5*tg, 40 cm), 2.5 cm) // Espaciamiento con 3/8" (≤ 5h y 40 cm)
+sept = rounddown(max(min(Ab(3)/Ast*100 cm, 5*tg, 40 cm), 5 cm), 2.5 cm) // Espaciamiento con 3/8" (≤ 5h y 40 cm)
 ## Cortante (E.060 11.3 y 11.1.3.1)
 Vu = max((RA - wu1*d)*cos(theta), RB - wu2*d) -> tonf // Cortante último a «d» de la cara (componente normal a la losa)
 phiVc = 0.85*0.53*sqrtfc(fc)*100 cm*d -> tonf // Resistencia del concreto por metro
@@ -194,11 +195,11 @@ const pavRig = {
   titulo: 'Diseño de pavimento rígido por el método AASHTO 93',
   validacion: {
     fuente: 'Garber y Hoel, Traffic and Highway Engineering (ejemplo de diseño AASHTO 93 de pavimento rígido, nomograma AASHTO 93 Fig. 3.7): k = 72 pci, Ec = 5×10⁶ psi, S\'c = 650 psi, J = 3.2, Cd = 1.0, ΔPSI = 1.7, R = 95 %, So = 0.29, W18 = 5.1×10⁶ → D = 9.75 in (≈ 10 in)',
-    nota: 'Datos por defecto = datos del ejemplo convertidos a kgf/cm (S\'c = 45.7 kgf/cm², Ec = 351 500 kgf/cm², k = 1.99 kgf/cm³). La ecuación da 9.72 in frente a 9.75 in leídos en el nomograma.',
+    nota: 'Datos por defecto = datos del ejemplo convertidos a kgf/cm (S\'c = 45.7 kgf/cm², Ec = 351 500 kgf/cm², k = 1.99 kgf/cm³). La ecuación da 9.72 in frente a 9.75 in leídos en el nomograma; se adopta D = 25 cm (≈ 10 in, como en el ejemplo).',
     valores: [
       { var: 'ZR', esperado: -1.645, tol: 0.001, desc: 'ZR para R = 95 %' },
       { var: 'Dreq', unidad: 'in', esperado: 9.75, tol: 0.01, desc: 'Espesor requerido (nomograma 9.75 in)' },
-      { var: 'Dd', unidad: 'cm', esperado: 25, tol: 0.001, desc: 'Espesor adoptado ≈ 10 in' },
+      { var: 'W18adm', esperado: 5.5385e6, tol: 0.003, desc: 'Control: ESAL admisibles con D = 25 cm (≈ 9.84 in)' },
     ],
   },
   blocks: [
@@ -224,11 +225,12 @@ Cd = 1.0 // Coeficiente de drenaje (AASHTO Tabla 2.5) [0.7..1.25]
 fyb = 4200 kgf/cm^2 // Acero de barras de amarre [2800..4200]
 bcarril = 3.6 m // Ancho de carril (distancia a la junta libre) [2.7..4.0]
 Lj = 4.5 m // Espaciamiento de juntas transversales [3..6]
+Dd = 25 cm // Espesor de losa adoptado [15..40]
 # Espesor de la losa (AASHTO 93)
 dPSI = po - pt // Pérdida de serviciabilidad
 ZR = ZRconf(R) // Desviación normal estándar (AASHTO Tabla 4.1)
 Dreq = DAASHTO93(W18, ZR, So, dPSI, pt, Sc, Cd, J, Ec, kef) // Espesor requerido (ecuación AASHTO 93, Fig. 3.7)
-Dd = roundup(Dreq - 0.2 cm, 1 cm) // Espesor adoptado (redondeo constructivo a 1 cm)
+check Dd >= Dreq - 0.2 cm // Espesor adoptado ≥ requerido (tolerancia de 2 mm por redondeo)
 W18adm = W18AASHTO93(Dd, ZR, So, dPSI, pt, Sc, Cd, J, Ec, kef) // Ejes admisibles con el espesor adoptado
 check W18adm >= 0.95*W18 // Tráfico admisible (tolerancia del 5 % por redondeo, práctica AASHTO)
 check Dd >= 15 cm // Espesor mínimo (MTC; CE.010 vías locales 15 cm)
@@ -690,7 +692,7 @@ check pi*Db*tau*Lbd/DL >= 2.0 // FS de adherencia ≥ 2.0 (GEC-4 Cap. 5)
 Mu = 1.7*pt*max(sv, sh)^2/10*1 m -> tonf*m // Momento por metro, losa continua sobre anclajes (E.060 9.2.4: empuje 1.7)
 dw = tw - 5 cm - 0.8 cm // Peralte efectivo
 Asw = max(asFlex(Mu, 100 cm, dw, fc, fy), 0.0018*100 cm*tw) // Acero por metro, cada cara y dirección
-sepw = rounddown(min(Ab(5)/Asw*100 cm, 30 cm), 2.5 cm) // Espaciamiento con 5/8"
+sepw = rounddown(max(min(Ab(5)/Asw*100 cm, 30 cm), 7.5 cm), 2.5 cm) // Espaciamiento con 5/8" (mínimo constructivo 7.5 cm)
 check Ab(5)/sepw*100 cm >= Asw // Acero colocado (E.060 10.5.4)
 ## Punzonamiento bajo la placa (E.060 11.12)
 Pu = 1.7*DL -> tonf // Carga de diseño amplificada con el factor de empuje (E.060 9.2.4)
@@ -1048,7 +1050,7 @@ Astj = 12*Ab(barj) // 12 barras: 4 por cara (se desprecian las barras existentes
 check Astj/bj^2 >= 0.01 // Cuantía mínima 1 % sobre la sección total (E.060 10.9.1)
 phiPnj = 0.80*0.70*(0.85*fceq*(bj^2 - Astj) + fy*Astj) -> tonf // Resistencia axial máxima reforzada
 check Pu <= phiPnj // Compresión axial (E.060 10.3.6.2)`),
-    { type: 'pm', b: 'bj', h: 'bj', fc: 'fceq', fy: 'fy', dp: 'dpj', nx: '4', ny: '2', barra: 'barj', norma: 'E060', demandas: 'Pu, Mu // Demanda', titulo: 'Diagrama de interacción de la sección encamisada (monolítica, f\'c existente)' },
+    { type: 'pmgen', geom: '0 0 bj bj', barras: 'R dpj dpj bj-dpj bj-dpj 4 4 barj', nucleos: 'tj tj b0 b0 // columna existente', fc: 'fceq', fy: 'fy', norma: 'E060', dir: 'X', demandas: 'Pu, Mu // Demanda', titulo: 'Sección encamisada (monolítica, f\'c existente) y diagrama de interacción' },
     calc(`# Cortante (E.060 11.3; EC8-3 A.4.2.2)
 dj = bj - dpj // Peralte efectivo
 Vc = 0.53*sqrtfc(fceq)*(1 + Pu/(140 kgf/cm^2*bj^2))*bj*dj -> tonf // Aporte del concreto con carga axial (E.060 11-4)

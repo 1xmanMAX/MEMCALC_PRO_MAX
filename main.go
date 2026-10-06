@@ -98,6 +98,26 @@ func openWindow(url string) *exec.Cmd {
 	return cmd
 }
 
+// guard rechaza peticiones con un Host ajeno (DNS rebinding) y POST desde otros orígenes (CSRF).
+func guard(h http.Handler) http.Handler {
+	okHost := map[string]bool{fmt.Sprintf("127.0.0.1:%d", port): true, fmt.Sprintf("localhost:%d", port): true}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !okHost[r.Host] {
+			http.Error(w, "host", http.StatusForbidden)
+			return
+		}
+		if r.Method == http.MethodPost {
+			if o := r.Header.Get("Origin"); o != "" && o != "http://"+r.Host {
+				http.Error(w, "origin", http.StatusForbidden)
+				return
+			}
+		}
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		h.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
 	data := fileArg()
@@ -155,7 +175,7 @@ func main() {
 		lastPing.Store(time.Now().Unix())
 		w.WriteHeader(204)
 	})
-	go http.Serve(ln, mux)
+	go http.Serve(ln, guard(mux))
 	lastPing.Store(time.Now().Unix())
 	cmd := openWindow(url + first)
 	if cmd != nil {

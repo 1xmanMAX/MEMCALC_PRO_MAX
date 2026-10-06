@@ -1,5 +1,5 @@
 // Ejecuta un documento completo -> HTML de la memoria + entradas + verificaciones
-import { runCalc, richText, settings, esc, K, fmtPlain, errEs, math } from './engine.js';
+import { runCalc, richText, settings, esc, K, fmtPlain, errEs, math, imgSrc } from './engine.js';
 import './norms/index.js';
 import './blocks/index.js';
 import { BLOCKS } from './blockreg.js';
@@ -38,7 +38,7 @@ export function runDoc(doc) {
     try {
       if (b.type === 'calc') h = runCalc(b.src, ctx);
       else if (b.type === 'text') h = renderText(b.src, ctx);
-      else if (b.type === 'image') h = b.data ? `<div class="figure img" style="--w:${b.width || 70}%"><img src="${b.data}" alt="">${caption(ctx, b.caption || '')}</div>` : '<div class="ph img-empty">Imagen sin cargar (no se imprime)</div>';
+      else if (b.type === 'image') h = imgSrc(b.data) ? `<div class="figure img" style="--w:${Math.max(10, Math.min(100, +b.width || 70))}%"><img src="${imgSrc(b.data)}" alt="">${caption(ctx, b.caption || '')}</div>` : '<div class="ph img-empty">Imagen sin cargar (no se imprime)</div>';
       else if (b.type === 'pagebreak') h = '<div class="pb"></div>';
       else if (b.type === 'summary') {
         const t = b.titulo === undefined ? 'Resumen de verificaciones' : b.titulo;
@@ -175,7 +175,7 @@ function coverHtml(doc) {
   const blank = '<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>';
   // la portada no lleva pie de página (va en el cuerpo para quedar después de #printcss)
   return `<div class="cover"><style>@page :first{@bottom-left{content:none}@bottom-right{content:none}@bottom-center{content:none}@top-left{content:none}@top-right{content:none}}</style>
-    <div class="ctop">${m.logo ? `<img class="clogo" src="${m.logo}" alt="">` : ''}<div class="cfirm">${esc(m.empresa || '')}</div></div>
+    <div class="ctop">${imgSrc(m.logo) ? `<img class="clogo" src="${imgSrc(m.logo)}" alt="">` : ''}<div class="cfirm">${esc(m.empresa || '')}</div></div>
     <div class="cmain">
       <div class="ckind">MEMORIA DE CÁLCULO ESTRUCTURAL</div>
       <h1 class="ctitle">${esc(m.titulo || 'Memoria de cálculo')}</h1>

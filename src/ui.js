@@ -3,7 +3,7 @@
 // =====================================================================
 import { runDoc } from './docrun.js';
 import { TEMPLATES, CATEGORIES } from './templates.js';
-import { K, esc, math, valText, symTex, FN_DOCS, CUSTOM_FN } from './engine.js';
+import { K, esc, math, valText, symTex, FN_DOCS, CUSTOM_FN, imgSrc } from './engine.js';
 import { BLOCKS } from './blockreg.js';
 
 const VERSION = '1.0.0';
@@ -254,7 +254,7 @@ function compute() {
   lastRes = runDoc(doc);
   const t1 = performance.now();
   const m = doc.meta;
-  const head = `<div class="runhead">${m.logo ? `<img src="${m.logo}" alt="">` : ''}<span><b>${esc(m.empresa || m.proyecto || 'Memoria de cálculo')}</b></span><span>${esc(m.titulo || '')}</span><span>${esc(m.fecha || '')} · Rev. ${esc(m.rev || '0')}</span></div>`;
+  const head = `<div class="runhead">${imgSrc(m.logo) ? `<img src="${imgSrc(m.logo)}" alt="">` : ''}<span><b>${esc(m.empresa || m.proyecto || 'Memoria de cálculo')}</b></span><span>${esc(m.titulo || '')}</span><span>${esc(m.fecha || '')} · Rev. ${esc(m.rev || '0')}</span></div>`;
   const paper = $('#paper');
   let td = paper.querySelector('.pt > tbody > tr > td');
   const ids = lastRes.parts.map(p => p.id).join(',');
@@ -676,7 +676,7 @@ function blockEl(b, i) {
   } else if (b.type === 'text') {
     body.innerHTML = `<div class="ed"><pre aria-hidden="true"></pre><textarea class="code" spellcheck="true" rows="3" placeholder="Texto con **formato**, listas, tablas, $LaTeX$ y valores {variable}">${esc(b.src || '')}</textarea></div><div class="errs"></div>`;
   } else if (b.type === 'image') {
-    body.innerHTML = `<div class="fg"><div class="imgdrop w" style="grid-column:1/-1" tabindex="0">${b.data ? `<img src="${b.data}" alt="">` : 'Toque para elegir una imagen, arrástrela aquí o péguela (Ctrl+V)'}</div>
+    body.innerHTML = `<div class="fg"><div class="imgdrop w" style="grid-column:1/-1" tabindex="0">${imgSrc(b.data) ? `<img src="${imgSrc(b.data)}" alt="">` : 'Toque para elegir una imagen, arrástrela aquí o péguela (Ctrl+V)'}</div>
       <label class="w">Leyenda<input data-f="caption" value="${esc(b.caption || '')}" placeholder="Descripción de la figura"></label>
       <label>Ancho (%)<input data-f="width" type="number" min="10" max="100" value="${b.width || 70}"></label></div><input type="file" accept="image/*" hidden>`;
   } else if (T.fields) {
@@ -1204,7 +1204,7 @@ function renderProject() {
     ${inp('autor', 'Elaborado por')}${inp('cip', 'Reg. CIP')}${inp('revisor', 'Revisado por')}${inp('empresa', 'Empresa / Consultora')}
     ${inp('aprobador', 'Aprobado por')}${inp('cipaprob', 'Reg. CIP (aprobador)')}
     ${inp('fecha', 'Fecha')}${inp('rev', 'Revisión')}${inp('normas', 'Normativa aplicada', 1)}
-    <label class="w">Logo<div class="logo-p">${m.logo ? `<img src="${m.logo}" alt="">` : ''}<button class="btn" data-logo>${m.logo ? 'Cambiar' : 'Cargar logo'}</button>${m.logo ? '<button class="btn ghost" data-nologo>Quitar</button>' : ''}</div></label>
+    <label class="w">Logo<div class="logo-p">${imgSrc(m.logo) ? `<img src="${imgSrc(m.logo)}" alt="">` : ''}<button class="btn" data-logo>${m.logo ? 'Cambiar' : 'Cargar logo'}</button>${m.logo ? '<button class="btn ghost" data-nologo>Quitar</button>' : ''}</div></label>
     <div class="sec">Presentación</div>
     <label>Decimales<select data-s="dec">${[0, 1, 2, 3, 4].map(n => `<option${s.dec == n ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
     <label>Sistema de unidades preferido<select data-s="sys"><option value="tec"${s.sys === 'tec' ? ' selected' : ''}>Técnico (t, t·m, kg/cm²)</option><option value="si"${s.sys === 'si' ? ' selected' : ''}>SI (kN, kN·m, MPa)</option><option value="us"${s.sys === 'us' ? ' selected' : ''}>Inglés (kip, kip·ft, ksi)</option></select></label>

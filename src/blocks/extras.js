@@ -355,7 +355,7 @@ registerBlock('exPMcirc', {
     pos({ D, dc, fc, fy }); if (nb < 6) throw new Error('Se requieren al menos 6 barras en sección circular (E.060 10.9.2)'); if (2 * dc >= D) throw new Error('Recubrimiento mayor que el radio');
     const A = (BARS[bar] || {}).A; if (!A) throw new Error('Barra no válida');
     const { pts, Pmax } = pmCircPts(D, dc, nb, A, fc, fy, true, 160);
-    const cur = pts.map(p => ({ M: p.M / 1e5, P: p.P / 1e3 }));
+    const cur = pts.map(p => ({ M: p.M / 1e5, P: p.P / 1e3 })); cur.push({ M: 0, P: Pmax / 1e3 });
     const dem = String(b.demandas || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [code, lab] = l.split('//'); const [pp, mm] = code.split(','); return { P: evalParam(pp.trim(), S, 'tonf'), M: Math.abs(evalParam(mm.trim(), S, 'tonf*m')), lab: (lab || '').trim() }; });
     const Mx = Math.max(...cur.map(p => p.M), ...dem.map(d => d.M)) * 1.1, Pn = Math.min(...cur.map(p => p.P)), Px = Math.max(Pmax / 1e3, ...dem.map(d => d.P)) * 1.08;
     const W = 560, H = 360, pl = 70, pr = 20, pt = 20, pb = 44;

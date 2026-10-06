@@ -525,12 +525,24 @@ export function K(t, display = false) {
   kcache.set(key, h);
   return h;
 }
+// Solo imágenes embebidas en base64 (logo, bloque imagen): evita inyectar atributos o URLs externas
+export function imgSrc(x) { const v = String(x || ''); return /^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=\s]+$/.test(v) ? v.replace(/\s+/g, '') : ''; }
 export function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 // =====================================================================
 //  Texto enriquecido: markdown + $latex$ + {expresión}
 // =====================================================================
 marked.setOptions({ gfm: true, breaks: true });
+// Seguridad: los .mcalc pueden venir de terceros. El HTML crudo dentro del markdown se muestra
+// como texto (no se interpreta) y los enlaces/imágenes solo admiten esquemas seguros.
+const SAFE_URL = /^(https?:|mailto:|#|data:image\/(png|jpe?g|gif|webp);)/i;
+marked.use({
+  renderer: {
+    html(tok) { return esc(typeof tok === 'string' ? tok : tok.text || tok.raw || ''); },
+    link(tok) { const href = String(tok.href || ''); const t = this.parser.parseInline(tok.tokens); return SAFE_URL.test(href.trim()) ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${t}</a>` : t; },
+    image(tok) { const href = String(tok.href || ''); return SAFE_URL.test(href.trim()) ? `<img src="${esc(href)}" alt="${esc(tok.text || '')}">` : esc(tok.text || ''); },
+  },
+});
 export function richText(src, scope, inline = false) {
   const store = [];
   let s = String(src || '');
