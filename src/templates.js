@@ -646,16 +646,23 @@ SDS = 1.00 // Aceleración espectral de diseño, periodo corto [g] (del espectro
 SD1 = 0.60 // Aceleración espectral de diseño a 1 s [g]
 S1 = 0.60 // Aceleración MCER a 1 s [g]
 TL = 8 // Periodo de transición largo [s]
-R = 8 // Coeficiente de modificación de respuesta (Tabla 12.2-1) [8 : Pórtico especial C°A°|5 : Pórtico intermedio C°A°|3 : Pórtico ordinario C°A°|7 : Dual con pórtico especial|6 : Muros especiales C°A°|8 : Pórtico especial de acero]
-Cd = 5.5 // Factor de amplificación de deflexiones [5.5 : Pórtico especial|4.5 : Pórtico intermedio|2.5 : Pórtico ordinario|5 : Muros especiales]
-Ie = 1.0 // Factor de importancia sísmica [1.0 : Riesgo I–II|1.25 : Riesgo III|1.5 : Riesgo IV]
-hn = 15 // Altura [m]
-Ct = 0.0466 // Tabla 12.8-2 [0.0466 : Pórtico de concreto|0.0724 : Pórtico de acero|0.0731 : Acero EBF / BRBF|0.0488 : Otros sistemas]
-x = 0.9 // Exponente (Tabla 12.8-2) [0.9 : Pórtico de concreto|0.8 : Pórtico de acero|0.75 : EBF / otros]
+sist = 1 // Sistema sísmico resistente (Tabla 12.2-1) [1 : C.1 Pórtico especial de C°A° (SMF)|2 : C.6 Pórtico intermedio de C°A°|3 : C.7 Pórtico ordinario de C°A°|4 : D.3 Dual con SMF y muros especiales de C°A°|5 : B.4 Muros especiales de C°A° (pórtico de edificación)|6 : C.1 Pórtico especial de acero (SMF)|7 : B.1 Acero EBF]
+R = si(sist == 1 or sist == 6 or sist == 7, 8, si(sist == 2, 5, si(sist == 3, 3, si(sist == 4, 7, 6)))) // Coeficiente de modificación de respuesta (Tabla 12.2-1)
+Cd = si(sist == 1 or sist == 4 or sist == 6, 5.5, si(sist == 2, 4.5, si(sist == 3, 2.5, si(sist == 5, 5, 4)))) // Factor de amplificación de deflexiones (Tabla 12.2-1)
+riesgo = 2 // Categoría de riesgo (Tabla 1.5-1) [2 : I o II|3 : III|4 : IV]
+Ie = si(riesgo == 4, 1.5, si(riesgo == 3, 1.25, 1.0)) // Factor de importancia sísmica (Tabla 1.5-2)
+hn = 15 // Altura estructural [m]
+Ct = si(sist == 1 or sist == 2 or sist == 3, 0.0466, si(sist == 6, 0.0724, si(sist == 7, 0.0731, 0.0488))) // Tabla 12.8-2 (unidades SI)
+x = si(sist <= 3, 0.9, si(sist == 6, 0.8, 0.75)) // Exponente (Tabla 12.8-2)
 ## Periodo fundamental (12.8.2)
-Ta = Ct*hn^x // Periodo aproximado [s]
+Ta = Ct*hn^x // Periodo aproximado [s] (12.8-8)
 Cu = CuASCE7(SD1) // Coeficiente del límite superior (Tabla 12.8-1)
-T = Ta // Periodo adoptado (si se usa el del modelo, no mayor que Cu·Ta)
+Tmod = 0.90 // Periodo fundamental del modelo analítico [s] (0 si no se dispone)
+T = si(Tmod > 0, min(Tmod, Cu*Ta), Ta) // Periodo adoptado: el del modelo, no mayor que Cu·Ta (12.8.2)
+## Aplicabilidad del procedimiento ELF (12.6, Tabla 12.6-1)
+Ts = SD1/SDS // Periodo de esquina del espectro [s]
+reg = 1 // Configuración (12.3) [1 : Regular|2 : Solo irregularidades H2–H5 / V4–V5 (hn ≤ 160 ft)|3 : Otras irregularidades]
+check (reg == 1 and T < 3.5*Ts) or (reg == 2 and hn <= 48.8) // ELF permitido en SDC D–F (Tabla 12.6-1); si no, análisis modal (12.9)
 ## Coeficiente de respuesta sísmica (12.8.1.1)
 Cs1 = SDS/(R/Ie) // Valor base
 Cs2 = si(T <= TL, SD1/(T*R/Ie), SD1*TL/(T^2*R/Ie)) // Límite superior
@@ -675,9 +682,9 @@ Vx = V - cumsum(Fx) + Fx // Cortante de entrepiso
 Dxe = [5, 6, 6, 5, 4] mm // Deriva elástica de entrepiso (del modelo)
 hsx = [3, 3, 3, 3, 3] m // Altura de entrepiso
 Delta = Cd*Dxe/Ie // Deriva de diseño
-Dlim = 0.020 // Deriva admisible / hsx [0.020 : Riesgo I–II|0.015 : Riesgo III|0.010 : Riesgo IV]
+Dlim = si(riesgo == 4, 0.010, si(riesgo == 3, 0.015, 0.020)) // Deriva admisible Δa/hsx, «todas las demás estructuras» (Tabla 12.12-1)
 check max(Delta ./ hsx) <= Dlim // Deriva de entrepiso`),
-      { type: 'text', src: '> ASCE 7-22 obtiene $S_{DS}$ y $S_{D1}$ del espectro multiperiodo del sitio (11.4.8); el espectro de dos periodos se usa como alternativa. En pórticos especiales de SDC D–F la deriva admisible se divide entre ρ (12.12.1.1).' },
+      { type: 'text', src: '> ASCE 7-22 obtiene $S_{DS}$ y $S_{D1}$ del espectro multiperiodo del sitio (11.4.8); el espectro de dos periodos se usa como alternativa. En pórticos especiales de SDC D–F la deriva admisible se divide entre ρ (12.12.1.1). Los desplazamientos para derivas pueden calcularse con el periodo del modelo sin el límite Cu·Ta (12.8.6.2).' },
       { type: 'table', columnas: 'Nivel = 1:5\nAltura $h_x$ [m] = hx\nPeso $w_x$ [kN] = wx\n$C_{vx}$ = Cvx\nFuerza $F_x$ [kN] = Fx\nCortante $V_x$ [kN] = Vx', dec: '3', titulo: 'Distribución vertical de fuerzas sísmicas (ASCE 7-22)' },
       { type: 'plot', expr: 'SaASCE7(x, SDS, SD1, TL); SaASCE7(x, SDS, SD1, TL)/(R/Ie)', var: 'x', desde: '0', hasta: '4', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Sa [g]', leyenda: true, nombres: 'Espectro de diseño Sa; Sa/(R/Ie)', titulo: 'Espectro de respuesta de diseño (ASCE 7-22, 11.4.6)' },
       { type: 'summary' },
