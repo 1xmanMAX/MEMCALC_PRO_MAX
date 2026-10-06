@@ -512,7 +512,7 @@ function renderAbut(b, ctx) {
   // reacción y frenado
   const xr = X(p + bc / 2);
   g += `<line x1="${xr}" y1="${Y(ys) - 60}" x2="${xr}" y2="${Y(ys + 0.1) - 2}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + T(xr - 5, Y(ys) - 40, 'R (DC, DW, LL)', { fs: 9, c: C.red, a: 'end' });
-  g += `<line x1="${X(p - 1.5)}" y1="${Y(H + 0.0) - 14}" x2="${X(p - 0.2)}" y2="${Y(H) - 14}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + T(X(p - 1.5), Y(H) - 20, 'BR (1.80 m sobre rasante)', { fs: 9, c: C.red, a: 'start' });
+  g += `<line x1="${X(p - 1.5)}" y1="${Y(H + 0.0) - 12}" x2="${X(p - 0.2)}" y2="${Y(H) - 12}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + T(X(p - 1.5), Y(H) - 26, 'BR (1.80 m sobre rasante)', { fs: 9, c: C.red, a: 'start' });
   // empujes
   const pa = Ka * gs * H, ps = Ka * gs * heq, ph = 80 / Math.max(pa + ps, 1e-6), xb = X(B + 0.8) + 14;
   g += `<path d="M${xb},${Y(H)} L${xb + ps * ph},${Y(H)} L${xb + ps * ph},${Y(0)} L${xb},${Y(0)} Z" fill="rgba(212,115,12,.18)" stroke="${C.orange}"/>`;
