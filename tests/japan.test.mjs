@@ -64,9 +64,9 @@ section('AIJ concreto armado');
   near('ft largo plazo SD345 D32 = 195 N/mm²', g('ftL2', 'N/mm^2'), 195);
   near('α = 4/(M/(Qd) + 1) = 4/2.875', g('al'), 4 / 2.875);
   // Fórmula mínima de Arakawa (荒川min式, coef. 0.053; la versión «media» usa 0.068):
-  // [0.053·0.8^0.23·42/2.12 + 0.85·√(0.004·295)]·400·560 = (1.0027 + 0.9233)·224000 = 431.4 kN
-  near('Qsu Arakawa mín. (b=400, j=560, pt=0.8 %, pw=0.4 %) = 431.4 kN', g('Qsu', 'kN'), (0.053 * 0.8 ** 0.23 * 42 / 2.12 + 0.85 * Math.sqrt(0.004 * 295)) * 224, 0.001);
-  near('… valor numérico de control 431.4 kN', g('Qsu', 'kN'), 431.4, 0.002);
+  // [0.053·0.8^0.23·42/2.12 + 0.85·√(0.004·295)]·400·560 = (0.9975 + 0.9233)·224000 = 430.3 kN
+  near('Qsu Arakawa mín. (b=400, j=560, pt=0.8 %, pw=0.4 %) = 430.3 kN', g('Qsu', 'kN'), (0.053 * 0.8 ** 0.23 * 42 / 2.12 + 0.85 * Math.sqrt(0.004 * 295)) * 224, 0.001);
+  near('… valor numérico de control 430.3 kN (con 0.068, «media», daría 493.5)', g('Qsu', 'kN'), 430.3, 0.001);
   near('Mu = 0.9·at·σy·d = 443.3 kN·m', g('Mu', 'kN*m'), 0.9 * 2028 * 379.5 * 640 / 1e6);
   near('QA corto plazo = b·j·(α·fs + 0.5·wft·(pw − 0.002))', g('Qa', 'kN'), 400 * 560 * (1.44 * 1.095 + 0.5 * 345 * 0.00038) / 1000);
   near('n = 13 para 27 < Fc ≤ 36', g('n'), 13);
@@ -106,12 +106,61 @@ section('Viento y nieve BSL; espectros JRA y Notif. 1461');
   near('μb(65° > 60°) = 0', g('mu0'), 0);
   near('Muros: techo pesado, 2 pisos, 1F = 33 cm/m²', g('c', 'cm/m^2'), 33);
   near('JRA nivel 1, suelo II, meseta = 250 gal', g('l1'), 250);
-  near('JRA nivel 2 tipo I, suelo III, T = 2.0 s → 1000 gal', g('l2'), 1000);
+  near('JRA 2012 nivel 2 tipo I, suelo III, T = 2.0 s → 1680/T = 840 gal', g('l2'), 840);
   near('JRA nivel 2 tipo II, suelo I, T = 0.2 s → 4463·T^(2/3)', g('l3'), 4463 * 0.2 ** (2 / 3));
   near('cD(h = 0.10) = 1.5/5 + 0.5 = 0.8', g('cd'), 0.8);
   near('S0 muy raro (T = 0.1 s) = 5·(0.64 + 0.6) = 6.2 m/s²', g('s0'), 6.2);
   near('S0 raro (T = 1.28 s) = 1.024/1.28 = 0.8 m/s²', g('sr'), 0.8);
   near('Gs suelo 3, T = 1.0 s ≥ Tu = 1.152 → 1.5·T/0.64', g('gs'), 1.5 / 0.64);
+}
+
+section('Ejemplos publicados — cálculo de límites (Notif. 1457 / 1461)');
+{
+  // Fuente: «限界耐力計算例» (denmoku-db.jp, 2024), tablas 6-3-1 y 6-3-2, suelo tipo 1:
+  //   Te = 0.636 s → Gs = 1.358 ; Te = 0.916 s → Gs = 1.350 ; Te = 0.559 s → Gs = 1.500
+  const g = calc('a = GsN1457(0.636, 1)\nb = GsN1457(0.916, 1)\nc = GsN1457(0.559, 1)');
+  near('denmoku 2024, suelo 1, Te = 0.636 s: Gs = 1.358', g('a'), 1.358, 0.001);
+  near('denmoku 2024, suelo 1, Te = 0.916 s: Gs = 1.350', g('b'), 1.350, 0.001);
+  near('denmoku 2024, suelo 1, Te = 0.559 s: Gs = 1.500', g('c'), 1.500, 0.001);
+  // Fuente: NILIM, Nota Técnica n.º 1084, tabla 6.3-4 (suelo tipo 2): Ts = 1.09 s → S0 = 4.71, Gs = 2.025, Fh = 0.62, Saf = 5.91 m/s²
+  const k = calc('S0 = S0N1461(1.09, 2)\nGs = GsN1457(1.09, 2)\nSaf = S0*0.62*Gs\nS0b = S0N1461(1.00, 2)');
+  near('NILIM 1084, Ts = 1.09 s: S0 = 5.12/Ts = 4.71 m/s²', k('S0'), 4.71, 0.005);
+  near('NILIM 1084, Ts = 1.09 s, suelo 2: Gs = 2.025', k('Gs'), 2.025);
+  near('NILIM 1084: Saf = S0·Fh·Gs = 5.91 m/s² (Fh = 0.62)', k('Saf'), 5.91, 0.005);
+  near('NILIM 1084, Ts = 1.00 s: S0 = 5.12 m/s²', k('S0b'), 5.12, 0.001);
+}
+
+section('Ejemplos publicados — JRA 2012 (coeficientes del método estático)');
+{
+  // Fuente: Prefectura de Miyagi, manual de diseño sísmico de puentes (basado en JRA V 2012), tablas 3-9, 3-13 y 3-14
+  const g = calc('a = kh0JRA(0.05, 1)\nb = kh0JRA(2.0, 2)\nc = kh0JRA(1.0, 3)\nd = khc0JRA(0.5, 1, 1)\ne = khc0JRA(2.0, 3, 1)\nf = khc0JRA(1.0, 1, 2)\ng2 = khc0JRA(0.3, 3, 2)\nh = SJRA2I(0.5, 2)');
+  near('kh0 suelo I, T = 0.05 s: 0.431·T^(1/3) ≥ 0.16 → 0.16', g('a'), 0.16);
+  near('kh0 suelo II, T = 2.0 s: 0.298·T^(−2/3) = 0.188', g('b'), 0.298 * 2 ** (-2 / 3));
+  near('kh0 suelo III, meseta 0.34–1.5 s = 0.30', g('c'), 0.30);
+  near('khc0 tipo I (2012), suelo I, meseta 0.16–0.6 s = 1.40', g('d'), 1.40);
+  near('khc0 tipo I (2012), suelo III, T = 2.0 s: 1.50·T^(−2/3) = 0.945', g('e'), 1.50 * 2 ** (-2 / 3));
+  near('khc0 tipo II, suelo I, T = 1.0 s: 1.24·T^(−4/3) = 1.24', g('f'), 1.24);
+  near('khc0 tipo II, suelo III, T = 0.3 s: 2.38·T^(2/3) = 1.06', g('g2'), 2.38 * 0.3 ** (2 / 3));
+  // NILIM (2013), fig. 1: espectro tipo I revisado (H24) en suelo II con meseta ≈ 1300 gal entre 0.22 y 0.9 s
+  near('S_I0 (2012), suelo II, T = 0.5 s = 1300 gal (NILIM 2013, fig. 1)', g('h'), 1300);
+  // continuidad de todas las ramas (kh0, khc0, S0)
+  let maxSalto = 0;
+  const lado = (f, t) => Math.abs(f(t * 0.99999) - f(t * 1.00001)) / f(t);
+  for (const [fn, ts] of [['kh0JRA(T, S)', { 1: [0.1, 1.1], 2: [0.2, 1.3], 3: [0.34, 1.5] }], ['khc0JRA(T, S, 1)', { 1: [0.16, 0.6], 2: [0.22, 0.9], 3: [0.34, 1.4] }], ['khc0JRA(T, S, 2)', { 1: [0.3, 0.7], 2: [0.4, 1.2], 3: [0.5, 1.5] }], ['SJRA2I(T, S)', { 1: [0.16, 0.6], 2: [0.22, 0.9], 3: [0.34, 1.4] }]]) {
+    for (const S of [1, 2, 3]) for (const t of ts[S]) {
+      const f = (T) => calc(`y = ${fn.replace('(T, S', `(${T}, ${S}`)}`)('y');
+      maxSalto = Math.max(maxSalto, lado(f, t));
+    }
+  }
+  truthy('Continuidad de kh0, khc0 y S_I0 en todos los quiebres (salto < 0.5 %)', maxSalto < 0.005, 'salto máx. ' + (100 * maxSalto).toFixed(2) + ' %');
+}
+
+section('Ejemplo publicado — presión de velocidad (Notif. 1454)');
+{
+  // Ejemplo difundido (kentiku-kouzou.jp): V0 = 34 m/s, rugosidad III, H = 10 m → Er = 0.794, E = 1.58, q ≈ 1095 N/m² (con E redondeado)
+  const g = calc('Er = ErBSL(10 m, 3)\nq = qBSL(10 m, 3, 34 m/s)');
+  near('Er (H = 10 m, rugosidad III) = 0.794', g('Er'), 0.794, 0.001);
+  near('q = 0.6·E·V0² ≈ 1095 N/m² (E = 1.58 redondeado en la fuente)', g('q', 'N/m^2'), 1095, 0.004);
 }
 
 section('Bloques Qu–Qun y cantidad de muros');
@@ -142,8 +191,30 @@ section('Plantillas japonesas (sin errores y todas las verificaciones cumplen)')
   near('Viga AIJ: Ma corto plazo = at·345·(7/8)d', v('Ma_S', 'kN*m'), 4 * 506.7 * 345 * 0.875 * 635 / 1e6);
   const u = runTemplate('jp-bsl-ruta3');
   near('Ruta 3: Qun piso 1 = Ds·Fes·Qud = 0.40·1.0·25700', u('Qun').toArray()[0].toNumber('kN'), 0.40 * 25700);
-  // datos absurdos no deben dar «cumple»
-  const bad = runTemplate('jp-bsl-ruta3', d => { d.blocks[3].src = d.blocks[3].src.replace('Qu = [11300', 'Qu = [6000'); });
-  truthy('Ruta 3 con Qu insuficiente produce verificaciones que no cumplen', bad.res.ctx.checks.some(x => !x.ok));
+  near('Ruta 3: Ds 5F (FB + WA, βu = 0.28) = 0.35', u('Ds').toArray()[4], 0.35);
+}
+
+section('Plantillas con datos extremos: deben pasar a NO CUMPLE sin errores ni NaN');
+{
+  const sub = (id, pairs) => runTemplate(id, d => { for (const [a, b] of pairs) { const blk = d.blocks.find(x => typeof x.src === 'string' && x.src.includes(a)) || d.blocks.find(x => Object.values(x).some(v => typeof v === 'string' && v.includes(a))); if (!blk) throw new Error('No se encontró: ' + a); if (blk.src && blk.src.includes(a)) blk.src = blk.src.replace(a, b); else for (const k in blk) if (typeof blk[k] === 'string' && blk[k].includes(a)) blk[k] = blk[k].replace(a, b); } });
+  const casos = [
+    ['jp-bsl-ruta12', [['di = [8.6, 8.9, 8.4, 7.3, 5.5] mm', 'di = [8.6, 25, 8.4, 7.3, 5.5] mm'], ['Aw = [7.2,', 'Aw = [1.2,']], ['Deriva', 'Rs', 'Σ2.5αAw']],
+    ['jp-bsl-ruta12', [['By = 14.0 m', 'By = 4.0 m']], ['esbeltez']],
+    ['jp-bsl-ruta3', [['Qu = [11300', 'Qu = [6000']], ['Piso 1']],
+    ['jp-aij-viga', [['sw = 125 mm', 'sw = 300 mm'], ['M_E = 175 kN*m', 'M_E = 400 kN*m']], ['Separación', 'Flexión de corto plazo', 'pw ≥ 0.2']],
+    ['jp-aij-columna', [['M_E = 330 kN*m', 'M_E = 900 kN*m'], ['nw = 4', 'nw = 2']], ['N máx', 'Qsu']],
+    ['jp-aij-acero', [['lb = 2.4 m', 'lb = 7.2 m'], ['wL = 17.5 kN/m', 'wL = 45 kN/m']], ['Flexión de largo plazo', 'Deflexión']],
+    ['jp-madera-kaberyo', [['8.19 0 10.92 0 2.5', '8.19 0 8.5 0 1.0'], ['techo = 1', 'techo = 2']], ['Longitud efectiva en X']],
+    ['jp-bsl-viento-nieve', [['ds = 30 cm', 'ds = 150 cm'], ['QE1 = 1450 kN', 'QE1 = 150 kN']], ['nieve', 'sismo controla']],
+    ['jp-jra-espectro', [['Pa = 8200 kN', 'Pa = 5000 kN']], ['tipo I', 'tipo II']],
+    ['jp-bsl-n1461', [['Qs = 9800 kN', 'Qs = 5000 kN'], ['ths = 1/90', 'ths = 1/50']], ['seguridad: fuerza', 'deriva ≤ 1/75']],
+  ];
+  for (const [id, pairs, labels] of casos) {
+    const r = sub(id, pairs), c = r.res.ctx;
+    const malos = c.checks.filter(x => !x.ok).map(x => x.label);
+    const nan = /NaN|Infinity/.test(r.res.html);
+    truthy(`${id}: datos extremos → sin errores ni NaN`, c.errors.length === 0 && !nan, c.errors.map(e => e.msg).join('; '));
+    for (const l of labels) truthy(`${id}: «${l}» pasa a NO CUMPLE`, malos.some(m => m.includes(l)), malos.join(' | '));
+  }
 }
 done();

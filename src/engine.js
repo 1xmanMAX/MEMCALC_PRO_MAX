@@ -464,6 +464,7 @@ export function tex(n, o) {
     case 'AccessorNode': {
       if (o.mode === 'sub') { try { return valTex(n.compile().evaluate(new Map(S)), o.dec); } catch (e) { /* */ } }
       const ob = tex(n.object, { ...o, mode: 'sym' }), ix = n.index.dimensions.map(d => tex(d, { ...o, mode: 'sym' })).join(',');
+      if (/[:,]/.test(ix)) return ob + '\\left[' + ix.replace(/:/g, '{:}').replace(/,/g, ',\\;') + '\\right]';
       const sm = /_\{([^{}]*)\}$/.exec(ob);
       return sm ? ob.slice(0, sm.index) + '_{' + sm[1] + ',' + ix + '}' : (/^[A-Za-z]$|^\\[A-Za-z]+$/.test(ob) ? ob : '{' + ob + '}') + '_{' + ix + '}';
     }

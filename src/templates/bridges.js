@@ -170,7 +170,7 @@ gV1 = gVi1LRFD(S) // Cortante, un carril (Tabla 4.6.2.2.3a-1)
 gV2 = gVi2LRFD(S) // Cortante, dos o más carriles
 gVi = max(gV1, gV2) // Factor de cortante, viga interior
 ## Viga exterior
-Rlev = leverLRFD(S, de) // Regla de la palanca, un carril (rueda a 0.60 m de la barrera)
+Rlev = leverLRFD(S, de) // Regla de la palanca, un carril (rueda a 0.61 m de la barrera, ruedas a 1.83 m)
 gMe1 = mpLRFD(1)*Rlev // Un carril, con m = 1.20 (Tabla 4.6.2.2.2d-1)
 gMe2 = eMLRFD(de)*gM2 // Dos carriles: e = 0.77 + de/2800
 gVe2 = eVLRFD(de)*gV2 // Cortante dos carriles: e = 0.6 + de/3000 (Tabla 4.6.2.2.3b-1)

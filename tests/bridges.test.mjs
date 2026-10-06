@@ -14,12 +14,12 @@ v2 = gVi2LRFD(S)*cs
 lev = leverLRFD(S, 1.83 ft, 2 ft)
 eM = eMLRFD(1.83 ft)
 sk = skewMLRFD(20 deg, S, L, ts, Kg)`);
-near('Momento interior, 2+ carriles = 0.796', v('g2'), 0.796, 0.002);
-near('Momento interior, 1 carril = 0.542', v('g1'), 0.542, 0.003);
+near('Momento interior, 2+ carriles = 0.796', v('g2'), 0.796, 0.001);
+near('Momento interior, 1 carril = 0.542', v('g1'), 0.542, 0.001);
 near('Cortante interior 1 carril × corrección por esviaje = 0.782', v('v1'), 0.782, 0.003);
 near('Cortante interior 2+ carriles × esviaje = 0.973', v('v2'), 0.973, 0.003);
-near('Regla de la palanca (sin m) = 0.672 (ruedas a 6 ft ≈ 1.80 m)', v('lev'), 0.672, 0.01);
-near('e = 0.77 + de/9.1 (de = 1.83 ft) = 0.971', v('eM'), 0.971, 0.002);
+near('Regla de la palanca (sin m) = (9.497 + 3.497)/(2·9.667) = 0.672', v('lev'), 0.672, 0.001);
+near('e = 0.77 + de/9.1 (de = 1.83 ft) = 0.971', v('eM'), 0.971, 0.001);
 near('Sin reducción de momento por esviaje < 30°', v('sk'), 1);
 v = calc('m1 = mpLRFD(1)\nm3 = mpLRFD(3)\nm4 = mpLRFD(5)\nNL = NLLRFD(7.20 m)\nNL2 = NLLRFD(44 ft)');
 near('Presencia múltiple m(1) = 1.20', v('m1'), 1.2); near('m(3) = 0.85', v('m3'), 0.85); near('m(>3) = 0.65', v('m4'), 0.65);
@@ -95,7 +95,7 @@ near('Zona sísmica (SD1 = 0.31) = 3', v('z'), 3);
 near('N = 200 + 0.0017·30000 + 0.0067·8000 = 304.6 mm', v('N', 'mm'), 304.6);
 near('Zona 1 con As < 0.05: 75 % de N', v('Np'), 0.75);
 near('Factor de forma S = 300·450/(2·12·750) = 7.5', v('Sb'), 7.5);
-near('heq(H = 4.5 m) = 1.05 m (interpolado)', v('h1', 'm'), 1.05);
+near('heq(H = 4.5 m) = 0.75 m (interpolado entre 0.9 y 0.6)', v('h1', 'm'), 0.75);
 near('MCFT β(εs = 0) = 4.8', v('be'), 4.8); near('MCFT θ(εs = 0.001) = 32.5°', v('th', 'deg'), 32.5);
 
 section('Plantillas del módulo: sin errores y con todas las verificaciones conformes');

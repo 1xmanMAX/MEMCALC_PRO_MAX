@@ -13,6 +13,9 @@ const isU = (x) => math.isUnit(x);
 const mm = (x) => (isU(x) ? x.toNumber('mm') : toNum(x));          // número sin unidad = mm
 const mt = (x) => (isU(x) ? x.toNumber('m') : toNum(x));           // número sin unidad = m
 const ksi = (x) => (isU(x) ? x.toNumber('ksi') : toNum(x));        // número sin unidad = ksi
+const ft = (x) => (isU(x) ? x.toNumber('ft') : toNum(x) / 304.8);   // número sin unidad = mm
+const inch = (x) => (isU(x) ? x.toNumber('in') : toNum(x) / 25.4);
+const in4 = (x) => (isU(x) ? x.toNumber('in^4') : toNum(x) / 25.4 ** 4);
 const deg = (x) => (isU(x) ? x.toNumber('deg') : toNum(x));        // número sin unidad = grados
 const n0 = (x) => toNum(x);
 const chk = (c, msg) => { if (!c) throw new Error(msg); };
@@ -102,36 +105,38 @@ const HEQ = { x: [1.5, 3.0, 6.0], y: [1.2, 0.9, 0.6] };
 const ap = (f, tex, desc, args) => ({ fn: f, tex, desc, args });
 const FN = {
   // ---------------- factores de distribución (4.6.2.2) ----------------
+  // Expresiones de la 9.ª/10.ª ed. (unidades de EE. UU.: S, L, de en ft; ts en in; Kg en in⁴), evaluadas con conversión exacta.
+  // El Manual MTC 2018 usa la versión SI de ediciones anteriores (constantes redondeadas: 4300, 2900, 3600 mm…; diferencias < 1.5 %).
   gMi1LRFD: ap((S, L, ts, Kg) => {
-    const s = mm(S), l = mm(L), t = mm(ts), k = isU(Kg) ? Kg.toNumber('mm^4') : n0(Kg);
+    const s = ft(S), l = ft(L), t = inch(ts), k = in4(Kg);
     chk(s > 0 && l > 0 && t > 0 && k > 0, 'Parámetros del factor de distribución deben ser positivos');
-    return 0.06 + (s / 4300) ** 0.4 * (s / l) ** 0.3 * (k / (l * t ** 3)) ** 0.1;
-  }, 'g_{M,1}', 'Factor de distribución de momento, viga interior, un carril (Tabla 4.6.2.2.2b-1, tipos a, e, k)', 'S, L, ts, Kg'),
+    return 0.06 + (s / 14) ** 0.4 * (s / l) ** 0.3 * (k / (12 * l * t ** 3)) ** 0.1;
+  }, 'g_{M,1}', 'Factor de distribución de momento, viga interior, un carril: 0.06 + (S/14)^0.4(S/L)^0.3(Kg/12Lts³)^0.1 (Tabla 4.6.2.2.2b-1, tipos a, e, k)', 'S, L, ts, Kg'),
   gMi2LRFD: ap((S, L, ts, Kg) => {
-    const s = mm(S), l = mm(L), t = mm(ts), k = isU(Kg) ? Kg.toNumber('mm^4') : n0(Kg);
+    const s = ft(S), l = ft(L), t = inch(ts), k = in4(Kg);
     chk(s > 0 && l > 0 && t > 0 && k > 0, 'Parámetros del factor de distribución deben ser positivos');
-    return 0.075 + (s / 2900) ** 0.6 * (s / l) ** 0.2 * (k / (l * t ** 3)) ** 0.1;
-  }, 'g_{M,2}', 'Factor de distribución de momento, viga interior, dos o más carriles (Tabla 4.6.2.2.2b-1)', 'S, L, ts, Kg'),
-  gVi1LRFD: ap((S) => 0.36 + mm(S) / 7600, 'g_{V,1}', 'Factor de distribución de cortante, viga interior, un carril (Tabla 4.6.2.2.3a-1)', 'S'),
-  gVi2LRFD: ap((S) => { const s = mm(S); return 0.2 + s / 3600 - (s / 10700) ** 2; }, 'g_{V,2}', 'Factor de distribución de cortante, viga interior, dos o más carriles (Tabla 4.6.2.2.3a-1)', 'S'),
-  eMLRFD: ap((de) => 0.77 + mm(de) / 2800, 'e_{M}', 'Factor de corrección momento viga exterior e = 0.77 + de/2800 (Tabla 4.6.2.2.2d-1)', 'de'),
-  eVLRFD: ap((de) => 0.6 + mm(de) / 3000, 'e_{V}', 'Factor de corrección cortante viga exterior e = 0.6 + de/3000 (Tabla 4.6.2.2.3b-1)', 'de'),
+    return 0.075 + (s / 9.5) ** 0.6 * (s / l) ** 0.2 * (k / (12 * l * t ** 3)) ** 0.1;
+  }, 'g_{M,2}', 'Factor de distribución de momento, viga interior, dos o más carriles: 0.075 + (S/9.5)^0.6(S/L)^0.2(Kg/12Lts³)^0.1 (Tabla 4.6.2.2.2b-1)', 'S, L, ts, Kg'),
+  gVi1LRFD: ap((S) => 0.36 + ft(S) / 25, 'g_{V,1}', 'Factor de distribución de cortante, viga interior, un carril: 0.36 + S/25 (ft) (Tabla 4.6.2.2.3a-1)', 'S'),
+  gVi2LRFD: ap((S) => { const s = ft(S); return 0.2 + s / 12 - (s / 35) ** 2; }, 'g_{V,2}', 'Factor de distribución de cortante, viga interior, dos o más carriles: 0.2 + S/12 − (S/35)² (ft) (Tabla 4.6.2.2.3a-1)', 'S'),
+  eMLRFD: ap((de) => 0.77 + ft(de) / 9.1, 'e_{M}', 'Factor de corrección momento viga exterior e = 0.77 + de/9.1 (ft) (Tabla 4.6.2.2.2d-1)', 'de'),
+  eVLRFD: ap((de) => 0.6 + ft(de) / 10, 'e_{V}', 'Factor de corrección cortante viga exterior e = 0.6 + de/10 (ft) (Tabla 4.6.2.2.3b-1)', 'de'),
   leverLRFD: ap((S, de, dw) => {
-    // Regla de la palanca: un carril, ruedas a 1.80 m, la primera a dw (0.60 m) de la cara de la barrera
-    const s = mt(S), d = mt(de), w = dw === undefined ? 0.6 : mt(dw);
+    // Regla de la palanca: un carril, ruedas a 6 ft (1.83 m), la primera a dw = 2 ft (0.61 m) de la cara de la barrera
+    const s = ft(S), d = ft(de), w = dw === undefined ? 2 : ft(dw);
     chk(s > 0, 'S debe ser positivo');
-    const x1 = s + d - w, x2 = x1 - 1.8;
+    const x1 = s + d - w, x2 = x1 - 6;
     return 0.5 * (Math.max(0, x1) + Math.max(0, x2)) / s;
-  }, 'R_{palanca}', 'Regla de la palanca (viga exterior, un carril, sin m): R = Σ(0.5·xi)/S (C4.6.2.2.1)', 'S, de [, dw = 0.60 m]'),
+  }, 'R_{palanca}', 'Regla de la palanca (viga exterior, un carril, sin m): R = Σ(0.5·xi)/S, ruedas a 1.83 m, a 0.61 m de la barrera (C4.6.2.2.1)', 'S, de [, dw = 0.61 m]'),
   skewMLRFD: ap((th, S, L, ts, Kg) => {
-    let t = Math.min(deg(th), 60); if (t < 30) return 1;
-    const s = mm(S), l = mm(L), h = mm(ts), k = isU(Kg) ? Kg.toNumber('mm^4') : n0(Kg);
-    const c1 = 0.25 * (k / (l * h ** 3)) ** 0.25 * (s / l) ** 0.5;
+    const t = Math.min(deg(th), 60); if (t < 30) return 1;
+    const s = ft(S), l = ft(L), h = inch(ts), k = in4(Kg);
+    const c1 = 0.25 * (k / (12 * l * h ** 3)) ** 0.25 * (s / l) ** 0.5;
     return 1 - c1 * Math.tan(t * Math.PI / 180) ** 1.5;
   }, 'r_{skew,M}', 'Reducción por esviaje del factor de momento (Tabla 4.6.2.2.2e-1)', 'θ, S, L, ts, Kg'),
   skewVLRFD: ap((th, L, ts, Kg) => {
-    const t = Math.min(deg(th), 60); const l = mm(L), h = mm(ts), k = isU(Kg) ? Kg.toNumber('mm^4') : n0(Kg);
-    return 1 + 0.2 * (l * h ** 3 / k) ** 0.3 * Math.tan(t * Math.PI / 180);
+    const t = Math.min(deg(th), 60); const l = ft(L), h = inch(ts), k = in4(Kg);
+    return 1 + 0.2 * (12 * l * h ** 3 / k) ** 0.3 * Math.tan(t * Math.PI / 180);
   }, 'c_{skew,V}', 'Corrección por esviaje del cortante en apoyo obtuso (Tabla 4.6.2.2.3c-1)', 'θ, L, ts, Kg'),
   mpLRFD: ap((n) => { n = Math.round(n0(n)); chk(n >= 1, 'Número de carriles ≥ 1'); return n === 1 ? 1.2 : n === 2 ? 1.0 : n === 3 ? 0.85 : 0.65; }, 'm', 'Factor de presencia múltiple (Tabla 3.6.1.1.2-1)', 'n'),
   NLLRFD: ap((w) => Math.max(1, Math.floor(mm(w) / 3600 + 1e-9)), 'N_L', 'Número de carriles de diseño = INT(w/3600) (3.6.1.1.1)', 'w (ancho libre de calzada)'),
