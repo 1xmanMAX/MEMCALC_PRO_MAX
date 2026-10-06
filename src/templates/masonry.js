@@ -845,16 +845,16 @@ check qs <= qadm // Presión de contacto (E.050)`),
     titulo: 'Análisis sísmico y diseño del fuste de tanque elevado de concreto armado — 85 m³',
     blocks: [
       text(`# Generalidades
-Tanque elevado con cuba cilíndrica de concreto armado sobre un **fuste cilíndrico** hueco empotrado en la cimentación. El análisis sísmico emplea el modelo de **dos masas de Housner** (ACI 350.3-06 Sec. 9.7 y R9.7): la masa impulsiva del agua se suma a la de la cuba y a una fracción de la del fuste, y oscila con la rigidez lateral del soporte; la masa convectiva oscila con su propio periodo largo. Las aceleraciones se obtienen del espectro de la NTE E.030 con $R_i = 2.0$ (tanque sobre pedestal) y $R_c = 1.0$; la ordenada convectiva se amplifica por 1.5 para pasar de 5 % a 0.5 % de amortiguamiento (ACI 350.3 R9.4.2). Ambas respuestas se combinan por SRSS (Ec. 4-5).`),
+Tanque elevado con cuba cilíndrica de concreto armado sobre un **fuste cilíndrico** hueco empotrado en la cimentación. El análisis sísmico emplea el modelo de **dos masas de Housner** (ACI 350.3-06 Sec. 9.7 y R9.7): la masa impulsiva del agua se suma a la de la cuba y a una fracción de la del fuste, y oscila con la rigidez lateral del soporte; la masa convectiva oscila con su propio periodo largo. Las aceleraciones se obtienen del espectro de la NTE E.030 con $R_i = 2.0$ (tanque sobre pedestal) y $R_c = 1.0$; la ordenada convectiva se amplifica por 1.5 para pasar de 5 % a 0.5 % de amortiguamiento (ACI 350.3 R9.4.2). Ambas respuestas se combinan por SRSS (Ec. 4-5). Si el oleaje supera el borde libre, la masa convectiva restringida por la cubierta se suma a la impulsiva (Malhotra, 2005).`),
       calc(`# Datos
 D = 6.00 m // Diámetro interior de la cuba
 HL = 3.00 m // Altura de agua
 Hw = 3.60 m // Altura de la pared de la cuba
-tw = 0.20 m // Espesor de la pared de la cuba
+tw = 0.30 m // Espesor de la pared de la cuba
 tb = 0.25 m // Espesor de la losa de fondo
 er = 0.12 m // Espesor de la losa de cubierta
 Hf = 12.0 m // Altura del fuste (cimentación a fondo de cuba)
-De = 3.00 m // Diámetro exterior del fuste
+De = 3.50 m // Diámetro exterior del fuste
 tf = 0.25 m // Espesor del fuste
 gw = 1.0 tonf/m^3
 gc = 2.4 tonf/m^3
@@ -868,6 +868,8 @@ Tl = 2.0 s // ${TL}
 Ri = 2.0 // Tanque sobre pedestal (ACI 350.3 Tabla 4.1.1(b))
 Rc = 1.0
 grav = 9.81 m/s^2
+check tw >= si(Hw >= 3.05 m, 30 cm, 20 cm) // Espesor mínimo de la pared en contacto con líquido (ACI 350-06 14.6.2)
+check tf >= 20 cm // Espesor mínimo del fuste: 8 in (ACI 371R, pedestales de tanques elevados)
 # Pesos y masas
 WL = gw*pi*D^2/4*HL -> tonf // Peso del agua
 rD = D/HL
@@ -881,27 +883,30 @@ Wfus = gc*pi*(De^2 - (De - 2*tf)^2)/4*Hf -> tonf // Peso del fuste
 Ec = 15000*sqrtfc(fc) // Módulo de elasticidad (E.060 8.5)
 If = pi/64*(De^4 - (De - 2*tf)^4) // Inercia del fuste
 kf = 3*Ec*If/Hf^3 -> tonf/m // Rigidez lateral del voladizo
-Wst = Wi + Wcuba + 0.25*Wfus // Peso impulsivo concentrado (masa equivalente del fuste ≈ 1/4)
-Ti = 2*pi*sqrt(Wst/(grav*kf)) -> s // Periodo impulsivo (ACI 350.3 R9.7)
 Tc = TcACIc(D, HL) // Periodo convectivo (Ec. 9-28 a 9-30)
+Sac = 1.5*Z*U*CE030(Tc, Tp, Tl)*S/Rc // Aceleración convectiva (0.5 % de amortiguamiento, ACI 350.3 R9.4.2)
+dmax = D/2*Sac*Rc -> m // Altura de oleaje (ACI 350.3 Ec. 7-2: dmax = (D/2) Cc I)
+fbl = Hw - HL // Borde libre
+Wcr = si(dmax > fbl, Wc, 0 tonf) // Masa convectiva restringida por la cubierta (pasa a impulsiva)
+Wst = Wi + Wcr + Wcuba + 0.25*Wfus // Peso impulsivo concentrado (masa equivalente del fuste ≈ 1/4)
+Ti = 2*pi*sqrt(Wst/(grav*kf)) -> s // Periodo impulsivo (ACI 350.3 R9.7)
 # Coeficientes sísmicos (E.030)
 Sai = Z*U*CE030(Ti, Tp, Tl)*S/Ri // Aceleración impulsiva reducida
-Sac = 1.5*Z*U*CE030(Tc, Tp, Tl)*S/Rc // Aceleración convectiva (0.5 % de amortiguamiento)
 # Fuerzas y momentos
 Pi = Sai*Wst // Fuerza impulsiva (agua + cuba + 1/4 fuste)
 Pf = Sai*0.75*Wfus // Fuerza del resto del fuste (a media altura)
-Pc = Sac*Wc // Fuerza convectiva
+Pc = Sac*(Wc - Wcr) // Fuerza convectiva
+hie = (Wi*hip + Wcr*hcp)/(Wi + Wcr) // Altura de la masa líquida impulsiva sobre el fondo
 Vs = sqrt((Pi + Pf)^2 + Pc^2) -> tonf // Cortante en la base del fuste (SRSS)
-Mbase = sqrt((Pi*(Hf + tb + hip) + Pf*Hf/2)^2 + (Pc*(Hf + tb + hcp))^2) -> tonf*m // Momento de volteo
-dmax = D/2*Sac*Rc -> m // Altura de oleaje (ACI 350.3 Ec. 7-2)
+Mbase = sqrt((Pi*(Hf + tb + hie) + Pf*Hf/2)^2 + (Pc*(Hf + tb + hcp))^2) -> tonf*m // Momento de volteo (cuba como masa a Hf + tb + h, aproximación)
 dlat = Pi/kf -> cm // Desplazamiento elástico de la cuba (impulsivo)
-"Desplazamiento inelástico estimado $0.75 R_i \\delta$ = {0.75*Ri*dlat}; borde libre {Hw - HL} frente a un oleaje de {dmax}: {si(dmax > Hw - HL, 'la cubierta y su unión se diseñan para la presión del oleaje (ACI 350.3 R7.1)', 'el oleaje no alcanza la cubierta')}.`),
+"Desplazamiento inelástico estimado $0.75 R_i \\delta$ = {0.75*Ri*dlat}; borde libre {fbl} frente a un oleaje de {dmax}: {si(dmax > fbl, 'la masa convectiva se considera impulsiva y la cubierta y su unión se diseñan para el empuje del oleaje (ACI 350.3 R7.1)', 'el oleaje no alcanza la cubierta')}.`),
       { type: 'tanque', forma: 'circular', tipo: 'elevado', D: 'D', HL: 'HL', Hw: 'Hw', tw: 'tw', Hf: 'Hf', Pi: 'Pi', Pc: 'Pc', dmax: 'dmax', titulo: '' },
       calc(`# Diseño del fuste (sección tubular delgada)
 rm = (De - tf)/2 // Radio medio
 Ag = pi*(De^2 - (De - 2*tf)^2)/4 // Área bruta
 barf = 6 // Varilla vertical [5 : 5/8"|6 : 3/4"|8 : 1"]
-sf = 12.5 cm // Espaciamiento en cada cara
+sf = 10 cm // Espaciamiento en cada cara
 nbf = 2*floor(2*pi*rm/sf) // Número de varillas (dos capas)
 Asf = nbf*Ab(barf) -> cm^2 // Acero vertical total
 rhof = Asf/Ag // Cuantía
@@ -910,7 +915,8 @@ Pu = 0.9*(Wcuba + Wfus + WL) // Carga axial mínima concomitante (0.9 D)
 Mu = Mbase // Momento último (sismo a nivel de resistencia)
 thf = (Pu + Asf*fy)/(1.7*fc*tf*rm + 2*Asf*fy/pi) // Semiángulo comprimido θ (rad)
 Mn = 1.7*fc*tf*rm^2*sin(thf) + 2*Asf*fy*rm*sin(thf)/pi -> tonf*m // Mn de anillo delgado (bloque plástico)
-check 0.9*Mn >= Mu // Flexocompresión del fuste
+phif = max(0.70, min(0.90, 0.90 - 0.20*Pu/(0.1*fc*Ag))) // φ: 0.9 → 0.7 según Pu/(0.1 f'c Ag) (E.060 9.3.2.2)
+check phif*Mn >= Mu // Flexocompresión del fuste
 Vuf = Vs // Cortante último
 Acw = pi*rm*tf // Área efectiva de corte del tubo (A/2)
 barh = 4 // Refuerzo horizontal (dos capas) [4 : 1/2"|5 : 5/8"]

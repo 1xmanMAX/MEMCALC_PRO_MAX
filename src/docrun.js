@@ -185,8 +185,8 @@ function coverHtml(doc) {
     </div>
     <div class="cfoot">
       <div class="clab">Control de revisiones</div>
-      <table class="crev"><thead><tr><th>Rev.</th><th>Fecha</th><th>Descripción</th><th>Elaboró</th><th>Revisó</th><th>Aprobó</th></tr></thead><tbody><tr><td>${esc(m.rev || '0')}</td><td>${esc(m.fecha || '')}</td><td>Emitido para revisión</td><td>${esc(m.autor || '')}</td><td>${esc(m.revisor || '')}</td><td></td></tr>${blank}${blank}</tbody></table>
-      <div class="csigs">${sig('Elaboró', m.autor, m.cip)}${sig('Revisó', m.revisor, '')}${sig('Aprobó', '', '')}</div>
+      <table class="crev"><thead><tr><th>Rev.</th><th>Fecha</th><th>Descripción</th><th>Elaboró</th><th>Revisó</th><th>Aprobó</th></tr></thead><tbody><tr><td>${esc(m.rev || '0')}</td><td>${esc(m.fecha || '')}</td><td>Emitido para revisión</td><td>${esc(m.autor || '')}</td><td>${esc(m.revisor || '')}</td><td>${esc(m.aprobador || '')}</td></tr>${blank}${blank}</tbody></table>
+      <div class="csigs">${sig('Elaboró', m.autor, m.cip)}${sig('Revisó', m.revisor, '')}${sig('Aprobó', m.aprobador, m.cipaprob || '')}</div>
     </div>
   </div><div class="pb"></div>`;
 }

@@ -248,7 +248,7 @@ function coverXml(m) {
     + '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="3D4854"/></w:pBdr><w:jc w:val="right"/><w:spacing w:after="40"/></w:pPr>' + run('Firma y sello', { i: 1, color: 'A0A9B3', sz: 14 }) + '</w:p>'
     + para(run(name || ' ', { b: 1, sz: 17 }), { spacing: 0 }) + para(run(extra || ' ', { color: GRAY, sz: 16 }), { spacing: 0 });
   const w3 = Math.floor(TEXT_W / 3);
-  x += tblXml([[sig('Elaboró', m.autor, m.cip), sig('Revisó', m.revisor, ''), sig('Aprobó', '', '')]], { widths: [w3, w3, TEXT_W - 2 * w3] });
+  x += tblXml([[sig('Elaboró', m.autor, m.cip), sig('Revisó', m.revisor, ''), sig('Aprobó', m.aprobador || '', m.cipaprob || '')]], { widths: [w3, w3, TEXT_W - 2 * w3] });
   return x;
 }
 

@@ -567,8 +567,8 @@ L2 = 5.0 m // Vano 2
 L3 = 6.0 m // Vano 3
 h1 = 4.0 m // Altura del primer piso
 h = 3.0 m // Altura de los pisos típicos
-bc = 50 cm // Columnas: ancho
-hc = 50 cm // Columnas: peralte en la dirección del pórtico
+bc = 60 cm // Columnas: ancho
+hc = 60 cm // Columnas: peralte en la dirección del pórtico
 bv = 30 cm // Vigas: ancho
 hv = 60 cm // Vigas: peralte
 ## Cargas por metro de viga (ancho tributario 5 m)

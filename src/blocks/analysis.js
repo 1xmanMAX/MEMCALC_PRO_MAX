@@ -1159,7 +1159,7 @@ function drawModes(md, modal, W) {
       md.nodes.forEach((n, i) => { p += supportGlyph(md, i, v, '#9aa5b1'); });
       for (const m of md.mems) {
         const n1 = md.nodes[m.i], u = q.u, d = [];
-        const ul = mulMV(m.T, m.dofs.map(dd => u[dd])), herm = !m.rel[0] && !m.rel[1] && !md.truss && !(m.zi > 0) && !(m.zj > 0);
+        const ul = mulMV(m.T, m.dofs.map(dd => u[dd])), herm = !m.rel[0] && !m.rel[1] && !md.truss;
         for (let t = 0; t <= 16; t++) {
           const x = m.L * t / 16, Nh = shapeV(x, m.L);
           const vl = herm ? Nh[0] * ul[1] + Nh[1] * ul[2] + Nh[2] * ul[4] + Nh[3] * ul[5] : ul[1] + (ul[4] - ul[1]) * t / 16, al = ul[0] + (ul[3] - ul[0]) * t / 16;
@@ -1167,7 +1167,7 @@ function drawModes(md, modal, W) {
         }
         p += `<path d="${d.map((pt, i) => (i ? 'L' : 'M') + pt[0].toFixed(1) + ',' + pt[1].toFixed(1)).join(' ')}" fill="none" stroke="${C.orange}" stroke-width="1.8" stroke-linejoin="round"/>`;
       }
-      p += T(10, 16, 'Modo ' + (r * cols + k + 1), { fs: 11, b: 1, a: 'start' }) + T(10, 30, 'T = ' + f2(q.T, 3) + ' s · Mx ' + f2(100 * q.mef[0], 1) + ' % · My ' + f2(100 * q.mef[1], 1) + ' %', { fs: 9.5, c: '#5b6b7b', a: 'start' });
+      p += T(10, 16, 'Modo ' + (r * cols + k + 1), { fs: 11, b: 1, a: 'start' }) + T(10, 30, 'T = ' + f2(q.T, 3) + ' s' + (modal.Mtot[0] > 0 ? ' · Mx ' + f2(100 * q.mef[0], 1) + ' %' : '') + (modal.Mtot[1] > 0 ? ' · My ' + f2(100 * q.mef[1], 1) + ' %' : ''), { fs: 9.5, c: '#5b6b7b', a: 'start' });
       row.push([k, p]); rh = Math.max(rh, v.H);
     });
     row.forEach(([k, p]) => { g += `<g transform="translate(${k * pw} ${H})">${p}</g>`; if (k) g += Lne(k * pw, H + 6, k * pw, H + rh - 6, C.grid, 1); });
@@ -1491,8 +1491,9 @@ function renderFrame(b, ctx) {
     const md0 = modal.modes;
     md0.forEach((q, k) => { setVar(ctx, 'T' + (k + 1) + sfx, math.unit(q.T, 's')); setVar(ctx, 'MPx' + (k + 1) + sfx, q.mef[0]); setVar(ctx, 'MPy' + (k + 1) + sfx, q.mef[1]); });
     const cum = [0, 0];
-    html += `<div class="dt">Análisis modal — masas concentradas (${modal.ndof} GDL dinámicos; masa total x = ${fx(modal.Mtot[0], 3)}, y = ${fx(modal.Mtot[1], 3)} ${lu}·s²/m)</div><table class="tbl"><thead><tr><th>Modo</th><th>T [s]</th><th>f [Hz]</th><th>ω [rad/s]</th><th>Γx</th><th>Masa efectiva x</th><th>Σ x</th><th>Γy</th><th>Masa efectiva y</th><th>Σ y</th></tr></thead><tbody>` +
-      md0.map((q, k) => { cum[0] += q.mef[0]; cum[1] += q.mef[1]; return `<tr><td>${k + 1}</td><td>${f2(q.T, 4)}</td><td>${f2(q.f, 3)}</td><td>${f2(q.w, 3)}</td><td>${f2(q.gam[0], 3)}</td><td>${f2(100 * q.mef[0], 1)} %</td><td>${f2(100 * cum[0], 1)} %</td><td>${f2(q.gam[1], 3)}</td><td>${f2(100 * q.mef[1], 1)} %</td><td>${f2(100 * cum[1], 1)} %</td></tr>`; }).join('') + '</tbody></table>';
+    const hx = modal.Mtot[0] > 0, hy = modal.Mtot[1] > 0;
+    html += `<div class="dt">Análisis modal — masas concentradas (${modal.ndof} GDL dinámicos; masa total${hx ? ' x = ' + fx(modal.Mtot[0], 3) : ''}${hy ? ' y = ' + fx(modal.Mtot[1], 3) : ''} ${lu}·s²/m)</div><table class="tbl"><thead><tr><th>Modo</th><th>T [s]</th><th>f [Hz]</th><th>ω [rad/s]</th>${hx ? '<th>Γx</th><th>Masa efectiva x</th><th>Σ x</th>' : ''}${hy ? '<th>Γy</th><th>Masa efectiva y</th><th>Σ y</th>' : ''}</tr></thead><tbody>` +
+      md0.map((q, k) => { cum[0] += q.mef[0]; cum[1] += q.mef[1]; return `<tr><td>${k + 1}</td><td>${f2(q.T, 4)}</td><td>${f2(q.f, 3)}</td><td>${f2(q.w, 3)}</td>${hx ? `<td>${f2(q.gam[0], 3)}</td><td>${f2(100 * q.mef[0], 1)} %</td><td>${f2(100 * cum[0], 1)} %</td>` : ''}${hy ? `<td>${f2(q.gam[1], 3)}</td><td>${f2(100 * q.mef[1], 1)} %</td><td>${f2(100 * cum[1], 1)} %</td>` : ''}</tr>`; }).join('') + '</tbody></table>';
     setVar(ctx, 'SMPx' + sfx, cum[0]); setVar(ctx, 'SMPy' + sfx, cum[1]);
     html += `<div class="figure">${drawModes(md, modal, W)}${caption(ctx, 'Formas modales normalizadas (máxima traslación = 1)')}</div>`;
   }

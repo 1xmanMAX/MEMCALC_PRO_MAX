@@ -94,5 +94,79 @@ for (const t of TEMPLATES) {
   const rr = runDoc(d); const okSum = !/TODAS LAS VERIFICACIONES CUMPLEN/.test(rr.html);
   okSum ? pass++ : fail++; console.log((okSum ? '  ✔ ' : '  ✘ ') + 'Datos absurdos (fy = 35) no producen «TODAS CUMPLEN»');
 }
+// ---------------------------------------------------------------------
+// Plantillas base (src/templates.js): valores de control y datos extremos
+// (revisión docs/referencias/revision-base.md)
+// ---------------------------------------------------------------------
+const runT = (id, reps = []) => {
+  const t = TEMPLATES.find(x => x.id === id);
+  const d = { meta: {}, settings: t.settings || {}, blocks: t.blocks.map((b, i) => ({ ...b, id: 'b' + i })) };
+  for (const [a, b] of reps) {
+    let hit = false;
+    for (const bl of d.blocks) if (bl.src && bl.src.includes(a)) { bl.src = bl.src.replace(a, b); hit = true; }
+    if (!hit) throw new Error(`${id}: no se encontró «${a}»`);
+  }
+  const rr = runDoc(d);
+  rr.v = (n, u) => { const x = rr.ctx.scope.get(n); return math.isUnit(x) ? x.toNumber(u) : x; };
+  rr.fails = rr.ctx.checks.filter(c => !c.ok).map(c => c.label);
+  return rr;
+};
+console.log('Plantillas base: valores de control');
+{
+  let r = runT('sismo2018');
+  near('E.030-2018: V = ZUCS/R·P = 0.35·1·2.5·1.15/8·790 (t)', r.v('V', 'tonf'), 0.35 * 2.5 * 1.15 / 8 * 790);
+  r = runT('sismo');
+  near('E.030-2026: V = 0.45·1·2.5·S(300 m/s)/8·790 (t)', r.v('V', 'tonf'), 0.45 * 2.5 * r.v('S') / 8 * 790);
+  near('E.030-2026: deriva en el extremo = rt·0.75R·Δ/h (piso 2)', r.v('deriva_max').get([1]), 1.10 * 0.75 * 8 * 0.28 / 300);
+  r = runT('sismo', [['T = hn/CT', 'T = 10*hn/CT']]);
+  near('E.030-2026: C/R ≥ 0.11 aplicado y Δ sin el mínimo (fCR = (C/R)/0.11)', r.v('fCR'), (2.5 * 0.7 * r.v('Tl', 's') / (120 / 35) ** 2 / 8) / 0.11, 0.002);
+  near('E.030-2026: V con C/R = 0.11 (t)', r.v('V', 'tonf'), 0.45 * r.v('S') * 0.11 * 790);
+  r = runT('columna');
+  near('E.060 21.6.4.2: so = min(b/3, 6db, 10 cm) = 10 cm', r.v('so', 'cm'), 10);
+  near('E.060 21.6.4.5: fuera de Lo ≤ min(10db, 25 cm) → 17.5 cm', r.v('s_fuera', 'cm'), 17.5);
+  r = runT('asce7');
+  near('ASCE 7-22: T = min(Tmodelo, Cu·Ta) = 1.4·0.0466·15^0.9 (s)', r.v('T'), 1.4 * 0.0466 * 15 ** 0.9);
+  r = runT('zapata');
+  near('E.050 Art. 21: qa sísmica = 1.20 qa → qns (t/m²)', r.v('qns', 'tonf/m^2'), 1.2 * 25 - 2 * 1.5 - 0.25);
+  r = runT('portante');
+  near('E.050 Art. 20.4: Nγ Meyerhof (φ = 28°) = (Nq − 1)·tan(1.4φ)', r.v('Ngamma'), (r.v('Nq') - 1) * Math.tan(1.4 * 28 * Math.PI / 180));
+}
+console.log('Plantillas base: datos extremos → NO CUMPLE, sin errores ni NaN');
+const EXTREMOS = [
+  ['viga', [['Mu = 22 tonf*m', 'Mu = 220 tonf*m']], 'Sección suficiente'],
+  ['viga', [['Vu = 18 tonf', 'Vu = 180 tonf']], 'Dimensiones de la sección'],
+  ['vigacont', [['sc = 0.20 tonf/m^2 //', 'sc = 5.0 tonf/m^2 //']], 'Flexión negativa'],
+  ['columna', [['b = 40 cm', 'b = 15 cm']], 'Dimensión menor'],
+  ['zapata', [['qa = 2.5 kgf/cm^2', 'qa = 0.2 kgf/cm^2']], 'Capacidad neta positiva'],
+  ['zapata', [['PD = 60 tonf', 'PD = 600 tonf'], ['hz = 60 cm', 'hz = 30 cm']], 'Punzonamiento'],
+  ['aci', [['Mu = 250 kN*m', 'Mu = 2500 kN*m']], 'Resistencia a flexión'],
+  ['ec2', [['MEd = 250 kN*m', 'MEd = 2500 kN*m']], 'Resistencia a flexión'],
+  ['portante', [['phi = 28 deg', 'phi = 0 deg'], ['c = 1.0 tonf/m^2', 'c = 0 tonf/m^2']], 'Presión de servicio'],
+  ['muro', [['H = 4.0 m', 'H = 9.0 m']], 'Volteo'],
+  ['muro', [['B = 2.80 m', 'B = 1.00 m']], 'talón'],
+  ['aligerado', [['sc = 0.20 tonf/m^2', 'sc = 3.0 tonf/m^2']], 'Alma suficiente'],
+  ['sismo', [['categoria = 4 //', 'categoria = 2 //']], 'Tabla N° 9'],
+  ['sismo', [['categoria = 4 //', 'categoria = 3 //'], ['Ts = 0.30 s', 'Ts = 0.60 s']], '0.65 TP'],
+  ['sismo', [['Ia = 1.0 //', 'Ia = 0.50 //']], 'Tabla N° 13'],
+  ['sismo', [['hn = 12.0 m', 'hn = 40 m']], 'Art. 33.2'],
+  ['sismo', [['Di = [0.22', 'Di = [2.2']], 'extremo'],
+  ['sismo2018', [['categoria = 4 //', 'categoria = 2 //']], 'Tabla N° 6'],
+  ['sismo2018', [['Ip = 1.0 //', 'Ip = 0.75 //'], ['hn = 12.0 m', 'hn = 18 m']], '28.1.2'],
+  ['sismo2018', [['Di = [0.22', 'Di = [0.32']], 'Tabla N° 11'],
+  ['asce7', [['reg = 1 //', 'reg = 3 //']], 'ELF permitido'],
+  ['japon', [['Qu = [3100', 'Qu = [310']], 'Qu ≥ Qun'],
+  ['puente', [['fc = 280 kgf/cm^2', 'fc = 100 kgf/cm^2'], ['L = 10.0 m', 'L = 10.0 m'], ['h = roundup(hmin, 0.05 m)', 'h = 0.30 m']], 'Resistencia a flexión'],
+  ['acero', [['Lb = 10 ft', 'Lb = 60 ft']], 'Resistencia a flexión'],
+  ['albanileria', [['Pm = 22 tonf', 'Pm = 220 tonf']], 'Esfuerzo axial'],
+  ['escalera', [['Ln = 3.60 m', 'Ln = 9.00 m']], 'Garganta suficiente'],
+  ['predim', [['Ln = 5.50 m', 'Ln = 1.50 m']], 'Luz libre'],
+];
+for (const [id, reps, esperado] of EXTREMOS) {
+  const r = runT(id, reps);
+  const txt = r.html.replace(/<[^>]+>/g, ' ');
+  const ok = r.ctx.errors.length === 0 && !/\bNaN\b|Infinity/.test(txt) && r.fails.some(l => l.includes(esperado)) && !/TODAS LAS VERIFICACIONES CUMPLEN/.test(r.html);
+  ok ? pass++ : fail++;
+  console.log((ok ? '  ✔ ' : '  ✘ ') + `${id}: ${reps.map(x => x[1]).join(', ')}`.padEnd(58) + ` → NO CUMPLE «${esperado}»` + (ok ? '' : `  [errores ${JSON.stringify(r.ctx.errors).slice(0, 200)}; fallan: ${r.fails.join(' | ')}]`));
+}
 console.log(`\nResultado: ${pass} correctas, ${fail} fallidas`);
 process.exit(fail ? 1 : 0);

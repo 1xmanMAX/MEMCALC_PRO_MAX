@@ -100,6 +100,8 @@ Zapata, pantalla, cajuela, parapeto, viga apoyada, relleno, reacciones, frenado 
   camión de fatiga, combinación Resistencia I.
 - Factores de sitio interpolados, Csm por ramas, zona, N, heq, factor de forma, β y θ del MCFT, c y fps.
 - Las 9 plantillas se ejecutan sin errores y con todas las verificaciones conformes; datos insuficientes producen «NO CUMPLE».
+- **Revisión**: viga continua 2 × 140 ft contra líneas de influencia cerradas de Müller-Breslau (M⁺ 0.4L y M⁻ con doble camión, < 0.2 %), tabla HS20 del Apéndice A (1524.9 kip·ft),
+  fórmulas SI del MTC (`ver = 2`), Tabla A13.2-1, `pmLRFD` (Pr,max = 0.75·0.80·P0), momento de inercias del estribo y 14 casos de datos extremos sin errores ni NaN.
 
 ## Limitaciones conocidas
 - Distribución de carga viva: solo fórmulas para tableros de concreto sobre vigas de acero, concreto T o I (tipos a, e, k); no se incluyen cajones multicelulares ni vigas adyacentes.
