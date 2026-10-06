@@ -223,7 +223,7 @@ kef = 1.99 kgf/cm^3 // Módulo de reacción efectivo (corregido por sub-base y p
 J = 3.2 // Transferencia de carga (pasadores, berma de asfalto: 3.2; berma de concreto atada: 2.7) [2.5..4.4]
 Cd = 1.0 // Coeficiente de drenaje (AASHTO Tabla 2.5) [0.7..1.25]
 fyb = 4200 kgf/cm^2 // Acero de barras de amarre [2800..4200]
-bcarril = 3.6 m // Ancho de carril (distancia a la junta libre) [2.7..4.0]
+Bcar = 3.6 m // Ancho de carril (distancia a la junta libre) [2.7..4.0]
 Lj = 4.5 m // Espaciamiento de juntas transversales [3..6]
 Dd = 25 cm // Espesor de losa adoptado [15..40]
 # Espesor de la losa (AASHTO 93)
@@ -236,10 +236,10 @@ check W18adm >= 0.95*W18 // Tráfico admisible (tolerancia del 5 % por redondeo,
 check Dd >= 15 cm // Espesor mínimo (MTC; CE.010 vías locales 15 cm)
 # Juntas, pasadores y barras de amarre
 check Lj <= min(24*Dd, 4.5 m) // Espaciamiento de juntas L ≤ 24D y ≤ 4.5 m (FHWA TA 5040.30; MTC)
-check Lj/bcarril <= 1.25 // Paños aproximadamente cuadrados (relación ≤ 1.25)
+check Lj/Bcar <= 1.25 // Paños aproximadamente cuadrados (relación ≤ 1.25)
 dpas = Dd/8 -> mm // Diámetro de pasadores ≈ D/8 (AASHTO 93 Parte II 2.4.2; MTC 2014 Cap. 14)
 dpasd = si(dpas <= 25.4 mm, 1, si(dpas <= 31.75 mm, 1.25, 1.5)) // Pasador liso adoptado (pulgadas): 1", 1 1/4" o 1 1/2"
-Atie = bcarril*1.5*(2.4 tonf/m^3*Dd)/(0.67*fyb) -> cm^2/m // Barras de amarre As = b·f·w/fs (AASHTO 93 Parte II 3.3.2), f = 1.5, fs = 0.67 fy
+Atie = Bcar*1.5*(2.4 tonf/m^3*Dd)/(0.67*fyb) -> cm^2/m // Barras de amarre As = b·f·w/fs (AASHTO 93 Parte II 3.3.2), f = 1.5, fs = 0.67 fy
 septie = rounddown(min(Ab(4)/Atie, 75 cm), 5 cm) // Espaciamiento con 1/2"
 Ltie = 0.5*0.67*fyb*db(4)/(24.6 kgf/cm^2) + 7.5 cm -> cm // Longitud t = ½(fs·d/350 psi) + 3 in (AASHTO 93)
 "Pasadores lisos de {dpasd}\\" × 45 cm @ 30 cm en las juntas transversales (engrasados en una mitad); barras de amarre corrugadas de 1/2\\" @ {septie} con longitud {roundup(Ltie, 5 cm)} en la junta longitudinal.`),
@@ -300,12 +300,12 @@ Wt = Wb + Wm // Peso total vibrante
 qs = Wt/(B*L) -> tonf/m^2 // Presión estática en la base
 check qs <= 0.5*qa // Presión ≤ 50 % de la admisible (práctica ACI 351.3R; asentamientos dinámicos)
 # Parámetros dinámicos del suelo
-rhos = gammas/(9.80665 m/s^2) // Densidad
-Gs = rhos*Vs^2 -> tonf/m^2 // Módulo de corte G = ρ·Vs²
-mt = Wt/(9.80665 m/s^2) // Masa total
+rhos = gammas/(9.80665 m/s^2) -> kg/m^3 // Densidad
+Gs = rhos*Vs^2 -> kgf/cm^2 // Módulo de corte G = ρ·Vs²
+mt = Wt/(9.80665 m/s^2) -> kg // Masa total
 omega = 2*pi*rpm/(60 s) // Frecuencia circular de operación (rad/s)
 fop = rpm/(60 s) -> Hz // Frecuencia de operación
-# Modo vertical (Richart et al. 1970; ACI 351.3R-18 4.4)
+# Modo vertical (Richart et al. 1970; ACI 351.3R-18 Cap. 4)
 r0z = sqrt(B*L/pi) -> m // Radio equivalente para traslación
 kz = 4*Gs*r0z/(1 - nus) -> tonf/m // Rigidez vertical
 Bz = (1 - nus)/4*mt/(rhos*r0z^3) // Relación de masa
@@ -330,7 +330,7 @@ Ax = Fo/kx/sqrt((1 - rx^2)^2 + (2*Dx*rx)^2) -> mm // Amplitud horizontal en la b
 r0p = (B*L^3/(3*pi))^(1/4) -> m // Radio equivalente para cabeceo
 kpsi = 8*Gs*r0p^3/(3*(1 - nus)) -> tonf*m // Rigidez al cabeceo
 zb = (Wb*hb/2 + Wm*(hb + hm/2))/Wt -> m // Centro de gravedad sobre la base
-Ipsi = Wb/(9.80665 m/s^2)*((L^2 + hb^2)/12 + (hb/2)^2) + Wm/(9.80665 m/s^2)*(hb + hm/2)^2 -> tonf*s^2*m // Momento de inercia de masa respecto al eje de giro en la base
+Ipsi = Wb/(9.80665 m/s^2)*((L^2 + hb^2)/12 + (hb/2)^2) + Wm/(9.80665 m/s^2)*(hb + hm/2)^2 -> kg*m^2 // Momento de inercia de masa respecto al eje de giro en la base
 Bpsi = 3*(1 - nus)/8*Ipsi/(rhos*r0p^5) // Relación de inercia
 Dpsi = 0.15/((1 + Bpsi)*sqrt(Bpsi)) // Amortiguamiento geométrico
 fpsi = sqrt(kpsi/Ipsi)/(2*pi) -> Hz // Frecuencia natural de cabeceo
@@ -381,7 +381,7 @@ ln = 1.50 m // Luz libre [0.6..4]
 yd = 15 cm // Distancia de la cara al centroide de cada grupo diagonal en el apoyo [8..30]
 Vu = 70 tonf // Cortante último del análisis sísmico [0..400]
 bard = 8 // Barra diagonal [6 : 3/4"|8 : 1"|9 : 1 1/8"|10 : 1 1/4"]
-bare = 4 // Estribo y grapas de confinamiento [3 : 3/8"|4 : 1/2"]
+est = 4 // Estribo y grapas de confinamiento [3 : 3/8"|4 : 1/2"]
 sst = 10 cm // Espaciamiento del confinamiento [5..15]
 rec = 4 cm // Recubrimiento al estribo [3..5]
 phi = 0.85 // ACI 318-19 21.2.4.4 [0.75..0.85]
@@ -406,16 +406,16 @@ Ach = bc1*bc2 // Área del núcleo
 check sst <= min(6*db(bard), 15 cm) // Espaciamiento ≤ 6 db de la diagonal y ≤ 150 mm (18.10.7.4 d)
 Ash1 = max(0.09*sst*bc1*fc/fy, 0.3*sst*bc1*(Acw/Ach - 1)*fc/fy) // Área requerida paralela a h (cortes horizontales)
 Ash2 = max(0.09*sst*bc2*fc/fy, 0.3*sst*bc2*(Acw/Ach - 1)*fc/fy) // Área requerida paralela a bw (cortes verticales)
-nr1 = max(2, ceil(Ash1/Ab(bare))) // Ramas verticales (en el ancho)
-nr2 = max(2, ceil(Ash2/Ab(bare))) // Ramas horizontales (en la altura)
-check nr1*Ab(bare) >= Ash1 // Confinamiento en el ancho (18.7.5.4)
-check nr2*Ab(bare) >= Ash2 // Confinamiento en la altura (18.7.5.4)
+nr1 = max(2, ceil(Ash1/Ab(est))) // Ramas verticales (en el ancho)
+nr2 = max(2, ceil(Ash2/Ab(est))) // Ramas horizontales (en la altura)
+check nr1*Ab(est) >= Ash1 // Confinamiento en el ancho (18.7.5.4)
+check nr2*Ab(est) >= Ash2 // Confinamiento en la altura (18.7.5.4)
 check bc2/(nr2 - 1) <= 20 cm // Grapas a no más de 200 mm (18.10.7.4 d)
 # Refuerzo distribuido y anclaje
 Asd = 0.002*bw*sst // Refuerzo longitudinal y transversal distribuido mínimo por espaciamiento (18.10.7.4 c iv)
 ldd = 1.25*ldE060(bard, fc, fy) // Anclaje de las diagonales en los muros 1.25 ℓd (18.10.7.4 b)
-"Cada grupo diagonal: {nd} barras #{bard} con anclaje de {roundup(ldd, 5 cm)} dentro de cada muro; confinamiento de toda la sección con estribos #{bare} @ {sst}: {nr1} ramas en el ancho y {nr2} ramas en la altura (grapas). Refuerzo longitudinal adicional distribuido ≥ {Asd} por cada {sst}, sin anclaje en los muros (solo se prolonga 15 cm).`),
-    { type: 'exAcople', ln: 'ln', h: 'hv', yd: 'yd', diag: '2 grupos de {nd} #{bard} (α = {alfa})', conf: 'estribos #{bare} @ {sst}, {nr1} × {nr2} ramas', titulo: '' },
+"Cada grupo diagonal: {nd} barras #{bard} con anclaje de {roundup(ldd, 5 cm)} dentro de cada muro; confinamiento de toda la sección con estribos #{est} @ {sst}: {nr1} ramas en el ancho y {nr2} ramas en la altura (grapas). Refuerzo longitudinal adicional distribuido ≥ {Asd} por cada {sst}, sin anclaje en los muros (solo se prolonga 15 cm).`),
+    { type: 'exAcople', ln: 'ln', h: 'hv', yd: 'yd', diag: '2 grupos de {nd} #{bard} (α = {alfa})', conf: 'estribos #{est} @ {sst}, {nr1} × {nr2} ramas', titulo: '' },
     summary(),
   ],
 };
@@ -945,7 +945,7 @@ fc = 210 kgf/cm^2 // Concreto (vaciado bajo agua: ≥ 280 recomendado) [210..420
 fy = 4200 kgf/cm^2 // Acero [4200..5000]
 nb = 8 // Número de barras longitudinales [6..30]
 bar = 6 // Barra longitudinal [5 : 5/8"|6 : 3/4"|8 : 1"]
-bare = 3 // Espiral [3 : 3/8"|4 : 1/2"]
+est = 3 // Espiral [3 : 3/8"|4 : 1/2"]
 rec = 7.5 cm // Recubrimiento libre (concreto contra el terreno, E.060 7.7.1) [7..10]
 sesp = 10 cm // Paso de la espiral en la zona confinada [5..15]
 ## Cargas en la cabeza (del análisis del cabezal, por pilote)
@@ -961,7 +961,7 @@ Ast = nb*Ab(bar) // Acero longitudinal
 rhol = Ast/Ag // Cuantía longitudinal
 check rhol >= 0.005 // Cuantía mínima de pilotes en zonas sísmicas (ACI 318-19 18.13.5.7.1)
 check nb >= 6 // Al menos 6 barras en sección circular (E.060 10.9.2)
-dc = rec + db(bare) + db(bar)/2 // Recubrimiento al centro de las barras
+dc = rec + db(est) + db(bar)/2 // Recubrimiento al centro de las barras
 # Resistencia axial (ACI 318-19 13.4.3)
 phiPn = 0.55*(0.85*fc*(Ag - Ast) + fy*Ast) -> tonf // φ = 0.55 pilote vaciado sin camisa (Tabla 13.4.3.2)
 check Pu <= phiPn // Compresión axial
@@ -982,16 +982,16 @@ check Mlat <= phiMn2 // Flexocompresión con Pu mínimo (E.060 10.2)`),
     calc(`# Cortante (E.060 11.3; ACI 318-19 22.5.2.2, sección circular)
 dv = 0.8*D // Peralte efectivo de sección circular
 phiVc = 0.85*0.53*sqrtfc(fc)*D*dv -> tonf // φVc con bw = D
-Vs = 2*Ab(bare)*fy*dv/sesp -> tonf // Aporte de la espiral (dos ramas por paso)
+Vs = 2*Ab(est)*fy*dv/sesp -> tonf // Aporte de la espiral (dos ramas por paso)
 check Vh <= phiVc + 0.85*Vs // Cortante (E.060 11.1.1)
 # Espiral de confinamiento (ACI 318-19 18.13.5.7.1 y 18.7.5.4)
 Dcn = D - 2*rec // Diámetro del núcleo
-rhosp = 4*Ab(bare)/(Dcn*sesp) // Cuantía volumétrica de la espiral
+rhosp = 4*Ab(est)/(Dcn*sesp) // Cuantía volumétrica de la espiral
 check rhosp >= 0.12*fc/fy // ρs ≥ 0.12 f'c/fyt en la zona de 3D bajo el cabezal (18.7.5.4 b)
 check sesp <= min(6*db(bar), 15 cm) // Paso ≤ 6 db y ≤ 150 mm (18.7.5.3)
 Lconf = max(3*D, 1.2 m) // Longitud de la zona confinada bajo el cabezal (ACI 318-19 18.13.5.7.1)
-sesp2 = rounddown(4*Ab(bare)/(Dcn*0.06*fc/fy), 2.5 cm) // Paso fuera de la zona confinada (ρs ≥ 0.06 f'c/fyt, 18.13.5.6)
-"Refuerzo: {nb} barras #{bar} en toda la longitud (o hasta 2/3 L con la mitad del acero si el momento lo permite); espiral #{bare} con paso {sesp} en los primeros {Lconf} y paso {min(sesp2, 30 cm)} en el resto. Anclar las barras en el cabezal con ℓdg = {ldgE060(bar, fc, fy)}.`),
+sesp2 = rounddown(4*Ab(est)/(Dcn*0.06*fc/fy), 2.5 cm) // Paso fuera de la zona confinada (ρs ≥ 0.06 f'c/fyt, 18.13.5.6)
+"Refuerzo: {nb} barras #{bar} en toda la longitud (o hasta 2/3 L con la mitad del acero si el momento lo permite); espiral #{est} con paso {sesp} en los primeros {Lconf} y paso {min(sesp2, 30 cm)} en el resto. Anclar las barras en el cabezal con ℓdg = {ldgE060(bar, fc, fy)}.`),
     summary(),
   ],
 };
@@ -1031,7 +1031,7 @@ fcj = 210 kgf/cm^2 // f'c de la camisa [175..350]
 fy = 4200 kgf/cm^2 // Acero [4200..5000]
 barj = 6 // Barra longitudinal de la camisa [5 : 5/8"|6 : 3/4"|8 : 1"]
 barc = 4 // Conector epóxico [4 : 1/2"|5 : 5/8"]
-bare = 3 // Estribos de la camisa [3 : 3/8"|4 : 1/2"]
+est = 3 // Estribos de la camisa [3 : 3/8"|4 : 1/2"]
 hcol = 2.60 m // Altura libre de la columna [2..5]
 ## Demandas (nuevo análisis)
 Pu = 150 tonf // Carga axial última [0..1000]
@@ -1045,7 +1045,7 @@ check Pu > phiPn0 // La columna existente NO resiste: se requiere reforzamiento
 bj = b0 + 2*tj // Lado de la sección reforzada
 check tj >= 7.5 cm // Espesor mínimo práctico de camisa vaciada (ACI 369.1; ≥ 3 in)
 fceq = min(fc0, fcj) // f'c de diseño de la sección monolítica (el menor)
-dpj = 4 cm + db(bare) + db(barj)/2 // Recubrimiento al centro de las barras de la camisa
+dpj = 4 cm + db(est) + db(barj)/2 // Recubrimiento al centro de las barras de la camisa
 Astj = 12*Ab(barj) // 12 barras: 4 por cara (se desprecian las barras existentes)
 check Astj/bj^2 >= 0.01 // Cuantía mínima 1 % sobre la sección total (E.060 10.9.1)
 phiPnj = 0.80*0.70*(0.85*fceq*(bj^2 - Astj) + fy*Astj) -> tonf // Resistencia axial máxima reforzada
@@ -1055,7 +1055,7 @@ check Pu <= phiPnj // Compresión axial (E.060 10.3.6.2)`),
 dj = bj - dpj // Peralte efectivo
 Vc = 0.53*sqrtfc(fceq)*(1 + Pu/(140 kgf/cm^2*bj^2))*bj*dj -> tonf // Aporte del concreto con carga axial (E.060 11-4)
 sj = 10 cm // Espaciamiento de estribos en la zona de confinamiento
-Vs = 2*Ab(bare)*fy*dj/sj -> tonf // Aporte de los estribos de la camisa
+Vs = 2*Ab(est)*fy*dj/sj -> tonf // Aporte de los estribos de la camisa
 phiVnj = 0.85*0.9*(Vc + Vs) // φVn con la reducción 0.9 de elementos encamisados
 check Vu <= phiVnj // Cortante
 # Confinamiento (E.060 21.4.5)
@@ -1070,7 +1070,7 @@ check nc*Ab(barc) >= Avf // Acero de conectores
 sc = rounddown(hcol/nlv, 5 cm) // Separación vertical de los niveles de conectores
 check sc <= 50 cm // Separación máxima práctica de conectores (≤ 50 cm, ACI 369.1 como referencia)
 check dPu <= 0.85*0.2*fc0*4*b0*hcol // Límite de cortante-fricción 0.2 f'c Ac en la interfaz (11.7.5)
-"Camisa de {tj} con f'c = {fcj}: 12 barras #{barj} continuas a través de las losas (perforaciones rellenas con epóxico), estribos #{bare} @ {sj} en ℓo = {Lo} y @ 20 cm en el resto; {nc} conectores #{barc} con epóxico (un nivel por cada {sc}, uno por cara), anclados 10 db en el núcleo. La superficie existente se escarifica hasta una rugosidad de 6 mm (E.060 11.7.9).`),
+"Camisa de {tj} con f'c = {fcj}: 12 barras #{barj} continuas a través de las losas (perforaciones rellenas con epóxico), estribos #{est} @ {sj} en ℓo = {Lo} y @ 20 cm en el resto; {nc} conectores #{barc} con epóxico (un nivel por cada {sc}, uno por cara), anclados 10 db en el núcleo. La superficie existente se escarifica hasta una rugosidad de 6 mm (E.060 11.7.9).`),
     summary(),
   ],
 };

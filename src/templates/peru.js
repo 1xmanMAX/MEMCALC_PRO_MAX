@@ -339,8 +339,10 @@ check q <= qmax // Control del orden de magnitud del metrado (usual 0.8–1.2 to
 a1 = 4.50 m // Ancho tributario en X [1..12]
 a2 = 5.00 m // Ancho tributario en Y [1..12]
 At = a1*a2 // Área tributaria por nivel
-pd = (wlosa + wa + wteq)*At + gc*bv*(hv - hl)*(a1 + a2) + gc*bc*dc*he -> tonf // Carga muerta por piso típico
-pdz = (wlosa + wa)*At + gc*bv*(hv - hl)*(a1 + a2) + gc*bc*dc*he/2 -> tonf // Carga muerta de la azotea
+pvig = gc*bv*(hv - hl)*(a1 + a2) -> tonf // Peso de las vigas tributarias por nivel (bajo la losa)
+pcol = gc*bc*dc*he -> tonf // Peso propio de la columna en un piso
+pd = (wlosa + wa + wteq)*At + pvig + pcol -> tonf // Carga muerta por piso típico
+pdz = (wlosa + wa)*At + pvig + pcol/2 -> tonf // Carga muerta de la azotea (media columna)
 PD = (n - 1)*pd + pdz // Carga muerta acumulada en la base de la columna
 ## Reducción de carga viva (E.020 Art. 10)
 kLL = 2 // Factor de carga viva sobre el elemento: columnas y muros (Tabla 3) [1..2]

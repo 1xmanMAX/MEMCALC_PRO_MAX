@@ -263,7 +263,9 @@ check Mu <= phiMn // Resistencia I a flexión (5.6.3.2)
 ## Refuerzo mínimo (5.6.3.3)
 At = beff*ts + bw*hv // Área de la sección T bruta
 yt = (beff*ts^2/2 + bw*hv*(ts + hv/2))/At // Centroide desde la fibra superior
-Ig = beff*ts^3/12 + beff*ts*(yt - ts/2)^2 + bw*hv^3/12 + bw*hv*(ts + hv/2 - yt)^2 -> m^4 // Inercia bruta de la sección T
+Ig_losa = beff*ts^3/12 + beff*ts*(yt - ts/2)^2 -> m^4 // Inercia del ala (losa) respecto al centroide (Steiner)
+Ig_viga = bw*hv^3/12 + bw*hv*(ts + hv/2 - yt)^2 -> m^4 // Inercia del alma respecto al centroide (Steiner)
+Ig = Ig_losa + Ig_viga -> m^4 // Inercia bruta de la sección T
 Sb = Ig/(h - yt) -> m^3 // Módulo resistente de la fibra inferior
 fr = frLRFD(fc) -> kgf/cm^2 // Módulo de rotura
 Mcr = 0.67*1.6*fr*Sb -> tonf*m // Mcr = γ3·γ1·fr·Sc
@@ -316,7 +318,9 @@ Vn = min(Vc + Vs, 0.25*fc*bw*dv) -> tonf // Resistencia nominal (5.7.3.3-1, -2)
 check Vu <= phiv*Vn // Resistencia a cortante
 Avmin = 0.083*sqrtMPa(fc)*bw*sest/fy -> cm^2 // Refuerzo transversal mínimo (5.7.2.5-1)
 check Avs >= Avmin // Área mínima de estribos
-Mux = 1.25*(wDCi*xv*(L - xv)/2) + 1.50*(wDWi*xv*(L - xv)/2) + 1.75*gMi*MLLx1 -> tonf*m // Momento concomitante en xv
+Mx_DC = wDCi*xv*(L - xv)/2 -> tonf*m // Momento por DC en xv
+Mx_DW = wDWi*xv*(L - xv)/2 -> tonf*m // Momento por DW en xv
+Mux = 1.25*Mx_DC + 1.50*Mx_DW + 1.75*gMi*MLLx1 -> tonf*m // Momento concomitante en xv (Resistencia I)
 check 0.5*As*fy >= Mux/(dv*phif) + (Vu/phiv - 0.5*Vs) // Acero longitudinal en el apoyo (50 % de As prolongado) (5.7.3.5-1, cot θ = 1)
 "Estribos #{est} de 2 ramas @ {sest} en la zona de apoyo; el espaciamiento puede aumentarse hacia el centro de la luz hasta {rounddown(smaxv, 2.5 cm)}.
 # Deflexión por carga viva (2.5.2.6.2)
@@ -488,7 +492,8 @@ check fc2 <= 0.60*fc // Compresión total (φw = 1.0)
 fdk = (Mb + Mw + MLL)/Sdk -> ksi // Fibra superior de la losa
 check fdk <= 0.60*fcd // Compresión en la losa
 ## Servicio III — tracción en la fibra inferior
-fb3 = Pe/Ag + Pe*em/Sb - (Mg + Ms)/Sb - (Mb + Mw + 0.8*MLL)/Sbc -> ksi // γLL = 0.80 (Tabla 3.4.1-1)
+fb_pe = Pe/Ag + Pe*em/Sb -> ksi // Compresión del presfuerzo efectivo en la fibra inferior
+fb3 = fb_pe - (Mg + Ms)/Sb - (Mb + Mw + 0.8*MLL)/Sbc -> ksi // γLL = 0.80 (Tabla 3.4.1-1)
 fta = 0.19*sqrt(fc/(1 ksi))*1 ksi // Tracción admisible, corrosión moderada: 0.19λ√f'c ≤ 0.6 ksi (Tabla 5.9.2.3.2b-1)
 check -fb3 <= min(fta, 0.6 ksi) // Tracción en la fibra precomprimida
 # Resistencia a flexión — Resistencia I (5.6.3)
@@ -511,7 +516,8 @@ check 1.00*Mn >= min(Mcr, 1.33*Mu) // Refuerzo mínimo
 # Cortante en la sección crítica (método general, 5.7.3.4.2)
 de = dp // Peralte efectivo (solo torones)
 dv = max(de - a/2, 0.9*de, 0.72*hc) // Peralte efectivo de corte (5.7.2.8)
-Vux = 1.25*(wg + ws + wb)*(L/2 - xv) + 1.50*ww*(L/2 - xv) + 1.75*gV/gM*VLLx1 -> kip // VLL distribuido con gV
+VDx = (1.25*(wg + ws + wb) + 1.50*ww)*(L/2 - xv) -> kip // Cortante factorizado de cargas permanentes (DC, DW) en xv
+Vux = VDx + 1.75*gV/gM*VLLx1 -> kip // VLL distribuido con gV
 MDx = (1.25*(wg + ws + wb) + 1.50*ww)*xv*(L - xv)/2 -> kip*ft // Momento factorizado de cargas permanentes (DC, DW) en xv
 Mux = max(MDx + 1.75*MLLx1, Vux*dv) -> kip*ft // |Mu| ≥ |Vu|dv
 xh = 0.40*L // Punto de desvío (harping point) de los torones desviados
@@ -655,7 +661,9 @@ Pt = Fy*bt*tt -> kip // Ala inferior
 ## Caso PNA en la losa (Pc + Pw + Pt ≤ Ps)
 Y1 = ts*(Pc + Pw + Pt)/Ps // Profundidad del PNA desde la cara superior de la losa
 Mp1a = Y1^2*Ps/(2*ts) + Pc*(ts + th + tc/2 - Y1) -> kip*ft // Losa y ala superior
-Mp1b = Pw*(ts + th + tc + D/2 - Y1) + Pt*(ts + th + tc + D + tt/2 - Y1) -> kip*ft // Alma y ala inferior
+Mp1w = Pw*(ts + th + tc + D/2 - Y1) -> kip*ft // Alma
+Mp1t = Pt*(ts + th + tc + D + tt/2 - Y1) -> kip*ft // Ala inferior
+Mp1b = Mp1w + Mp1t -> kip*ft // Alma y ala inferior
 Mp1 = Mp1a + Mp1b -> kip*ft
 ## Caso PNA en el ala superior (Pt + Pw < Pc + Ps ≤ …)
 Y2 = tc/2*((Pw + Pt - Ps)/Pc + 1) // Desde la cara superior del ala
@@ -824,7 +832,9 @@ thq = atan(kh) -> deg // Ángulo sísmico θ = atan[kh/(1 − kv)], kv = 0
 KAE = cos(phis - thq)^2/(cos(thq)^2*(1 + sqrt(sin(phis)*sin(phis - thq)/cos(thq)))^2) // KAE con δ = 0, β = 0, i = 0 (paramento virtual)
 EAE = 0.5*KAE*gammas*H^2*1 m // Empuje activo sísmico total
 DEAE = EAE - EH // Incremento dinámico, aplicado a 0.6H (Seed y Whitman)
-EQw = (W1*hz/2 + W2*(hz + (hp - hb)/2) + W3*(H - hb/2) + W4*(hz + hp/2))/(W1 + W2 + W3 + W4) // Altura de la resultante de las fuerzas de inercia
+Wsum = W1 + W2 + W3 + W4 // Peso del estribo y del relleno sobre el talón
+Mw_b = W1*hz/2 + W2*(hz + (hp - hb)/2) + W3*(H - hb/2) + W4*(hz + hp/2) // Momento estático de los pesos respecto a la base
+EQw = Mw_b/Wsum // Altura de la resultante de las fuerzas de inercia
 Fi = kh*(W1 + W2 + W3 + W4) // Fuerza de inercia del estribo y del relleno sobre el talón
 EQs = kh*RDC*1 m // Fuerza sísmica longitudinal de la superestructura en la cajuela
 ys = H - hb // Altura de la cajuela sobre el fondo de la zapata
@@ -863,7 +873,8 @@ check qb <= 0.45*qn // Capacidad portante, φb = 0.45 (Tabla 10.5.5.2.2-1)
 ## Evento Extremo I
 "Cargas permanentes con $\\gamma_p$ (Tabla 3.4.1-1): mínimos (DC 0.90, DW 0.65, EV 1.00) para excentricidad y deslizamiento y máximos (1.25, 1.50, 1.35) para la presión de contacto. El empuje total sísmico $E_{AE}$ (estático + incremento de Mononobe–Okabe) se toma con factor 1.0, como acción EQ (11.6.5).
 Hc = EH + DEAE + Fi + EQs + gEQ*(LS + PBR) // EH + incremento M-O + inercias + superestructura
-Mvc = MEH + DEAE*0.6*H + Fi*EQw + EQs*ys + gEQ*(MLS + MBR) -> tonf*m // Momento de vuelco
+Mv_EQ = DEAE*0.6*H + Fi*EQw + EQs*ys -> tonf*m // Momento de las acciones sísmicas (incremento M-O, inercias y superestructura)
+Mvc = MEH + Mv_EQ + gEQ*(MLS + MBR) -> tonf*m // Momento de vuelco
 Vee = 0.90*(WDC + PDC) + 0.65*PDW + 1.00*WEV // Cargas verticales mínimas (sin LL estabilizadora)
 Mrc = 0.90*(MDCr + PDC*xR) + 0.65*PDW*xR + 1.00*MEVr
 ec = B/2 - (Mrc - Mvc)/Vee

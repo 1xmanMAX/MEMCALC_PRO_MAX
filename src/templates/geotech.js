@@ -94,7 +94,10 @@ Fci = icMeyerhof(alpha) // Inclinación: (1 − α°/90°)² (Meyerhof 1963; E.0
 Fqi = Fci // Inclinación: Fqi = Fci
 Fgi = igMeyerhof(alpha, phi) // Inclinación: (1 − α/φ)²
 ## Capacidad última — ecuación general (Meyerhof 1963; Das, cap. 3)
-qu1 = c*Nc*Fcs*Fcd*Fci + qs*Nq*Fqs*Fqd*Fqi + 0.5*gamma2*B1*Ngamma*Fgs*Fgd*Fgi -> tonf/m^2 // Área efectiva B'×L'
+qu_c = c*Nc*Fcs*Fcd*Fci -> tonf/m^2 // Término de cohesión
+qu_q = qs*Nq*Fqs*Fqd*Fqi -> tonf/m^2 // Término de sobrecarga
+qu_g = 0.5*gamma2*B1*Ngamma*Fgs*Fgd*Fgi -> tonf/m^2 // Término de peso propio del suelo
+qu1 = qu_c + qu_q + qu_g -> tonf/m^2 // Área efectiva B'×L'
 ## Capacidad última — expresión de la E.050 (Art. 20.2: φ = 0 → qd = sc ic c Nc; Art. 20.3: c = 0 → qd = iq γ1 Df Nq + 0.5 sγ iγ γ2 B' Nγ; aquí se suman ambos términos)
 sc = scE050(B1, L1) // sc = 1 + 0.2 B'/L' (Art. 20.4)
 sg = sgE050(B1, L1) // sγ = 1 − 0.2 B'/L' (Art. 20.4)
@@ -361,7 +364,9 @@ Vud1 = qu1*Bz1*(lv1 - d) -> tonf
 phiVc1 = 0.85*0.53*sqrtfc(fc)*Bz1*d -> tonf
 check Vud1 <= phiVc1 // Cortante en la zapata exterior
 Mu1 = qu1*Bz1*lv1^2/2 -> tonf*m
-As1 = max(0.85*fc*Bz1*d/fy*(1 - sqrt(1 - 2*Mu1/(0.85*phif*fc*Bz1*d^2))), 0.0018*Bz1*hz) // Acero perpendicular a la viga
+As_req1 = 0.85*fc*Bz1*d/fy*(1 - sqrt(1 - 2*Mu1/(0.85*phif*fc*Bz1*d^2))) -> cm^2 // Acero requerido por flexión
+As_min1 = 0.0018*Bz1*hz -> cm^2 // Acero mínimo (E.060 Art. 10.5.4)
+As1 = max(As_req1, As_min1) // Acero perpendicular a la viga
 n1 = ceil(As1/Ab(5))
 s1 = rounddown((Bz1 - 15 cm)/max(n1 - 1, 1), 2.5 cm)
 check s1 <= min(3*hz, 40 cm) // Espaciamiento zapata exterior
@@ -376,7 +381,9 @@ Vud2 = qu2*Bz2*(lv2 - d) -> tonf
 phiVc2 = 0.85*0.53*sqrtfc(fc)*Bz2*d -> tonf
 check Vud2 <= phiVc2 // Cortante zapata interior
 Mu2 = qu2*Bz2*lv2^2/2 -> tonf*m
-As2 = max(0.85*fc*Bz2*d/fy*(1 - sqrt(1 - 2*Mu2/(0.85*phif*fc*Bz2*d^2))), 0.0018*Bz2*hz)
+As_req2 = 0.85*fc*Bz2*d/fy*(1 - sqrt(1 - 2*Mu2/(0.85*phif*fc*Bz2*d^2))) -> cm^2 // Acero requerido por flexión
+As_min2 = 0.0018*Bz2*hz -> cm^2 // Acero mínimo (E.060 Art. 10.5.4)
+As2 = max(As_req2, As_min2) // Acero en cada dirección
 n2 = ceil(As2/Ab(5))
 s2 = rounddown((Bz2 - 15 cm)/max(n2 - 1, 1), 2.5 cm)
 check s2 <= min(3*hz, 40 cm) // Espaciamiento zapata interior`),
@@ -449,7 +456,10 @@ d = hz - 7.5 cm - db(bar) // Peralte efectivo
 bo = 2*(t + d/2) + (bc + d) // Perímetro crítico
 Vu = Pu - qmax_u*(t + d/2)*(bc + d) -> tonf // Cortante de punzonamiento
 betac = max(t, bc)/min(t, bc)
-phiVc = 0.85*min(0.53*(1 + 2/betac)*sqrtfc(fc)*bo*d, 0.27*(30*d/bo + 2)*sqrtfc(fc)*bo*d, 1.06*sqrtfc(fc)*bo*d) -> tonf // αs = 30 (columna de borde)
+Vc_a = 0.53*(1 + 2/betac)*sqrtfc(fc)*bo*d -> tonf // Por la forma de la columna (E.060 Art. 11.12.2.1 a)
+Vc_b = 0.27*(30*d/bo + 2)*sqrtfc(fc)*bo*d -> tonf // Por la ubicación: αs = 30, columna de borde (Art. 11.12.2.1 b)
+Vc_c = 1.06*sqrtfc(fc)*bo*d -> tonf // Límite superior (Art. 11.12.2.1 c)
+phiVc = 0.85*min(Vc_a, Vc_b, Vc_c) -> tonf // Resistencia de diseño al punzonamiento
 check Vu <= phiVc // Punzonamiento
 ## Cortante por flexión
 VudB = qmax_u*Lz*(Bz - t - d) -> tonf // Dirección perpendicular al lindero
@@ -534,7 +544,10 @@ My = Q*ex -> tonf*m // Momento respecto al eje y
 @modo corto
 xs = xc - Lx/2 // Coordenadas relativas al centroide
 ys = yc - Ly/2
-qcol = Q/A + My*xs/Iy + Mx*ys/Ix // Presión bajo cada columna
+q_med = Q/A // Presión media (carga centrada)
+q_x = My*xs/Iy // Variación por el momento My
+q_y = Mx*ys/Ix // Variación por el momento Mx
+qcol = q_med + q_x + q_y // Presión bajo cada columna
 @modo completo
 qA = Q/A - My*(Lx/2)/Iy - Mx*(Ly/2)/Ix -> tonf/m^2 // Esquina (0, 0)
 qB = Q/A + My*(Lx/2)/Iy - Mx*(Ly/2)/Ix -> tonf/m^2 // Esquina (Lx, 0)
@@ -975,7 +988,9 @@ phiVc = 0.85*0.53*sqrtfc(fc)*Bc*dc -> tonf
 check Vud <= phiVc*max(1, 3.5 - 2.5*(sp - cc/2)/dc) // Cortante (incremento por cabezal corto, E.060 Art. 11.8 / ACI 15.5.3)
 Mu = n2*Pup*(sp - cc/2) -> tonf*m // Momento en la cara de la columna
 phif = 0.9
-As = max(0.85*fc*Bc*dc/fy*(1 - sqrt(1 - 2*Mu/(0.85*phif*fc*Bc*dc^2))), 0.0018*Bc*hc) // Acero inferior en cada dirección
+As_req = 0.85*fc*Bc*dc/fy*(1 - sqrt(1 - 2*Mu/(0.85*phif*fc*Bc*dc^2))) -> cm^2 // Acero requerido por flexión
+As_min = 0.0018*Bc*hc -> cm^2 // Acero mínimo (E.060 Art. 10.5.4)
+As = max(As_req, As_min) // Acero inferior en cada dirección
 nb = ceil(As/Ab(8)) // Varillas de 1"
 sb = rounddown((Bc - 20 cm)/max(nb - 1, 1), 2.5 cm)
 check sb <= min(3*hc, 40 cm) // Espaciamiento máximo`),

@@ -406,7 +406,9 @@ alpha = atan(hp/Lt) -> deg // Inclinación del borde posterior (acero de tracci�
 Mce = Ka*gammas*hp^3/6 -> tonf*m/m // Momento del empuje activo en la base, por metro
 Mcw = Ka*ws*hp^2/2 -> tonf*m/m // Momento del empuje de la sobrecarga, por metro
 Mcs = DKae*gammas*hp^2/2*0.6*hp + kh*gammac*tp*hp^2/2 -> tonf*m/m // Momento sísmico: incremento ΔKae a 0.6 hp + inercia de la pantalla
-Muc = max(1.7*Sc*(Mce + Mcw), Sc*(1.7*(Mce + 0.5*Mcw) + Mcs)) -> tonf*m // Momento último en la base: máx. (U = 1.7 CE; U = 1.7 CE + 1.0 CS con 50 % de sobrecarga)
+Muc1 = 1.7*Sc*(Mce + Mcw) -> tonf*m // U = 1.7 CE (empuje + sobrecarga)
+Muc2 = Sc*(1.7*(Mce + 0.5*Mcw) + Mcs) -> tonf*m // U = 1.7 CE + 1.0 CS con 50 % de sobrecarga
+Muc = max(Muc1, Muc2) -> tonf*m // Momento último en la base
 dh = tp + Lt - 10 cm // Brazo horizontal desde la cara exterior de la pantalla (compresión) al acero
 bf = min(Sc, tc + 16*tp) // Ancho efectivo del ala (E.060 8.10.2)
 Asc1 = Muc/(0.9*fy*sin(alpha)*0.95*dh) -> cm^2 // Primera aproximación
@@ -868,7 +870,10 @@ aq = (Kpd - Ka)*gammas/2
 bq = -(Ka*gammas*H + Ka*ws)
 cq = -(Ka*gammas*H^2/2 + Ka*ws*H)
 z0 = (-bq + sqrt(bq^2 - 4*aq*cq))/(2*aq) // Profundidad del cortante nulo bajo el fondo
-Mmax = Ka*gammas*(H + z0)^3/6 + Ka*ws*(H + z0)^2/2 - Kpd*gammas*z0^3/6 -> tonf*m/m // Momento máximo (servicio)`),
+Mact = Ka*gammas*(H + z0)^3/6 -> tonf*m/m // Momento del empuje activo del suelo
+Msc = Ka*ws*(H + z0)^2/2 -> tonf*m/m // Momento del empuje de la sobrecarga
+Mpas = Kpd*gammas*z0^3/6 -> tonf*m/m // Momento del empuje pasivo bajo el fondo
+Mmax = Mact + Msc - Mpas -> tonf*m/m // Momento máximo (servicio)`),
     { type: 'sheetpile', H: 'H', D: 'D0', Dt: 'D', gs: 'gammas', Ka: 'Ka', Kp: 'Kpd', q: 'ws' },
     calc(`# Verificación de la tablestaca
 check abs(Mmaxn - Mmax) <= 0.02*Mmax // Comprobación: integración numérica del bloque = solución cerrada

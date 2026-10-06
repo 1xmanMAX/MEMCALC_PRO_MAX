@@ -608,7 +608,9 @@ Asb = (0.85*fc*(bf - bw)*hf + 0.85*fc*bw*beta1*cb)/fy // Acero balanceado de la 
 check As <= 0.75*Asb // Acero máximo (E.060 10.3.4)
 check As >= 0.7*sqrtfc(fc)/fy*bw*d // Acero mínimo con el ancho del alma (E.060 10.5.2)
 yg = (bf*hf^2/2 + bw*(h - hf)*(hf + (h - hf)/2))/(bf*hf + bw*(h - hf)) // Centroide de la sección T bruta desde la fibra superior
-IgT = bf*hf^3/12 + bf*hf*(yg - hf/2)^2 + bw*(h - hf)^3/12 + bw*(h - hf)*(hf + (h - hf)/2 - yg)^2 // Inercia bruta de la sección T
+Ig_ala = bf*hf^3/12 + bf*hf*(yg - hf/2)^2 // Inercia del ala respecto al centroide (Steiner)
+Ig_alma = bw*(h - hf)^3/12 + bw*(h - hf)*(hf + (h - hf)/2 - yg)^2 // Inercia del alma respecto al centroide (Steiner)
+IgT = Ig_ala + Ig_alma // Inercia bruta de la sección T
 McrT = 2*sqrtfc(fc)*IgT/(h - yg) -> tonf*m // Momento de agrietamiento (fr = 0.62√f'c, E.060 10.5.1)
 check phiMn >= 1.2*McrT // φMn ≥ 1.2 Mcr (E.060 10.5.1)
 sl_libre = (bw - 2*4 cm - 2*db(3) - 3*db(bar))/2 // Espaciamiento libre entre barras (3 por capa)
