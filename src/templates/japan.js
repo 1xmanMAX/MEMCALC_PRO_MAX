@@ -338,17 +338,19 @@ check Qsu >= Qm // Qsu ≥ nm·2Mu/h0: falla por flexión antes que por cortante
     id: 'jp-aij-acero', pais: 'JP', cat: 'Acero estructural', icon: 'steel', settings: { sys: 'si' },
     name: 'Viga de acero AIJ — perfil H JIS (esfuerzos admisibles)',
     normas: 'AIJ Design Standard for Steel Structures · Notif. MLIT 1024 (2001) · Notif. MOC 2464 (2000) · Notif. MOC 1792 (relaciones ancho-espesor) · Notif. MOC 1459',
-    desc: 'Flexión con pandeo lateral fb = máx{(1 − 0.4(lb/i)²/(CΛ²))ft ; 89000/(lb·h/Af)}, cortante, rango FA por relaciones ancho-espesor y deflexión.',
+    desc: 'Flexión con pandeo lateral fb = máx{(1 − 0.4(lb/i)²/(CΛ²))ft ; 89000/(lb·h/Af)}, cortante, rango FA por relaciones ancho-espesor y deflexión (Notif. 1459).',
     titulo: 'Diseño de viga de acero con perfil H JIS — esfuerzos admisibles AIJ',
     blocks: [
       text(`# Generalidades
-El **AIJ Design Standard for Steel Structures** (鋼構造設計規準) y la Notif. MLIT 1024 definen los esfuerzos admisibles de largo plazo a partir del valor de diseño $F$ (Notif. 2464; SN400B: $F = 235$ N/mm²):
+El **AIJ Design Standard for Steel Structures** (*Kokozo sekkei kijun*) y la Notif. MLIT 1024 definen los esfuerzos admisibles de largo plazo a partir del valor de diseño $F$ (Notif. 2464; SN400B: $F = 235$ N/mm²):
 
 - Tracción $f_t = F/1.5$; cortante $f_s = F/(1.5\\sqrt{3})$.
 - Flexión con **pandeo lateral-torsional**: $f_b = \\max\\left\\{\\left[1 - 0.4\\dfrac{(l_b/i)^2}{C\\,\\Lambda^2}\\right] f_t\\ ;\\ \\dfrac{89\\,000}{l_b\\,h/A_f}\\right\\} \\le f_t$, con $\\Lambda = \\sqrt{\\pi^2 E/(0.6F)}$ e $i$ el radio de giro del ala comprimida más 1/6 del alma.
 - Corto plazo: 1.5 × largo plazo.
 
-Viga secundaria de piso de oficina, luz 7.2 m, arriostrada lateralmente cada 2.4 m por vigas menores, perfil laminado **H-400×200×8×13** (JIS G 3192).`),
+Viga secundaria de piso de oficina, simplemente apoyada, luz 7.2 m, arriostrada lateralmente cada 2.4 m por vigas menores, perfil laminado **H-400×200×8×13** (JIS G 3192). Por ser una viga secundaria articulada no recibe momentos sísmicos: rige la combinación de largo plazo $G + P$ (en zonas de nieve intensa se agrega la combinación con nieve).
+
+Deflexión: la Notif. 1459 exige $\\delta/L \\le 1/250$ cuando el peralte es menor que $L/15$ (acero); aquí se adopta el límite más estricto $L/300$ recomendado por el AIJ.`),
       calc(`# Material y perfil
 F = 235 N/mm^2 // Valor F de diseño (Notif. 2464) [235 N/mm^2 : SN400B / SS400 (t ≤ 40)|325 N/mm^2 : SN490B / SM490 (t ≤ 40)]
 Es = 205000 N/mm^2 // Módulo de elasticidad del acero
@@ -368,10 +370,8 @@ check (H - 2*tf)/tw <= 60*sqrt(235 N/mm^2/F) // Alma de viga: d/tw ≤ 60√(235
 L = 7.2 m // Luz de la viga (simplemente apoyada)
 lb = 2.4 m // Longitud no arriostrada del ala comprimida
 wL = 17.5 kN/m // Carga de largo plazo (G + P)
-M_E = 40 kN*m // Momento adicional de corto plazo (sismo, Co = 0.2)
 M_L = wL*L^2/8 -> kN*m // Momento de largo plazo
 Q_L = wL*L/2 -> kN // Cortante de largo plazo
-M_S = M_L + M_E // Momento de corto plazo
 # Esfuerzos admisibles (AIJ acero art. 5)
 ft = ftsAIJ(F) // Tracción ft = F/1.5
 fs = fssAIJ(F) // Cortante fs = F/(1.5√3)
@@ -379,16 +379,14 @@ Lambda = LambdaAIJ(F) // Esbeltez límite Λ
 M2M1 = -1 // Relación M2/M1 en el tramo arriostrado (−1: curvatura simple uniforme)
 C = CbAIJ(M2M1) // Factor de gradiente de momento (≥ 1.0)
 fb_L = fbAIJ(lb, ib, H, Af, F, C) // Flexión admisible de largo plazo con pandeo lateral
-fb_S = 1.5*fb_L // Flexión admisible de corto plazo
 # Verificaciones
 sb_L = M_L/Zx -> N/mm^2 // Esfuerzo de flexión de largo plazo
 check sb_L <= fb_L // Flexión de largo plazo (AIJ acero art. 5)
-sb_S = M_S/Zx -> N/mm^2 // Esfuerzo de flexión de corto plazo
-check sb_S <= fb_S // Flexión de corto plazo
 tau = Q_L/(tw*(H - 2*tf)) -> N/mm^2 // Esfuerzo cortante en el alma
 check tau <= fs // Cortante (AIJ acero art. 5)
-delta = 5*wL*L^4/(384*Es*Ix) -> mm // Deflexión por carga de largo plazo
-check delta <= L/300 // Deflexión ≤ L/300 (AIJ; Notif. 1459 exige ≤ L/250 con fluencia)`),
+delta = 5*wL*L^4/(384*Es*Ix) -> mm // Deflexión por carga de largo plazo (factor de fluencia del acero = 1)
+dlim = L/300 -> mm // Deflexión admisible L/300 (AIJ; más estricta que L/250 de la Notif. 1459)
+check delta <= dlim // Deflexión de largo plazo`),
       { type: 'plot', expr: 'fbAIJ(x m, ib, H, Af, F, C)/(1 N/mm^2); sb_L/(1 N/mm^2) + 0*x', var: 'x', desde: '0.5', hasta: '10', puntos: '200', xlabel: 'Longitud no arriostrada lb [m]', ylabel: 'Esfuerzo [N/mm²]', leyenda: true, nombres: 'fb admisible de largo plazo (AIJ); σb actuante de largo plazo', titulo: 'Esfuerzo de flexión admisible en función de la longitud no arriostrada (perfil H JIS)' },
       summary(),
     ],
