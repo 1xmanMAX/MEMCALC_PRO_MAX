@@ -192,7 +192,10 @@ export function blockBeam(b, ctx) {
     env = { mx, mn, vx, vn, rmax };
   }
   const sfx = b.sufijo ? '_' + b.sufijo.replace(/\W/g, '') : '';
-  const Mpos = Math.max(0, ...(env ? env.mx : full.sM)), Mneg = Math.min(0, ...(env ? env.mn : full.sM));
+  // restos de coma flotante (p. ej. M⁺ = 6.9e-12 en un voladizo) se anulan relativo al máximo
+  const Mref = Math.max(1e-9, ...full.sM.map(Math.abs), ...(env ? [...env.mx, ...env.mn].map(Math.abs) : []));
+  const snap = (x) => Math.abs(x) < 1e-9 * Mref ? 0 : x;
+  const Mpos = snap(Math.max(0, ...(env ? env.mx : full.sM))), Mneg = snap(Math.min(0, ...(env ? env.mn : full.sM)));
   const Vmax = Math.max(...(env ? env.vx : full.sV).map(Math.abs), ...(env ? env.vn : full.sV).map(Math.abs));
   const dmax = Math.max(...full.sD.map(Math.abs));
   setVar(ctx, 'Mpos' + sfx, math.unit(Mpos, 'tonf*m'));
@@ -204,13 +207,13 @@ export function blockBeam(b, ctx) {
   for (let i = 0; i < nS; i++) {
     const idxs = full.sx.map((x, k) => (x >= X[i] - 1e-9 && x <= X[i + 1] + 1e-9 ? k : -1)).filter(k => k >= 0);
     const arr = env ? env.mx : full.sM;
-    setVar(ctx, 'Mpos' + (i + 1) + sfx, math.unit(Math.max(0, ...idxs.map(k => arr[k])), 'tonf*m'));
+    setVar(ctx, 'Mpos' + (i + 1) + sfx, math.unit(snap(Math.max(0, ...idxs.map(k => arr[k]))), 'tonf*m'));
   }
   X.forEach((x, i) => {
     const arr = env ? env.mn : full.sM;
     const k = full.sx.reduce((bk, xx, kk) => (Math.abs(xx - x) < Math.abs(full.sx[bk] - x) ? kk : bk), 0);
     const near = full.sx.map((xx, kk) => Math.abs(xx - x) < 1e-6 ? arr[kk] : Infinity).filter(isFinite);
-    setVar(ctx, 'Mapo' + (i + 1) + sfx, math.unit(near.length ? Math.min(...near) : arr[k], 'tonf*m'));
+    setVar(ctx, 'Mapo' + (i + 1) + sfx, math.unit(snap(near.length ? Math.min(...near) : arr[k]), 'tonf*m'));
   });
 
   // ---------- dibujo ----------
