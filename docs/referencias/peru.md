@@ -45,7 +45,8 @@ ecuaciones de la E.031); ACI 318-19 R17.8 (interacción tracción–corte de anc
 | `ZE030(zona)` | 0.45 / 0.35 / 0.25 / 0.10 | E.030 Tabla N° 1 |
 | `UE030(cat)` | 1 → A1 aislada 1.0; 11 → A1 sin aislamiento (zonas 1–2) 1.5; 2 → A2 1.5; 3 → B 1.3; 4 → C 1.0 | Tabla N° 7 |
 | `R0E030(sis)` | 1 SMF 8, 2 IMF 5, 3 OMF 4, 4 SCBF 7, 5 OCBF 4, 6 EBF 8, 7 C°A° pórticos 8, 8 dual 7, 9 muros 6, 10 EMDL 3.5, 11 albañilería 3, 12 madera 7, 13 péndulo invertido 2.5 | Tabla N° 10, Art. 22.3 |
-| `CTE030(sis)` | 35 / 45 / 60 según el mismo código | Art. 36.1 |
+| `CTE030(sis)` | 35 (C°A° pórticos, acero SMF/IMF/OMF) / 45 (acero arriostrado) / 60 (dual, muros, EMDL, albañilería) | Art. 36.1 |
+| `sisE030(cat,zona,sis)` | 1 si el sistema está permitido para la categoría y zona, 0 si no (cat: 1 A1 aislada, 11 A1 sin aislamiento, 2 A2, 3 B, 4 C) | Tabla N° 9, Art. 21 |
 | `dlimE030(mat)` | 1 C°A° 0.007; 2 acero 0.010; 3 albañilería 0.005; 4 madera 0.010; 5 EMDL 0.004 | Tabla N° 14 |
 | `kE030(T)` | 1.0 (T ≤ 0.5 s); 0.75 + 0.5T ≤ 2.0 | Art. 35.2 |
 | `SaE030(T,Z,U,S,Tp,Tl,R)` | ZUCS/R (g) con C de la Tabla N° 6 | Art. 41.1 |
@@ -59,7 +60,7 @@ ecuaciones de la E.031); ACI 318-19 R17.8 (interacción tracción–corte de anc
 | `PhE020(C,Vh)` | 0.005·C·Vh² [kgf/m²] | Art. 12.4 |
 | `LrE020(Lo,At,k)` | Lo(0.25 + 4.6/√Ai), Ai = k·At > 40 m², ≥ 0.5·Lo | Art. 10 |
 | `QtE020(Qs,θ)` | Qs; 0.8Qs; Cs·0.8Qs con Cs = 1 − 0.025(θ − 30°) | Art. 11.3 |
-| `pAligE020(h)` | 280 / 300 / 350 / 420 kgf/m² (h = 0.17/0.20/0.25/0.30) | Anexo 1 |
+| `pAligE020(h)` | 280 / 300 / 350 / 420 kgf/m² (h = 0.17/0.20/0.25/0.30); error fuera de 0.17–0.30 m | Anexo 1 |
 | `CVtechoE020(θ)` | 100 kgf/m² hasta 3°, −5 por grado, mín. 50 | Art. 7.1 |
 | `BME031(β)` | 0.8 / 1.0 / 1.2 / 1.5 / 1.7 / 1.9 para 2/5/10/20/30/≥40 % | E.031 Tabla N° 5 |
 | `SaME031(T,Z,S,Tp,Tl)` | 1.5·Z·C·S (U = 1) | ec. 5 |
@@ -114,3 +115,7 @@ ecuaciones de la E.031); ACI 318-19 R17.8 (interacción tracción–corte de anc
 * En la plantilla E.031 el límite (a) del Art. 21.3 se evalúa con la fórmula de la E.030 (incluido C/R ≥ 0.11) y R0
   de base fija; el límite (b) por viento no se calcula.
 * Mapa eólico (E.020 Anexo 2) y mapa de zonificación (E.030 Anexo II) no están digitalizados: V y la zona son datos.
+
+## 7. Revisión independiente
+
+Ver `docs/referencias/revision-peru.md` (hallazgos, gravedad, fuente y corrección de la auditoría del módulo).

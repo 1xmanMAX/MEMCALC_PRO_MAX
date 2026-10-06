@@ -33,7 +33,7 @@ Muro de contención de concreto armado en voladizo (T invertida) que sostiene un
 ## Normas y referencias
 - RNE **NTE E.020** Cargas (sobrecarga sobre el relleno); **NTE E.030** Diseño Sismorresistente (factor de zona $Z$ y de suelo $S$).
 - RNE **NTE E.050** Suelos y Cimentaciones: Art. 39.13 (muros de contención, FS mínimos 1.50 estático y 1.25 pseudodinámico) y Art. 21 (FS de capacidad portante 3.0 / 2.5).
-- RNE **NTE E.060** Concreto Armado: 9.2.3 (combinación con empuje lateral $U = 1.4CM + 1.7CV + 1.7CE$), 9.3 (factores $\\phi$), 10.5 (acero mínimo), 11.3 (cortante), 12.5 y 12.10 (anclaje y corte de barras), 14.3 (refuerzo de muros).
+- RNE **NTE E.060** Concreto Armado: 9.2.5 (combinación con empuje lateral $U = 1.4CM + 1.7CV + 1.7CE$; $U = 0.9CM + 1.7CE$), 9.2.3 (sismo $U = 1.25(CM+CV) \\pm CS$), 9.3 (factores $\\phi$), 10.5 (acero mínimo), 11.3 (cortante), 12.5 y 12.10 (anclaje y corte de barras), 14.3 (refuerzo de muros).
 - AASHTO LRFD Bridge Design Specifications, Secc. 3.11 y 11.6 (método pseudoestático, $k_h = 0.5\\,k_{h0}$, inercia del muro y del suelo sobre el talón).
 - B. M. Das, *Principios de ingeniería de cimentaciones*, cap. 7 y 8; J. Calavera, *Muros de contención y muros de sótano*; R. Morales, *Diseño en concreto armado*; R. Torres Belandria, *Análisis y diseño de muros de contención de concreto armado*.
 
@@ -53,6 +53,7 @@ t2 = 0.50 m // Espesor de la pantalla en la base (≈ H/10)
 bk = 0.50 m // Ancho del dentellón (bajo la pantalla)
 hk = 0.70 m // Profundidad del dentellón bajo la zapata
 Df = 1.20 m // Altura del suelo frente a la punta, desde el fondo de la zapata
+fp = 0.50 // Fracción del empuje pasivo que se considera (AASHTO Tabla 11.5.7-1: φep = 0.50; el pasivo requiere desplazamientos grandes y el suelo puede excavarse) [0 : despreciar el pasivo|0.50 : 50 % (recomendado)|1.00 : pasivo completo]
 hp = H - hz // Altura de la pantalla
 Lt = B - Lp - t2 // Longitud del talón
 ## Relleno (parámetros del EMS, E.050 16.2.9)
@@ -80,13 +81,13 @@ DKsw = DKaeSW(kh) // Comparación: Seed–Whitman ΔKae ≈ ¾ kh
 Kp = KpRankine(phif) // Pasivo de Rankine del suelo frente a la punta
 qas = qaSismoE050(qa) // Presión admisible sísmica: FS 2.5 en lugar de 3.0 (E.050 Art. 21)`),
     text(`# Estabilidad externa
-Se consideran todas las fuerzas por metro de muro respecto a la arista exterior de la punta. La sobrecarga sobre el talón **no** se toma como fuerza estabilizante en el volteo y el deslizamiento (conservador), pero sí en las presiones de contacto. El empuje pasivo se calcula en toda la altura $D_f + h_k$ frente a la punta y el dentellón (en sismo con $K_{pe}$ de Mononobe–Okabe); el relleno frente al muro debe colocarse compactado y protegerse de la erosión y de excavaciones futuras.`),
-    { type: 'retwall', tipo: 'voladizo', metodo: 'rankine', H: 'H', B: 'B', hz: 'hz', punta: 'Lp', t1: 't1', t2: 't2', bk: 'bk', hk: 'hk', xk: 'Lp', beta: 'beta', q: 'ws', gs: 'gammas', phi: 'phis', gc: 'gammac', gf: 'gammaf', phif: 'phif', mu: 'mu', Df: 'Df', fp: '1', kh: 'kh', kv: 'kv', qa: 'qa', qas: 'qas', fsv: '2.0', fsd: '1.5', fsvs: '1.5', fsds: '1.25', titulo: 'Muro en voladizo: fuerzas actuantes, empujes estático y sísmico y presiones en la base (condición estática)' },
+Se consideran todas las fuerzas por metro de muro respecto a la arista exterior de la punta. La sobrecarga sobre el talón **no** se toma como fuerza estabilizante en el volteo y el deslizamiento (conservador), pero sí en las presiones de contacto. El empuje pasivo se calcula en toda la altura $D_f + h_k$ frente a la punta y el dentellón (en sismo con $K_{pe}$ de Mononobe–Okabe), pero solo se cuenta la fracción $f_p$ = {fp} (movilizar el pasivo completo exige desplazamientos del orden de 2–5 % de la altura; AASHTO aplica $\\phi_{ep} = 0.50$); el relleno frente al muro debe colocarse compactado y protegerse de la erosión y de excavaciones futuras. Se supone el relleno drenado (N.F. bajo la base); si el EMS indica nivel freático, ingréselo en el bloque (campo «Nivel freático»).`),
+    { type: 'retwall', tipo: 'voladizo', metodo: 'rankine', H: 'H', B: 'B', hz: 'hz', punta: 'Lp', t1: 't1', t2: 't2', bk: 'bk', hk: 'hk', xk: 'Lp', beta: 'beta', q: 'ws', gs: 'gammas', phi: 'phis', gc: 'gammac', gf: 'gammaf', phif: 'phif', mu: 'mu', Df: 'Df', fp: 'fp', kh: 'kh', kv: 'kv', qa: 'qa', qas: 'qas', fsv: '2.0', fsd: '1.5', fsvs: '1.5', fsds: '1.25', titulo: 'Muro en voladizo: fuerzas actuantes, empujes estático y sísmico y presiones en la base (condición estática)' },
     calc(`# Diseño de la pantalla
-"La pantalla trabaja como un voladizo empotrado en la zapata. Combinaciones: $U_1 = 1.7\\,(CE + CV_{sc})$ (E.060 9.2.3) y, con sismo, $U_2 = 1.25\\,CE + 1.0\\,CS$, con el 50 % de la sobrecarga; $CS$ incluye el incremento de Mononobe–Okabe a $0.6\\,h_p$ y la inercia de la pantalla.
+"La pantalla trabaja como un voladizo empotrado en la zapata. Combinaciones: $U_1 = 1.7\\,(CE + CV_{sc})$ (E.060 9.2.5) y, con sismo, $U_2 = 1.7\\,CE + 1.0\\,CS$ con el 50 % de la sobrecarga. La E.060 no da una combinación explícita de empuje y sismo: se conserva el factor 1.7 del empuje estático (E.060 9.2.5) y el sismo, que la E.030 da a nivel de resistencia, va con 1.0 (como ACI 318-19 5.3.8 y ASCE 7-16 2.3.6: $1.6H + 1.0E$; AASHTO Evento Extremo I: $1.5EH + 1.0EQ$). $CS$ incluye el incremento de Mononobe–Okabe a $0.6\\,h_p$ y la inercia de la pantalla.
 ## Flexión en la base de la pantalla
-Mus = 1.7*(Ka*gammas*hp^3/6 + Ka*ws*hp^2/2) -> tonf*m/m // U = 1.7 CE (E.060 9.2.3)
-Mue = 1.25*(Ka*gammas*hp^3/6 + Ka*0.5*ws*hp^2/2) + 1.0*(DKae*gammas*hp^2/2*0.6*hp + kh*gammac*(t1 + t2)/2*hp^2/2) -> tonf*m/m // U = 1.25 CE + 1.0 CS
+Mus = 1.7*(Ka*gammas*hp^3/6 + Ka*ws*hp^2/2) -> tonf*m/m // U = 1.7 CE (E.060 9.2.5)
+Mue = 1.7*(Ka*gammas*hp^3/6 + Ka*0.5*ws*hp^2/2) + 1.0*(DKae*gammas*hp^2/2*0.6*hp + kh*gammac*(t1 + t2)/2*hp^2/2) -> tonf*m/m // U = 1.7 CE + 1.0 CS (ΔEae a 0.6 hp; inercia de la pantalla)
 Mu = max(Mus, Mue) // Momento último de diseño
 bar = 6 // Varilla vertical interior [5 : 5/8"|6 : 3/4"|8 : 1"]
 d = t2 - rec - db(bar)/2 // Peralte efectivo
@@ -102,7 +103,7 @@ check rho <= 0.75*rhob // Cuantía máxima (E.060 10.3.4)
 ## Cortante a una distancia d de la base (E.060 11.1.3)
 zv = hp - d // Profundidad de la sección crítica desde la corona
 Vus = 1.7*(Ka*gammas*zv^2/2 + Ka*ws*zv) -> tonf/m
-Vue = 1.25*(Ka*gammas*zv^2/2 + Ka*0.5*ws*zv) + 1.0*(DKae*gammas*zv^2/2 + kh*gammac*(t1 + t2)/2*zv) -> tonf/m
+Vue = 1.7*(Ka*gammas*zv^2/2 + Ka*0.5*ws*zv) + 1.0*(DKae*gammas*zv^2/2 + kh*gammac*(t1 + t2)/2*zv) -> tonf/m
 Vu = max(Vus, Vue)
 phiVc = 0.85*0.53*sqrtfc(fc)*d -> tonf/m // φVc = 0.85·0.53√f'c·b·d (E.060 11.3.1.1, φ = 0.85)
 check Vu <= phiVc // Cortante en la pantalla (sin estribos)`),
@@ -121,7 +122,7 @@ ldg = max(0.075*fy*db(bar)/sqrtfc(fc), 8*db(bar), 15 cm) // Longitud de desarrol
 check ldg <= hz - recz // El gancho cabe en el peralte de la zapata
 "Refuerzo de la pantalla: cara interior varilla {bar} (Ø según lista) @ {s} con la mitad de las barras cortadas a {hcorte} sobre la zapata; cara exterior 1/2\\" @ {sv_ext} vertical; horizontal 1/2\\" @ {sh_ext} (exterior) y 3/8\\" @ {sh_int} (interior).
 # Diseño de la zapata
-"Presiones de contacto de servicio obtenidas en la estabilidad. La longitud de contacto es $L_c = \\min\\left[B,\\ 3\\left(B/2 - e\\right)\\right]$ y la presión varía linealmente con pendiente $m = (q_{talón} - q_{punta})/L_c$. Mayoración: estático $1.7$ (E.060 9.2.3) y sísmico $1.25$; el peso propio de la punta se reduce con $0.9$ (E.060 9.2.3, carga muerta favorable).
+"Presiones de contacto de servicio obtenidas en la estabilidad. La longitud de contacto es $L_c = \\min\\left[B,\\ 3\\left(B/2 - e\\right)\\right]$ y la presión varía linealmente con pendiente $m = (q_{talón} - q_{punta})/L_c$. Mayoración: estático $1.7$ (E.060 9.2.5) y sísmico $1.25$ aplicado a toda la reacción (E.060 9.2.3: la reacción sísmica, dominada por $\\Delta E_{ae}$ y la inercia que ya están a nivel de resistencia, queda mayorada en exceso, lo que compensa el menor factor de su parte estática; verifíquese que $1.25\\,q_{sismo} \\ge 1.7\\,q_{estático}$ en la tabla de presiones); el peso propio de la punta se reduce con $0.9$ (E.060 9.2.5, carga muerta favorable).
 check e >= 0 m // Resultante hacia la punta (hipótesis de las fórmulas siguientes)
 Lcs = min(B, 3*(B/2 - e)) // Longitud de contacto, estático
 Lce = min(B, 3*(B/2 - es)) // Longitud de contacto, sismo
@@ -195,6 +196,7 @@ ie = 0.35 m // Proyección horizontal del talud frontal (paramento)
 ib = b2 - b1 - ie // Proyección horizontal del talud posterior (trasdós)
 hp = H - hz // Altura del cuerpo
 Df = 1.00 m // Altura de suelo frente al muro desde el fondo del cimiento
+fp = 0.50 // Fracción del empuje pasivo que se considera (AASHTO Tabla 11.5.7-1: φep = 0.50; el pasivo requiere desplazamientos grandes y el suelo puede excavarse) [0 : despreciar el pasivo|0.50 : 50 % (recomendado)|1.00 : pasivo completo]
 bk = 0.50 m // Ancho del dentellón (uña) bajo el cimiento
 hk = 0.60 m // Profundidad del dentellón
 ## Relleno y suelo de cimentación (EMS)
@@ -216,9 +218,9 @@ theta = atan((B - Lp - ie - b1)/H) -> deg // Inclinación del plano talón–cor
 Ka = KaCoulomb(phis, delta, 0 deg, theta) // Das ec. 7.26
 Kae = KaeMO(phis, delta, kh, kv, 0 deg, theta) // Mononobe–Okabe (AASHTO A11.3.1)
 Kp = KpRankine(phif) // Pasivo frente al muro (δ = 0, conservador)`),
-    { type: 'retwall', tipo: 'gravedad', metodo: 'coulomb', H: 'H', B: 'B', hz: 'hz', punta: 'Lp', t1: 'b1', t2: 'b2', ie: 'ie', beta: '0 deg', q: 'ws', gs: 'gammas', phi: 'phis', delta: 'delta', gc: 'gammac', gf: 'gammaf', phif: 'phif', mu: 'mu', Df: 'Df', bk: 'bk', hk: 'hk', xk: 'Lp', fp: '1', kh: 'kh', kv: 'kv', qa: 'qa', qas: 'qas', fsv: '2.0', fsd: '1.5', fsvs: '1.5', fsds: '1.25', titulo: 'Muro de gravedad: fuerzas, empuje de Coulomb y presiones en la base' },
+    { type: 'retwall', tipo: 'gravedad', metodo: 'coulomb', H: 'H', B: 'B', hz: 'hz', punta: 'Lp', t1: 'b1', t2: 'b2', ie: 'ie', beta: '0 deg', q: 'ws', gs: 'gammas', phi: 'phis', delta: 'delta', gc: 'gammac', gf: 'gammaf', phif: 'phif', mu: 'mu', Df: 'Df', bk: 'bk', hk: 'hk', xk: 'Lp', fp: 'fp', kh: 'kh', kv: 'kv', qa: 'qa', qas: 'qas', fsv: '2.0', fsd: '1.5', fsvs: '1.5', fsds: '1.25', titulo: 'Muro de gravedad: fuerzas, empuje de Coulomb y presiones en la base' },
     calc(`# Esfuerzos en secciones horizontales del cuerpo (E.060 Cap. 22)
-"Se analiza el cuerpo por encima de una sección horizontal a la profundidad $z$ bajo la corona. El empuje sobre el trasdós del cuerpo es el de Coulomb con $\\theta_s$ = inclinación del trasdós. Momentos respecto al centro de la sección, positivos si traccionan la cara posterior. Combinación $U = 0.9\\,CM + 1.7\\,CE$ (E.060 9.2.3, el peso reduce la tracción) y con sismo $U = 0.9\\,CM + 1.25\\,CE + 1.0\\,CS$.
+"Se analiza el cuerpo por encima de una sección horizontal a la profundidad $z$ bajo la corona. El empuje sobre el trasdós del cuerpo es el de Coulomb con $\\theta_s$ = inclinación del trasdós. Momentos respecto al centro de la sección, positivos si traccionan la cara posterior. Combinación $U = 0.9\\,CM + 1.7\\,CE$ (E.060 9.2.5, el peso reduce la tracción) y con sismo $U = 0.9\\,CM + 1.7\\,CE + 1.0\\,CS$ (E.060 9.2.3 y 9.2.5; ACI 318-19 5.3.8).
 thetas = atan(ib/hp) -> deg // Inclinación del trasdós del cuerpo
 Kas = KaCoulomb(phis, delta, 0 deg, thetas) // Coeficiente activo sobre el trasdós
 Kaes = KaeMO(phis, delta, kh, kv, 0 deg, thetas) // Coeficiente sísmico sobre el trasdós
@@ -232,7 +234,7 @@ yP(z) = (Kas*gammas*z^3/6 + Kas*ws*z^2/2)/Pz(z) // Altura del empuje sobre la se
 xP(z) = bz(z) - ib*yP(z)/hp // Abscisa del punto de aplicación desde el paramento
 Mu(z) = 1.7*Pz(z)*cos(ang)*yP(z) - 0.9*(MWz(z) + Pz(z)*sin(ang)*(xP(z) - bz(z)/2)) // Momento último
 Pu(z) = 0.9*(Wz(z) + Pz(z)*sin(ang)) // Carga axial mínima
-Mue(z) = 1.25*Pz(z)*cos(ang)*yP(z) + (Kaes - Kas)*gammas*z^2/2*cos(ang)*0.6*z + kh*gammac*z^2*(ie*z/hp/6 + b1/2 + ib*z/hp/6) - 0.9*(MWz(z) + Pz(z)*sin(ang)*(xP(z) - bz(z)/2)) // Momento último con sismo
+Mue(z) = 1.7*Pz(z)*cos(ang)*yP(z) + (Kaes - Kas)*gammas*z^2/2*cos(ang)*0.6*z + kh*gammac*z^2*(ie*z/hp/6 + b1/2 + ib*z/hp/6) - 0.9*(MWz(z) + Pz(z)*sin(ang)*(xP(z) - bz(z)/2)) // Momento último con sismo
 ft(M, z) = 6*M/bz(z)^2 - Pu(z)/bz(z) // Esfuerzo en la cara posterior (+ tracción)
 fcm(z) = (1.4*Wz(z) + 1.7*Pz(z)*sin(ang))/bz(z) + 6*abs(1.7*Pz(z)*cos(ang)*yP(z))/bz(z)^2 // Compresión máxima (conservador)
 @modo completo
@@ -247,14 +249,14 @@ ft1e = ft(Mue(z1), z1) -> kgf/cm^2 // Esfuerzo en la cara posterior, sismo
 check ft1e <= ftadm // Tracción por flexión, sismo
 fc1 = fcm(z1) -> kgf/cm^2
 check fc1 <= fcadm // Compresión (E.060 22.5.3)
-Vu1 = max(1.7*Pz(z1)*cos(ang), 1.25*Pz(z1)*cos(ang) + (Kaes - Kas)*gammas*z1^2/2*cos(ang) + kh*Wz(z1)) -> tonf/m // Cortante último
+Vu1 = max(1.7*Pz(z1)*cos(ang), 1.7*Pz(z1)*cos(ang) + (Kaes - Kas)*gammas*z1^2/2*cos(ang) + kh*Wz(z1)) -> tonf/m // Cortante último
 phiVn1 = 0.65*0.35*sqrtfc(fc)*bz1 -> tonf/m // φVn = φ·0.35√f'c·b·h (E.060 22.5.4)
 check Vu1 <= phiVn1 // Cortante en la sección 1
 ## Sección 2: mitad de la altura del cuerpo (z = hp/2)
 z2 = hp/2
 ft2 = max(ft(Mu(z2), z2), ft(Mue(z2), z2)) -> kgf/cm^2 // Máximo esfuerzo en la cara posterior
 check ft2 <= ftadm // Tracción por flexión en la sección 2
-Vu2 = max(1.7*Pz(z2)*cos(ang), 1.25*Pz(z2)*cos(ang) + (Kaes - Kas)*gammas*z2^2/2*cos(ang) + kh*Wz(z2)) -> tonf/m
+Vu2 = max(1.7*Pz(z2)*cos(ang), 1.7*Pz(z2)*cos(ang) + (Kaes - Kas)*gammas*z2^2/2*cos(ang) + kh*Wz(z2)) -> tonf/m
 check Vu2 <= 0.65*0.35*sqrtfc(fc)*bz(z2) // Cortante en la sección 2
 ## Cimiento: tracción en la punta (voladizo de concreto simple)
 Mupt = 1.7*qtoe*Lp^2/2 - 0.9*gammac*hz*Lp^2/2 -> tonf*m/m // Momento en la cara del paramento (presión máxima, conservador)
@@ -280,7 +282,7 @@ const contrafuertes = {
 Para alturas mayores de 6–7 m el muro en voladizo resulta antieconómico; los **contrafuertes** (placas triangulares unidas a la pantalla y al talón) convierten la pantalla y el talón en losas continuas apoyadas en ellos. La pantalla trabaja en **franjas horizontales** entre contrafuertes; cerca de la base, donde está restringida por la zapata, se desarrolla además un momento vertical. El contrafuerte es una **viga en voladizo de sección T** (ala = pantalla) con el refuerzo de tracción a lo largo de su borde inclinado.
 
 ## Normas y referencias
-- RNE **NTE E.050** 39.13 (FS 1.50 / 1.25), **E.030**, **E.060** (9.2.3, 10, 11, 12, 14.3).
+- RNE **NTE E.050** 39.13 (FS 1.50 / 1.25), **E.030**, **E.060** (9.2.5, 10, 11, 12, 14.3).
 - W. Huntington, *Earth Pressures and Retaining Walls* (1957): coeficientes $M^- = pL^2/12$, $M^+ = pL^2/16$ en franjas horizontales y momento vertical en la base $M_v \\approx 0.03\\,p\\,h_p\\,L$ (recogidos por J. Bowles, *Foundation Analysis and Design* §12, y J. Calavera, *Muros de contención y muros de sótano*).
 - B. M. Das, *Principios de ingeniería de cimentaciones* cap. 8.
 
@@ -298,6 +300,7 @@ tc = 0.35 m // Espesor de los contrafuertes
 bk = 0.50 m // Ancho del dentellón
 hk = 1.00 m // Profundidad del dentellón
 Df = 1.50 m // Suelo frente a la punta desde el fondo
+fp = 0.50 // Fracción del empuje pasivo que se considera (AASHTO Tabla 11.5.7-1: φep = 0.50; el pasivo requiere desplazamientos grandes y el suelo puede excavarse) [0 : despreciar el pasivo|0.50 : 50 % (recomendado)|1.00 : pasivo completo]
 hp = H - hz // Altura de la pantalla
 Lt = B - Lp - tp // Longitud del talón
 Ln = Sc - tc // Luz libre de la pantalla y del talón entre contrafuertes
@@ -320,11 +323,11 @@ qas = qaSismoE050(qa)
 Ka = KaRankine(phis) // Rankine
 Kae = KaeMO(phis, 0 deg, kh, kv) // Mononobe–Okabe en el plano virtual (δ = β = 0)
 DKae = Kae - Ka`),
-    { type: 'retwall', tipo: 'voladizo', metodo: 'rankine', H: 'H', B: 'B', hz: 'hz', punta: 'Lp', t1: 'tp', t2: 'tp', ie: '0 m', bk: 'bk', hk: 'hk', xk: 'Lp', q: 'ws', gs: 'gammas', phi: 'phis', gc: 'gammac', gf: 'gammaf', phif: 'phif', mu: 'mu', Df: 'Df', fp: '1', kh: 'kh', kv: 'kv', qa: 'qa', qas: 'qas', fsv: '2.0', fsd: '1.5', fsvs: '1.5', fsds: '1.25', contrafuerte: true, titulo: 'Muro con contrafuertes: sección típica (contrafuerte en línea discontinua), empujes y presiones' },
+    { type: 'retwall', tipo: 'voladizo', metodo: 'rankine', H: 'H', B: 'B', hz: 'hz', punta: 'Lp', t1: 'tp', t2: 'tp', ie: '0 m', bk: 'bk', hk: 'hk', xk: 'Lp', q: 'ws', gs: 'gammas', phi: 'phis', gc: 'gammac', gf: 'gammaf', phif: 'phif', mu: 'mu', Df: 'Df', fp: 'fp', kh: 'kh', kv: 'kv', qa: 'qa', qas: 'qas', fsv: '2.0', fsd: '1.5', fsvs: '1.5', fsds: '1.25', contrafuerte: true, titulo: 'Muro con contrafuertes: sección típica (contrafuerte en línea discontinua), empujes y presiones' },
     calc(`# Pantalla: losa continua apoyada en los contrafuertes
 ## Presión de diseño en la franja inferior (z = hp)
-pus = 1.7*Ka*(gammas*hp + ws) // Presión última estática (E.060 9.2.3)
-pue = 1.25*Ka*(gammas*hp + 0.5*ws) + 1.0*DKae*gammas*hp/2 // Con sismo: incremento M-O como presión uniforme equivalente
+pus = 1.7*Ka*(gammas*hp + ws) // Presión última estática (E.060 9.2.5)
+pue = 1.7*Ka*(gammas*hp + 0.5*ws) + 1.0*DKae*gammas*hp/2 // Con sismo (U = 1.7 CE + 1.0 CS): incremento M-O como presión uniforme equivalente
 pu = max(pus, pue) // Presión de diseño
 ## Franjas horizontales (Huntington)
 Mneg = pu*Ln^2/12 -> tonf*m/m // En los contrafuertes, tracción en la cara del relleno
@@ -348,7 +351,7 @@ check sv <= min(3*tp, 40 cm) // Espaciamiento máximo
 "Momento vertical positivo $M_v/4$: se cubre con el refuerzo mínimo vertical de la cara exterior.
 # Contrafuerte (viga T en voladizo)
 alpha = atan(hp/Lt) -> deg // Inclinación del borde posterior (acero de tracción)
-Muc = max(1.7*Sc*(Ka*gammas*hp^3/6 + Ka*ws*hp^2/2), Sc*(1.25*(Ka*gammas*hp^3/6 + Ka*0.5*ws*hp^2/2) + DKae*gammas*hp^2/2*0.6*hp + kh*gammac*tp*hp^2/2)) -> tonf*m // Momento último en la base
+Muc = max(1.7*Sc*(Ka*gammas*hp^3/6 + Ka*ws*hp^2/2), Sc*(1.7*(Ka*gammas*hp^3/6 + Ka*0.5*ws*hp^2/2) + DKae*gammas*hp^2/2*0.6*hp + kh*gammac*tp*hp^2/2)) -> tonf*m // Momento último en la base
 dh = tp + Lt - 10 cm // Brazo horizontal desde la cara exterior de la pantalla (compresión) al acero
 bf = min(Sc, tc + 16*tp) // Ancho efectivo del ala (E.060 8.10.2)
 Asc1 = Muc/(0.9*fy*sin(alpha)*0.95*dh) -> cm^2 // Primera aproximación
@@ -359,7 +362,7 @@ Asminc = 0.7*sqrtfc(fc)/fy*tc*dh*sin(alpha) -> cm^2 // Mínimo (E.060 10.5.2)
 Asdis = max(Asc, min(Asminc, 1.33*Asc)) // Acero de diseño: el mínimo puede sustituirse por 1.33 As requerido (E.060 10.5.3)
 nc = ceil(Asdis/Ab(8)) // Número de varillas de 1"
 check nc*Ab(8) >= Asdis // Acero colocado
-Vuc = max(1.7*Sc*(Ka*gammas*hp^2/2 + Ka*ws*hp), Sc*(1.25*(Ka*gammas*hp^2/2 + Ka*0.5*ws*hp) + DKae*gammas*hp^2/2 + kh*gammac*tp*hp)) -> tonf // Cortante en la base
+Vuc = max(1.7*Sc*(Ka*gammas*hp^2/2 + Ka*ws*hp), Sc*(1.7*(Ka*gammas*hp^2/2 + Ka*0.5*ws*hp) + DKae*gammas*hp^2/2 + kh*gammac*tp*hp)) -> tonf // Cortante en la base
 Vnet = Vuc - Muc/(dh - a/2)*cos(alpha)/sin(alpha) -> tonf // Descontando la componente horizontal de la tracción inclinada (Bowles §12)
 phiVcc = 0.85*0.53*sqrtfc(fc)*tc*dh*sin(alpha) -> tonf // Alma del contrafuerte, peralte perpendicular al acero
 check Vnet <= phiVcc // Cortante en el contrafuerte
@@ -402,10 +405,10 @@ const sotano = {
     text(`# Generalidades
 Los muros de sótano están arriostrados en su borde superior por la losa del primer piso, por lo que **no pueden desplazarse** lo suficiente para movilizar el estado activo: se diseñan con el **empuje en reposo** $K_0$ (Jaky). El muro se modela como una franja vertical de 1 m **apoyada** en la losa y **empotrada** en el cimiento (Calavera, *Muros de contención y muros de sótano*, cap. 9). El sismo se considera con la solución de **Wood (1973)** para muros rígidos: incremento uniforme $\\Delta p = k_h\\,\\gamma\\,H$ con $k_h = PGA$ (sin reducción por desplazamiento).
 
-**Normas:** RNE NTE E.020 (sobrecarga), E.030 (PGA = Z·S), E.050 16.2.9 (K0 del EMS), E.060 9.2.3, 10.5, 11, 11.7 (cortante-fricción), 14.3.`),
+**Normas:** RNE NTE E.020 (sobrecarga), E.030 (PGA = Z·S), E.050 16.2.9 (K0 del EMS), E.060 9.2.5, 10.5, 11, 11.7 (cortante-fricción), 14.3.`),
     calc(`# Datos
 hs = 3.20 m // Altura del muro entre el cimiento y la losa del primer piso
-tw = 0.25 m // Espesor del muro
+tw = 0.30 m // Espesor del muro
 gammas = 1.90 tonf/m^3 // Peso unitario del suelo retenido
 phis = 30 deg // Fricción del suelo
 OCR = 1 // Relación de sobreconsolidación (relleno normalmente consolidado)
@@ -420,14 +423,14 @@ pE = K0*gammas*hs // Presión del suelo en la base (triangular)
 pQ = K0*ws // Presión de la sobrecarga (uniforme)
 pS = PGA*gammas*hs // Incremento sísmico uniforme para muros rígidos (Wood 1973), kh = PGA
 ## Cargas últimas por metro (franja de 1 m)
-wE1 = 1.7*pE*1 m -> tonf/m // U1 = 1.7 CE (E.060 9.2.3)
+wE1 = 1.7*pE*1 m -> tonf/m // U1 = 1.7 CE (E.060 9.2.5)
 wQ1 = 1.7*pQ*1 m -> tonf/m
-wE2 = 1.25*pE*1 m -> tonf/m // U2 = 1.25 CE + 1.0 CS
+wE2 = 1.7*pE*1 m -> tonf/m // U2 = 1.7 CE + 1.0 CS (E.060 9.2.5 + 9.2.3; ACI 318-19 5.3.8)
 wS2 = 1.0*(pS + 0.5*pQ)*1 m -> tonf/m // Sismo + 50 % de la sobrecarga
 Ec = 15000*sqrtfc(fc) // Módulo de elasticidad (E.060 8.5)
 Iw = 1 m*tw^3/12 // Inercia de la franja`),
     { type: 'beam', tramos: 'hs', apoyos: 'A E', E: 'Ec', I: 'Iw', cargas: 'T 1 0 wE1\nU 1 wQ1', titulo: 'Combinación U1 = 1.7 CE: franja de muro (x = 0 en la losa, x = hs en el cimiento)' },
-    { type: 'beam', tramos: 'hs', apoyos: 'A E', E: 'Ec', I: 'Iw', cargas: 'T 1 0 wE2\nU 1 wS2', sufijo: 's', titulo: 'Combinación U2 = 1.25 CE + 1.0 CS (Wood)' },
+    { type: 'beam', tramos: 'hs', apoyos: 'A E', E: 'Ec', I: 'Iw', cargas: 'T 1 0 wE2\nU 1 wS2', sufijo: 's', titulo: 'Combinación U2 = 1.7 CE + 1.0 CS (Wood)' },
     calc(`# Diseño
 Mub = max(abs(Mneg), abs(Mneg_s))/(1 m) -> tonf*m/m // Momento en el empotramiento (tracción en la cara del suelo)
 Mup = max(Mpos, Mpos_s)/(1 m) -> tonf*m/m // Momento positivo máximo (tracción en la cara interior)

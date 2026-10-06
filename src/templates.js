@@ -1055,7 +1055,7 @@ fy = 4200 kgf/cm^2 // Fluencia del acero`),
 
 // Orden de categorías en la galería de plantillas
 export const CATEGORIES = [
-  'General', 'Cargas y combinaciones', 'Análisis estructural',
+  'General', 'Cargas y combinaciones', 'Análisis estructural', 'Dinámica estructural',
   'Sismo — Perú', 'Sismo — Chile', 'Sismo — Japón', 'Sismo — Internacional',
   'Concreto armado', 'Concreto — normas extranjeras', 'Cimentaciones', 'Geotecnia', 'Muros de contención',
   'Puentes', 'Acero estructural', 'Albañilería', 'Madera y tierra', 'Estructuras especiales',

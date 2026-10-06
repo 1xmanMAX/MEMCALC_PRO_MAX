@@ -9,3 +9,4 @@ import './bridges.js';
 import './steel.js';
 import './analysis.js';
 import './masonry.js';
+import './dynamics.js';

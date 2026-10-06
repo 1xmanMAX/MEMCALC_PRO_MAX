@@ -39,6 +39,8 @@ Reglas importantes:
   Use nombres cortos y descriptivos. No use como variable un nombre de unidad que se use después
   (`m`, `cm`, `s`, `N`, `t`, `g`, `h` es válido pero ojo con `in`, `ft`, `kip`, `Pa`, `L` sí se puede).
 - Unidades: `mm cm m in ft`, `kgf tonf N kN kip lbf`, `kgf/cm^2 tonf/m^2 Pa kPa MPa psi ksi`, `deg rad`, `s`.
+- **Nunca** nombre una variable igual a una unidad que se use después en el documento (`s`, `m`, `N`, `t`, `g`, `h`, `kg`, `Pa`, `b`…): la variable tapa la unidad y las expresiones como `0.5 s` dejan de funcionar. Use `sep`, `esp`, `hz`, etc.
+- Nombres con prefijo griego corto (`pi`, `mu`, `nu`, `xi`, `eta`, `rho`, `tau`, `phi`, `psi`, `chi`) seguidos de 3+ minúsculas no se convierten a griego salvo sufijos comunes (`max`, `min`, `req`, `adm`…): `phimax`→φ_max, `pisos`→pisos.
 - `sqrtfc(fc)` devuelve √f'c en kgf/cm² (fórmulas empíricas E.060/ACI en kgf-cm). `sqrtMPa(fc)` en MPa.
 - `Ab(n)`, `db(n)`: área/diámetro de varilla #n (ASTM). `Abmm(12)`.
 - `roundup(x, 5 cm)`, `rounddown(x, 2.5 cm)`.

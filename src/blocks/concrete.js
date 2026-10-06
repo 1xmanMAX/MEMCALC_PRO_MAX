@@ -144,35 +144,54 @@ export function curveAt(sec, th, N = 150, axis = null) {
   pts.push({ P: -sec.fy * sec.Ast, Mx: Tx, My: Ty, M: axis === 'x' ? Tx : axis === 'y' ? Ty : Tx * ux + Ty * uy, c: 0, et: 1, phi: 0.9 });
   const capP = sec.phic * sec.Pnmax;
   const des = pts.map(p => ({ P: Math.min(p.phi * p.P, capP), Pu: p.phi * p.P, M: p.phi * p.M, Mx: p.phi * p.Mx, My: p.phi * p.My, c: p.c, phi: p.phi }));
-  return { th, G, pts, des, Pb, cb, Plim };
+  return { sec, th, G, pts, des, Pb, cb, Plim, axis };
 }
-// M en una curva (puntos {P, M}) para un nivel P; devuelve el mayor |M| entre los cruces (o null)
-function mAtP(arr, P, key = 'P') {
+// Estado exacto para una profundidad c (c = ∞ → compresión uniforme, c = 0 → tracción pura)
+function stAt(cur, c) {
+  const { sec, G } = cur;
+  const cc = isFinite(c) ? Math.max(c, G.D * 1e-7) : G.D * 1e5;
+  const st = stateAt(sec, G, cc);
+  st.phi = phiOf(sec, st, cur.Plim);
+  st.M = cur.axis === 'x' ? st.Mx : cur.axis === 'y' ? st.My : st.Mx * G.ux + st.My * G.uy;
+  return st;
+}
+// M exacto para un nivel de carga P (nominal: design = false; de diseño φPn = P: design = true).
+// Se ubica el tramo de la curva discretizada que contiene P y se resuelve c por bisección
+// sobre la compatibilidad de deformaciones (sin error de interpolación lineal).
+function exactAtP(cur, P, design = false) {
+  const arr = cur.pts, val = (st) => (design ? st.phi * st.P : st.P);
   let best = null;
   for (let i = 0; i < arr.length - 1; i++) {
-    const a = arr[i], b = arr[i + 1];
-    if ((P - a[key]) * (P - b[key]) <= 0 && a[key] !== b[key]) {
-      const t = (P - a[key]) / (b[key] - a[key]), m = a.M + t * (b.M - a.M), cc = isFinite(a.c) && isFinite(b.c) ? a.c + t * (b.c - a.c) : (isFinite(b.c) ? b.c : a.c);
-      if (best === null || Math.abs(m) > Math.abs(best.M)) best = { M: m, c: cc };
+    const a = arr[i], b = arr[i + 1], va = design ? a.phi * a.P : a.P, vb = design ? b.phi * b.P : b.P;
+    if ((P - va) * (P - vb) > 0 || va === vb) continue;
+    let lo = a.c, hi = b.c, flo = va, st = null;
+    if (!isFinite(lo)) lo = cur.G.D * 1e5;
+    for (let k = 0; k < 64; k++) {
+      const c = Math.sqrt(Math.max(lo, 1e-12) * Math.max(hi, 1e-12)); st = stAt(cur, c);
+      if ((val(st) - P) * (flo - P) > 0) { lo = c; flo = val(st); } else hi = c;
+      if (Math.abs(hi - lo) <= 1e-9 * Math.max(1, lo)) break;
     }
+    const r = { M: design ? st.phi * st.M : st.M, c: st.c, phi: st.phi, P: st.P };
+    if (best === null || Math.abs(r.M) > Math.abs(best.M)) best = r;
   }
   return best;
 }
-// P para una excentricidad e = M/P (lado de la curva), nominal y de diseño
+// P para una excentricidad e = M/P (lado de la curva), nominal y φ asociado: bisección exacta en c
 function pAtE(cur, e) {
   const pts = cur.pts, ae = Math.abs(e);
+  const ecc = (st) => (st.P > 0 ? Math.abs(st.M) / st.P : Infinity);
   for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i]; let b = pts[i + 1];
+    const a = pts[i], b = pts[i + 1];
     if (!(a.P > 0)) break;
-    const last = b.P <= 0;
-    if (last) { const t0 = a.P / (a.P - b.P); b = { P: 0, M: a.M + t0 * (b.M - a.M), phi: a.phi + t0 * (b.phi - a.phi) }; }
     const ea = Math.abs(a.M) / a.P, eb = b.P > 0 ? Math.abs(b.M) / b.P : Infinity;
     if (ae >= ea && ae <= eb) {
-      let lo = 0, hi = 1, P = a.P, ph = a.phi;
-      for (let k = 0; k < 60; k++) { const t = (lo + hi) / 2; P = a.P + t * (b.P - a.P); const M = a.M + t * (b.M - a.M); ph = a.phi + t * (b.phi - a.phi); if (Math.abs(M) / Math.max(P, 1e-12) < ae) lo = t; else hi = t; }
-      return { Pn: P, phi: ph };
+      let lo = isFinite(a.c) ? a.c : cur.G.D * 1e5, hi = b.c, st = null;
+      for (let k = 0; k < 64; k++) {
+        const c = Math.sqrt(Math.max(lo, 1e-12) * Math.max(hi, 1e-12)); st = stAt(cur, c);
+        if (ecc(st) < ae) lo = c; else hi = c;
+      }
+      return { Pn: Math.max(0, st.P), phi: st.phi };
     }
-    if (last) break;
   }
   return { Pn: 0, phi: 0.9 };
 }
@@ -321,12 +340,12 @@ function renderPMgen(b, ctx) {
   // funciones exportadas
   for (const d of dirsNeeded) {
     const cv = curves[d];
-    const capAt = (P, side) => { const r = mAtP(cv[side].des.map(p => ({ P: p.Pu, M: p.M, c: p.c })), P); return r; };
+    const capAt = (P, side) => exactAtP(cv[side], P, true);
     const tf = (P) => (math.isUnit(P) ? P.toNumber('kgf') : +P * 1000);
     setVar(ctx, 'phiMn_' + d + sfx, (P) => { const p = tf(P); if (p > capP + 1e-6) throw new Error('Pu excede φPn,max'); const r = capAt(p, 'pos'); if (!r) throw new Error('Pu fuera del diagrama'); return U(Math.abs(r.M) / 1e5, 'tonf*m'); });
     setVar(ctx, 'phiMnneg_' + d + sfx, (P) => { const p = tf(P); const r = capAt(p, 'neg'); if (!r || p > capP + 1e-6) throw new Error('Pu fuera del diagrama'); return U(Math.abs(r.M) / 1e5, 'tonf*m'); });
-    setVar(ctx, 'Mn_' + d + sfx, (P) => { const p = tf(P); const r1 = mAtP(cv.pos.pts, p), r2 = mAtP(cv.neg.pts, p); if (!r1 && !r2) throw new Error('P fuera del diagrama nominal'); return U(Math.max(r1 ? Math.abs(r1.M) : 0, r2 ? Math.abs(r2.M) : 0) / 1e5, 'tonf*m'); });
-    setVar(ctx, 'c_' + d + sfx, (P) => { const p = tf(P); const r1 = mAtP(cv.pos.pts, p), r2 = mAtP(cv.neg.pts, p); if (!r1 && !r2) throw new Error('P fuera del diagrama nominal'); return U(Math.max(r1 ? r1.c : 0, r2 ? r2.c : 0), 'cm'); });
+    setVar(ctx, 'Mn_' + d + sfx, (P) => { const p = tf(P); const r1 = exactAtP(cv.pos, p), r2 = exactAtP(cv.neg, p); if (!r1 && !r2) throw new Error('P fuera del diagrama nominal'); return U(Math.max(r1 ? Math.abs(r1.M) : 0, r2 ? Math.abs(r2.M) : 0) / 1e5, 'tonf*m'); });
+    setVar(ctx, 'c_' + d + sfx, (P) => { const p = tf(P); const r1 = exactAtP(cv.pos, p), r2 = exactAtP(cv.neg, p); if (!r1 && !r2) throw new Error('P fuera del diagrama nominal'); return U(Math.max(r1 ? r1.c : 0, r2 ? r2.c : 0), 'cm'); });
     setVar(ctx, 'Pn_' + d + sfx, (e) => { const ee = math.isUnit(e) ? e.toNumber('cm') : +e; const r = pAtE(ee >= 0 ? cv.pos : cv.neg, ee); return U(r.Pn / 1000, 'tonf'); });
     setVar(ctx, 'phiPn_' + d + sfx, (e) => { const ee = math.isUnit(e) ? e.toNumber('cm') : +e; const r = pAtE(ee >= 0 ? cv.pos : cv.neg, ee); return U(Math.min(r.phi * r.Pn, capP) / 1000, 'tonf'); });
     setVar(ctx, 'Pb_' + d + sfx, U(Math.max(cv.pos.Pb, cv.neg.Pb) / 1000, 'tonf'));
@@ -351,7 +370,7 @@ function renderPMgen(b, ctx) {
     const cv = curves[dir];
     dem.forEach(d => {
       const P = d.P * 1000, side = d.M >= 0 ? 'pos' : 'neg';
-      const r = mAtP(cv[side].des.map(p => ({ P: p.Pu, M: p.M, c: p.c })), P);
+      const r = exactAtP(cv[side], P, true);
       d.cap = r ? Math.abs(r.M) / 1e5 : null;
       if (P > capP + 1e-6 || P < Pt - 1e-6 || !r) d.dc = Infinity;
       else if (Math.abs(d.M) < 1e-9) d.dc = P >= 0 ? P / capP : P / Pt;
