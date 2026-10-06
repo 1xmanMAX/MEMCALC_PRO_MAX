@@ -4,22 +4,22 @@
 // =====================================================================
 import { math, evalParam, evalList, fmtPlain, valTex, K, esc, displayUnit, BARS, richText, symTex, interp } from './engine.js';
 
-const C = { ink: '#1b2733', grid: '#e3e8ef', axis: '#8a96a3', blue: '#1f6feb', blueF: 'rgba(31,111,235,.16)', red: '#d1242f', redF: 'rgba(209,36,47,.15)', green: '#1a7f37', greenF: 'rgba(26,127,55,.15)', orange: '#d4730c', conc: '#e9ecef', soil: '#c9a46a', steel: '#24292f' };
-const f2 = (x, d = 2) => fmtPlain(x, d);
-const T = (x, y, s, o = {}) => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${o.fs || 11}" fill="${o.c || C.ink}" text-anchor="${o.a || 'middle'}"${o.b ? ' font-weight="600"' : ''}${o.r ? ` transform="rotate(${o.r} ${x.toFixed(1)} ${y.toFixed(1)})"` : ''} font-family="Inter,Segoe UI,Arial">${esc(s)}</text>`;
-const Lne = (x1, y1, x2, y2, c = C.ink, w = 1, dash = '') => `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c}" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
-function pos(o) { for (const k in o) if (!(o[k] > 0) || !isFinite(o[k])) throw new Error('El parámetro ' + k + ' debe ser mayor que cero'); }
-const svgWrap = (W, H, body, cls = '') => `<svg class="fig ${cls}" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
-const arrowDefs = `<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.ink}"/></marker><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.red}"/></marker><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#888" stroke-width="1"/></pattern><pattern id="soilp" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#e8d6b0"/><circle cx="2" cy="2" r="0.9" fill="#b08b4f"/><circle cx="6" cy="5" r="0.7" fill="#b08b4f"/></pattern></defs>`;
-function dimH(x1, x2, y, label, c = C.ink) {
+export const C = { ink: '#1b2733', grid: '#e3e8ef', axis: '#8a96a3', blue: '#1f6feb', blueF: 'rgba(31,111,235,.16)', red: '#d1242f', redF: 'rgba(209,36,47,.15)', green: '#1a7f37', greenF: 'rgba(26,127,55,.15)', orange: '#d4730c', conc: '#e9ecef', soil: '#c9a46a', steel: '#24292f' };
+export const f2 = (x, d = 2) => fmtPlain(x, d);
+export const T = (x, y, s, o = {}) => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${o.fs || 11}" fill="${o.c || C.ink}" text-anchor="${o.a || 'middle'}"${o.b ? ' font-weight="600"' : ''}${o.r ? ` transform="rotate(${o.r} ${x.toFixed(1)} ${y.toFixed(1)})"` : ''} font-family="Inter,Segoe UI,Arial">${esc(s)}</text>`;
+export const Lne = (x1, y1, x2, y2, c = C.ink, w = 1, dash = '') => `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c}" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
+export function pos(o) { for (const k in o) if (!(o[k] > 0) || !isFinite(o[k])) throw new Error('El parámetro ' + k + ' debe ser mayor que cero'); }
+export const svgWrap = (W, H, body, cls = '') => `<svg class="fig ${cls}" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
+export const arrowDefs = `<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.ink}"/></marker><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.red}"/></marker><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#888" stroke-width="1"/></pattern><pattern id="soilp" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#e8d6b0"/><circle cx="2" cy="2" r="0.9" fill="#b08b4f"/><circle cx="6" cy="5" r="0.7" fill="#b08b4f"/></pattern></defs>`;
+export function dimH(x1, x2, y, label, c = C.ink) {
   return Lne(x1, y, x2, y, c, 0.8) + Lne(x1, y - 4, x1, y + 4, c, 0.8) + Lne(x2, y - 4, x2, y + 4, c, 0.8) +
     `<path d="M${x1},${y} l6,-2.5 v5 z M${x2},${y} l-6,-2.5 v5 z" fill="${c}"/>` + T((x1 + x2) / 2, y - 4, label, { fs: 10, c });
 }
-function dimV(x, y1, y2, label, c = C.ink, side = -1) {
+export function dimV(x, y1, y2, label, c = C.ink, side = -1) {
   return Lne(x, y1, x, y2, c, 0.8) + Lne(x - 4, y1, x + 4, y1, c, 0.8) + Lne(x - 4, y2, x + 4, y2, c, 0.8) +
     `<path d="M${x},${y1} l-2.5,6 h5 z M${x},${y2} l-2.5,-6 h5 z" fill="${c}"/>` + T(x + side * 5, (y1 + y2) / 2, label, { fs: 10, c, r: -90 });
 }
-function niceTicks(min, max, n = 5) {
+export function niceTicks(min, max, n = 5) {
   if (!isFinite(min) || !isFinite(max)) return [];
   if (min === max) { min -= 1; max += 1; }
   const span = max - min, step0 = span / n, mag = 10 ** Math.floor(Math.log10(step0));
@@ -31,7 +31,7 @@ export function caption(ctx, text) {
   ctx.fig = (ctx.fig || 0) + 1;
   return `<div class="cap">Figura ${ctx.fig}${text ? ': ' + richText(text, ctx.scope, true) : ''}</div>`;
 }
-function setVar(ctx, name, v) { ctx.scope.set(name, v); }
+export function setVar(ctx, name, v) { ctx.scope.set(name, v); }
 
 // =====================================================================
 //  1) VIGA CONTINUA — Método de rigidez (FEM) con alternancia de CV
@@ -77,7 +77,7 @@ function wAt(dist, x, side) {
   for (const d of dist) { const xx = x + e; if (xx > d.x1 && xx < d.x2) w += d.w1 + (d.w2 - d.w1) * (x - d.x1) / (d.x2 - d.x1); }
   return w;
 }
-function solveBeam(X, sup, EI, loads, activeCV, nEl = 30) {
+export function solveBeam(X, sup, EI, loads, activeCV, nEl = 30) {
   const { dist, pts, mom } = expandLoads(loads, X, activeCV);
   const Ltot = X[X.length - 1];
   let xs = new Set(X.map(v => +v.toFixed(9)));
@@ -299,7 +299,7 @@ export function blockBeam(b, ctx) {
 // =====================================================================
 //  2) SECCIÓN DE CONCRETO ARMADO (dibujo)
 // =====================================================================
-function parseBars(s) {
+export function parseBars(s) {
   const out = []; if (!s) return out;
   const re = /(\d+)\s*(?:#|ø|φ|Ø)\s*(\d+(?:\/\d+)?)\s*("|mm)?/g; let m;
   while ((m = re.exec(s))) {

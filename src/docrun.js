@@ -1,5 +1,8 @@
 // Ejecuta un documento completo -> HTML de la memoria + entradas + verificaciones
 import { runCalc, richText, settings, esc, K, fmtPlain, errEs, math } from './engine.js';
+import './norms/index.js';
+import './blocks/index.js';
+import { BLOCKS } from './blockreg.js';
 import { blockBeam, blockSection, blockPM, blockFooting, blockWall, blockSpectrum, blockPlot, blockTable, caption } from './blocks.js';
 
 const GRAPH = { beam: blockBeam, section: blockSection, pm: blockPM, footing: blockFooting, wall: blockWall, spectrum: blockSpectrum, plot: blockPlot, table: blockTable };
@@ -34,6 +37,8 @@ export function runDoc(doc) {
         h = hd + '\u0001SUMMARY\u0001';
       }
       else if (GRAPH[b.type]) h = GRAPH[b.type](b, ctx);
+      else if (BLOCKS[b.type]) h = BLOCKS[b.type].render(b, ctx);
+      else throw new Error('Tipo de bloque desconocido: ' + b.type);
     } catch (e) {
       ctx.errors.push({ block: b.id, line: 0, msg: errEs(e) });
       h = `<div class="ln lerr"><span>⚠ ${esc(errEs(e))}</span></div>`;

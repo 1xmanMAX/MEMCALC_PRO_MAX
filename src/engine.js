@@ -132,12 +132,41 @@ function e030T(vs, w) {
 }
 function truthy(c) { return math.isUnit(c) ? c.value !== 0 : !!c; }
 
-const CUSTOM_FN = new Set(['SE030', 'TpE030', 'TlE030', 'CE030d', 'RtBSL', 'AiBSL', 'FsBSL', 'FeBSL', 'SaASCE7', 'CuASCE7', 'SdEC8', 'lambdasACI', 'Ab', 'db', 'Abmm', 'MtruckHL93', 'MtandemHL93', 'MlaneHL93', 'VtruckHL93', 'VtandemHL93', 'VlaneHL93', 'CE030', 'roundup', 'rounddown']);
-const FN_TEX = {
+export const CUSTOM_FN = new Set(['SE030', 'TpE030', 'TlE030', 'CE030d', 'RtBSL', 'AiBSL', 'FsBSL', 'FeBSL', 'SaASCE7', 'CuASCE7', 'SdEC8', 'lambdasACI', 'Ab', 'db', 'Abmm', 'MtruckHL93', 'MtandemHL93', 'MlaneHL93', 'VtruckHL93', 'VtandemHL93', 'VlaneHL93', 'CE030', 'roundup', 'rounddown']);
+export const FN_TEX = {
   Ab: 'A_{b}', db: 'd_{b}', Abmm: 'A_{b}', MtruckHL93: 'M_{\\mathrm{cami\\acute{o}n}}', MtandemHL93: 'M_{\\mathrm{t\\acute{a}ndem}}',
   MlaneHL93: 'M_{\\mathrm{carril}}', VtruckHL93: 'V_{\\mathrm{cami\\acute{o}n}}', VtandemHL93: 'V_{\\mathrm{t\\acute{a}ndem}}',
   VlaneHL93: 'V_{\\mathrm{carril}}', CE030: 'C', CE030d: 'C', SE030: 'S', TpE030: 'T_P', TlE030: 'T_L', RtBSL: 'R_t', AiBSL: 'A_i', FsBSL: 'F_s', FeBSL: 'F_e', SaASCE7: 'S_a', CuASCE7: 'C_u', SdEC8: 'S_d', lambdasACI: '\\lambda_s', roundup: '\\mathrm{redondear}\\uparrow', rounddown: '\\mathrm{redondear}\\downarrow',
 };
+
+// =====================================================================
+//  Registro de funciones normativas (módulos en src/norms/*)
+//  defineFns({ nombre: fn | { fn, tex, desc, cat } })
+//   - fn recibe valores math.js (números o Unit) y devuelve número o Unit
+//   - tex: símbolo LaTeX con que se muestra la función en la memoria
+//   - desc: descripción corta para el autocompletado y la ayuda
+// =====================================================================
+export const FN_DOCS = [];
+export function defineFns(defs, cat = '') {
+  const imp = {};
+  for (const [name, d] of Object.entries(defs)) {
+    const o = typeof d === 'function' ? { fn: d } : d;
+    imp[name] = o.fn;
+    CUSTOM_FN.add(name);
+    if (o.tex) FN_TEX[name] = o.tex;
+    const k = FN_DOCS.findIndex(x => x.name === name); if (k >= 0) FN_DOCS.splice(k, 1);
+    FN_DOCS.push({ name, desc: o.desc || '', args: o.args || '', cat: o.cat || cat });
+  }
+  math.import(imp, { override: true });
+}
+// utilidades para módulos normativos
+export const toNum = (x, u) => (math.isUnit(x) ? (u ? x.toNumber(u) : x.value) : (typeof x === 'number' ? x : Number(x)));
+export const mkUnit = (v, u) => math.unit(v, u);
+export function interp1(x, xs, ys, clamp = true) {
+  if (x <= xs[0]) return clamp ? ys[0] : ys[0] + (ys[1] - ys[0]) * (x - xs[0]) / (xs[1] - xs[0]);
+  for (let i = 1; i < xs.length; i++) if (x <= xs[i]) return ys[i - 1] + (ys[i] - ys[i - 1]) * (x - xs[i - 1]) / (xs[i] - xs[i - 1]);
+  const n = xs.length - 1; return clamp ? ys[n] : ys[n - 1] + (ys[n] - ys[n - 1]) * (x - xs[n - 1]) / (xs[n] - xs[n - 1]);
+}
 
 // =====================================================================
 //  Formato de números, unidades y símbolos

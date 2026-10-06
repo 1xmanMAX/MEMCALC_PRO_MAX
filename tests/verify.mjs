@@ -1,4 +1,5 @@
 // Pruebas de validación de ingeniería: resultados contra soluciones teóricas / tablas
+import '../src/norms/index.js';
 import { runCalc, math } from '../src/engine.js';
 import { blockBeam, blockPM } from '../src/blocks.js';
 import { runDoc } from '../src/docrun.js';

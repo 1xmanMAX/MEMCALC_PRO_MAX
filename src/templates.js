@@ -2,7 +2,9 @@
 const calc = (src) => ({ type: 'calc', src: src.trim() });
 const text = (src) => ({ type: 'text', src: src.trim() });
 
-export const TEMPLATES = [
+import { EXTRA_TEMPLATES } from './templates/index.js';
+
+const BASE_TEMPLATES = [
   // ------------------------------------------------------------------
   {
     id: 'viga', normas: 'RNE — NTE E.060 Concreto Armado', cat: 'Concreto armado', name: 'Viga — flexión y cortante', icon: 'beam',
@@ -360,7 +362,7 @@ check VEd <= max(VRdc, VRds) // Resistencia a cortante`),
   },
   // ------------------------------------------------------------------
   {
-    id: 'portante', normas: 'RNE — NTE E.050 Suelos y Cimentaciones', cat: 'Cimentaciones', name: 'Capacidad portante del suelo', icon: 'soil',
+    id: 'portante', normas: 'RNE — NTE E.050 Suelos y Cimentaciones', cat: 'Geotecnia', name: 'Capacidad portante del suelo', icon: 'soil',
     desc: 'Ecuación general de capacidad de carga (Meyerhof/Vesic) con factores de forma y profundidad; gráfico qadm vs ancho B.',
     titulo: 'Capacidad portante admisible del terreno',
     blocks: [
@@ -393,7 +395,7 @@ qadm = qu/FS -> kgf/cm^2 // Capacidad admisible`),
   },
   // ------------------------------------------------------------------
   {
-    id: 'muro', normas: 'RNE — NTE E.020, E.050, E.060', cat: 'Cimentaciones', name: 'Muro de contención en voladizo', icon: 'wall',
+    id: 'muro', normas: 'RNE — NTE E.020, E.050, E.060', cat: 'Muros de contención', name: 'Muro de contención en voladizo', icon: 'wall',
     desc: 'Empuje de Rankine con sobrecarga, estabilidad al volteo y deslizamiento, presiones en la base y diseño de la pantalla.',
     titulo: 'Diseño de muro de contención en voladizo',
     blocks: [
@@ -507,7 +509,7 @@ st = min(5*hf, 40 cm) // Espaciamiento máximo
   },
   // ------------------------------------------------------------------
   {
-    id: 'sismo', normas: 'RNE — NTE E.030 Diseño Sismorresistente (modificada por RM 183-2026-VIVIENDA)', cat: 'Análisis sísmico', name: 'Análisis sísmico estático E.030-2026', icon: 'quake',
+    id: 'sismo', normas: 'RNE — NTE E.030 Diseño Sismorresistente (modificada por RM 183-2026-VIVIENDA)', cat: 'Sismo — Perú', name: 'Análisis sísmico estático E.030-2026', icon: 'quake',
     desc: 'Versión vigente 2026: suelo por Vs30 con S, TP y TL interpolados, R0 actualizados (EMDL 3.5), irregularidades extremas, C/R ≥ 0.11, distribución en altura y derivas por material.',
     titulo: 'Análisis sísmico estático — NTE E.030 (2026)',
     blocks: [
@@ -556,7 +558,7 @@ check max(deriva) <= dlim // Distorsión de entrepiso`),
   },
   // ------------------------------------------------------------------
   {
-    id: 'asce7', settings: { sys: 'si' }, normas: 'ASCE/SEI 7-22 Minimum Design Loads (Cap. 11 y 12)', cat: 'Análisis sísmico', name: 'Sismo ELF — ASCE 7-22 (EE. UU.)', icon: 'quake',
+    id: 'asce7', settings: { sys: 'si' }, normas: 'ASCE/SEI 7-22 Minimum Design Loads (Cap. 11 y 12)', cat: 'Sismo — Internacional', name: 'Sismo ELF — ASCE 7-22 (EE. UU.)', icon: 'quake',
     desc: 'Fuerza lateral equivalente: Ta = Ct·hn^x, límite Cu·Ta, Cs con límites mínimos, distribución con exponente k, derivas con Cd e Ie.',
     titulo: 'Análisis sísmico ELF — ASCE 7-22',
     blocks: [
@@ -604,7 +606,7 @@ check max(Delta ./ hsx) <= Dlim // Deriva de entrepiso`),
   },
   // ------------------------------------------------------------------
   {
-    id: 'japon', settings: { sys: 'si' }, normas: 'Building Standard Law of Japan (Orden de Aplicación, Art. 88) · Notificación MOC 1793', cat: 'Análisis sísmico', name: 'Sismo — Norma japonesa (BSL)', icon: 'quake',
+    id: 'japon', settings: { sys: 'si' }, normas: 'Building Standard Law of Japan (Orden de Aplicación, Art. 88) · Notificación MOC 1793', cat: 'Sismo — Japón', name: 'Sismo — Norma japonesa (BSL)', icon: 'quake',
     desc: 'Ci = Z·Rt·Ai·Co con distribución Ai, primera fase (Co = 0.2, deriva ≤ 1/200) y resistencia última Qun = Ds·Fes·Qud (Co = 1.0).',
     titulo: 'Fuerza sísmica según la Building Standard Law de Japón',
     blocks: [
@@ -646,7 +648,7 @@ check min(Qu ./ Qun) >= 1 // Qu ≥ Qun en todos los entrepisos`),
   },
   // ------------------------------------------------------------------
   {
-    id: 'espectros', normas: 'NTE E.030-2026 · ASCE 7-22 · EN 1998-1 (Eurocódigo 8) · Building Standard Law (Japón)', cat: 'Análisis sísmico', name: 'Comparativo de espectros (Perú · EE. UU. · Europa · Japón)', icon: 'spectrum',
+    id: 'espectros', normas: 'NTE E.030-2026 · ASCE 7-22 · EN 1998-1 (Eurocódigo 8) · Building Standard Law (Japón)', cat: 'Sismo — Internacional', name: 'Comparativo de espectros (Perú · EE. UU. · Europa · Japón)', icon: 'spectrum',
     desc: 'Grafica en un mismo eje los espectros de diseño reducidos de cuatro normas y compara la demanda para el periodo de la estructura.',
     titulo: 'Comparación de espectros de diseño sísmico',
     blocks: [
@@ -687,7 +689,7 @@ SaJP = Ds*Zj*RtBSL(Te, Tc)*1.0 // Coeficiente de corte último requerido`),
   },
   // ------------------------------------------------------------------
   {
-    id: 'sismo2018', normas: 'RNE — NTE E.030-2018 Diseño Sismorresistente', cat: 'Análisis sísmico', name: 'Sismo estático E.030-2018 (proyectos en transición)', icon: 'quake',
+    id: 'sismo2018', normas: 'RNE — NTE E.030-2018 Diseño Sismorresistente', cat: 'Sismo — Perú', name: 'Sismo estático E.030-2018 (proyectos en transición)', icon: 'quake',
     desc: 'Parámetros sísmicos, periodo fundamental, cortante basal, distribución de fuerzas por nivel y espectro de diseño (NTE E.030-2018).',
     titulo: 'Análisis sísmico estático — NTE E.030',
     blocks: [
@@ -878,7 +880,7 @@ lc_e = max(roundup(sqrt(Ac_e), 5 cm), 25 cm)
   },
   // ------------------------------------------------------------------
   {
-    id: 'combos', normas: 'RNE — NTE E.060 Art. 9.2', cat: 'Análisis sísmico', name: 'Combinaciones de carga E.060', icon: 'table',
+    id: 'combos', normas: 'RNE — NTE E.060 Art. 9.2', cat: 'Cargas y combinaciones', name: 'Combinaciones de carga E.060', icon: 'table',
     desc: 'Cinco combinaciones de diseño de la NTE E.060 (Art. 9.2) para P, M y V, con la envolvente.',
     titulo: 'Combinaciones de carga — NTE E.060',
     blocks: [
@@ -1050,3 +1052,16 @@ fy = 4200 kgf/cm^2 // Fluencia del acero`),
     ],
   },
 ];
+
+// Orden de categorías en la galería de plantillas
+export const CATEGORIES = [
+  'General', 'Cargas y combinaciones', 'Análisis estructural',
+  'Sismo — Perú', 'Sismo — Chile', 'Sismo — Japón', 'Sismo — Internacional',
+  'Concreto armado', 'Concreto — normas extranjeras', 'Cimentaciones', 'Geotecnia', 'Muros de contención',
+  'Puentes', 'Acero estructural', 'Albañilería', 'Madera y tierra', 'Estructuras especiales',
+];
+export const TEMPLATES = [...BASE_TEMPLATES, ...EXTRA_TEMPLATES];
+{
+  const seen = new Set();
+  for (const t of TEMPLATES) { if (seen.has(t.id)) throw new Error('Plantilla duplicada: ' + t.id); seen.add(t.id); }
+}

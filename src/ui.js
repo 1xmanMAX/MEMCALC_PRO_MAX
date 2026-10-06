@@ -2,8 +2,9 @@
 //  MemoriaCalc — interfaz de usuario
 // =====================================================================
 import { runDoc } from './docrun.js';
-import { TEMPLATES } from './templates.js';
-import { K, esc, math, valText } from './engine.js';
+import { TEMPLATES, CATEGORIES } from './templates.js';
+import { K, esc, math, valText, FN_DOCS, CUSTOM_FN } from './engine.js';
+import { BLOCKS } from './blockreg.js';
 
 const VERSION = '1.0.0';
 const $ = (s, r = document) => r.querySelector(s);
@@ -130,6 +131,10 @@ const TYPES = {
   pagebreak: { name: 'Salto de página', icon: 'pagebreak' },
   summary: { name: 'Resumen de verificaciones', icon: 'summary', fields: [F('titulo', 'Título de la sección (vacío = sin título)', 'Resumen de verificaciones')], hint: 'Tabla automática con todas las verificaciones del documento, su relación demanda/capacidad y estado.' },
 };
+
+for (const [k, v] of Object.entries(BLOCKS)) TYPES[k] = { name: v.name || k, icon: v.icon || 'calc', iconSvg: v.iconSvg, fields: v.fields || [], hint: v.hint, def: v.def, group: v.group };
+const icon = (T) => (T && T.iconSvg) || I[T && T.icon] || I.calc;
+const BASE_ADD = ['calc', 'text', 'image', 'beam', 'section', 'pm', 'footing', 'wall', 'spectrum', 'plot', 'table', 'summary', 'pagebreak'];
 
 // ---------------- Estado ----------------
 let doc = null;
@@ -306,6 +311,7 @@ function setInputLine(blockId, line, fn) {
 }
 
 // ---------------- Editor de bloques ----------------
+const HL_FN = new Set(['si', 'sqrt', 'sqrtfc', 'sqrtMPa', 'max', 'min', 'abs', 'ceil', 'floor', 'round', 'sin', 'cos', 'tan', 'cot', 'asin', 'acos', 'atan', 'log', 'log10', 'exp', 'sum', 'cumsum', 'nthRoot', 'cbrt', 'mean', 'sort', 'size']);
 function hlLine(line) {
   const t = line.trimStart();
   if (!t) return esc(line);
@@ -319,7 +325,7 @@ function hlLine(line) {
     .replace(/^(\s*)([A-Za-z_][\w]*)(\s*(?:\([^)]*\))?\s*=)(?!=)/, '$1<span class="h-var">$2</span>$3')
     .replace(/(-&gt;)(.*)$/, '<span class="h-kw">$1</span><span class="h-un">$2</span>')
     .replace(/(^|[^\w.])(\d+\.?\d*(?:e[-+]?\d+)?)/gi, '$1<span class="h-num">$2</span>')
-    .replace(/\b(si|sqrt|sqrtfc|sqrtMPa|max|min|abs|ceil|floor|round|roundup|rounddown|sin|cos|tan|cot|log|exp|sum|cumsum|Ab|db|Abmm|MtruckHL93|MtandemHL93|MlaneHL93|VtruckHL93|VtandemHL93|VlaneHL93|CE030)(?=\()/g, '<span class="h-fn">$1</span>')
+    .replace(/\b([A-Za-z_]\w*)(?=\()/g, (m0, f) => (HL_FN.has(f) || CUSTOM_FN.has(f) ? '<span class="h-fn">' + f + '</span>' : f))
     .replace(/\b(tonf|tf|kgf|kN|MPa|kPa|Pa|N|kip|ksi|psi|lbf|cm|mm|m|in|ft|deg|rad|s)\b(?![^<]*>)(?=(\^\d)?(\s|\/|\*|\)|,|$|\^))/g, '<span class="h-un">$1</span>');
   return out + (cm ? `<span class="h-cm">${esc(cm)}</span>` : '');
 }
@@ -344,7 +350,7 @@ function renderBlocks() {
   const pane = $('#p-bloques');
   pane.innerHTML = '';
   doc.blocks.forEach((b, i) => { pane.appendChild(blockEl(b, i)); pane.appendChild(h(`<div class="ins"><button data-ins="${i + 1}">+ insertar aquí</button></div>`)); });
-  pane.appendChild(h(`<div class="add"><button class="btn pri addt" data-addtoggle>${I.plus}Agregar bloque</button>${['calc', 'text', 'image', 'beam', 'section', 'pm', 'footing', 'wall', 'spectrum', 'plot', 'table', 'summary', 'pagebreak'].map(t => `<button class="btn" data-add="${t}">${I[TYPES[t].icon]}${TYPES[t].name}</button>`).join('')}</div>`));
+  pane.appendChild(h(`<div class="add"><button class="btn pri addt" data-addtoggle>${I.plus}Agregar bloque</button>${[...BASE_ADD, ...Object.keys(BLOCKS)].map(t => `<button class="btn" data-add="${t}">${icon(TYPES[t])}${TYPES[t].name}</button>`).join('')}</div>`));
   pane.querySelectorAll('textarea.code').forEach(paintHL);
   pane.querySelectorAll('textarea.auto').forEach(autosize);
 }
@@ -352,7 +358,7 @@ function blockEl(b, i) {
   const T = TYPES[b.type] || { name: b.type, icon: 'calc' };
   const col = collapsed.has(b.id);
   const el = h(`<div class="bk${b.id === selId ? ' sel' : ''}${col ? ' col' : ''}" data-id="${b.id}">
-    <div class="bkh"><div class="bt" data-act="toggle">${I[T.icon]}<span>${T.name}</span><em>${esc(blockSummary(b))}</em></div>
+    <div class="bkh"><div class="bt" data-act="toggle">${icon(T)}<span>${T.name}</span><em>${esc(blockSummary(b))}</em></div>
     <div class="bb"><button data-act="up" title="Subir">${I.up}</button><button data-act="down" title="Bajar">${I.down}</button><button data-act="dup" title="Duplicar">${I.dup}</button><button data-act="del" title="Eliminar">${I.del}</button></div></div>
     <div class="bkb"></div></div>`);
   const body = el.querySelector('.bkb');
@@ -413,7 +419,7 @@ function modal(title, content, wide = true) {
   document.body.appendChild(ov); return { ov, c, close };
 }
 function showTemplates(first) {
-  const cats = [...new Set(TEMPLATES.map(t => t.cat))];
+  const cats = [...CATEGORIES.filter(c => TEMPLATES.some(t => t.cat === c)), ...new Set(TEMPLATES.map(t => t.cat).filter(c => !CATEGORIES.includes(c)))];
   const m = modal(first ? 'Bienvenido a MemoriaCalc — elija una plantilla' : 'Nueva memoria desde plantilla',
     `<p style="margin:0 0 14px;color:var(--mut);font-size:13px">Cada plantilla es una memoria completa y editable: solo cambie los datos en la pestaña <b>Datos</b> y todo se recalcula al instante.</p>` +
     `<input id="tplq" class="tplq" placeholder="Buscar plantilla (p. ej. zapata, sismo, puente)…" autocomplete="off">` +
@@ -823,6 +829,7 @@ export function start() {
 // ---------------- Autocompletado del editor ----------------
 const ac = { el: null, ta: null, items: [], sel: 0, start: 0 };
 const AC_FUN = [['sqrt', 'raíz'], ['sqrtfc', "√f'c (kgf/cm²)"], ['si', 'si(cond, a, b)'], ['max', 'máximo'], ['min', 'mínimo'], ['abs', 'valor absoluto'], ['ceil', 'redondeo arriba'], ['floor', 'redondeo abajo'], ['round', 'redondeo'], ['roundup', 'redondear ↑ a múltiplo'], ['rounddown', 'redondear ↓ a múltiplo'], ['Ab', 'área de varilla #n'], ['db', 'diámetro de varilla #n'], ['Abmm', 'área varilla mm'], ['sin', 'seno'], ['cos', 'coseno'], ['tan', 'tangente'], ['cot', 'cotangente'], ['atan', 'arcotangente'], ['log', 'ln'], ['log10', 'log10'], ['exp', 'eˣ'], ['sum', 'suma'], ['cumsum', 'suma acumulada'], ['MtruckHL93', 'M camión HL-93'], ['MtandemHL93', 'M tándem HL-93'], ['MlaneHL93', 'M carril HL-93'], ['VtruckHL93', 'V camión HL-93'], ['CE030', 'factor C E.030'], ['check', 'verificación']];
+for (const f of FN_DOCS) if (!AC_FUN.some(a => a[0] === f.name)) AC_FUN.push([f.name, f.desc || f.cat || 'función normativa']);
 const AC_UNIT = ['tonf', 'kgf', 'kN', 'N', 'MPa', 'kPa', 'kgf/cm^2', 'tonf/m^2', 'tonf/m', 'tonf*m', 'kN*m', 'kN/m', 'cm', 'mm', 'm', 'cm^2', 'm^2', 'cm^4', 'deg', 'kip', 'ksi', 'kip*ft', 'in', 'ft', 'tonf/m^3'];
 function caretXY(ta) {
   const m = document.createElement('div'); const cs = getComputedStyle(ta);
