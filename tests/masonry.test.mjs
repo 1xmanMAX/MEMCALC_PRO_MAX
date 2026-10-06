@@ -1,7 +1,7 @@
 // Pruebas de validación — módulo «masonry»
 // E.070 (ejemplo de San Bartolomé, edificio de 4 pisos), Tabla 12, E.010/JUNAC, E.080,
 // ACI 350.3-06 (Housner), PCA Circular Concrete Tanks (Tablas A-1, A-2, A-5, A-12) y placas (Timoshenko)
-import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES } from './helpers.mjs';
+import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES, math } from './helpers.mjs';
 import { shellPCA, plateFD, tankWall } from '../src/norms/masonry.js';
 
 section('E.070 — Tabla 9 y fórmulas básicas');
@@ -377,4 +377,18 @@ for (const [id, a, b] of [
   const bad = r.ctx.checks.filter(c => !c.ok), nan = r.ctx.checks.filter(c => c.ratio !== null && !Number.isFinite(+c.ratio));
   truthy(`${id} con «${b}»: ${bad.length} NO CUMPLE, ${r.ctx.errors.length} errores`, hit && bad.length > 0 && r.ctx.errors.length === 0 && nan.length === 0, r.ctx.errors.map(e => e.msg).join('; '));
 }
+
+section('Rangos usuales [mín..máx] y ejemplos de validación de las plantillas');
+for (const t of TEMPLATES.filter(x => x.id.startsWith('ma-'))) {
+  const inp = runTemplate(t.id).res.ctx.inputs, rg = inp.filter(i => i.range);
+  const out = rg.filter(i => { let v = parseFloat(i.num); if (i.range.unit && i.unit && i.range.unit !== i.unit) v = math.unit(v, i.unit).toNumber(i.range.unit); return !(v >= i.range.min && v <= i.range.max); });
+  const bad = inp.filter(i => /\.\.|\[/.test(i.label || ''));
+  truthy(`${t.id}: ${rg.length} datos con rango, valores por defecto dentro del rango, etiquetas limpias`, rg.length >= 5 && out.length === 0 && bad.length === 0, out.map(i => i.name).concat(bad.map(i => i.name)).join(', '));
+}
+truthy('Listas desplegables intactas con rango (Z, Tp, f\'c del edificio)', (() => { const inp = runTemplate('ma-edificio').res.ctx.inputs, f = (n) => inp.find(i => i.name === n);
+  return f('Z').options.length === 4 && f('Z').range.max === 0.45 && f('Tp').options.length === 4 && f('Tp').range.unit === 's' && f('fc').options.length === 2 && f('fc').range.max === 280; })());
+{ const r = runTemplate('ma-edificio');
+  near('San Bartolomé (2006): Fa = 93.8 t/m² en los muros de soga de la plantilla (t = 13 cm, h = 2.40 m)', math.evaluate('min(FaX)', new Map(r.res.ctx.scope)).toNumber('tonf/m^2'), 93.8, 0.001); }
+near('JUNAC Tabla 9.2: Ck grupo B = 18.34 en la plantilla de columna', runTemplate('ma-colmadera')('Ck'), 18.34, 0.001);
+truthy('Plantillas con validacion: edificio, cerco, columna de madera y reservorio', ['ma-edificio', 'ma-cerco', 'ma-colmadera', 'ma-reservorio'].every(id => TEMPLATES.find(x => x.id === id).validacion));
 done();

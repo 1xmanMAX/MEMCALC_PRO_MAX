@@ -212,7 +212,7 @@ registerBlock('thsdof', {
     });
     const dt = rec.dt, N = rec.ag.length, dur = (N - 1) * dt;
     const pu = peakAt(R.u), pv = peakAt(R.v), pa = peakAt(R.at), pg = peakAt(rec.ag);
-    const umax = pu.v, An = w * w * umax;
+    const umax = Math.max(pu.v, R.upk || 0), An = w * w * umax;   // upk: pico también en los subpasos
     const ex = (n, v) => setVar(ctx, n + sf, v);
     ex('umax', uL(umax)); ex('tumax', math.unit(pu.i * dt, 's')); ex('vmax', math.unit(pv.v, 'm/s')); ex('amax', math.unit(pa.v, 'm/s^2'));
     ex('amax_g', pa.v / G); ex('An_g', An / G); ex('PGA', pg.v / G);
@@ -271,6 +271,7 @@ registerBlock('thsdof', {
     h += tableHtml(ctx, 'Respuesta máxima', ['Magnitud', 'Símbolo', 'Valor', 'Observación'], res);
     if (met === 'lin' && !nl) h += chkLine(ctx, dt / (R.ns || 1) / Tn <= 0.551, `\\Delta t/T_n = ${f2(dt / (R.ns || 1) / Tn, 4)} \\le 0.551`, 'Estabilidad de Newmark con aceleración lineal (Chopra Ec. 5.4.13)', dt / (R.ns || 1) / Tn / 0.551);
     const mucap = String(b.mucap || '').trim() ? scal(b.mucap, S) : 0;
+    if (nl && R.nfail > 0) h += chkLine(ctx, false, `\\text{pasos sin convergencia N-R} = ${R.nfail}`, 'Convergencia de Newton-Raphson en todos los pasos (reduzca Δt)', null);
     if (nl && mucap > 0) h += chkLine(ctx, mu <= mucap, `\\mu = ${f2(mu, 2)} \\le \\mu_{disp} = ${f2(mucap, 2)}`, 'Demanda de ductilidad ≤ ductilidad disponible', mu / mucap);
     return h;
   },
@@ -494,6 +495,11 @@ registerBlock('pushover', {
     F('r2', 'Trilineal: rigidez fisurada / inicial', '0.5'),
     F('patron', 'Patrón de cargas laterales', '', 'select', [['modal', 'Modal s = M·φ1 (EC8 / N2)'], ['triangular', 'Triangular s = m·h'], ['uniforme', 'Uniforme s = m']]),
     F('druEnd', 'Deriva de entrepiso al final de la curva (capacidad)', '0.04'),
+    F('pdelta', 'Incluir P-Δ (columna ficticia con el peso de los niveles superiores)', '', 'check'),
+    F('fP', 'P-Δ: carga de gravedad / peso sísmico', '1.0'),
+    F('drcap', 'Degradación: deriva δc/h de inicio de la rama descendente (vacío = sin degradación)', ''),
+    F('acap', 'Degradación: pendiente de la rama descendente −ac·k (ac)', '0.10'),
+    F('rescap', 'Degradación: resistencia residual / Vy', '0.20'),
     F('Sa', 'Espectro elástico Sa/g (R = 1, ζ = 5 %) en función de T', 'Z*U*CE030d(T, Tp, Tl)*S'),
     F('Tc', 'Periodo de esquina TC (fin de la meseta: TP de E.030)', 'Tp'),
     F('metodo', 'Método que gobierna el desplazamiento objetivo', '', 'select', [['N2', 'N2 (Fajfar / EC8 Anexo B)'], ['ATC40', 'ATC-40 espectro de capacidad (Proc. A)'], ['FEMA440', 'FEMA 440 linealización equivalente'], ['ASCE41', 'ASCE 41 método de coeficientes']]),
@@ -515,11 +521,19 @@ registerBlock('pushover', {
     const av = evalAny(b.alpha || '0.05', S), alpha = math.isMatrix(av) || Array.isArray(av) ? (math.isMatrix(av) ? av.toArray() : av).flat().map(Number) : Number(av);
     const fcr = String(b.fcr || '').trim() ? scal(b.fcr, S) : 0, r2 = scal(b.r2, S, 0.5);
     const druEnd = scal(b.druEnd, S, 0.04);
+    const pdelta = truthy(b.pdelta), fP = scal(b.fP, S, 1);
+    const drcap = String(b.drcap || '').trim() ? scal(b.drcap, S) : 0;
+    const capo = drcap > 0 ? { dr: drcap, ac: Math.abs(scal(b.acap, S, 0.1)), res: scal(b.rescap, S, 0.2) } : null;
     const pattern = ['modal', 'triangular', 'uniforme'].includes(b.patron) ? b.patron : 'modal';
     const Sa = makeSa(b.Sa || '0', S), Tc = evalParam(b.Tc, S, 's', 0.6);
     const type = ['A', 'B', 'C'].includes(b.tipo) ? b.tipo : 'B';
     const asit = Number(b.asitio) || 130, Cm = scal(b.Cm, S, 1);
-    const po = memo(['po', m, k, Vy, he, alpha, fcr, r2, druEnd, pattern].join('|'), () => pushoverShear({ m, k, Vy, h: he, alpha, pattern, fcr, r2, druEnd }));
+    let po;
+    try { po = memo(['po', m, k, Vy, he, alpha, fcr, r2, druEnd, pattern, pdelta, fP, JSON.stringify(capo)].join('|'), () => pushoverShear({ m, k, Vy, h: he, alpha, pattern, fcr, r2, druEnd, pdelta, fP, cap: capo })); }
+    catch (e) { if (e.unstable === undefined) throw e; return txt(esc(e.message)) + chkLine(ctx, false, `\\theta_{${e.unstable + 1}} = P/(k\\,h) \\ge 1`, 'Estabilidad elástica de entrepiso con P-Δ', null); }
+    // pendiente global solo por P-Δ (para αP-Δ de ASCE 41 Ec. 7-32): pushover elastoplástico sin degradación
+    let aPD = 0;
+    if (pdelta) { const pe = memo(['poPD', m, k, Vy, he, fcr, r2, druEnd, pattern, fP].join('|'), () => pushoverShear({ m, k, Vy, h: he, alpha: 1e-5, pattern, fcr, r2, druEnd, pdelta, fP })); const c2 = pe.curve, A = c2[c2.length - 2], B = c2[c2.length - 1]; aPD = Math.min(((B.Vb - A.Vb) / (B.d - A.d || 1)) / (c2[1].Vb / c2[1].d), 0); }
     const Gm = po.Gam, ms = po.mstar, Wt = po.Mt * G;
     const cap = po.curve.slice(1).map(q => [q.d / Gm, q.Vb / Gm / ms]);    // ADRS: Sd (m), Sa (m/s²)
     const T1 = po.modes[0].T;
@@ -528,13 +542,14 @@ registerBlock('pushover', {
     const fem = fema440ELM(cap, Sa);
     const curveG = po.curve.slice(1).map(q => [q.d, q.Vb]);
     const C0 = Gm;   // Γ1·φ_techo con φ_techo = 1 (ASCE 41 §7.4.3.3.2)
-    const cm = coefMethod(curveG, Wt, Sa, T1, C0, asit, Cm);
+    const cm = coefMethod(curveG, Wt, Sa, T1, C0, asit, Cm, { alphaPD: aPD });
     const res = { N2: n2.dt * Gm, ATC40: atc && atc.ok ? atc.dp * Gm : NaN, FEMA440: fem && fem.ok ? fem.dp * Gm : NaN, ASCE41: cm.dt };
     const met = ['N2', 'ATC40', 'FEMA440', 'ASCE41'].includes(b.metodo) ? b.metodo : 'N2';
-    const dobj = res[met];
-    if (!isFinite(dobj)) throw new Error(`Método ${met}: ${met === 'ATC40' ? atc.msg : met === 'FEMA440' ? fem.msg : 'sin solución'}`);
-    const dEnd = po.dEnd, within = dobj <= dEnd * (1 + 1e-9);
-    const stAt = (d) => { const dd = Math.min(d, dEnd); const Vb = po.VbAt(dd); return { Vb, dr: po.drifts(Vb) }; };
+    const dEnd = po.dEnd;
+    const solOk = isFinite(res[met]);    // sin punto de desempeño (ATC-40/FEMA 440 sin intersección) → NO CUMPLE
+    const dobj = solOk ? res[met] : dEnd * 1.0000001;
+    const within = solOk && dobj <= dEnd * (1 + 1e-9);
+    const stAt = (d) => po.stateAt(Math.min(d, dEnd));
     const obj = stAt(dobj);
     const drr = obj.dr.map((d, i) => d / he[i]), drMax = Math.max(...drr);
     const dyStar = n2.dy, dyRoof = dyStar * Gm, mu = dobj / dyRoof;
@@ -546,7 +561,7 @@ registerBlock('pushover', {
     const ex = (nme, v) => setVar(ctx, nme + sf, v);
     ex('dobj', uL(dobj)); ex('dN2', uL(res.N2)); if (isFinite(res.ATC40)) ex('dATC', uL(res.ATC40)); if (isFinite(res.FEMA440)) ex('dFEMA', uL(res.FEMA440)); ex('dC', uL(res.ASCE41));
     ex('Vobj', uF(obj.Vb)); ex('Tstar', math.unit(n2.Ts, 's')); ex('Fystar', uF(n2.Fy * ms)); ex('dystar', uL(n2.dy)); ex('mu', mu); ex('derivamax', drMax); ex('deriva_obj', math.matrix(drr));
-    ex('Gam', Gm); ex('mstar', math.unit(ms, 'kg')); ex('Tpo1', math.unit(T1, 's')); ex('dcap', uL(dEnd)); ex('Vyb', uF(po.ev.find(e => e.tipo === 'fluencia').Vb));
+    ex('Gam', Gm); ex('mstar', math.unit(ms, 'kg')); ex('Tpo1', math.unit(T1, 's')); ex('dcap', uL(dEnd)); const ev1 = po.ev.find(e => e.tipo === 'fluencia'); if (ev1) ex('Vyb', uF(ev1.Vb)); ex('Vbmax', uF(po.Vbmax)); ex('Te41', math.unit(cm.Te, 's'));
     if (atc && atc.ok) ex('beffATC', atc.beff / 100); if (fem && fem.ok) ex('beffFEMA', fem.beff / 100);
     if (lvl) ex('dlim_obj', lvl.lim);
     // ---------- figura 1: curva de capacidad | ADRS ----------
@@ -595,18 +610,21 @@ registerBlock('pushover', {
     let h = `<div class="figure">${svgWrap(W, ly + 50, g)}${caption(ctx, b.titulo || `Curva de capacidad (patrón ${pattern}), espectro de capacidad y puntos de desempeño`)}</div>`;
     // ---------- texto: conversión y métodos ----------
     h += txt(`Resortes de entrepiso ${fcr > 0 ? 'trilineales (fisuración en ' + K(`V_{cr} = ${f2(fcr, 2)}V_y`) + ', rigidez fisurada ' + K(`${f2(r2, 2)}k_i`) + ')' : 'bilineales'} con rigidez post-fluencia ${K('\\alpha k_i')}; para un edificio de cortante los cortantes de entrepiso son ${K('V_i = V_b\\,\\sum_{j\\ge i}s_j/\\sum s_j')} y el desplazamiento del techo ${K('u_N = \\sum_i \\delta_i(V_i)')}; la curva se obtiene por control de desplazamiento (bisección sobre ${K('V_b')}) hasta una deriva de entrepiso de ${f2(druEnd, 3)}. Forma ${K('\\boldsymbol\\Phi = \\mathbf s/\\mathbf m')} normalizada al techo: [${po.Phi.map(x => f2(x, 3)).join(', ')}]; ${K(`m^* = \\sum m_i\\Phi_i = ${f2(conv(ms, 'kg', sys() === 'us' ? 'kip*s^2/in' : sys() === 'si' ? 'tonne' : 'tonf*s^2/m'), 3)}\\;\\mathrm{${sys() === 'us' ? 'kip\\,s^2/in' : sys() === 'si' ? 't' : 'tonf\\,s^2/m'}}`)}, ${K(`\\Gamma = m^*/\\sum m_i\\Phi_i^2 = ${f2(Gm, 4)}`)}; ${K('S_d = u_N/\\Gamma')}, ${K('S_a = V_b/(\\Gamma m^*)')} (equivale a ATC-40: ${K(`PF_1\\phi_{N} = \\Gamma`)}, ${K(`\\alpha_1 = \\Gamma m^*/M = ${f2(po.alpha1, 4)}`)}). Periodo elástico ${K(`T_1 = ${f2(T1, 4)}\\;\\mathrm{s}`)}.`);
+    if (pdelta || capo) h += txt((pdelta ? `Efecto P-Δ con una columna ficticia: cada entrepiso pierde la rigidez ${K('\\theta_i = P_i/h_i')}, con ${K('P_i = ' + (fP !== 1 ? f2(fP, 2) + '\\,' : '') + 'g\\sum_{j\\ge i} m_j')}: ${K('V_i = F_i(\\delta_i) - (P_i/h_i)\\,\\delta_i')}; coeficientes de estabilidad elástica ${K('P_i/(k_ih_i)')} = [${po.theta.map((t, i) => f2(t / k[i], 4)).join(', ')}]. ` : '') + (capo ? `Degradación de resistencia: a partir de la deriva ${K(`\\delta_c/h = ${f2(capo.dr, 4)}`)} la envolvente del resorte desciende con pendiente ${K(`-${f2(capo.ac, 3)}k_i`)} hasta la resistencia residual ${K(`${f2(capo.res, 2)}V_y`)} (modelo tipo ASCE 41 / Ibarra-Krawinkler sin degradación cíclica). ` : '') + `La curva se obtiene por control de desplazamiento incremental con Newton-Raphson sobre ${K('[\\delta_1 \\dots \\delta_n, V_b]')} y la restricción ${K('\\sum\\delta_i = u_N')}; los entrepisos que no localizan descargan con ${K('k_i')}. Fin de la curva por ${po.endBy === 'resistencia' ? 'caída de la resistencia al 20 % del máximo' : po.endBy === 'convergencia' ? 'falta de convergencia' : 'deriva de entrepiso ' + f2(druEnd, 3)}; ${K(`V_{b,max} = ${f2(nF(po.Vbmax), 1)}\;\\mathrm{${lab(UF())}}`)}` + (pdelta ? `; pendiente global por P-Δ ${K(`\\alpha_{P\\text{-}\\Delta} = ${f2(aPD, 4)}`)}.` : '.'));
     const mrows = [];
     mrows.push(['N2 (EC8 Anexo B)', `${K(`F_y^* = ${f2(nF(n2.Fy * ms), 1)}`)} ${lab(UF())}; ${K(`d_y^* = ${f2(nL(n2.dy), 2)}`)}; ${K(`T^* = ${f2(n2.Ts, 4)}`)} s; ${K(`S_e(T^*) = ${f2(n2.Se / G, 4)}g`)}; ${K(`q_u = ${f2(n2.qu, 3)}`)}; ${K(`d_{et}^* = ${f2(nL(n2.det), 2)}`)}; ${K(`d_t^* = ${f2(nL(n2.dt), 2)}`)} — ${esc(n2.regla)} (${n2.it} iter.)`, f2(nL(res.N2), 2)]);
     mrows.push(['ATC-40 Proc. A (tipo ' + type + ')', atc && atc.ok ? `${K(`d_y = ${f2(nL(atc.dy), 2)},\\; a_y = ${f2(atc.ay / G, 3)}g`)}; ${K(`\\beta_0 = ${f2(atc.b0, 2)}\\%`)}; ${K(`\\kappa = ${f2(atc.kap, 3)}`)}; ${K(`\\beta_{eff} = ${f2(atc.beff, 2)}\\%`)}; ${K(`SR_A = ${f2(atc.SRA, 3)},\\; SR_V = ${f2(atc.SRV, 3)}`)}; PP = (${f2(nL(atc.dp), 2)}; ${f2(atc.ap / G, 3)}g) (${atc.it} iter.)` : esc(atc ? atc.msg : '—'), atc && atc.ok ? f2(nL(res.ATC40), 2) : '—']);
     mrows.push(['FEMA 440 (§6.2, ELM)', fem && fem.ok ? `${K(`\\mu = ${f2(fem.mu, 2)}`)}; ${K(`\\alpha = ${f2(fem.alpha, 3)}`)}; ${K(`\\beta_{eff} = ${f2(fem.beff, 2)}\\%`)}; ${K(`T_{eff} = ${f2(fem.Teff, 4)}`)} s; ${K(`B = ${f2(fem.B, 3)}`)}; ${K(`M = ${f2(fem.M, 3)}`)}; ${K(`d_p = S_a(T_{eff})/B\\cdot(T_{eff}/2\\pi)^2`)} (${fem.it} iter.)` : esc(fem ? fem.msg : '—'), fem && fem.ok ? f2(nL(res.FEMA440), 2) : '—']);
-    mrows.push(['ASCE 41-17 coeficientes', `${K(`C_0 = \\Gamma = ${f2(cm.C0, 3)}`)}; ${K(`T_e = ${f2(T1, 3)}`)} s; ${K(`\\mu_{strength} = ${f2(cm.mu, 3)}`)}; ${K(`C_1 = ${f2(cm.C1, 3)}`)}; ${K(`C_2 = ${f2(cm.C2, 3)}`)}; ${K('\\delta_t = C_0C_1C_2S_a\\,T_e^2 g/4\\pi^2')}`, f2(nL(res.ASCE41), 2)]);
+    mrows.push(['ASCE 41-17 coeficientes', `${K(`C_0 = \\Gamma = ${f2(cm.C0, 3)}`)}; bilineal §7.4.3.2.4: ${K(`V_y = ${f2(nF(cm.Vy), 1)}`)} ${lab(UF())}, ${K(`K_e = 0.6V_y/\\delta_{0.6V_y}`)}, ${K(`T_e = T_i\\sqrt{K_i/K_e} = ${f2(cm.Te, 3)}`)} s; ${K(`\\mu_{strength} = ${f2(cm.mu, 3)}`)}${cm.a2 !== null ? `; ${K(`\\alpha_2 = ${f2(cm.a2, 3)},\\; \\alpha_e = ${f2(cm.ae, 3)},\\; \\mu_{max} = ${f2(cm.mumax, 2)}`)}` : ''}; ${K(`C_1 = ${f2(cm.C1, 3)}`)}; ${K(`C_2 = ${f2(cm.C2, 3)}`)}; ${K('\\delta_t = C_0C_1C_2S_a\\,T_e^2 g/4\\pi^2')}`, f2(nL(res.ASCE41), 2)]);
     h += tableHtml(ctx, 'Desplazamiento objetivo del techo por método', ['Método', 'Parámetros', K('u_{t}') + ` [${UL()}]`], mrows.map(r => [(r[0].startsWith(mlbl[met]) || (met === 'ATC40' && r[0].startsWith('ATC')) || (met === 'ASCE41' && r[0].startsWith('ASCE')) ? '<b>' + r[0] + '</b>' : r[0]), r[1], r[2]]));
     // estado por entrepiso
     const lvlOf = (d) => { const L = levels.find(l => d <= l.lim); return L ? L.id : '> ' + (levels[levels.length - 1] || { id: '' }).id; };
-    const rows = []; for (let i = n - 1; i >= 0; i--) { const Vi = obj.Vb * po.Sx[i], dy = Vy[i] / k[i] * (fcr > 0 ? (fcr + (1 - fcr) / r2) : 1); rows.push([String(i + 1), f2(nF(Vi), 1), f2(nF(Vy[i]), 1), f2(Vi / Vy[i], 3), f2(nL(obj.dr[i]), 2), f2(obj.dr[i] / dy, 2), sg(drr[i], 3), lvlOf(drr[i])]); }
+    const rows = []; for (let i = n - 1; i >= 0; i--) { const Vi = obj.Vb * po.Sx[i] + (po.theta ? po.theta[i] * obj.dr[i] : 0), dy = Vy[i] / k[i] * (fcr > 0 ? (fcr + (1 - fcr) / r2) : 1); rows.push([String(i + 1), f2(nF(Vi), 1), f2(nF(Vy[i]), 1), f2(Vi / Vy[i], 3), f2(nL(obj.dr[i]), 2), f2(obj.dr[i] / dy, 2), sg(drr[i], 3), lvlOf(drr[i])]); }
     h += tableHtml(ctx, `Estado de los entrepisos en el desplazamiento objetivo (${mlbl[met]}: ${f2(nL(dobj), 2)} ${UL()}, Vb = ${f2(nF(obj.Vb), 1)} ${lab(UF())})`, ['Entrepiso', K('V_i') + ` [${lab(UF())}]`, K('V_{y,i}') + ` [${lab(UF())}]`, K('V_i/V_{y,i}'), K('\\delta_i') + ` [${UL()}]`, K('\\mu_i = \\delta_i/\\delta_{y,i}'), K('\\delta_i/h_i'), 'Nivel'], rows);
     h += txt(`Ductilidad global ${K(`\\mu = u_t/(\\Gamma d_y^*) = ${f2(nL(dobj), 2)}/${f2(nL(dyRoof), 2)} = ${f2(mu, 2)}`)}; deriva máxima ${K(`(\\delta/h)_{max} = ${sg(drMax, 4)}`)} → nivel alcanzado: <b>${reached ? esc(reached.id + (reached.d ? ' — ' + reached.d : '')) : 'más allá de ' + esc((levels[levels.length - 1] || { id: '' }).id)}</b>. Niveles: ${levels.map(l => `${esc(l.id)} ${f2(l.lim * 100, 2)} %`).join(' · ')}.`);
-    h += chkLine(ctx, within, `u_t = ${f2(nL(dobj), 2)} \\le u_{cap} = ${f2(nL(dEnd), 2)}\\;\\mathrm{${UL()}}`, `Desplazamiento objetivo (${mlbl[met]}) dentro de la capacidad de la curva`, dobj / dEnd);
+    if (!solOk) h += chkLine(ctx, false, `\\text{${mlbl[met]}: sin punto de desempeño}`, esc(met === 'ATC40' ? (atc && atc.msg) || 'sin intersección' : met === 'FEMA440' ? (fem && fem.msg) || 'sin solución' : 'sin solución') + ' — la estructura no alcanza la demanda', null);
+    else h += chkLine(ctx, within, `u_t = ${f2(nL(dobj), 2)} \\le u_{cap} = ${f2(nL(dEnd), 2)}\\;\\mathrm{${UL()}}`, `Desplazamiento objetivo (${mlbl[met]}) dentro de la capacidad de la curva`, dobj / dEnd);
+    if (cm.a2 !== null && cm.a2 < 0) h += chkLine(ctx, !cm.unstable, `\\mu_{strength} = ${f2(cm.mu, 2)} \\le \\mu_{max} = \\Delta_d/\\Delta_y + |\\alpha_e|^{-h}/4 = ${f2(cm.mumax, 2)}`, 'Sin inestabilidad dinámica lateral con pendiente negativa (ASCE 41-17 Ec. 7-32)', cm.mu / cm.mumax);
     if (lvl) h += chkLine(ctx, drMax <= lvl.lim, `(\\delta/h)_{max} = ${sg(drMax, 4)} \\le ${f2(lvl.lim, 4)}`, `Deriva en el punto de desempeño ≤ límite del nivel ${lvl.id}${lvl.d ? ' (' + lvl.d + ')' : ''}`, drMax / lvl.lim);
     return h;
   },
