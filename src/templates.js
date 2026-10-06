@@ -1122,7 +1122,7 @@ Asneg = As/3 // Acero negativo en los apoyos (práctica: As/3)
   // ------------------------------------------------------------------
   {
     id: 'guia', normas: '—', cat: 'General', name: 'Guía rápida (ejemplos de sintaxis)', icon: 'book',
-    desc: 'Aprende en 2 minutos: variables con unidades, fórmulas, verificaciones, texto, funciones, vectores y gráficos.',
+    desc: 'Aprende en pocos minutos: variables con unidades, fórmulas, verificaciones, listas, funciones normativas de varios países, vectores, matrices, textos ("W12X26") y bloques de análisis (pórtico 2D, modal, perfiles).',
     titulo: 'Guía rápida de MemoriaCalc',
     blocks: [
       text(`# Cómo escribir una memoria
@@ -1134,32 +1134,91 @@ Cada **bloque de cálculo** se escribe como en una hoja: \`nombre = expresión\`
 | \`A = b*h\` | Fórmula + sustitución + resultado |
 | \`M = w*L^2/8 -> tonf*m\` | Resultado convertido a la unidad indicada |
 | \`check Mu <= phiMn // Flexión\` | Verificación ✔ CUMPLE / ✘ NO CUMPLE con D/C |
+| \`check a == 1 or zona < 4\` | Verificación lógica (\`and\`, \`or\`, \`not\`, \`==\`) |
 | \`# Título\`, \`## Subtítulo\` | Títulos numerados automáticamente |
 | \`"Texto con {A} y $\\\\alpha$\` | Párrafo con valores y LaTeX |
-| \`@modo corto\` / \`@ocultar\` / \`@dec 3\` | Directivas de presentación |
-| \`fc = 210 kgf/cm^2 // f'c [175 kgf/cm^2\\|210 kgf/cm^2]\` | Dato con lista desplegable |`),
+| \`@modo corto\` / \`@ocultar\` / \`@dec 3\` / \`@salto\` | Directivas de presentación |
+| \`fc = 210 kgf/cm^2 // f'c [175 kgf/cm^2\\|210 kgf/cm^2]\` | Dato con lista desplegable |
+| \`zona = 4 // Zona [4 : Zona 4\\|3 : Zona 3]\` | Lista con etiquetas (valor : texto) |
+| \`perfil = "W12X26"\` | Variable de texto (perfiles, nombres) |
+
+**Nombres → símbolos:** \`Mu\` → $M_u$, \`phiMn\` → $\\\\phi M_n$, \`As_min\` → $A_{s,min}$, \`beta1\` → $\\\\beta_1$, \`fc\` → $f'_c$. No use como variable el nombre de una unidad que se use después (\`m\`, \`s\`, \`N\`, \`t\`, \`g\`): use \`sep\`, \`esp\`, \`hz\`…`),
       calc(`## Variables, unidades y fórmulas
 b = 25 cm // Ancho
 h = 60 cm // Altura
-fc = 210 kgf/cm^2 // Resistencia del concreto
+fc = 210 kgf/cm^2 // Resistencia del concreto [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2]
 w = 2.5 tonf/m // Carga distribuida
 L = 6 m // Luz
 A = b*h // Área
 Ig = b*h^3/12 // Inercia
 M = w*L^2/8 -> tonf*m // Momento máximo
-sigma = M*(h/2)/Ig // Esfuerzo de flexión
+sigma = M*(h/2)/Ig -> kgf/cm^2 // Esfuerzo de flexión
 fadm = 0.45*fc // Esfuerzo admisible en compresión
 check sigma <= fadm // Esfuerzo de servicio
 ## Funciones y condicionales
 beta1 = si(fc <= 280 kgf/cm^2, 0.85, 0.80) // si(condición, valor_si, valor_no)
 n = ceil(5.3) // ceil, floor, round, max, min, abs, sqrt, sin, cos, tan, log...
-As1 = Ab(5) // Área de varilla #5 (5/8")
+As1 = Ab(5) // Área de varilla #5 (5/8"); db(5) da el diámetro
+sep = rounddown(0.27 m, 2.5 cm) // roundup / rounddown a un múltiplo
 f(x) = 3*x^2 + 2 // Función definida por el usuario
-y = f(2)
-## Vectores
-x_i = [1, 2, 3, 4] m
-total = sum(x_i)`),
-      { type: 'plot', expr: 'w*x*(6 - x)/2', var: 'x', desde: '0', hasta: '6', xlabel: 'x [m]', ylabel: 'M(x) [t·m]', titulo: 'Gráfico de una función: momento en viga simplemente apoyada' },
+y = f(2)`),
+      calc(`## Funciones normativas de varios países
+"Cada módulo normativo agrega funciones con el nombre de la norma al final (lista completa en el menú **Funciones**):
+zona = 4 // Zona sísmica E.030 [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
+Z = ZE030(zona) // Perú — E.030-2026, Tabla N° 1
+S = SE030(zona, 300 m/s) // Perú — factor de suelo interpolado por Vs30
+Tp = TpE030(300 m/s) // Perú — periodo TP
+Tl = TlE030(300 m/s) // Perú — periodo TL
+U = UE030(4) // Perú — categoría C
+R = R0E030(7) // Perú — pórticos de C°A° (R0 = 8)
+check sisE030(4, zona, 7) == 1 // Perú — sistema permitido (Tabla N° 9)
+Ao = AoNCh433(3) // Chile — NCh433, aceleración efectiva zona 3
+Rt = RtBSL(0.6, 0.6) // Japón — BSL, coeficiente espectral Rt(T, Tc)
+Sa_us = SaASCE7(0.6, 1.0, 0.6, 8) // EE. UU. — ASCE 7-22, Sa(T, SDS, SD1, TL)
+ld = ldE060(5, fc, 4200 kgf/cm^2) // Concreto — E.060 Tabla 12.1, ld de una barra #5
+Ka = KaRankine(30 deg) // Muros — empuje activo de Rankine
+Nq = NqBC(30 deg) // Geotecnia — factor de capacidad de carga Nq
+## Textos y perfiles de acero
+perfil = "W12X26" // Perfil de la base AISC / europea (W, HSS, C, L, IPE, HEB…)
+Zx = sec(perfil, "Zx") // Módulo plástico leído de la base de datos
+ry = sec(perfil, "ry") // Radio de giro
+Fy = 345 MPa // Acero A992
+phiMp = 0.9*Fy*Zx -> kN*m // Momento plástico de diseño`),
+      { type: 'steelsec', perfil: 'W12X26', sufijo: 'w', tabla: false, titulo: 'Bloque «Perfil de acero»: dibujo y propiedades exportadas (A_w, Zx_w, rts_w…)' },
+      calc(`## Vectores y matrices
+x_i = [1, 2, 3, 4] m // Vector fila con unidades
+total = sum(x_i) // sum, cumsum, max, min, mean
+x2 = x_i .^ 2 // Operaciones elemento a elemento: .*  ./  .^
+niv = 1:4 // Rango 1, 2, 3, 4
+Km = [[2, -1, 0], [-1, 2, -1], [0, -1, 1]] // Matriz (filas entre corchetes)
+Fv = [1; 0; 0] // Vector columna (filas separadas por ;)
+ud = lusolve(Km, Fv) // Solución de Km·u = F
+dK = det(Km) // Determinante; también inv(), transpose(), comp(v, i)`),
+      { type: 'plot', expr: 'w*x*(6 - x)/2', var: 'x', desde: '0', hasta: '6', xlabel: 'x [m]', ylabel: 'M(x) [t·m]', titulo: 'Bloque «Gráfico»: momento en viga simplemente apoyada' },
+      text(`## Bloques de análisis y dibujo
+Además de los bloques de cálculo y texto, la barra **Insertar** ofrece bloques registrados que calculan, dibujan y **exportan variables** a los cálculos siguientes (por ejemplo \`Mmax\`, \`T1\`, \`DCpmg\`):
+
+| Grupo | Bloques |
+|---|---|
+| Análisis | \`beam\` viga continua, \`frame2d\` pórtico / armadura 2D, \`beamcase\`, \`influence\`, \`cross\` |
+| Sismo | \`spectrum\`, \`modal\` análisis modal espectral, \`storyforces\`, \`irregE030\`, \`junta\`, \`lrb\` (E.031), \`spectrumCL\`, \`aidist\`, \`qunqu\` |
+| Concreto | \`section\`, \`pm\`, \`pmgen\` P–M de secciones arbitrarias, \`slab2way\`, \`stmbeam\`, \`mensula\`, \`muroCL\`, \`secjp\` |
+| Cimentaciones y geotecnia | \`footing\`, \`winkler\` viga sobre lecho elástico, \`stripfooting\`, \`pilegroup\`, \`soilprofile\`, \`slope\`, \`liqchart\` |
+| Muros | \`wall\`, \`retwall\` estabilidad (Rankine/Coulomb, M-O), \`wallrebar\`, \`gabionwall\`, \`msewall\`, \`sheetpile\` |
+| Acero | \`steelsec\` perfil de la base AISC/europea, \`basepl\`, \`boltgroup\`, \`armadura\` |
+| Puentes | \`hl93env\`, \`bridgesec\`, \`estribo\`, \`pmLRFD\` |
+| Otros | \`plot\`, \`table\`, \`stackbar\`, \`wallplan\`, \`windgable\`, \`galponCL\`, \`tanque\`, \`cilindro\`, \`tankwall\`, \`kaberyo\`, \`tijeral\` |
+
+A continuación, un pórtico de un vano resuelto por rigidez (bloque **frame2d**) y un edificio de cortante de tres pisos con análisis modal espectral E.030 (bloque **modal**), ambos alimentados por variables del documento.`),
+      { type: 'frame2d', tipo: 'portico', unidades: 't', nudos: '1 0 0\n2 0 3\n3 6 3\n4 6 0', secciones: 'C rect 0.40 0.40 2.17e6\nV rect 0.30 0.60 2.17e6', barras: '1 1 2 C\n2 2 3 V\n3 4 3 C', apoyos: '1 E\n4 E', cargas: 'CM: U 2 w\nCS: N 2 3 0', combinaciones: 'U1 = 1.4 CM\nU2 = 1.25 CM ± CS', graficos: 'C M D', deflim: '', deriva_caso: '', titulo: 'Bloque «Pórtico 2D»: diagrama de momentos y deformada' },
+      calc(`"Resultados exportados por el pórtico: momento máximo {Mmax}, cortante máximo {Vmax}.
+P_i = [120, 120, 90] tonf // Peso por nivel
+Ki = [30000, 26000, 20000] tonf/m // Rigidez lateral de entrepiso
+hei = [3, 3, 3] m // Altura de entrepiso`),
+      { type: 'modal', masas: 'P_i', rigideces: 'Ki', alturas: 'hei', Sa: 'Z*U*CE030d(T, Tp, Tl)*S/R', comb: 'CQC', beta: '0.05', modos: '', fdesp: '0.75*R', dlim: '0.007', titulo: 'Bloque «Análisis modal espectral»: modos, cortantes y derivas' },
+      calc(`"Periodo fundamental exportado por el bloque modal: $T_1$ = {T1}; cortante basal dinámico {Vdin}.
+check max(deriva_din) <= 0.007 // Las variables exportadas se usan en verificaciones`),
+      text(`> **Más ejemplos:** cada plantilla de la galería es una memoria completa y editable. Las de nombre «(versión rápida)» son cálculos breves; sus versiones completas se indican en el texto de cada una.`),
       { type: 'summary' },
     ],
   },

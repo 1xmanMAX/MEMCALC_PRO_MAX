@@ -534,4 +534,132 @@ check errCross <= 0.01 // Error del método iterativo frente a la solución exac
       summary(),
     ],
   },
+
+  // ------------------------------------------------------------------
+  //  8) Análisis modal, zonas rígidas y efectos P-Δ (pórtico de 4 pisos)
+  // ------------------------------------------------------------------
+  {
+    id: 'an-modal-pdelta', pais: 'PE', cat: CAT, icon: 'quake', normas: 'NTE E.030-2018, E.060 · Chopra (2012) · AISC 360-16 C2',
+    name: 'Pórtico de 4 pisos: análisis modal, zonas rígidas y P-Δ',
+    desc: 'Periodos y formas de modo con masas concentradas, fuerzas sísmicas E.030 con el periodo del modelo, análisis de segundo orden P-Δ con zonas rígidas en nudos, derivas e índice de estabilidad.',
+    titulo: 'Pórtico de concreto armado de 4 pisos — análisis modal y de segundo orden',
+    blocks: [
+      text(`# Generalidades
+Se analiza un pórtico plano interior de concreto armado de **cuatro pisos y tres vanos** con un modelo de barras que incluye **zonas rígidas** en los nudos (brazos rígidos iguales a la mitad del peralte de los elementos que concurren, factor 0.5) y deformaciones por flexión y axiales. El estudio se realiza en tres etapas:
+
+1. **Análisis modal** con masas concentradas en los nudos obtenidas de las cargas de gravedad ($CM + 0.25\,CV$, E.030 Art. 26): periodos, formas de modo y fracciones de masa efectiva.
+2. **Fuerzas sísmicas estáticas** (E.030 Art. 28) con el periodo fundamental del modelo ($T = 0.85\,T_1$, Art. 28.4.2).
+3. **Análisis de segundo orden P-Δ** de las combinaciones E.060 (matriz geométrica, iterativo), control de derivas (Art. 31–32) e **índice de estabilidad** $Q$.
+
+## Normas y referencias
+- NTE E.030-2018 Diseño Sismorresistente · NTE E.060 Concreto Armado · NTE E.020 Cargas.
+- A. K. Chopra, *Dynamics of Structures*, 4.ª ed., Pearson (2012), caps. 9–10 (análisis modal, masa modal efectiva).
+- W. McGuire, R. Gallagher, R. Ziemian, *Matrix Structural Analysis*, 2.ª ed. (2000), cap. 9 (matriz geométrica) y 4.5 (brazos rígidos).
+- AISC 360-16, cap. C (análisis de segundo orden); ASCE/SEI 7-16 §12.8.7 (coeficiente de estabilidad θ).`),
+      calc(`# Datos
+## Materiales
+fc = 280 kgf/cm^2 // Resistencia del concreto [210 kgf/cm^2|280 kgf/cm^2|350 kgf/cm^2]
+gammac = 2.4 tonf/m^3 // Peso específico del concreto armado
+Ec = 15000*sqrtfc(fc) -> tonf/m^2 // Módulo de elasticidad (E.060 8.5.2)
+## Geometría
+L1 = 6.0 m // Vano 1
+L2 = 5.0 m // Vano 2
+L3 = 6.0 m // Vano 3
+h1 = 4.0 m // Altura del primer piso
+h = 3.0 m // Altura de los pisos típicos
+bc = 50 cm // Columnas: ancho
+hc = 50 cm // Columnas: peralte en la dirección del pórtico
+bv = 30 cm // Vigas: ancho
+hv = 60 cm // Vigas: peralte
+## Cargas por metro de viga (ancho tributario 5 m)
+At = 5.0 m // Ancho tributario
+wD = (0.30 tonf/m^2 + 0.10 tonf/m^2 + 0.10 tonf/m^2)*At // CM pisos: aligerado h = 20 cm, acabados y tabiquería (E.020 Anexo 1)
+wL = 0.25 tonf/m^2*At // CV pisos: oficinas (E.020 Tabla 1)
+wDa = (0.30 tonf/m^2 + 0.10 tonf/m^2)*At // CM azotea
+wLa = 0.10 tonf/m^2*At // CV azotea (E.020 7.1)
+X1 = L1 // Abscisa del eje B
+X2 = L1 + L2 // Abscisa del eje C
+X3 = L1 + L2 + L3 // Abscisa del eje D
+Y1 = h1 // Nivel 1
+Y2 = h1 + h // Nivel 2
+Y3 = h1 + 2*h // Nivel 3
+Y4 = h1 + 3*h // Nivel 4 (azotea)`),
+      text(`# Análisis modal
+Las masas se concentran en los nudos a partir de las cargas verticales del modelo (fuente de masa $CM + 0.25\,CV$, que incluye el peso propio de vigas y columnas) y se asignan solo a la traslación horizontal (diafragma rígido en su plano). El problema $\\mathbf{K}\\boldsymbol{\\phi} = \\omega^2\\mathbf{M}\\boldsymbol{\\phi}$ se resuelve condensando exactamente los grados de libertad sin masa.`),
+      {
+        type: 'frame2d', tipo: 'portico',
+        nudos: '1 0 0\n2 X1 0\n3 X2 0\n4 X3 0\n5 0 Y1\n6 X1 Y1\n7 X2 Y1\n8 X3 Y1\n9 0 Y2\n10 X1 Y2\n11 X2 Y2\n12 X3 Y2\n13 0 Y3\n14 X1 Y3\n15 X2 Y3\n16 X3 Y3\n17 0 Y4\n18 X1 Y4\n19 X2 Y4\n20 X3 Y4',
+        secciones: 'C rect bc hc Ec\nV rect bv hv Ec',
+        barras: '1 1 5 C\n2 2 6 C\n3 3 7 C\n4 4 8 C\n5 5 9 C\n6 6 10 C\n7 7 11 C\n8 8 12 C\n9 9 13 C\n10 10 14 C\n11 11 15 C\n12 12 16 C\n13 13 17 C\n14 14 18 C\n15 15 19 C\n16 16 20 C\n17 5 6 V\n18 6 7 V\n19 7 8 V\n20 9 10 V\n21 10 11 V\n22 11 12 V\n23 13 14 V\n24 14 15 V\n25 15 16 V\n26 17 18 V\n27 18 19 V\n28 19 20 V',
+        apoyos: '1-4 E', brazos: '0.5',
+        cargas: 'CM: U 17-25 wD\nCM: U 26-28 wDa\nCV: U 17-25 wL\nCV: U 26-28 wLa',
+        casos: 'CM Carga muerta (incluye peso propio)\nCV Carga viva',
+        pp: 'CM gammac', combinaciones: 'G = CM + 0.25 CV',
+        masas: '= CM + 0.25 CV x', modos: '4', graficos: '-', sufijo: 'M',
+        titulo: 'Modelo para el análisis modal',
+      },
+      calc(`# Fuerzas sísmicas estáticas (E.030-2018, Art. 28)
+Z = 0.45 // Factor de zona [0.45 : Zona 4|0.35 : Zona 3|0.25 : Zona 2|0.10 : Zona 1]
+U = 1.0 // Categoría C (oficinas)
+S = 1.05 // Suelo S2 en zona 4 (Tabla 3)
+Tp = 0.6 s // Periodo TP (Tabla 4)
+TL = 2.0 s // Periodo TL (Tabla 4)
+R = 8 // Pórticos de concreto armado regulares (Tabla 7)
+T1 = T1_M // Periodo fundamental del modelo (modo 1)
+T = 0.85*T1 // Periodo de diseño (E.030 28.4.2: periodo del análisis con las rigideces del modelo × 0.85)
+C = si(T < Tp, 2.5, si(T < TL, 2.5*Tp/T, 2.5*Tp*TL/T^2)) // Factor de amplificación sísmica (E.030 Art. 14)
+check C/R >= 0.11 // Valor mínimo de C/R (E.030 28.2.2)
+check SMPx_M >= 0.90 // Los modos considerados reúnen al menos el 90 % de la masa (E.030 29.1.2)
+Ltot = L1 + L2 + L3 // Longitud del pórtico
+Pv = gammac*bv*hv // Peso propio de vigas por metro
+Pc = gammac*bc*hc // Peso propio de columnas por metro
+P1 = (wD + 0.25*wL + Pv)*Ltot + 4*Pc*(h1 + h)/2 -> tonf // Peso del nivel 1 (CM + 25 % CV, E.030 Art. 26)
+P2 = (wD + 0.25*wL + Pv)*Ltot + 4*Pc*h -> tonf // Peso del nivel 2
+P3 = P2 // Peso del nivel 3
+P4 = (wDa + 0.25*wLa + Pv)*Ltot + 4*Pc*h/2 -> tonf // Peso del nivel 4 (azotea)
+Pt = P1 + P2 + P3 + P4 // Peso sísmico total
+V = Z*U*C*S/R*Pt // Fuerza cortante en la base (E.030 28.2.1)
+k = si(T <= 0.5 s, 1, min(0.75 + 0.5*T/(1 s), 2)) // Exponente de distribución en altura (E.030 28.3.2)
+D = P1*(Y1/(1 m))^k + P2*(Y2/(1 m))^k + P3*(Y3/(1 m))^k + P4*(Y4/(1 m))^k // Σ Pj·hj^k
+F1 = V*P1*(Y1/(1 m))^k/D // Fuerza en el nivel 1
+F2 = V*P2*(Y2/(1 m))^k/D // Fuerza en el nivel 2
+F3 = V*P3*(Y3/(1 m))^k/D // Fuerza en el nivel 3
+F4 = V*P4*(Y4/(1 m))^k/D // Fuerza en el nivel 4`),
+      text(`# Análisis de segundo orden con zonas rígidas
+Las combinaciones de la NTE E.060 (9.2) se resuelven con la **matriz de rigidez geométrica** actualizada con las fuerzas axiales hasta converger (efecto P-Δ global y P-δ dentro de cada barra). Los esfuerzos de diseño de vigas y columnas se toman en las **caras de los nudos** (fin de las zonas rígidas). Las derivas se calculan con los desplazamientos elásticos del caso CS multiplicados por $0.75R$ (E.030 31.1).`),
+      {
+        type: 'frame2d', tipo: 'portico',
+        nudos: '1 0 0\n2 X1 0\n3 X2 0\n4 X3 0\n5 0 Y1\n6 X1 Y1\n7 X2 Y1\n8 X3 Y1\n9 0 Y2\n10 X1 Y2\n11 X2 Y2\n12 X3 Y2\n13 0 Y3\n14 X1 Y3\n15 X2 Y3\n16 X3 Y3\n17 0 Y4\n18 X1 Y4\n19 X2 Y4\n20 X3 Y4',
+        secciones: 'C rect bc hc Ec\nV rect bv hv Ec',
+        barras: '1 1 5 C\n2 2 6 C\n3 3 7 C\n4 4 8 C\n5 5 9 C\n6 6 10 C\n7 7 11 C\n8 8 12 C\n9 9 13 C\n10 10 14 C\n11 11 15 C\n12 12 16 C\n13 13 17 C\n14 14 18 C\n15 15 19 C\n16 16 20 C\n17 5 6 V\n18 6 7 V\n19 7 8 V\n20 9 10 V\n21 10 11 V\n22 11 12 V\n23 13 14 V\n24 14 15 V\n25 15 16 V\n26 17 18 V\n27 18 19 V\n28 19 20 V',
+        apoyos: '1-4 E', brazos: '0.5', pdelta: true,
+        cargas: 'CM: U 17-25 wD\nCM: U 26-28 wDa\nCV: U 17-25 wL\nCV: U 26-28 wLa\nCS: N 5 F1 0\nCS: N 9 F2 0\nCS: N 13 F3 0\nCS: N 17 F4 0',
+        casos: 'CM Carga muerta (incluye peso propio)\nCV Carga viva\nCS Sismo estático en X',
+        pp: 'CM gammac',
+        combinaciones: 'U1 = 1.4 CM + 1.7 CV\nU2 = 1.25(CM + CV) ± CS\nU3 = 0.9 CM ± CS',
+        grupos: 'VIG 17-28\nCOL1 1-4\nCOL 1-16',
+        servicio: 'CM + CV', graficos: 'C M V D',
+        deriva_caso: 'CS', deriva_f: '0.75*R', deriva_lim: '0.007',
+        titulo: 'Pórtico de 4 pisos con zonas rígidas (análisis P-Δ)',
+      },
+      calc(`# Estabilidad global y efectos de segundo orden
+"Índice de estabilidad del primer entrepiso (E.030; equivalente al coeficiente θ de ASCE 7-16 §12.8.7): $Q = N_i\\,\\Delta_i/(V_i\\,h_{ei}\\,R)$, con $\\Delta_i$ el desplazamiento relativo inelástico. Si $Q \\le 0.10$ los efectos P-Δ pueden despreciarse; aquí, además, ya están incluidos en las combinaciones.
+Ni = Pt // Carga de gravedad sobre el primer entrepiso (CM + 25 % CV)
+Di = deriva_1*h1 // Desplazamiento relativo inelástico del primer entrepiso (0.75R·Δe)
+Q = Ni*Di/(V*h1*R) // Índice de estabilidad
+check Q <= 0.10 // Efectos de segundo orden no significativos (Q ≤ 0.10)
+check ampPD <= 1.10 // Amplificación P-Δ de los desplazamientos de las combinaciones ≤ 10 %
+B2 = 1/(1 - Q) // Factor de amplificación aproximado 1/(1 − Q)
+"El factor aproximado $B_2 = 1/(1-Q)$ = {B2} se compara con la amplificación obtenida en el análisis no lineal geométrico, {ampPD} (la combinación U2 tiene más carga de gravedad que $CM + 0.25CV$).
+## Esfuerzos de diseño en las caras (envolvente de 2.º orden)
+Mu_v = Mmax_VIG // Momento máximo en vigas (cara de columna)
+Vu_v = Vmax_VIG // Cortante máximo en vigas (cara de columna)
+Pu_c = Nc_COL1 // Compresión máxima en columnas del primer piso
+Mu_c = Mmax_COL1 // Momento máximo en columnas del primer piso
+phiPn = 0.7*0.8*(0.85*fc*(bc*hc*(1 - 0.01)) + 4200 kgf/cm^2*0.01*bc*hc) -> tonf // Resistencia axial máxima con ρ = 1 % (E.060 10.3.6.2)
+check Pu_c <= phiPn // Compresión axial máxima en columnas del primer piso
+check Vu_v <= 0.85*2.6*sqrtfc(fc)*bv*(hv - 6 cm) // Límite de la sección de la viga por cortante: Vc + Vs,máx (E.060 11.5.7.9)`),
+      summary(),
+    ],
+  },
 ];

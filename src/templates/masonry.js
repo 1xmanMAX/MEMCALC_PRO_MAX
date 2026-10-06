@@ -443,7 +443,7 @@ check ff <= ftad // Tracción por flexión admisible (Art. 8.6)`),
     titulo: 'Diseño de vigas de madera de entrepiso — NTE E.010',
     blocks: [
       text(`# Generalidades
-Diseño por **esfuerzos admisibles** de las vigas de un entrepiso de madera (viguetas con entablado y cielo raso de yeso), según la NTE E.010 y el *Manual de Diseño para Maderas del Grupo Andino* (JUNAC, Cap. 8). Se usa madera estructural seca (CH ≤ 22 %) de dimensiones reales comerciales. Para viguetas que trabajan en conjunto (4 o más elementos con entablado) se emplea el módulo de elasticidad promedio $E_{prom}$; en elementos aislados, $E_{min}$.`),
+Diseño por **esfuerzos admisibles** de las vigas de un entrepiso de madera (viguetas con entablado y cielo raso de yeso), según la NTE E.010 y el *Manual de Diseño para Maderas del Grupo Andino* (JUNAC, Cap. 8). Se usa madera estructural seca (CH ≤ 22 %) de dimensiones reales comerciales. Para viguetas con acción de conjunto (entablado y separación ≤ 60 cm) se emplea el módulo de elasticidad promedio $E_{prom}$ y los esfuerzos admisibles se incrementan 10 % (Art. 16.3 y 17); en elementos aislados, $E_{min}$.`),
       calc(`# Datos
 grupo = 2 // Grupo estructural de la madera (E.010 Tabla 1) ${GRUPO}
 Lv = 4.20 m // Luz de cálculo de la vigueta
@@ -618,12 +618,12 @@ check Ndt/(0.85*b3*d3) <= ft // Tracción en montantes y diagonales
     titulo: 'Diseño estructural de reservorio circular apoyado de concreto armado — 250 m³',
     blocks: [
       text(`# Generalidades
-Reservorio cilíndrico apoyado de concreto armado, con pared empotrada en la losa de fondo y cubierta de losa maciza. El análisis hidrostático usa la solución de la **cáscara cilíndrica** (Timoshenko, ν = 0.2), equivalente a las Tablas A-1, A-2 y A-12 del PCA *Circular Concrete Tanks without Prestressing*; el refuerzo se dimensiona con los coeficientes sanitarios de ACI 350R/PCA (1.65 en tracción directa, 1.30 en flexión) y factor de carga 1.7 para el líquido. El análisis sísmico sigue **ACI 350.3-06** (modelo de Housner) con el espectro de la NTE E.030 ($S_{DS} = 2.5ZS$, $T_S = T_P$).`),
+Reservorio cilíndrico apoyado de concreto armado, con pared empotrada en la losa de fondo y cubierta de losa maciza. El análisis hidrostático usa la solución de la **cáscara cilíndrica** (Timoshenko, ν = 0.2), equivalente a las Tablas A-1, A-2 y A-12 del PCA *Circular Concrete Tanks without Prestressing*; el refuerzo se dimensiona por resistencia con el **factor de durabilidad ambiental** $S_d = \phi f_y/(\gamma f_s)$ de ACI 350-06 (9.2.6), o —a elección— con los coeficientes sanitarios del PCA/ACI 350R-89 (1.7 × 1.65 en tracción anular y 1.7 × 1.30 en flexión), que dan resultados similares. El análisis sísmico sigue **ACI 350.3-06** (modelo de Housner) con el espectro de la NTE E.030 ($S_{DS} = 2.5ZS$, $T_S = T_P$). Si el oleaje $d_{max}$ supera el borde libre, la cubierta restringe la masa convectiva: se trata como impulsiva (Malhotra, 2005) y se verifica el anclaje de la cubierta al empuje ascendente.`),
       calc(`# Datos
 D = 9.00 m // Diámetro interior
 HL = 4.00 m // Altura de agua (nivel de rebose)
 Hw = 4.60 m // Altura de la pared
-tw = 0.25 m // Espesor de la pared
+tw = 0.30 m // Espesor de la pared
 er = 0.15 m // Espesor de la losa de cubierta
 gw = 1.0 tonf/m^3 // Peso específico del agua
 gc = 2.4 tonf/m^3 // Peso específico del concreto
@@ -631,10 +631,22 @@ fc = 280 kgf/cm^2 // Resistencia del concreto (ACI 350: ≥ 4000 psi)
 fy = 4200 kgf/cm^2
 rec = 5 cm // Recubrimiento (ACI 350 7.7.1: 2 in)
 Vol = pi*D^2/4*HL -> m^3 // Capacidad útil
+check tw >= si(Hw >= 3.05 m, 30 cm, 20 cm) // Espesor mínimo: 12 in en muros de 10 ft o más en contacto con líquido (ACI 350-06 14.6.2)
+# Factores de diseño por durabilidad (ACI 350-06 9.2.6)
+metodo = 2 // Factores de diseño del refuerzo [1 : PCA / ACI 350R-89 (1.7 × 1.65 tracción, 1.7 × 1.30 flexión)|2 : ACI 350-06 (1.4 F × Sd)]
+fsh = 1400 kgf/cm^2 // fs admisible en tracción anular, exposición normal: 20 ksi (severa: 17 ksi = 1200 kgf/cm²) (9.2.6.3)
+barv = 5 // Varilla vertical [4 : 1/2"|5 : 5/8"|6 : 3/4"]
+sv = 20 cm // Espaciamiento del refuerzo vertical en la cara interior
+fsf = min(320 ksi/(si(tw >= 40.6 cm, 1.2, 1.35)*sqrt((sv/(1 inch))^2 + 4*(2 + db(barv)/(2 inch))^2)), 36 ksi) -> kgf/cm^2 // fs en flexión, exposición normal (ACI 350-06 Ec. 10-4, recubrimiento 2 in)
+Sdh = max(0.9*fy/(1.4*fsh), 1) // Sd en tracción anular, γ = 1.4 (U = 1.4 F)
+Sdf = max(0.9*fy/(1.4*fsf), 1) // Sd en flexión
+fach = si(metodo == 1, 1.7*1.65, 1.4*Sdh) // Factor total en tracción anular
+facf = si(metodo == 1, 1.7*1.30, 1.4*Sdf) // Factor total en flexión
+facv = si(metodo == 1, 1.7, 1.4*max(0.75*fy/(1.4*1700 kgf/cm^2), 1)) // Factor en cortante (fs = 24 ksi en el refuerzo de corte, 9.2.6.4)
 # Análisis hidrostático de la pared (PCA)`),
       { type: 'cilindro', H: 'HL', D: 'D', t: 'tw', w: 'gw', base: 'empotrada', titulo: '' },
       calc(`## Refuerzo anular (horizontal)
-Tu = 1.65*1.7*Tmax -> tonf/m // Tracción anular última con coeficiente sanitario 1.65
+Tu = fach*Tmax -> tonf/m // Tracción anular última (factor de carga × durabilidad)
 Ashreq = Tu/(0.9*fy) -> cm^2/m // Acero anular total requerido
 Astemp = 0.005*tw*1 m/m -> cm^2/m // Mínimo por contracción y temperatura (ACI 350 Tabla 7.12.2.1)
 barh = 5 // Varilla anular (dos caras) [4 : 1/2"|5 : 5/8"|6 : 3/4"]
@@ -651,25 +663,24 @@ nr = Es/Ec // Relación modular
 fct = (Csh*Es*Ash*1 m + Tmax*1 m)/(tw*1 m + nr*Ash*1 m) -> kgf/cm^2 // fc = (C Es As + T)/(Ac + n As)
 check fct <= 0.1*fc // Tracción en el concreto ≤ 0.1 f'c (PCA)
 ## Refuerzo vertical — momento en la base
-Mu = 1.3*1.7*Mbase -> tonf*m/m // Momento último con coeficiente sanitario 1.30
-barv = 5 // Varilla vertical [4 : 1/2"|5 : 5/8"|6 : 3/4"]
+Mu = facf*Mbase -> tonf*m/m // Momento último (factor de carga × durabilidad)
 dv = tw - rec - db(barv)/2 // Peralte efectivo
 Rn = Mu*1 m/(0.9*100 cm*dv^2) -> kgf/cm^2
-rho = 0.85*fc/fy*(1 - sqrt(1 - 2*Rn/(0.85*fc)))
+rho = 0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*Rn/(0.85*fc))))
+check rho <= 0.75*0.85*0.85*fc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy) // Sección suficiente: ρ ≤ 0.75 ρb
 Asvreq = max(rho*100 cm*dv, 14 kgf/cm^2/fy*100 cm*dv)/(1 m) -> cm^2/m // Acero requerido (mínimo 200 b d/fy, ACI 350 10.5.1)
-sv = 20 cm // Espaciamiento en la cara interior
-Asv = Ab(barv)/sv -> cm^2/m
+Asv = Ab(barv)/sv -> cm^2/m // Acero vertical colocado (cara interior)
 check Asv >= Asvreq // Refuerzo vertical en la base (cara interior)
 check 2*Asv >= 0.003*tw*1 m/m // Cuantía vertical mínima 0.3 % (ACI 350 14.3.2)
 ## Cortante en la base
-Vu = 1.7*Vbase -> tonf/m // Cortante último
+Vu = facv*Vbase -> tonf/m // Cortante último
 phiVc = 0.75*0.53*sqrtfc(fc)*100 cm*dv/(1 m) -> tonf/m // φVc (ACI 350 11.3, φ = 0.75)
 check Vu <= phiVc // Cortante en la unión pared–losa de fondo
 # Análisis sísmico (ACI 350.3-06 con espectro E.030)
 Z = 0.45 // Factor de zona ${ZONA}
 S = 1.05 // Factor de suelo ${SUELO}
 Tp = 0.6 s // Periodo TP ${TP}
-I = 1.5 // Factor de importancia: reservorio de agua, categoría A (E.030 Tabla 5)
+I = 1.5 // Importancia: ACI 350.3 Tabla 4.1.1(a) da 1.25 (servicio de emergencia/línea vital); se adopta U = 1.5 de la E.030 (categoría A) [1.0|1.25|1.5]
 Ri = 2.0 // Factor de modificación impulsivo: base empotrada, sobre el terreno (ACI 350.3 Tabla 4.1.1(b))
 Rc = 1.0 // Factor de modificación convectivo
 SDS = 2.5*Z*S // Aceleración espectral de diseño en periodos cortos (meseta E.030)
@@ -689,39 +700,51 @@ Wr = gc*pi*(D + 2*tw)^2/4*er -> tonf // Peso de la cubierta
 ## Periodos y coeficientes sísmicos (ACI 350.3 Sec. 9.3.4 y 9.4)
 Ti = TiACIc(HL, D, tw, Ec, gc) -> s // Periodo impulsivo (Ec. 9-23 a 9-25)
 Tc = TcACIc(D, HL) // Periodo convectivo (Ec. 9-28 a 9-30)
+Tv = TvACIc(D, HL, tw, Ec, gw) -> s // Periodo de la vibración vertical del líquido (Ec. 9-31)
 Ci = CiACI(Ti, SDS, SD1) // Coeficiente impulsivo (Ec. 9-32/33)
 Cc = CcACI(Tc, SDS, SD1) // Coeficiente convectivo (Ec. 9-37/38)
+Ct = CtACI(Tv, SDS, SD1) // Coeficiente vertical (Ec. 9-39/40)
+## Oleaje y borde libre (ACI 350.3 Cap. 7)
+dmax = D/2*Cc*I -> m // Altura máxima de oleaje (Ec. 7-2)
+fbl = Hw - HL // Borde libre disponible (hasta el fondo de la cubierta)
+Wcr = si(dmax > fbl, Wc, 0 tonf) // Masa convectiva restringida por la cubierta (se suma a la impulsiva)
+"Borde libre {fbl} frente a un oleaje de {dmax}: {si(dmax > fbl, 'la ola alcanza la cubierta; toda la masa convectiva se considera impulsiva (cota superior del método de Malhotra 2005, ACI 350.3 R7.1) y se verifica el anclaje de la cubierta', 'el oleaje no alcanza la cubierta (ACI 350.3 7.1)')}.
 ## Fuerzas y momentos sísmicos (ACI 350.3 Cap. 4)
 Pw = Ci*I*eps*Ww/Ri // Fuerza inercial de la pared (Ec. 4-1)
 Pr = Ci*I*Wr/Ri // Fuerza inercial de la cubierta (Ec. 4-2)
-Pi = Ci*I*Wi/Ri // Fuerza impulsiva (Ec. 4-3)
-Pc = Cc*I*Wc/Rc // Fuerza convectiva (Ec. 4-4)
+Pi = Ci*I*(Wi + Wcr)/Ri // Fuerza impulsiva (Ec. 4-3), incluye la masa convectiva restringida
+Pc = Cc*I*(Wc - Wcr)/Rc // Fuerza convectiva (Ec. 4-4)
 Vs = sqrt((Pi + Pw + Pr)^2 + Pc^2) -> tonf // Cortante basal (Ec. 4-5)
 hw = Hw/2
 hr = Hw + er/2
-Mb = sqrt((Pi*hi + Pw*hw + Pr*hr)^2 + (Pc*hc)^2) -> tonf*m // Momento en la base de la pared (Ec. 4-10)
-Mo = sqrt((Pi*hip + Pw*hw + Pr*hr)^2 + (Pc*hcp)^2) -> tonf*m // Momento de volteo (Ec. 4-13)
-dmax = D/2*Cc*I -> m // Altura máxima de oleaje (Ec. 7-2)
-"Borde libre disponible $H_w - H_L$ = {Hw - HL}; altura de oleaje $d_{max}$ = {dmax}: {si(dmax > Hw - HL, 'la ola alcanza la cubierta — la losa y su unión con la pared se diseñan para la presión de oleaje (ACI 350.3 R7.1)', 'el oleaje no alcanza la cubierta')}.`),
+hie = (Wi*hi + Wcr*hc)/(Wi + Wcr) // Altura de la masa impulsiva equivalente (EBP)
+hiep = (Wi*hip + Wcr*hcp)/(Wi + Wcr) // Ídem con presión en el fondo (IBP)
+Mb = sqrt((Pi*hie + Pw*hw + Pr*hr)^2 + (Pc*hc)^2) -> tonf*m // Momento en la base de la pared (Ec. 4-10)
+Mo = sqrt((Pi*hiep + Pw*hw + Pr*hr)^2 + (Pc*hcp)^2) -> tonf*m // Momento de volteo (Ec. 4-13)`),
       { type: 'tanque', forma: 'circular', tipo: 'apoyado', D: 'D', HL: 'HL', Hw: 'Hw', tw: 'tw', Pi: 'Pi', Pc: 'Pc', dmax: 'dmax', titulo: '' },
-      calc(`## Tensión anular sísmica (ACI 350.3 Cap. 5)
+      calc(`## Tensión anular sísmica (ACI 350.3 Cap. 5 y 6.2)
 yb = HL - yTmax // Nivel de la tensión anular hidrostática máxima, desde la base
-Piy = Pi/2*(4*HL - 6*hi - (6*HL - 12*hi)*yb/HL)/HL^2 -> tonf/m // Fuerza impulsiva por unidad de altura (Ec. 5-1)
-Pcy = Pc/2*(4*HL - 6*hc - (6*HL - 12*hc)*yb/HL)/HL^2 -> tonf/m // Fuerza convectiva por unidad de altura (Ec. 5-3)
-Pwy = Pw/Hw -> tonf/m // Inercia de la pared por unidad de altura (Ec. 5-5)
-uv = max(SDS*I*(2/3)/Ri, 0.2*SDS) // Aceleración vertical (Ec. 4-15, b = 2/3, Ct = SDS)
-Niy = 2*Piy/pi // Tensión anular impulsiva: p = 2Piy/(πr)·cosθ → N = p·r
-Ncy = 2*Pcy/pi // Tensión anular convectiva
-Nwy = Pwy/pi // Tensión anular por inercia de la pared
-Nhy = uv*gw*yTmax*D/2 -> tonf/m // Tensión por aceleración vertical (Ec. 4-14)
-Ny = sqrt((Niy + Nwy)^2 + Ncy^2 + Nhy^2) -> tonf/m // Tensión anular hidrodinámica combinada por SRSS (ACI 350.3 Sec. 5.3)
-Tus = 1.65*(1.2*Tmax + 1.0*Ny) -> tonf/m // Combinación 1.2F + 1.0E con coeficiente sanitario
+Piy = Pi/2*(4*HL - 6*hie - (6*HL - 12*hie)*yb/HL)/HL^2 -> tonf/m // Fuerza impulsiva por unidad de altura (R5.3.3, media circunferencia)
+Pcy = Pc/2*(4*HL - 6*hc - (6*HL - 12*hc)*yb/HL)/HL^2 -> tonf/m // Fuerza convectiva por unidad de altura (R5.3.3)
+Pwy = Pw/Hw -> tonf/m // Inercia de la pared por unidad de altura (uniforme; conservador)
+uv = max(Ct*I*(2/3)/Ri, 0.2*SDS) // Aceleración vertical üv = Ct I b/Ri ≥ 0.2 SDS, b = 2/3 (Ec. 4-15)
+Niy = 2*Piy/pi // Tensión anular impulsiva: piy = 2Piy cosθ/(πr) → N = p r (R6.2)
+Ncy = 16*Pcy/(9*pi) // Tensión anular convectiva: pcy = 16 Pcy cosθ/(9πr) (R6.2)
+Nwy = Pwy/pi // Tensión anular por inercia de la pared (R6.2)
+Nhy = uv*gw*yTmax*D/2 -> tonf/m // Tensión por aceleración vertical Nhy = üv qhy r (R6.2)
+Ny = sqrt((Niy + Nwy)^2 + Ncy^2 + Nhy^2) -> tonf/m // Tensión anular hidrodinámica combinada (Ec. 6-1)
+Tus = fach/1.4*(1.2*Tmax + 1.0*Ny) -> tonf/m // U = 1.2 F + 1.0 E (ACI 350-06 9.2.1) con el factor de durabilidad (conservador)
 check Tus <= 0.9*fy*Ash // Refuerzo anular con sismo
 ## Transferencia del cortante sísmico en la unión pared–losa de fondo
 qv = Vs/(pi*(D + tw)/2) -> tonf/m // Flujo de corte tangencial máximo q = V/(π R)
 Avf = 2*Asv // Refuerzo vertical que atraviesa la junta (dos caras)
 phiVn = 0.75*1.0*Avf*fy -> tonf/m // Corte-fricción φ μ Avf fy, μ = 1.0 (junta rugosa, E.060 11.7)
-check qv <= phiVn // Corte-fricción en la base de la pared`),
+check qv <= phiVn // Corte-fricción en la base de la pared
+## Anclaje de la cubierta frente al oleaje
+pup = gw*max(dmax - fbl, 0 m) -> tonf/m^2 // Presión ascendente estimada: columna de la ola no acomodada (estimación simplificada)
+qup = pup*D/4 - 0.9*gc*er*D/4 -> tonf/m // Tracción por metro en la unión cubierta–pared (placa circular: q = pR/2), descontando 0.9 del peso propio
+phiTa = 0.9*Asv*fy -> tonf/m // Resistencia de los anclajes verticales de la cara interior (φ = 0.9)
+check qup <= phiTa // Anclaje de la cubierta al empuje del oleaje (ACI 350.3 R7.1)`),
       summary(),
     ],
   },

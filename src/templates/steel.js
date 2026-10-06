@@ -549,32 +549,36 @@ check abs(Nv - Fv0) <= 0.001*Fv0 // Montante extremo: ambos métodos coinciden`)
     ],
   },
   // ------------------------------------------------------------------
-  //  8) Nave / vivienda de un piso en estructura metálica
+  //  8) Nave metálica de un piso — pórtico a dos aguas (análisis matricial frame2d)
   // ------------------------------------------------------------------
   {
     id: 'st-nave', pais: 'PE', cat: CAT, icon: 'steel', settings: TEC,
-    name: 'Nave / vivienda en estructura metálica: correas, viga y columnas de pórtico',
-    normas: 'NTE E.020 (cargas, viento) · NTE E.090 1.4 · ANSI/AISC 360-16/22 (C, E, F, H, App. 7 y 8) · AISI S100-16 · NTE E.030 (verificación sísmica)',
-    desc: 'Pórtico simple biarticulado de techo liviano: metrado de cobertura, viento E.020 en muros y techo, correas conformadas en frío, análisis de Kleinlogel, amplificación B2, diseño de viga y columnas W, flecha y deriva.',
-    titulo: 'Memoria de cálculo — nave metálica de un piso (pórticos simples)',
+    name: 'Nave metálica de un piso: correas, pórtico a dos aguas (análisis matricial), viento y sismo',
+    normas: 'NTE E.020 (cargas, viento) · NTE E.090 1.4 · ANSI/AISC 360-16/22 (C, E, F, G, H, App. 7 y 8) · AISI S100-16 · NTE E.030-2018',
+    desc: 'Pórtico biarticulado a dos aguas de perfiles W: metrado, viento E.020 con presión interior ±0.3, correas conformadas en frío, análisis por rigidez (bloque Pórtico 2D) contrastado con Kleinlogel, B2, diseño de viga y columnas, flecha, deriva por viento y sismo E.030.',
+    titulo: 'Memoria de cálculo — nave metálica de un piso (pórticos a dos aguas)',
     blocks: [
       text(`# Generalidades
-Edificación metálica de un piso (vivienda, taller o almacén) con **pórticos simples biarticulados** de perfiles W, espaciados *sf*, con **techo liviano** de plancha aluzinc sobre **correas conformadas en frío**. En la dirección longitudinal la estabilidad se confía a arriostres en cruz (no incluidos en esta memoria).
+Edificación metálica de un piso (taller, almacén o cobertura de vivienda) con **pórticos a dos aguas biarticulados** de perfiles W, espaciados *sf*, con **techo liviano** de plancha aluzinc sobre **correas conformadas en frío**. En la dirección longitudinal la estabilidad se confía a arriostres en cruz de techo y de muro (no incluidos en esta memoria).
 
-**Hipótesis de análisis.** Techo de pendiente baja (≤ 10 %) idealizado con viga horizontal; bases articuladas; uniones viga–columna rígidas. Las solicitaciones se obtienen con las **fórmulas cerradas de Kleinlogel** para el pórtico biarticulado (deducidas por el método de las fuerzas), y los efectos de segundo orden con el **método de amplificación de momentos B1–B2** (AISC 360 Apéndice 8) junto con el **método de la longitud efectiva** (Apéndice 7).
+**Análisis.** El pórtico se resuelve por el **método de rigidez** con el bloque *Pórtico 2D* (geometría real con pendiente, deformaciones axiales y peso propio), para los casos CM, CV (techo), W1 y W2 (viento con succión o presión interior) y CS (sismo), y las combinaciones LRFD de la NTE E.090 Art. 1.4.1. Como control independiente, la reacción horizontal bajo carga muerta se compara con la **fórmula cerrada de Kleinlogel** para el pórtico biarticulado a dos aguas. Los efectos de segundo orden se consideran con el **multiplicador B2** (AISC 360 Apéndice 8, Ec. A-8-7 con la rigidez lateral del modelo) y el **método de la longitud efectiva** (Apéndice 7).
 
-**Normas:** NTE E.020 Cargas (carga viva de techo Art. 7.1; viento Art. 12); NTE E.090 combinaciones LRFD (Art. 1.4.1); ANSI/AISC 360-16/22; AISI S100-16 (correas); NTE E.030 para comparar el cortante sísmico con el de viento.
+**Normas:** NTE E.020 Cargas (carga viva de techo Art. 7.1; viento Art. 12, Tabla 4); NTE E.090 (Art. 1.4.1); ANSI/AISC 360-16/22; AISI S100-16 (correas); NTE E.030-2018 (Arts. 26, 28, 31; Tabla N° 7: pórtico ordinario resistente a momentos OMF, R0 = 4; Tabla N° 11: distorsión 0.010).
 
 **Materiales:** perfiles W ASTM A36 (Fy = 2530 kgf/cm²); correas de plancha A36 conformada en frío; cobertura TR-4 aluzinc 0.40 mm.`),
-      { type: 'steelsec', perfil: 'W12X26', sufijo: 'v', tabla: false, titulo: 'Viga del pórtico W12×26' },
+      { type: 'steelsec', perfil: 'W12X26', sufijo: 'v', tabla: false, titulo: 'Viga (cabio) del pórtico W12×26' },
       { type: 'steelsec', perfil: 'W12X26', sufijo: 'c', tabla: false, titulo: 'Columnas del pórtico W12×26' },
       calc(`# Datos generales
 ## Geometría
 Lf = 10 m // Luz del pórtico (entre ejes de columnas)
-hc = 4.5 m // Altura de columnas (base a eje de la viga)
+hc = 4.5 m // Altura de columnas (base al eje del cabio en el alero)
+pend = 0.10 // Pendiente del techo (10 %)
 sf = 6 m // Separación entre pórticos
 sc = 1.20 m // Separación de correas
-lfb = 2.0 m // Separación de tornapuntas (arriostre del ala inferior de la viga)
+lfb = 2.0 m // Separación de tornapuntas (arriostre del ala inferior del cabio)
+fr = pend*Lf/2 -> m // Altura de la cumbrera sobre el alero
+alpha = atan(pend) -> deg // Inclinación del cabio
+sr = sqrt((Lf/2)^2 + fr^2) // Longitud de cada cabio
 ## Materiales
 Fy = 2530 kgf/cm^2 // Fluencia ASTM A36 [2530 kgf/cm^2|3515 kgf/cm^2]
 E = 2039000 kgf/cm^2 // Módulo de elasticidad (29 000 ksi)
@@ -585,97 +589,126 @@ wacc = 10 kgf/m^2 // Arriostres, instalaciones y luminarias
 WLr = 30 kgf/m^2 // Carga viva de techo liviano (E.020 Art. 7.1 b)
 ## Viento (E.020 Art. 12)
 Vv = 75 km/h // Velocidad básica a 10 m (E.020 Anexo 2; mínimo 75 km/h)
-Vh = Vv*max(1, (hc/(10 m))^0.22) // Velocidad de diseño (E.020 12.3)
+Vh = Vv*max(1, ((hc + fr)/(10 m))^0.22) // Velocidad de diseño (E.020 12.3)
 p0 = 0.005*(Vh/(1 km/h))^2*1 kgf/m^2 // Presión dinámica 0.005·Vh² (E.020 12.4)
 Cbar = 0.8 // Muro a barlovento, presión (E.020 Tabla 4)
-Csot = 0.6 // Muro a sotavento, succión (E.020 Tabla 4)
-Ctec = 0.7 // Techo ≤ 15°, succión (E.020 Tabla 4)
-Cpi = 0.3 // Presión interior ± (E.020 12.5)
-# Metrado de cargas sobre el pórtico
-wD = (wcob + wcor + wacc)*sf + peso_v -> tonf/m // Carga muerta sobre la viga (incluye peso propio)
-wLr = WLr*sf -> tonf/m // Carga viva de techo
-q1 = Cbar*p0*sf -> tonf/m // Viento sobre la columna de barlovento (hacia sotavento)
-q2 = Csot*p0*sf -> tonf/m // Succión sobre la columna de sotavento (hacia sotavento)
-wr1 = (Ctec - Cpi)*p0*sf -> tonf/m // Succión neta del techo con succión interior (combinaciones de gravedad)
-wr2 = (Ctec + Cpi)*p0*sf -> tonf/m // Succión neta del techo con presión interior (levante)
+Csot = -0.6 // Muro a sotavento, succión (E.020 Tabla 4)
+Ctb = -0.7 // Techo ≤ 15° a barlovento, succión (E.020 Tabla 4)
+Cts = -0.6 // Techo a sotavento, succión (E.020 Tabla 4)
+Cpi = 0.3 // Presión o succión interior ±0.3 (E.020 12.5)
 # Correas (AISI S100-16) — perfil CF 150×50×15×2
 pc = "CF150X50X15X2" // Perfil de la correa (ver plantilla de correas para el detalle)
 wuc = (1.2*((wcob + wacc/2)*sc + sec(pc, "peso")) + 1.6*WLr*sc) -> kgf/m // 1.2D + 1.6Lr por metro de correa
 Muc = wuc*sf^2/8 -> kgf*m // Correa simplemente apoyada entre pórticos
 phiMc = 0.90*sec(pc, "Sx")*Fy -> kgf*m // Sección totalmente efectiva (AISI Ap. 1), ala superior arriostrada
 check Muc <= phiMc // Flexión de la correa por gravedad
-wupc = 1.3*(Ctec + Cpi)*p0*sc - 0.9*((wcob + wacc/2)*sc + sec(pc, "peso")) -> kgf/m // Levante 0.9D − 1.3W
+wupc = 1.3*(abs(Ctb) + Cpi)*p0*sc - 0.9*((wcob + wacc/2)*sc + sec(pc, "peso")) -> kgf/m // Levante 0.9D − 1.3W
 check wupc*sf^2/8 <= 0.90*0.70*sec(pc, "Sx")*Fy // Levante: método R = 0.70 (AISI I6.2.1)
 dcor = 5*((wcob + wacc/2 + WLr)*sc + sec(pc, "peso"))*sf^4/(384*E*sec(pc, "Ix")) -> cm // Flecha de servicio
 check dcor <= sf/180 // Flecha L/180`),
       { type: 'beam', tramos: 'sf', apoyos: 'A A', E: 'E', I: 'sec(pc, "Ix")', cargas: 'U 1 wuc', deflexion: false, titulo: 'Correa entre pórticos bajo 1.2D + 1.6Lr' },
-      calc(`# Análisis del pórtico biarticulado (Kleinlogel)
-kf = Ix_v/Ix_c*hc/Lf // Rigidez relativa k = (Iv/Ic)(h/L)
-cg = 1/(4*(2*kf + 3)) // Carga vertical w: M esquina = −w·L²/(4(2k+3))
-cq = (5*kf + 6)/(8*(2*kf + 3)) // Carga q en una columna: reacción redundante X = q·h·(5k+6)/(8(2k+3))
-## Momentos en las esquinas por caso de carga (− tracción exterior)
-MD = -cg*wD*Lf^2 -> tonf*m // Carga muerta
-MLr = -cg*wLr*Lf^2 -> tonf*m // Carga viva de techo
-MWr = cg*wr1*Lf^2 -> tonf*m // Succión del techo (reduce el momento)
-MCw = -(cq*q1*hc)*hc - (q2*hc^2/2 - cq*q2*hc*hc) -> tonf*m // Viento en muros, esquina de sotavento (crítica)
-MBw = q1*hc^2/2 - cq*q1*hc*hc + cq*q2*hc*hc -> tonf*m // Viento en muros, esquina de barlovento
-Pw = (q1 + q2)*hc^2/(2*Lf) -> tonf // Fuerza axial por volteo (compresión en la columna de sotavento)
-## Amplificación de segundo orden (AISC Apéndices 7 y 8)
-GA = 10 // Base articulada (comentario App. 7)
-GB = (Ix_c/hc)/(Ix_v/Lf) // Nudo superior
-Kx = sqrt((1.6*GA*GB + 4*(GA + GB) + 7.5)/(GA + GB + 7.5)) // K de pórtico no arriostrado (aproximación del nomograma, Comentario App. 7)
-Pstory = (1.2*wD + 1.6*wLr)*Lf + 2*1.2*peso_c*hc -> tonf // Carga vertical total del piso
-Pestory = 2*pi^2*E*Ix_c/(Kx*hc)^2 -> tonf // Carga crítica del piso (A-8-7, RM = 1)
-B2 = 1/(1 - Pstory/Pestory) // Multiplicador P-Δ (A-8-6, α = 1)
-## Combinaciones LRFD (E.090 1.4.1) — esquina de sotavento
-Mr2 = abs(1.2*MD + 1.6*MLr) -> tonf*m // 1.2D + 1.6Lr
-Mr3 = abs(1.2*MD + 1.6*MLr + 0.8*MWr) + B2*abs(0.8*MCw) -> tonf*m // 1.2D + 1.6Lr + 0.8W (Mr = B1·Mnt + B2·Mlt, B1 = 1)
-Mr4 = abs(1.2*MD + 0.5*MLr + 1.3*MWr) + B2*abs(1.3*MCw) -> tonf*m // 1.2D + 1.3W + 0.5Lr
-Mu = max(Mr2, Mr3, Mr4) -> tonf*m // Momento de diseño en la esquina
-Pu = max((1.2*wD + 1.6*wLr)*Lf/2, (1.2*wD + 1.6*wLr - 0.8*wr1)*Lf/2 + 0.8*Pw, (1.2*wD + 0.5*wLr - 1.3*wr1)*Lf/2 + 1.3*Pw) + 1.2*peso_c*hc -> tonf // Axial máxima en la columna
-Hu = Mu/hc -> tonf // Empuje horizontal en la base (compresión en la viga)
-Mpos = (1.2*wD + 1.6*wLr)*Lf^2/8 + (1.2*MD + 1.6*MLr) -> tonf*m // Momento positivo en el centro de la viga
-# Diseño de la viga (AISC 360 F2, H1)
+      calc(`# Cargas sobre el pórtico
+## Gravedad (por metro de proyección horizontal; el peso propio del pórtico lo agrega el modelo)
+wD = (wcob + wcor + wacc)*sf/cos(alpha) -> tonf/m // Carga muerta de cobertura, correas y accesorios
+wLr = WLr*sf -> tonf/m // Carga viva de techo (E.020 7.1)
+## Viento W1: con succión interior (Cpi = −0.3) — presiones netas, perpendiculares a cada superficie
+q1a = (Cbar + Cpi)*p0*sf -> tonf/m // Muro de barlovento (hacia el interior, +x)
+q2a = (abs(Csot) - Cpi)*p0*sf -> tonf/m // Muro de sotavento (hacia el exterior, +x)
+r1a = (abs(Ctb) - Cpi)*p0*sf -> tonf/m // Techo de barlovento (levante)
+r2a = (abs(Cts) - Cpi)*p0*sf -> tonf/m // Techo de sotavento (levante)
+## Viento W2: con presión interior (Cpi = +0.3)
+q1b = (Cbar - Cpi)*p0*sf -> tonf/m // Muro de barlovento
+q2b = (abs(Csot) + Cpi)*p0*sf -> tonf/m // Muro de sotavento
+r1b = (abs(Ctb) + Cpi)*p0*sf -> tonf/m // Techo de barlovento (levante)
+r2b = (abs(Cts) + Cpi)*p0*sf -> tonf/m // Techo de sotavento (levante)
+## Sismo (NTE E.030-2018, análisis estático, por pórtico)
+Pacero = 2*sr*peso_v + 2*(hc/2)*peso_c -> tonf // Peso de cabios y media altura de columnas
+Psis = (wD + 0.25*wLr)*Lf + Pacero -> tonf // Peso sísmico: CM + 25 % de la CV de techo (Art. 26 d)
+Zs = 0.45 // Factor de zona (Zona 4, Tabla N° 1) [0.10|0.25|0.35|0.45]
+Us = 1.0 // Factor de uso (categoría C, Tabla N° 5) [1.0|1.3|1.5]
+Ss = 1.05 // Factor de suelo (S2, Zona 4, Tabla N° 3)
+Tp = 0.6 s // Período TP (S2, Tabla N° 4)
+Tl = 2.0 s // Período TL (S2, Tabla N° 4)
+R0s = 4 // Coeficiente básico (Tabla N° 7): pórtico ordinario resistente a momentos OMF [8|5|4]
+Rs = R0s*1*1 // R = R0·Ia·Ip, estructura regular (Art. 22)
+Ts = (hc + fr)/(35 m)*1 s // Período T = hn/CT, CT = 35 pórticos de acero sin arriostres (Art. 28.4.1)
+Csis = CE030(Ts, Tp, Tl) // Factor de amplificación sísmica (Art. 14)
+Vsis = Zs*Us*Ss*max(Csis/Rs, 0.11)*Psis -> tonf // Cortante basal V = ZUCS·P/R con C/R ≥ 0.11 (Art. 28.2)
+Vs2 = Vsis/2 -> tonf // Fuerza aplicada en cada alero (diafragma de techo flexible: masa tributaria)`),
+      {
+        type: 'frame2d', tipo: 'portico', unidades: 't',
+        nudos: '1 0 0\n2 0 hc\n3 Lf/2 (hc+fr)\n4 Lf hc\n5 Lf 0',
+        secciones: 'C E A_c Ix_c\nV E A_v Ix_v',
+        barras: '1 1 2 C\n2 2 3 V\n3 3 4 V\n4 5 4 C',
+        apoyos: '1,5 A',
+        cargas: 'CM: U 2,3 wD proy\nCV: U 2,3 wLr proy\nW1: U 1 q1a horiz\nW1: U 4 q2a horiz\nW1: U 2 r1a perp\nW1: U 3 r2a perp\nW2: U 1 q1b horiz\nW2: U 4 q2b horiz\nW2: U 2 r1b perp\nW2: U 3 r2b perp\nCS: N 2 Vs2 0\nCS: N 4 Vs2 0',
+        pp: 'CM 7.85 tonf/m^3',
+        combinaciones: 'U1 = 1.4 CM\nU2 = 1.2 CM + 1.6 CV\nU3 = 1.2 CM + 1.6 CV + 0.8 W1\nU4 = 1.2 CM + 0.5 CV + 1.3 W1\nU5 = 1.2 CM + 0.5 CV + 1.3 W2\nU6 = 0.9 CM + 1.3 W2\nU7 = 1.2 CM ± 1.0 CS\nU8 = 0.9 CM ± 1.0 CS',
+        casos: 'CM Carga muerta (incluye peso propio)\nCV Carga viva de techo Lr\nW1 Viento con succión interior\nW2 Viento con presión interior\nCS Sismo E.030',
+        grupos: 'VIG 2,3\nCOL 1,4', servicio: 'CV', graficos: 'C M N D', deflim: '',
+        deriva_caso: 'CS', deriva_f: '0.75*Rs', deriva_lim: '0.010',
+        titulo: 'Pórtico a dos aguas: envolvente de combinaciones E.090 (método de rigidez)',
+      },
+      {
+        type: 'frame2d', tipo: 'portico', unidades: 't', sufijo: 'w',
+        nudos: '1 0 0\n2 0 hc\n3 Lf/2 (hc+fr)\n4 Lf hc\n5 Lf 0',
+        secciones: 'C E A_c Ix_c\nV E A_v Ix_v',
+        barras: '1 1 2 C\n2 2 3 V\n3 3 4 V\n4 5 4 C',
+        apoyos: '1,5 A',
+        cargas: 'W1: U 1 q1a horiz\nW1: U 4 q2a horiz\nW1: U 2 r1a perp\nW1: U 3 r2a perp',
+        combinaciones: '', servicio: 'W1', graficos: 'C D', deflim: '', deriva_caso: '',
+        titulo: 'Deformada de servicio bajo viento W1 (deriva por viento)',
+      },
+      calc(`# Control independiente: fórmula de Kleinlogel (carga muerta)
+"Pórtico biarticulado a dos aguas con carga uniforme w sobre la proyección horizontal: $H = \\dfrac{wL^2(3 + 5m)}{16\\,h\\,N}$ con $k = \\dfrac{I_v}{I_c}\\dfrac{h}{s}$, $m = 1 + f/h$, $B = 2(k + 1) + m$, $C = 1 + 2m$, $N = B + mC$.
+kk = Ix_v/Ix_c*hc/sr // Rigidez relativa k = (Iv/Ic)(h/s)
+mk = 1 + fr/hc // m = 1 + f/h
+Nk = 2*(kk + 1) + mk + mk*(1 + 2*mk) // N = B + m·C
+wDt = wD + peso_v/cos(alpha) -> tonf/m // Muerta total por m horizontal (con peso propio del cabio)
+HKL = wDt*Lf^2*(3 + 5*mk)/(16*hc*Nk) -> tonf // Empuje horizontal en la base (Kleinlogel)
+check abs(abs(R1x_CM) - HKL) <= 0.02*HKL // El modelo de rigidez reproduce Kleinlogel (diferencia ≤ 2 %, por deformación axial)
+MKL = HKL*hc -> tonf*m // Momento en el alero bajo CM (Kleinlogel)
+# Efectos de segundo orden (AISC 360 Apéndices 7 y 8)
+DH = derivamax*hc/(0.75*Rs) -> cm // Desplazamiento lateral elástico del alero bajo CS (H = Vsis)
+Kl = Vsis/DH -> tonf/cm // Rigidez lateral del pórtico (del modelo)
+Trig = 2*pi*sqrt(Psis/(9.81 m/s^2*Kl)) -> s // Período con la rigidez del modelo (control de T = hn/CT)
+Pstory = (1.2*wD + 1.6*wLr)*Lf + 1.2*Pacero -> tonf // Carga vertical total del piso (combinación de gravedad)
+PeL = 0.85*Vsis*hc/DH -> tonf // Carga crítica del piso Pe,story = RM·H·L/ΔH, RM = 0.85 (A-8-7)
+B2 = 1/(1 - Pstory/PeL) // Multiplicador P-Δ (A-8-6, α = 1)
+check B2 <= 1.5 // Δ2.º orden/Δ1.er orden ≤ 1.5: se permite el método de longitud efectiva (App. 7.2.1)
+"Se amplifica conservadoramente el momento total de la envolvente por B2 (Mr = B1·Mnt + B2·Mlt ≤ B2·Mu, con B1 = 1).
+# Diseño del cabio (AISC 360 F2, E3, G2, H1)
+Muv = B2*Mmax_VIG -> tonf*m // Momento máximo de la envolvente (alero), amplificado
+Puv = Nc_VIG // Compresión máxima en el cabio
 Lpv = LpF2(ry_v, Fy, E) -> m // Longitud límite plástica (F2-5)
 Lrv = LrF2(rts_v, Fy, J_v, Sx_v, ho_v, E) -> m // Longitud límite inelástica (F2-6)
-phiMnv = 0.90*MnW(perfil_v, Fy, lfb, 1.0, E) -> tonf*m // Zona de esquina: ala inferior comprimida, Lb = tornapuntas, Cb = 1
-phiMpv = 0.90*MnW(perfil_v, Fy, sc, 1.0, E) -> tonf*m // Centro: ala superior arriostrada por las correas (Lb = sc)
-phiPnv = 0.90*PnE3(perfil_v, Fy, Lf, lfb, E) -> tonf // Compresión por el empuje horizontal
-check H1(Hu, phiPnv, Mu, phiMnv) <= 1.0 // Viga en la esquina: flexocompresión (H1-1)
-check Mpos <= phiMpv // Viga en el centro de luz (F2)
+phiMnv = 0.90*MnW(perfil_v, Fy, lfb, 1.0, E) -> tonf*m // Ala inferior comprimida en el alero o por levante: Lb = tornapuntas, Cb = 1
+phiMpv = 0.90*MnW(perfil_v, Fy, sc, 1.0, E) -> tonf*m // Momento positivo: ala superior arriostrada por las correas (Lb = sc)
+phiPnv = 0.90*PnE3(perfil_v, Fy, Lf, lfb, E) -> tonf // Compresión: Lcx = L (modo con desplazamiento), Lcy = lfb
+check H1(Puv, phiPnv, Muv, phiMnv) <= 1.0 // Cabio: flexocompresión (H1-1)
+check Mpos_VIG <= phiMpv // Cabio: momento positivo cerca de la cumbrera (F2)
 phiVnv = phivG2(perfil_v, Fy, E)*VnG2(perfil_v, Fy, E) -> tonf // Cortante (G2.1)
-check (1.2*wD + 1.6*wLr)*Lf/2 <= phiVnv // Cortante en la viga
-dLr = 5*wLr*Lf^4/(384*E*Ix_v) + MLr*Lf^2/(8*E*Ix_v) -> cm // Flecha por Lr (viga con momentos de extremo)
-check dLr <= Lf/240 // Flecha de la viga L/240
+check Vmax_VIG <= phiVnv // Cortante en el cabio
+dcum = abs(deltay_3) -> cm // Descenso de la cumbrera bajo CV de techo (servicio)
+check dcum <= Lf/240 // Flecha L/240 (techo sin cielo raso frágil)
 # Diseño de las columnas (AISC 360 E3, F2, H1)
+GA = 10 // Base articulada (Comentario App. 7)
+GB = (Ix_c/hc)/(Ix_v/Lf) // Nudo superior (cabio equivalente de luz L en el modo con desplazamiento)
+Kx = sqrt((1.6*GA*GB + 4*(GA + GB) + 7.5)/(GA + GB + 7.5)) // K de pórtico no arriostrado (aproximación del nomograma, Comentario App. 7)
 Lcx = Kx*hc -> m // Longitud efectiva en el plano del pórtico (App. 7)
-Lcy = hc/2 // Fuera del plano: riostra a media altura (viga de muro + arriostre)
+Lcy = hc/2 // Fuera del plano: viga de muro y arriostre a media altura
 check max(Lcx/rx_c, Lcy/ry_c) <= 200 // Esbeltez (E2)
+Puc = Nc_COL // Compresión máxima (envolvente)
+Muc = B2*Mmax_COL -> tonf*m // Momento máximo en la cabeza de la columna, amplificado
 phiPnc = 0.90*PnE3(perfil_c, Fy, Lcx, Lcy, E) -> tonf // Resistencia a compresión (E3)
 phiMnc = 0.90*MnW(perfil_c, Fy, Lcy, 1.0, E) -> tonf*m // Flexión con Lb = hc/2, Cb = 1 (F2)
-ratioc = H1(Pu, phiPnc, Mu, phiMnc) // Interacción H1-1
+ratioc = H1(Puc, phiPnc, Muc, phiMnc) // Interacción H1-1 (envolvente: P y M máximos simultáneos, conservador)
 check ratioc <= 1.0 // Columna: flexocompresión (H1-1)
-# Deriva por viento (servicio)
-Peq = (q1 + q2)*hc/2 -> tonf // Resultante de viento en muros llevada a la cabeza de las columnas
-Dw = Peq*hc^3/(6*E*Ix_c) + Peq*hc^2*Lf/(12*E*Ix_v) -> cm // Desplazamiento lateral del pórtico biarticulado
-check Dw <= hc/100 // Deriva de servicio h/100 (AISC Design Guide 3)
-# Verificación sísmica (NTE E.030-2018, análisis estático)
-Kl = Peq/Dw -> tonf/cm // Rigidez lateral del pórtico
-Psis = (wD + 0.25*wLr)*Lf + 2*peso_c*hc/2 -> tonf // Peso sísmico por pórtico: CM + 25 % CV de techo + mitad de columnas (E.030 Art. 26)
-Tf = 2*pi*sqrt(Psis/(9.81 m/s^2*Kl)) -> s // Período fundamental T = 2π√(m/k)
-Zs = 0.45 // Factor de zona (Zona 4) [0.10|0.25|0.35|0.45]
-Us = 1.0 // Factor de uso (categoría C) [1.0|1.3|1.5]
-Ss = 1.05 // Factor de suelo (S2, Zona 4)
-Tp = 0.6 s // Período TP (S2)
-Tl = 2.0 s // Período TL (S2)
-Rs = 4 // Coeficiente de reducción: pórtico ordinario resistente a momentos de acero, R0 = 4 (regular)
-Cs = CE030(Tf, Tp, Tl) // Factor de amplificación sísmica (E.030 Art. 14)
-Vsis = Zs*Us*Cs*Ss/Rs*Psis -> tonf // Cortante basal V = ZUCS·P/R (E.030 Art. 28)
-Vw = (q1 + q2)*hc/2 -> tonf // Cortante de viento por pórtico (servicio)
-check Vsis <= 1.3*Vw // Resistencia lateral: el cortante sísmico no excede el de viento factorizado (gobierna el viento)
-Dsis = 0.75*Rs*Vsis/Kl -> cm // Desplazamiento inelástico 0.75·R·Δelástico (E.030 Art. 31, regular)
-check Dsis/hc <= 0.010 // Distorsión máxima de entrepiso para acero (E.030 Tabla N.º 11)`),
-      { type: 'plot', expr: '((1.2*wD + 1.6*wLr)*(x m)*(Lf - x m)/2 - Mr2)/(1 tonf*m); ((1.2*wD + 1.6*wLr - 0.8*wr1)*(x m)*(Lf - x m)/2 - Mr3)/(1 tonf*m)', var: 'x', desde: '0', hasta: 'Lf/(1 m)', puntos: '100', xlabel: 'x [m]', ylabel: 'M [t·m]', nombres: '1.2D + 1.6Lr; 1.2D + 1.6Lr + 0.8W (momento de esquina crítico en ambos extremos, envolvente)', leyenda: true, titulo: 'Momento flector en la viga del pórtico (positivo: tracción en el ala inferior)' },
+check Vmax_COL <= phivG2(perfil_c, Fy, E)*VnG2(perfil_c, Fy, E) // Cortante en la columna
+# Desplazamientos laterales
+Dw = max(abs(deltax_2_w), abs(deltax_4_w)) -> cm // Desplazamiento del alero por viento W1 (servicio, 2.º bloque)
+check Dw <= hc/100 // Deriva de servicio por viento h/100 (AISC Design Guide 3)
+"La deriva sísmica inelástica 0.75·R·Δ/h ≤ 0.010 (E.030 Art. 31 y Tabla N° 11) se verifica en el bloque del pórtico. Reacciones para la cimentación y la placa base: R1x, R1y, R5x, R5y (envolvente) y por combinación (R1y_U2, …).`),
       summary(),
     ],
   },
