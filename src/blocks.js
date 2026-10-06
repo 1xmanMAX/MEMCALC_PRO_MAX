@@ -558,10 +558,10 @@ export function blockWall(b, ctx) {
   for (let i = 1; i <= 6; i++) { const y = H * (1 - i / 6.5); const w = ps + Ka * gs * (H - y); g += Lne(xb + w * ph, Y(y), xb + 3, Y(y), C.red, 0.8).replace('/>', ' marker-end="url(#arr)"/>'); }
   g += T(xb + (ps + pa) * ph + 4, Y(0) - 4, 'Ka·γ·H = ' + f2(pa) + ' t/m²', { fs: 10, a: 'start', c: C.red });
   if (ps > 0) g += T(xb + ps * ph + 4, Y(H) - 4, 'Ka·q = ' + f2(ps) + ' t/m²', { fs: 10, a: 'start', c: C.orange });
-  g += dimH(X(0), X(B), Y(0) + 22, 'B = ' + f2(B) + ' m') + dimH(X(0), X(p), Y(0) + 42, 'punta ' + f2(p)) + dimH(X(p + t2), X(B), Y(0) + 42, 'talón ' + f2(B - p - t2));
-  g += dimV(X(0) - 30, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimV(X(0) - 8, Y(hz), Y(0), 'hz ' + f2(hz), C.ink, -1);
-  g += T(X(p + t2 - t1 / 2), Y(H) - 6, 't1 = ' + f2(t1), { fs: 10 }) + T(X(p + t2 / 2), Y(hz) + 14, 't2 = ' + f2(t2), { fs: 10 });
-  return `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || 'Geometría del muro y diagrama de empujes (Rankine)')}</div>`;
+  g += dimH(X(0), X(B), Y(0) + 22, 'B = ' + f2(B) + ' m') + dimH(X(0), X(p), Y(0) + 42, 'punta ' + f2(p) + ' m') + dimH(X(p + t2), X(B), Y(0) + 42, 'talón ' + f2(B - p - t2) + ' m');
+  g += dimV(X(0) - 30, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimV(X(0) - 8, Y(hz), Y(0), 'hz = ' + f2(hz) + ' m', C.ink, -1);
+  g += T(X(p + t2 - t1 / 2), Y(H) - 6, 't1 = ' + f2(t1) + ' m', { fs: 10 }) + T(X(p + t2 / 2), Y(hz) + 14, 't2 = ' + f2(t2) + ' m', { fs: 10 });
+  return `<div class="figure">${svgWrap(W, Math.min(Hh, Y(0) + 58), g)}${caption(ctx, b.titulo || 'Geometría del muro y diagrama de empujes (Rankine)')}</div>`;
 }
 
 // =====================================================================

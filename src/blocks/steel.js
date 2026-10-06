@@ -129,7 +129,7 @@ registerBlock('steelsec', {
     g += Lne(X(sh.cx), Y(0) - 18, X(sh.cx), Y(sh.h) + 14, C.red, 0.8, '8 3 2 3') + Lne(X(0) - 14, Y(sh.cy), X(sh.w) + 18, Y(sh.cy), C.red, 0.8, '8 3 2 3');
     g += sh.g;
     g += Lne(X(sh.cx), Y(0) - 18, X(sh.cx), Y(sh.h) + 14, C.red, 0.8, '8 3 2 3') + Lne(X(0) - 14, Y(sh.cy), X(sh.w) + 18, Y(sh.cy), C.red, 0.8, '8 3 2 3');
-    g += T(X(sh.w) + 24, Y(sh.cy) + 4, 'x', { c: C.red, fs: 12, b: 1 }) + T(X(sh.cx) + 2, Y(0) - 22, 'y', { c: C.red, fs: 12, b: 1 });
+    g += T(X(sh.w) + 24, Y(sh.cy) + 4, 'x', { c: C.red, fs: 11, b: 1 }) + T(X(sh.cx) + 2, Y(0) - 22, 'y', { c: C.red, fs: 11, b: 1 });
     g += dimV(X(0) - 26, Y(0), Y(sh.h), (s.fam === 'R' ? 'H = ' : s.fam === 'O' ? 'D = ' : 'd = ') + fl(sh.h));
     g += dimH(X(0), X(sh.w), Y(sh.h) + 26, (s.fam === 'R' ? 'B = ' : s.fam === 'O' ? 'D = ' : s.fam === 'L' ? 'b = ' : s.fam === 'D' ? '2b + s = ' : 'bf = ') + fl(sh.w));
     // línea de referencia con quiebre horizontal bajo el texto

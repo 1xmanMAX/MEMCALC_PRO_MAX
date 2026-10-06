@@ -243,7 +243,7 @@ registerBlock('thsdof', {
       g += fr.g + P(pathTS(rec.ag, dt, fr, x0, pw, accScale), C.ink, 0.9) + dot(fr.X(pg.i * dt), fr.Y(pg.s * pg.v * accScale), C.red) + TX(fr.X(pg.i * dt) + 6, fr.Y(pg.s * pg.v * accScale) + (pg.s > 0 ? 10 : -4), `PGA = ${f2(pg.v / G, 3)} g`, { fs: 9, a: 'start', c: C.red }); }
     y += ph + 40;
     { const s = nL(1); const fr = frame(x0, y, pw, ph, [0, dur], sym(Array.from(R.u, v => v * s)), { title: `Desplazamiento relativo u(t)  —  Tn = ${f2(Tn, 3)} s, ζ = ${f2(z * 100, 1)} %` + (nl ? `, Cy = ${f2(Cy, 3)}` : ''), ta: 'start', yl: `u [${UL()}]` });
-      if (nl) g += Lne(x0, fr.Y(uy * s), x0 + pw, fr.Y(uy * s), C.orange, 0.8, '4 3') + Lne(x0, fr.Y(-uy * s), x0 + pw, fr.Y(-uy * s), C.orange, 0.8, '4 3') + TX(x0 + pw - 3, fr.Y(uy * s) - 3, '±uy', { fs: 8.5, a: 'end', c: C.orange });
+      if (nl) g += Lne(x0, fr.Y(uy * s), x0 + pw, fr.Y(uy * s), C.orange, 0.8, '4 3') + Lne(x0, fr.Y(-uy * s), x0 + pw, fr.Y(-uy * s), C.orange, 0.8, '4 3') + TX(x0 + pw - 3, fr.Y(uy * s) - 3, '±uy', { fs: 9, a: 'end', c: C.orange });
       if (nl) g += P(pathTS(R.lin.u, dt, fr, x0, pw, s), C.axis, 0.8, '3 2');
       g += fr.g + P(pathTS(R.u, dt, fr, x0, pw, s), C.blue, 1.1) + dot(fr.X(pu.i * dt), fr.Y(pu.s * umax * s), C.red) + TX(fr.X(pu.i * dt) + 6, fr.Y(pu.s * umax * s) + (pu.s > 0 ? 10 : -4), `umax = ${f2(umax * s, 2)} ${UL()} (t = ${f2(pu.i * dt, 2)} s)`, { fs: 9, a: 'start', c: C.red });
       if (nl) g += legend(x0 + 8, y + 10, [['bilineal', C.blue], ['elástico', C.axis, '3 2']]); }
@@ -704,11 +704,11 @@ registerBlock('pushover', {
         const near = ylab.find(q => Math.abs(q.x - ex0) < 16 && Math.abs(q.y - ey0) < 10);
         if (near) near.s.push('y' + (e.i + 1)); else ylab.push({ x: ex0, y: ey0, s: ['y' + (e.i + 1)] });
       });
-      ylab.forEach(q => { g += TX(q.x + 4, q.y + 11, q.s.join(', '), { fs: 8, a: 'start', c: C.axis }); });
+      ylab.forEach(q => { g += TX(q.x + 4, q.y + 11, q.s.join(', '), { fs: 9, a: 'start', c: C.axis }); });
       // bilineal N2 equivalente (sistema MDOF)
       g += P(`M${fr.X(0)},${fr.Y(0)}L${fr.X(nL(dyRoof)).toFixed(1)},${fr.Y(nF(n2.Fy * ms * Gm)).toFixed(1)}L${fr.X(nL(Math.min(n2.dt, cap[cap.length - 1][0]) * Gm)).toFixed(1)},${fr.Y(nF(n2.Fy * ms * Gm)).toFixed(1)}`, C.red, 1, '4 3');
       Object.entries(res).forEach(([kk, d]) => { if (!isFinite(d)) return; const st = stAt(d); g += mark(fr.X(nL(d)), fr.Y(nF(st.Vb)), shapes[kk][1], shapes[kk][0], kk === met ? 5 : 3.6); });
-      g += Lne(fr.X(nL(dEnd)), top, fr.X(nL(dEnd)), top + ph, C.axis, 0.8, '2 3') + TX(fr.X(nL(dEnd)) - 3, top + 12, 'fin de la curva', { fs: 8, a: 'end', c: C.axis });
+      g += Lne(fr.X(nL(dEnd)), top, fr.X(nL(dEnd)), top + ph, C.axis, 0.8, '2 3') + TX(fr.X(nL(dEnd)) - 3, top + 12, 'fin de la curva', { fs: 9, a: 'end', c: C.axis });
     }
     {
       const x0 = 56 + pw + 70;
@@ -731,7 +731,7 @@ registerBlock('pushover', {
       g += mark(fr.X(nL(n2.dt)), fr.Y(Math.min(n2.Fy, n2.Fy) / G), shapes.N2[1], 'o', met === 'N2' ? 5 : 3.6);
       if (atc && atc.ok) g += mark(fr.X(nL(atc.dp)), fr.Y(atc.ap / G), shapes.ATC40[1], 's', met === 'ATC40' ? 5 : 3.6);
       if (fem && fem.ok) g += mark(fr.X(nL(fem.dp)), fr.Y(fem.ap / G), shapes.FEMA440[1], 'd', met === 'FEMA440' ? 5 : 3.6);
-      g += TX(fr.X(nL(0.8 * rr * (Ts / PI2) ** 2)) - 6, fr.Y(0.8 * rr / G) + 3, `T* = ${f2(Ts, 3)} s`, { fs: 8.5, a: 'end', c: C.red });
+      g += TX(fr.X(nL(0.8 * rr * (Ts / PI2) ** 2)) - 6, fr.Y(0.8 * rr / G) + 3, `T* = ${f2(Ts, 3)} s`, { fs: 9, a: 'end', c: C.red });
     }
     const ly = top + ph + 44;
     g += legend(56, ly, [['Capacidad', C.blue], ['Espectro elástico 5 %', C.ink], ['Bilineal N2 (áreas iguales)', C.red]]);
@@ -854,12 +854,12 @@ registerBlock('momcurv', {
       const e1 = last.et, e2 = last.et - last.phi * hh, emax = Math.max(Math.abs(e1), Math.abs(e2));
       const Xe = (e) => ux + uw / 2 + e / emax * uw / 2;
       g += Lne(ux + uw / 2, sy, ux + uw / 2, sy + wh, C.axis, 0.8) + `<path d="M${ux + uw / 2},${sy} L${Xe(e1).toFixed(1)},${sy} L${Xe(e2).toFixed(1)},${(sy + wh).toFixed(1)} L${ux + uw / 2},${(sy + wh).toFixed(1)} Z" fill="${C.redF}" stroke="${C.red}"/>`;
-      g += TX(ux + uw / 2, top - 7, 'ε (última)', { fs: 10.5, b: 1 }) + TX(Xe(e1), sy - 2 + 12, e1.toFixed(4).replace('-', '−'), { fs: 8.5, c: C.red }) + TX(Xe(e2), sy + wh + 12, e2.toFixed(4).replace('-', '−'), { fs: 8.5, c: C.red });
+      g += TX(ux + uw / 2, top - 7, 'ε (última)', { fs: 10.5, b: 1 }) + TX(Xe(e1), sy - 2 + 12, e1.toFixed(4).replace('-', '−'), { fs: 9, c: C.red }) + TX(Xe(e2), sy + wh + 12, e2.toFixed(4).replace('-', '−'), { fs: 9, c: C.red });
     }
     { // materiales
       const yy = top + 300, fr1 = frame(62, yy, 290, 130, [0, Math.max(R.ecuLim * 1.15, 0.006)], [0, (conc === 'mander' ? R.conf.fcc : fc) * 1.15], { title: 'Concreto σ–ε (compresión)', xl: 'ε', yl: 'σ [MPa]', nx: 5, ny: 4, xf: t => f2(t, 3) });
       const es = Array.from({ length: 121 }, (_, i) => i * R.ecuLim * 1.1 / 120);
-      g += fr1.g + P(pathXY(es, es.map(R.sCore), fr1), C.blue, 1.8) + (conc === 'mander' ? P(pathXY(es, es.map(R.sCov), fr1), C.axis, 1.4, '4 3') + Lne(fr1.X(R.ecuLim), yy, fr1.X(R.ecuLim), yy + 130, C.red, 0.8, '3 3') + TX(fr1.X(R.ecuLim) - 3, yy + 12, 'εcu', { fs: 8.5, a: 'end', c: C.red }) : '');
+      g += fr1.g + P(pathXY(es, es.map(R.sCore), fr1), C.blue, 1.8) + (conc === 'mander' ? P(pathXY(es, es.map(R.sCov), fr1), C.axis, 1.4, '4 3') + Lne(fr1.X(R.ecuLim), yy, fr1.X(R.ecuLim), yy + 130, C.red, 0.8, '3 3') + TX(fr1.X(R.ecuLim) - 3, yy + 12, 'εcu', { fs: 9, a: 'end', c: C.red }) : '');
       g += legend(150, yy + 92, conc === 'mander' ? [['confinado (Mander)', C.blue], ['no confinado', C.axis, '4 3']] : [['Hognestad', C.blue]]);
       const esu = model === 'epp' ? 0.05 : steel.esu, fr2 = frame(420, yy, 270, 130, [0, esu * 1.05], [0, (model === 'epp' ? fy : steel.fsu) * 1.15], { title: 'Acero σ–ε', xl: 'ε', yl: 'σ [MPa]', nx: 5, ny: 4, xf: t => f2(t, 3), yf: t => f2(t, 0) });
       const e2s = Array.from({ length: 151 }, (_, i) => i * esu / 150);

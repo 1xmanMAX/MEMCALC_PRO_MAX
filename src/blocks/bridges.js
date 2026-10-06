@@ -670,3 +670,115 @@ registerBlock('pmLRFD', {
   def: { b: '120 cm', h: '120 cm', fc: '280 kgf/cm^2', fy: '4200 kgf/cm^2', dp: '7.5 cm', nx: '8', ny: '6', barra: '10', phiEE: '0.90', demandas: '900 tonf, 150 tonf*m // Resistencia I\n700 tonf, 600 tonf*m // Evento Extremo I' },
   render: renderPMLRFD,
 });
+
+// =====================================================================
+//  neopreno — apoyo elastomérico reforzado con acero (zunchado):
+//  elevación con capas de elastómero, zunchos, recubrimiento lateral y
+//  forma deformada por el desplazamiento de corte Δs; planta acotada.
+//  (AASHTO LRFD 14.7.5 / 14.7.6; solo dibujo, no exporta variables)
+// =====================================================================
+function renderBearing(b, ctx) {
+  const S = ctx.scope;
+  const L = evalParam(b.L, S, 'mm', 300), Wd = evalParam(b.W, S, 'mm', 450);
+  const hri = evalParam(b.hri, S, 'mm', 12), hrc = evalParam(b.hrc, S, 'mm', 6), hs = evalParam(b.hs, S, 'mm', 3);
+  const n = Math.round(evalParam(b.n, S, '', 4));
+  const cov = evalParam(b.cover, S, 'mm', 6);
+  const Ds = Math.abs(evalParam(b.Ds, S, 'mm', 0));
+  pos({ L, W: Wd, hri, hs, n });
+  if (!(hrc >= 0)) throw new Error('El espesor de las capas exteriores debe ser ≥ 0');
+  if (n > 40) throw new Error('Demasiadas capas interiores (máx. 40)');
+  if (!(cov >= 0) || 2 * cov >= Math.min(L, Wd)) throw new Error('Recubrimiento lateral de los zunchos no válido');
+  const hrt = n * hri + 2 * hrc, Hb = hrt + (n + 1) * hs;
+  // capas de abajo hacia arriba: [tipo, espesor]
+  const lay = [];
+  if (hrc > 0) lay.push(['e', hrc]);
+  for (let i = 0; i <= n; i++) { lay.push(['s', hs]); if (i < n) lay.push(['e', hri]); }
+  if (hrc > 0) lay.push(['e', hrc]);
+  // ---- elevación
+  const Wsvg = 780, Hsvg = 340;
+  const ex0 = 70, exW = 280;                                  // zona de la elevación
+  const s = Math.min(exW / (L * 1.25), 150 / Hb);              // px por mm (escala real, sin distorsión)
+  const bw = L * s, bh = Hb * s;
+  const bx = ex0 + (exW - bw) / 2 + 10, by = 105;              // esquina superior izquierda del apoyo sin deformar
+  const yb = by + bh;                                          // cara inferior
+  const amp = Ds > 0 ? Math.max(1, Math.round(0.30 * Hb / Ds)) : 1;   // amplificación del dibujo de la deformación
+  const dpx = Ds * amp * s;                                    // desplazamiento dibujado de la cara superior
+  const shift = (h) => (hrt > 0 ? dpx * h / hrt : 0);          // desplazamiento a la altura acumulada de elastómero h
+  let g = '';
+  // pedestal (cajuela) y fondo de la viga
+  const ped = 26, gir = 26, ext = 0.16 * bw;
+  g += `<rect x="${(bx - ext).toFixed(1)}" y="${yb.toFixed(1)}" width="${(bw + 2 * ext).toFixed(1)}" height="${ped}" fill="url(#hatch)" stroke="${C.ink}" stroke-width="0.8"/>`;
+  g += `<rect x="${(bx - ext + dpx).toFixed(1)}" y="${(by - gir).toFixed(1)}" width="${(bw + 2 * ext).toFixed(1)}" height="${gir}" fill="${C.conc}" stroke="${C.ink}" stroke-width="0.8"/>`;
+  g += `<rect x="${(bx - ext + dpx).toFixed(1)}" y="${(by - gir).toFixed(1)}" width="${(bw + 2 * ext).toFixed(1)}" height="${gir}" fill="url(#hatch)" opacity="0.35"/>`;
+  g += T(bx + bw / 2 + dpx, by - gir / 2 + 4, 'Viga', { fs: 10 }) + T(bx + bw / 2, yb + ped / 2 + 4, 'Cajuela (pedestal)', { fs: 10 });
+  // capas deformadas
+  let y = yb, hcum = 0;
+  const ins = cov * s;
+  for (const [t, th] of lay) {
+    const h = th * s, y2 = y - h;
+    const d1 = shift(hcum), d2 = shift(hcum + (t === 'e' ? th : 0));
+    if (t === 'e') {
+      g += `<path d="M${(bx + d1).toFixed(1)},${y.toFixed(1)} L${(bx + bw + d1).toFixed(1)},${y.toFixed(1)} L${(bx + bw + d2).toFixed(1)},${y2.toFixed(1)} L${(bx + d2).toFixed(1)},${y2.toFixed(1)} Z" fill="#5d646c" stroke="#3b4148" stroke-width="0.5"/>`;
+      hcum += th;
+    } else {
+      // el elastómero envuelve el zuncho: recubrimiento lateral
+      g += `<path d="M${(bx + d1).toFixed(1)},${y.toFixed(1)} L${(bx + bw + d1).toFixed(1)},${y.toFixed(1)} L${(bx + bw + d1).toFixed(1)},${y2.toFixed(1)} L${(bx + d1).toFixed(1)},${y2.toFixed(1)} Z" fill="#5d646c"/>`;
+      g += `<rect x="${(bx + d1 + ins).toFixed(1)}" y="${y2.toFixed(1)}" width="${Math.max(bw - 2 * ins, 1).toFixed(1)}" height="${Math.max(h, 1.2).toFixed(1)}" fill="#c5ccd3" stroke="#8f99a3" stroke-width="0.4"/>`;
+    }
+    y = y2;
+  }
+  // contorno sin deformar
+  if (dpx > 0.5) g += `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="none" stroke="${C.red}" stroke-width="0.9" stroke-dasharray="4 3"/>`;
+  // flecha del desplazamiento por corte
+  if (dpx > 0.5) {
+    const ya = by - gir - 12;
+    g += `<line x1="${(bx + bw / 2).toFixed(1)}" y1="${ya.toFixed(1)}" x2="${(bx + bw / 2 + dpx).toFixed(1)}" y2="${ya.toFixed(1)}" stroke="${C.red}" stroke-width="1.4" marker-end="url(#arr)"/>`;
+    g += T(bx + bw / 2 + dpx / 2, ya - 9, 'Δs = ' + f2(Ds, 1) + ' mm  (γs = Δs/hrt = ' + f2(Ds / hrt, 3) + ')', { fs: 10, c: C.red });
+    g += Lne(bx, yb, bx, by - 4, C.red, 0.6, '2 2') + Lne(bx + dpx, by, bx + dpx, by - 4, C.red, 0.6, '2 2');
+  }
+  // cotas: L abajo, altura total a la izquierda
+  g += dimH(bx, bx + bw, yb + ped + 18, 'L = ' + f2(L, 0) + ' mm');
+  g += dimV(bx - ext - 14, by, yb, 'H = ' + f2(Hb, 0) + ' mm', C.ink, -1);
+  // rótulos de las capas con líneas de referencia a la derecha
+  const lx = bx + bw + dpx + ext + 18;
+  const yOf = (k) => { let yy = yb; for (let i = 0; i < k; i++) yy -= lay[i][1] * s; return yy - lay[k][1] * s / 2; };
+  const kTopCov = hrc > 0 ? lay.length - 1 : -1;
+  const kInt = lay.findIndex((l, i) => l[0] === 'e' && i > 0 && i < lay.length - 1);
+  const kSh = lay.length - (hrc > 0 ? 2 : 1);
+  const labs = [];
+  if (kTopCov >= 0) labs.push([kTopCov, 'Capa exterior hrc = ' + f2(hrc, 0) + ' mm (×2)']);
+  if (kSh >= 0) labs.push([kSh, 'Zuncho de acero hs = ' + f2(hs, 0) + ' mm (×' + (n + 1) + ')']);
+  if (kInt >= 0) labs.push([kInt, 'Capa interior hri = ' + f2(hri, 0) + ' mm (×' + n + ')']);
+  labs.forEach(([k, txt], i) => {
+    const yy = yOf(k), d = shift(lay.slice(0, k).reduce((t, l) => t + (l[0] === 'e' ? l[1] : 0), 0) + (lay[k][0] === 'e' ? lay[k][1] / 2 : 0));
+    const ty = by - 6 + i * 22;
+    g += `<circle cx="${(bx + bw + d - 3).toFixed(1)}" cy="${yy.toFixed(1)}" r="1.6" fill="${C.ink}"/>`;
+    g += `<polyline points="${(bx + bw + d - 3).toFixed(1)},${yy.toFixed(1)} ${(lx - 6).toFixed(1)},${ty.toFixed(1)} ${lx.toFixed(1)},${ty.toFixed(1)}" fill="none" stroke="${C.ink}" stroke-width="0.6"/>`;
+    g += T(lx + 3, ty + 3.5, txt, { fs: 10, a: 'start' });
+  });
+  g += T(bx + bw / 2, 22, 'ELEVACIÓN — corte paralelo al eje del puente', { fs: 11, b: 1 });
+  if (amp > 1 && dpx > 0.5) g += T(bx + bw / 2, 38, 'Deformación por corte amplificada ×' + amp + ' (escala real en las capas)', { fs: 9.5, c: C.axis });
+  // ---- planta
+  const px0 = 615, pw = 130, ph = 170;
+  const sp = Math.min(pw / L, ph / Wd);
+  const qw = L * sp, qh = Wd * sp, qx = px0 + (pw - qw) / 2 + 20, qy = 70 + (ph - qh) / 2;
+  g += `<rect x="${qx.toFixed(1)}" y="${qy.toFixed(1)}" width="${qw.toFixed(1)}" height="${qh.toFixed(1)}" fill="#5d646c" stroke="#3b4148"/>`;
+  g += `<rect x="${(qx + cov * sp).toFixed(1)}" y="${(qy + cov * sp).toFixed(1)}" width="${(qw - 2 * cov * sp).toFixed(1)}" height="${(qh - 2 * cov * sp).toFixed(1)}" fill="none" stroke="#c5ccd3" stroke-width="1" stroke-dasharray="4 2"/>`;
+  g += dimH(qx, qx + qw, qy + qh + 16, 'L = ' + f2(L, 0));
+  g += dimV(qx - 28, qy, qy + qh, 'W = ' + f2(Wd, 0), C.ink, -1);
+  g += `<line x1="${(qx - 6).toFixed(1)}" y1="${(qy + qh + 44).toFixed(1)}" x2="${(qx + qw + 6).toFixed(1)}" y2="${(qy + qh + 44).toFixed(1)}" stroke="${C.blue}" stroke-width="1.2" marker-end="url(#ar)"/>`;
+  g += T(qx + qw / 2, qy + qh + 58, 'Eje del puente', { fs: 10, c: C.blue });
+  g += T(qx + qw / 2, 22, 'PLANTA [mm]', { fs: 11, b: 1 });
+  g += T(qx + qw / 2, 38, 'zunchos: recubrimiento ' + f2(cov, 0) + ' mm', { fs: 9.5, c: C.axis });
+  const info = `<div class="kv">${K('h_{rt} = ' + f2(hrt, 0) + '\\,\\mathrm{mm}')} ${K('H = h_{rt} + (n+1)\\,h_s = ' + f2(Hb, 0) + '\\,\\mathrm{mm}')} ${K('S_i = \\dfrac{L\\,W}{2\\,h_{ri}(L+W)} = ' + f2(L * Wd / (2 * hri * (L + Wd)), 2))}${Ds > 0 ? ' ' + K('\\gamma_s = \\Delta_s/h_{rt} = ' + f2(Ds / hrt, 3)) : ''}</div>`;
+  return `<div class="figure">${svgWrap(Wsvg, Hsvg, arrowDefs + g)}${info}${caption(ctx, b.titulo || 'Apoyo elastomérico reforzado con acero: capas, zunchos y deformación por corte')}</div>`;
+}
+registerBlock('neopreno', {
+  name: 'Apoyo elastomérico zunchado (dibujo)', icon: 'bridge', group: 'Puentes',
+  fields: [F('L', 'Dimensión paralela al eje del puente L', '300 mm'), F('W', 'Dimensión transversal W', '450 mm'), F('hri', 'Espesor de capa interior hri', '12 mm'),
+    F('n', 'Número de capas interiores', '4'), F('hrc', 'Espesor de capa exterior hrc', '6 mm'), F('hs', 'Espesor de los zunchos hs', '3 mm'),
+    F('cover', 'Recubrimiento lateral de los zunchos', '6 mm'), F('Ds', 'Desplazamiento por corte Δs', '0 mm'), F('titulo', 'Título', '')],
+  hint: 'Elevación a escala del apoyo de neopreno zunchado (capas interiores y exteriores, zunchos de acero con recubrimiento lateral, viga y cajuela), forma deformada por el desplazamiento de corte Δs (amplificada para que se vea) y planta acotada. Solo dibujo; no exporta variables.',
+  def: { L: '300 mm', W: '450 mm', hri: '12 mm', n: '4', hrc: '6 mm', hs: '3 mm', cover: '6 mm', Ds: '6.5 mm' },
+  render: renderBearing,
+});

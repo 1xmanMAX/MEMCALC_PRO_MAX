@@ -349,7 +349,7 @@ registerBlock('soilprofile', {
       const nL = Math.min(ln.length, maxL); let yL = ym - (nL - 1) * 5.5 + 3;
       if (showG) yL = Math.max(Y(top) + 10, Math.min(yL, Y(top + l.h) - 14 - (nL - 1) * 11));
       ln.slice(0, maxL).forEach((s, i) => { g += T(cx + cw + 6, yL + i * 11, s, { fs: 9, a: 'start' }); });
-      if (showG) g += T(cx + cw + 6, Y(top + l.h) - 3, 'γ = ' + f2(l.g) + (l.gs !== l.g ? '/' + f2(l.gs) : '') + ' t/m³', { fs: 8, a: 'start', c: C.axis });
+      if (showG) g += T(cx + cw + 6, Y(top + l.h) - 3, 'γ = ' + f2(l.g) + (l.gs !== l.g ? '/' + f2(l.gs) : '') + ' t/m³', { fs: 9, a: 'start', c: C.axis });
       top += l.h;
     });
     niceTicks(0, zmax, 8).forEach(t => { g += Lne(cx - 4, Y(t), cx, Y(t), C.axis) + T(cx - 7, Y(t) + 3, f2(t, 1), { fs: 9, c: C.axis, a: 'end' }); });
@@ -362,7 +362,7 @@ registerBlock('soilprofile', {
       { xs: rows.map(r => r.N60), zs: rows.map(r => r.z), color: C.blue, marker: 'sq', dash: '5 3', w: 1.2 },
       { xs: rows.map(r => r.N160), zs: rows.map(r => r.z), color: C.red, marker: 'c', w: 1.6 },
     ], 'N-SPT [golpes/30 cm]', { noZ: true, nf });
-    rows.forEach(r => { g += lab(p1 + (Math.max(r.N, r.N60, r.N160) / Nmax) * w1 + 7, Y(r.z) + 3.5, f2(r.N, 0), { fs: 8.5, a: 'start', c: C.ink }); });
+    rows.forEach(r => { g += lab(p1 + (Math.max(r.N, r.N60, r.N160) / Nmax) * w1 + 7, Y(r.z) + 3.5, f2(r.N, 0), { fs: 9, a: 'start', c: C.ink }); });
     // esfuerzos
     const p2 = 498, w2 = 190, zz = []; for (let i = 0; i <= 80; i++) zz.push(zmax * i / 80);
     if (nf !== null) zz.push(nf); top = 0; layers.forEach(l => { top += l.h; zz.push(top); }); zz.sort((a, c) => a - c);
@@ -573,7 +573,7 @@ registerBlock('slope', {
     crit.sl.forEach(q => { g += Lne(X(q.x - q.b / 2), Y(surfY(pts, q.x - q.b / 2)), X(q.x - q.b / 2), Y(crit.yc - Math.sqrt(Math.max(0, crit.R ** 2 - (q.x - q.b / 2 - crit.xc) ** 2))), '#6b5a40', 0.6); });
     g += '</g>';
     g += `<path d="${pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="${C.ink}" stroke-width="1.8"/>`;
-    g += Lne(X(xs0), Y(ybase), X(xs1), Y(ybase), '#7a6a50', 0.8, '2 3') + T(X(xs1) - 4, Y(ybase) - 3, 'cota mínima de falla', { fs: 8, c: C.axis, a: 'end' });
+    g += Lne(X(xs0), Y(ybase), X(xs1), Y(ybase), '#7a6a50', 0.8, '2 3') + T(X(xs1) - 4, Y(ybase) - 3, 'cota mínima de falla', { fs: 9, c: C.axis, a: 'end' });
     if (wt !== null) { const ywAt = (x) => Math.min(wtAt(wt, x), surfY(pts, x)); const wp = []; for (let i = 0; i <= 120; i++) { const x = xs0 + (xs1 - xs0) * i / 120; wp.push([x, ywAt(x)]); } g += `<path d="${wp.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="${C.blue}" stroke-width="1.4" stroke-dasharray="7 4"/>`; const xw = xs1 - (xs1 - xs0) * 0.06; g += `<path d="M${X(xw) - 5},${Y(ywAt(xw)) - 9} l10,0 l-5,8 z" fill="${C.blue}"/>` + T(X(xw) + 8, Y(ywAt(xw)) - 3, 'NF', { fs: 9, c: C.blue, a: 'start' }); }
     surch.forEach(s => { const a = X(s.x1), c = X(s.x2), y = Y(surfY(pts, (s.x1 + s.x2) / 2)); g += `<rect x="${a}" y="${y - 12}" width="${c - a}" height="10" fill="${C.blueF}" stroke="${C.blue}" stroke-width=".8"/>` + lab((a + c) / 2, y - 16, 'q = ' + f2(s.q) + ' ' + uStr, { c: C.blue, fs: 9 }); });
     // grid
@@ -589,7 +589,7 @@ registerBlock('slope', {
     niceTicks(ylo, yhi, 8).forEach(t => { g += Lne(pl - 4, Y(t), pl, Y(t), C.axis) + T(pl - 6, Y(t) + 3, f2(t, 0), { fs: 9, c: C.axis, a: 'end' }); });
     g += Lne(pl, Hh - 26, W - pr, Hh - 26, C.axis, 0.7) + Lne(pl, pt, pl, Hh - 26, C.axis, 0.7);
     // leyenda de estratos
-    lay.forEach((l, i) => { const yy = pt + 6 + i * 13; g += `<rect x="${W - pr - 214}" y="${yy - 8}" width="12" height="10" fill="${cols[i % cols.length]}" stroke="#7a6a50" stroke-width=".6"/>` + T(W - pr - 198, yy, `${l.name || 'Estrato ' + (i + 1)}: c=${f2(l.c)} ${uStr}, φ=${f2(l.phi * 180 / Math.PI, 1)}°, γ=${f2(l.g)}`, { fs: 8.5, a: 'start' }); });
+    lay.forEach((l, i) => { const yy = pt + 6 + i * 13; g += `<rect x="${W - pr - 214}" y="${yy - 8}" width="12" height="10" fill="${cols[i % cols.length]}" stroke="#7a6a50" stroke-width=".6"/>` + T(W - pr - 198, yy, `${l.name || 'Estrato ' + (i + 1)}: c=${f2(l.c)} ${uStr}, φ=${f2(l.phi * 180 / Math.PI, 1)}°, γ=${f2(l.g)}`, { fs: 9, a: 'start' }); });
     let out = svgWrap(W, Hh, g);
     if (grid.length) out += '<div class="legend"><span><i style="background:hsl(0,70%,45%)"></i>Centros con FS mínimo</span><span><i style="background:hsl(60,70%,45%)"></i>FS intermedio</span><span><i style="background:hsl(120,70%,45%)"></i>FS máximo de la malla</span><span><i style="background:#c62828"></i>Círculo crítico</span></div>';
     out += kv([['FSb' + sfx, crit.FSb], ['FSf' + sfx, crit.FSf], ['xc' + sfx, U(crit.xc, 'm')], ['yc' + sfx, U(crit.yc, 'm')], ['Rc' + sfx, U(crit.R, 'm')]]);
@@ -642,12 +642,12 @@ registerBlock('pilegroup', {
     const Xe = (x) => ex + 30 + x * sc2, Ye = (z) => gy + z * sc2;
     g += T(ex + Wl / 2, 22, 'ELEVACIÓN', { b: 1 });
     g += `<rect x="${ex}" y="${gy}" width="${Wl}" height="${zTot * sc2}" fill="url(#soilp)" opacity=".55"/>` + Lne(ex, gy, ex + Wl, gy, C.soil, 2);
-    if (b.estratos) { let z = 0; lines(b.estratos).forEach(l => { const t = l.split(/\s+/); const z0 = z; z += evalParam(t[0], S, 'm'); if (z < zTot) g += Lne(ex, Ye(z), ex + Wl, Ye(z), '#8a7440', 0.8, '6 3'); if (z0 < zTot) g += lab(ex + Wl - 4, Ye(z0) + 14, t.slice(1).join(' '), { fs: 8.5, a: 'end', c: '#5d4e2c' }); }); }
+    if (b.estratos) { let z = 0; lines(b.estratos).forEach(l => { const t = l.split(/\s+/); const z0 = z; z += evalParam(t[0], S, 'm'); if (z < zTot) g += Lne(ex, Ye(z), ex + Wl, Ye(z), '#8a7440', 0.8, '6 3'); if (z0 < zTot) g += lab(ex + Wl - 4, Ye(z0) + 14, t.slice(1).join(' '), { fs: 9, a: 'end', c: '#5d4e2c' }); }); }
     for (let i = 0; i < n1; i++) { const x = e + i * s; g += `<rect x="${Xe(x - D / 2)}" y="${Ye(Df)}" width="${D * sc2}" height="${Lp * sc2}" fill="#b8c0c8" stroke="${C.ink}" stroke-width=".8"/>`; }
     g += `<rect x="${Xe(0)}" y="${Ye(Df - hc)}" width="${Lc * sc2}" height="${hc * sc2}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.4"/>`;
     g += `<rect x="${Xe((Lc - c1) / 2)}" y="${gy - 22}" width="${c1 * sc2}" height="${(Df - hc) * sc2 + 22}" fill="#7d8894" stroke="${C.ink}"/>`;
     g += dimV(Xe(Lc) + 16, Ye(Df), Ye(Df + Lp), 'Lp = ' + f2(Lp) + ' m', C.ink, 1) + dimV(Xe(0) - 12, Ye(Df - hc), Ye(Df), 'h = ' + f2(hc));
-    g += Lne(Xe(0), Ye(Df + 2 / 3 * Lp), Xe(Lc), Ye(Df + 2 / 3 * Lp), C.red, 1, '5 3') + T(Xe(Lc / 2), Ye(Df + 2 / 3 * Lp) - 4, 'zapata equivalente (2/3 Lp)', { fs: 8.5, c: C.red });
+    g += Lne(Xe(0), Ye(Df + 2 / 3 * Lp), Xe(Lc), Ye(Df + 2 / 3 * Lp), C.red, 1, '5 3') + T(Xe(Lc / 2), Ye(Df + 2 / 3 * Lp) - 4, 'zapata equivalente (2/3 Lp)', { fs: 9, c: C.red });
     return `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || 'Grupo de pilotes y cabezal')}</div>`;
   },
 });
@@ -675,7 +675,7 @@ registerBlock('liqchart', {
     const cmax = Math.min(1.0, Math.max(0.5, ...csr.map(v => v * 1.25), ...crr.filter(v => v < 1).map(v => v * 1.1)));
     const okc = crr.map(v => v < cmax);
     g += zPanel(70, y0, 280, Hh, zmax, [0, cmax], [{ xs: csr, zs: z, color: C.red, marker: 'c' }, { xs: crr.filter((v, i) => okc[i]), zs: z.filter((v, i) => okc[i]), color: C.blue, marker: 'sq', dash: '5 3' }], 'CSR y CRRₘ', { nf });
-    crr.forEach((v, i) => { if (!okc[i]) { const yy = y0 + z[i] / zmax * Hh; g += `<path d="M${350 - 9},${(yy - 4).toFixed(1)} l8,4 l-8,4 z" fill="${C.blue}"/>` + lab(350 - 12, yy + 3.5, 'NL', { a: 'end', c: C.blue, fs: 8.5 }); } });
+    crr.forEach((v, i) => { if (!okc[i]) { const yy = y0 + z[i] / zmax * Hh; g += `<path d="M${350 - 9},${(yy - 4).toFixed(1)} l8,4 l-8,4 z" fill="${C.blue}"/>` + lab(350 - 12, yy + 3.5, 'NL', { a: 'end', c: C.blue, fs: 9 }); } });
     if (okc.some(v => !v)) g += T(210, y0 + Hh + 14, 'NL: (N₁)₆₀cs ≥ 30, no licuable (CRR fuera de escala)', { fs: 9, c: C.axis });
     g += T(24, y0 + Hh / 2, 'Profundidad z [m]', { fs: 10, r: -90, c: C.axis });
     if (fs) { const fmx = 3; g += zPanel(420, y0, 260, Hh, zmax, [0, fmx], [{ xs: fs.map(v => Math.min(v, fmx)), zs: z, color: C.green, marker: 'c' }], 'FSₗ = CRRₘ / CSR', { nf, vref: [[FSmin, C.red, 'FS mín = ' + f2(FSmin)], [1, C.axis, '']] }); fs.forEach((v, i) => { if (v < FSmin) g += `<circle cx="${(420 + Math.min(v, 3) / 3 * 260).toFixed(1)}" cy="${(y0 + z[i] / zmax * Hh).toFixed(1)}" r="5" fill="none" stroke="${C.red}" stroke-width="1.6"/>`; }); }

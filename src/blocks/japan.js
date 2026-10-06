@@ -85,7 +85,7 @@ registerBlock('aidist', {
     const panel = (x0, pw, vals, max, col, colF, title, fmt, ref) => {
       let s = '';
       const X = (v) => x0 + pw * v / max;
-      niceTicks(0, max, 4).forEach((t) => { s += Lne(X(t), top, X(t), yAt(0), C.grid, 0.7) + T(X(t), yAt(0) + 13, f2(t, max < 2 ? 2 : max < 20 ? 1 : 0), { fs: 8.5, c: C.axis }); });
+      niceTicks(0, max, 4).forEach((t) => { s += Lne(X(t), top, X(t), yAt(0), C.grid, 0.7) + T(X(t), yAt(0) + 13, f2(t, max < 2 ? 2 : max < 20 ? 1 : 0), { fs: 9, c: C.axis }); });
       if (ref !== undefined) s += Lne(X(ref), top, X(ref), yAt(0), C.axis, 1, '4 3');
       let path = `M${X(0)},${yAt(0)}`;
       for (let i = 0; i < n; i++) {
@@ -221,7 +221,7 @@ registerBlock('kaberyo', {
       const [p1, q1] = P(m.x1, m.y1), [p2, q2] = P(m.x2, m.y2);
       const col = m.dir === 'X' ? C.blue : C.orange;
       g += `<line x1="${p1}" y1="${q1}" x2="${p2}" y2="${q2}" stroke="${col}" stroke-width="${3 + m.k}" stroke-linecap="butt" opacity="0.85"/>`;
-      g += T((p1 + p2) / 2 + (m.dir === 'Y' ? 12 : 0), (q1 + q2) / 2 + (m.dir === 'X' ? -7 : 3), f2(m.k, 1), { fs: 8.5, c: col, a: m.dir === 'Y' ? 'start' : 'middle' });
+      g += T((p1 + p2) / 2 + (m.dir === 'Y' ? 12 : 0), (q1 + q2) / 2 + (m.dir === 'X' ? -7 : 3), f2(m.k, 1), { fs: 9, c: col, a: m.dir === 'Y' ? 'start' : 'middle' });
     }
     g += T((ax + bx2) / 2, by2 + 22, `Lx = ${f2(Lx, 2)} m`, { fs: 10 }) + T(ax - 22, (ay + by2) / 2, `Ly = ${f2(Ly, 2)} m`, { fs: 10, r: -90 });
     const lx = bx2 + 46; let ly = ay + 6;

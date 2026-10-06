@@ -344,7 +344,7 @@ registerBlock('storyforces', {
         const L = 18 + 50 * Fi[i] / Math.max(...Fi);
         g += `<line x1="${(x0 + wB + 6 + L).toFixed(1)}" y1="${y1.toFixed(1)}" x2="${(x0 + wB + 6).toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>`;
         g += T(x0 + wB + 10 + L, y1 + 3, `F${i + 1} = ${f2(nf(Fi[i]), 1)}`, { fs: 9, a: 'start', c: C.red });
-        g += T(x0 - 6, y1 + 3, f2(hi[i], 2), { fs: 8, a: 'end', c: C.axis });
+        g += T(x0 - 6, y1 + 3, f2(hi[i], 2), { fs: 9, a: 'end', c: C.axis });
       }
     }
     // cortantes

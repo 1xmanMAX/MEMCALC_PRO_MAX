@@ -278,4 +278,14 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('an-'))) {
   const mpb = runTemplate('an-modal-pdelta', d => { d.blocks[1].src = d.blocks[1].src.replace('bc = 60 cm', 'bc = 30 cm').replace('hc = 60 cm', 'hc = 30 cm'); });
   truthy('Modal + P-Δ con columnas 30×30: derivas NO CUMPLEN, sin errores', mpb.res.ctx.errors.length === 0 && mpb.res.ctx.checks.some(c => !c.ok && /Deriva/.test(c.label)), mpb.res.ctx.errors.map(e => e.msg).join('; '));
 }
+section('QA de plantillas: «validacion» y rangos usuales [mín..máx] de los datos');
+for (const t of TEMPLATES.filter(x => x.id.startsWith('an-'))) {
+  const v = t.validacion;
+  truthy(`${t.id}: tiene «validacion» con fuente, nota y valores`, !!(v && v.fuente && v.nota && Array.isArray(v.valores) && v.valores.length >= 3));
+  const r = runTemplate(t.id).res, ins = r.ctx.inputs.filter(i => i.range);
+  const fuera = ins.filter(i => { const x = parseFloat(i.num); return !(x >= i.range.min && x <= i.range.max); });
+  truthy(`${t.id}: ${ins.length} datos con rango usual, valores por defecto dentro del rango`, ins.length >= 3 && fuera.length === 0, fuera.map(i => i.name + ' = ' + i.num).join(', '));
+  const sinEtq = r.ctx.inputs.filter(i => !i.label);
+  truthy(`${t.id}: todos los datos tienen etiqueta`, sinEtq.length === 0, sinEtq.map(i => i.name).join(', '));
+}
 done();

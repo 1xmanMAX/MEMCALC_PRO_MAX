@@ -253,8 +253,12 @@ fy = 4200 kgf/cm^2 // Fluencia del acero [2800..4200]
 hz = 60 cm // Peralte de la zapata [30..120]
 bar = 5 // Varilla de refuerzo [4 : 1/2"|5 : 5/8"|6 : 3/4"]
 barcol = 6 // Varilla longitudinal de la columna [5 : 5/8"|6 : 3/4"|8 : 1"]
+modo = 1 // Dimensionamiento en planta [1 : automático (B y L por qa)|2 : B y L dados]
+B_dado = 2.05 m // Ancho B (solo con «B y L dados») [0.6..6]
+L_dado = 2.15 m // Largo L (solo con «B y L dados») [0.6..6]
 check Df >= 0.80 m // Profundidad mínima de cimentación (E.050 Art. 26.2)
 ## Dimensionamiento en planta
+"En modo **automático** B y L se recalculan con cada cambio de cargas para que la presión máxima no supere la capacidad neta: por eso, al aumentar las cargas, la zapata crece y las relaciones D/C de presión cambian poco. Para revisar una zapata de dimensiones fijas elija «B y L dados» e ingrese B y L.
 qn = qa - gammam*Df - spiso -> tonf/m^2 // Capacidad portante neta
 check qn > 0 tonf/m^2 // Capacidad neta positiva
 P = PD + PL // Carga de servicio
@@ -263,8 +267,9 @@ e = M/P -> m // Excentricidad
 A0 = P/max(qn, 1 tonf/m^2) -> m^2 // Área por carga axial
 Areq = A0*(1 + 6*e/sqrt(A0)) -> m^2 // Área requerida incluyendo excentricidad
 Dc = c1 - c2 // Diferencia de lados (volados iguales)
-B = roundup((-Dc + sqrt(Dc^2 + 4*Areq))/2, 0.05 m) // Ancho adoptado
-L = B + Dc -> m // Largo adoptado
+Bauto = roundup((-Dc + sqrt(Dc^2 + 4*Areq))/2, 0.05 m) // Ancho requerido con volados iguales (múltiplo de 5 cm)
+B = si(modo == 2, B_dado, Bauto) -> m // Ancho adoptado
+L = si(modo == 2, L_dado, Bauto + Dc) -> m // Largo adoptado
 check e <= L/6 // Resultante dentro del núcleo central
 q1 = P/(B*L) + 6*M/(B*L^2) -> tonf/m^2 // Presión máxima
 q2 = P/(B*L) - 6*M/(B*L^2) -> tonf/m^2 // Presión mínima

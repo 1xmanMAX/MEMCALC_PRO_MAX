@@ -1,5 +1,5 @@
 // Pruebas del módulo «bridges» (AASHTO LRFD / MTC 2018) — ver docs/referencias/bridges.md
-import { near, truthy, calc, block, runTemplate, section, done } from './helpers.mjs';
+import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES } from './helpers.mjs';
 
 section('Factores de distribución — FHWA, ejemplo de viga PSC (Design Step 5.1): S = 9.667 ft, L = 110 ft, ts = 8 in, Kg = 2 984 704 in⁴, esviaje 20°');
 let v = calc(`S = 9.667 ft
@@ -192,5 +192,21 @@ section('Revisión — datos extremos: verificaciones NO CUMPLE sin errores ni N
     const nan = r.ctx.checks.filter(x => x.ratio !== null && x.ratio !== undefined && !Number.isFinite(x.ratio));
     truthy(`${id} ${JSON.stringify(c)}: ${r.ctx.checks.filter(x => !x.ok).length} NO CUMPLE, ${r.ctx.errors.length} errores, ${nan.length} D/C no finitos`, r.ctx.errors.length === 0 && nan.length === 0 && r.ctx.checks.some(x => !x.ok), r.ctx.errors.map(e => e.msg).join('; '));
   }
+}
+section('QA de plantillas: «validacion» y rangos usuales [mín..máx] de los datos');
+for (const t of TEMPLATES.filter(x => x.id.startsWith('br-'))) {
+  const v = t.validacion;
+  truthy(`${t.id}: tiene «validacion» con fuente, nota y valores`, !!(v && v.fuente && v.nota && Array.isArray(v.valores) && v.valores.length >= 3));
+  const r = runTemplate(t.id).res, ins = r.ctx.inputs.filter(i => i.range);
+  const fuera = ins.filter(i => { const x = parseFloat(i.num); return !(x >= i.range.min && x <= i.range.max); });
+  truthy(`${t.id}: ${ins.length} datos con rango usual, valores por defecto dentro del rango`, ins.length >= 3 && fuera.length === 0, fuera.map(i => i.name + ' = ' + i.num).join(', '));
+  const sinEtq = r.ctx.inputs.filter(i => !i.label);
+  truthy(`${t.id}: todos los datos tienen etiqueta`, sinEtq.length === 0, sinEtq.map(i => i.name).join(', '));
+}
+{ // bloque «neopreno» (dibujo del apoyo zunchado): sin errores, con capas y zunchos
+  const g = block('neopreno', { L: '300 mm', W: '450 mm', hri: '12 mm', n: '4', hrc: '6 mm', hs: '3 mm', cover: '6 mm', Ds: '6.5 mm' });
+  truthy('neopreno: SVG con 5 zunchos (×5), 4 capas interiores (×4) y H = 75 mm', /<svg/.test(g.html) && /\(×5\)/.test(g.html) && /\(×4\)/.test(g.html) && /H = 75 mm/.test(g.html));
+  const t = runTemplate('br-neopreno').res;
+  truthy('br-neopreno: incluye la figura del apoyo', /Apoyo de neopreno zunchado/.test(t.html) && t.ctx.errors.length === 0);
 }
 done();

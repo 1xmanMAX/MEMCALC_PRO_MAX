@@ -239,4 +239,14 @@ for (const [id, a, b] of [['wa-voladizo', 'B = 4.50 m', 'B = 2.00 m'], ['wa-vola
   const okNum = rr.ctx.checks.every(c => c.ratio === null || c.ratio === undefined || Number.isFinite(c.ratio));
   truthy(`${id} con ${b}: NO CUMPLE, sin errores ni D/C no numérico`, rr.ctx.errors.length === 0 && okNum && rr.ctx.checks.some(c => !c.ok), rr.ctx.errors.map(e => e.msg).join('; '));
 }
+section('QA de plantillas: «validacion» y rangos usuales [mín..máx] de los datos');
+for (const t of TEMPLATES.filter(x => x.id.startsWith('wa-'))) {
+  const v = t.validacion;
+  truthy(`${t.id}: tiene «validacion» con fuente, nota y valores`, !!(v && v.fuente && v.nota && Array.isArray(v.valores) && v.valores.length >= 3));
+  const r = runTemplate(t.id).res, ins = r.ctx.inputs.filter(i => i.range);
+  const fuera = ins.filter(i => { const x = parseFloat(i.num); return !(x >= i.range.min && x <= i.range.max); });
+  truthy(`${t.id}: ${ins.length} datos con rango usual, valores por defecto dentro del rango`, ins.length >= 3 && fuera.length === 0, fuera.map(i => i.name + ' = ' + i.num).join(', '));
+  const sinEtq = r.ctx.inputs.filter(i => !i.label);
+  truthy(`${t.id}: todos los datos tienen etiqueta`, sinEtq.length === 0, sinEtq.map(i => i.name).join(', '));
+}
 done();

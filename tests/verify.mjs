@@ -167,5 +167,26 @@ for (const [id, reps, esperado] of EXTREMOS) {
   ok ? pass++ : fail++;
   console.log((ok ? '  ✔ ' : '  ✘ ') + `${id}: ${reps.map(x => x[1]).join(', ')}`.padEnd(58) + ` → NO CUMPLE «${esperado}»` + (ok ? '' : `  [errores ${JSON.stringify(r.ctx.errors).slice(0, 200)}; fallan: ${r.fails.join(' | ')}]`));
 }
+console.log('Plantillas base: «validacion», rangos usuales y modo de dimensionamiento de la zapata');
+{
+  const fs = await import('node:fs');
+  const baseIds = [...fs.readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8').matchAll(/^\s*id: '([\w-]+)'/gm)].map(m => m[1]);
+  for (const id of baseIds) {
+    const t = TEMPLATES.find(x => x.id === id), v = t.validacion, r = runT(id);
+    const ins = r.ctx.inputs.filter(i => i.range), fuera = ins.filter(i => { const x = parseFloat(i.num); return !(x >= i.range.min && x <= i.range.max); });
+    const sinEtq = r.ctx.inputs.filter(i => !i.label);
+    const okV = id === 'blanco' || !!(v && v.fuente && v.nota && v.valores.length >= 3);
+    const ok = okV && ins.length >= Math.min(3, r.ctx.inputs.filter(i => !i.options).length) && fuera.length === 0 && sinEtq.length === 0;
+    ok ? pass++ : fail++;
+    console.log((ok ? '  ✔ ' : '  ✘ ') + `${id}: validación ${v ? 'sí' : 'no'}, ${ins.length} datos con rango usual`.padEnd(58) + (ok ? '' : ` [fuera: ${fuera.map(i => i.name).join(', ')}; sin etiqueta: ${sinEtq.map(i => i.name).join(', ')}]`));
+  }
+  const z = runT('zapata', [['modo = 1 //', 'modo = 2 //'], ['PD = 60 tonf', 'PD = 120 tonf']]);
+  near('Zapata con «B y L dados»: B = B_dado = 2.05 m', z.v('B', 'm'), 2.05, 1e-9);
+  const zok = z.ctx.errors.length === 0 && z.fails.some(l => l.includes('Presión máxima'));
+  zok ? pass++ : fail++; console.log((zok ? '  ✔ ' : '  ✘ ') + 'Zapata con B y L fijos y PD = 120 t: NO CUMPLE la presión (no se redimensiona)');
+  const za = runT('zapata', [['PD = 60 tonf', 'PD = 120 tonf']]);
+  const aok = za.v('B', 'm') > 2.05 && za.ctx.errors.length === 0;
+  aok ? pass++ : fail++; console.log((aok ? '  ✔ ' : '  ✘ ') + 'Zapata en modo automático con PD = 120 t: B crece (' + za.v('B', 'm').toFixed(2) + ' m)');
+}
 console.log(`\nResultado: ${pass} correctas, ${fail} fallidas`);
 process.exit(fail ? 1 : 0);

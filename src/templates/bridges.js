@@ -1131,8 +1131,9 @@ sst = (PDC + PDW)/Ab -> MPa // Esfuerzo estático
 scy = PLL/Ab -> MPa // Esfuerzo cíclico
 ss = sst + scy // Esfuerzo total de servicio
 ## Desplazamiento de diseño por corte
-Ds = 1.2*alfa*DT*Lexp + 0.0002*Lexp -> mm // TU con γ = 1.2 + contracción y flujo plástico (0.0002)
-# Método A (14.7.6)
+Ds = 1.2*alfa*DT*Lexp + 0.0002*Lexp -> mm // TU con γ = 1.2 + contracción y flujo plástico (0.0002)`),
+    { type: 'neopreno', L: 'Lb', W: 'Wb', hri: 'hri', n: 'nint', hrc: 'hrc', hs: 'hs', cover: '6 mm', Ds: 'Ds', titulo: 'Apoyo de neopreno zunchado {Lb} × {Wb}: capas de elastómero, zunchos de acero y deformación por corte Δs' },
+    calc(`# Método A (14.7.6)
 check Si^2/nint < 22 // Límite de aplicabilidad S²/n < 22, apoyo rectangular (14.7.6.1)
 check ss <= 1.25*Gmin*Si // Compresión σs ≤ 1.25 G S (14.7.6.3.2-7)
 check ss <= 8.6 MPa // σs ≤ 1.25 ksi (8.6 MPa)

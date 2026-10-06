@@ -145,7 +145,8 @@ registerBlock('wallplan', {
     ly += 6;
     const z = (v) => f2(Math.abs(v) < 1e-6 ? 0 : v, 3);
     line('CM = (' + z(xCM) + ', ' + z(yCM) + ') m'); line('CR = (' + z(xCR) + ', ' + z(yCR) + ') m');
-    line('ex = xCM − xCR = ' + z(eX) + ' m'); line('ey = yCM − yCR = ' + z(eY) + ' m');
+    const zc = (v) => f2(Math.abs(v) < 1e-6 ? 0 : v * 100, 1);   // excentricidades pequeñas: en cm
+    line('ex = xCM − xCR = ' + zc(eX) + ' cm'); line('ey = yCM − yCR = ' + zc(eY) + ' cm');
     // tabla de muros
     const row = (w) => `<tr><td>${esc(w.id)}</td><td>${w.dir}</td><td>${f2(w.L)}</td><td>${f2(w.t * 100, 1)}</td><td>${f2(w.n)}</td><td>${f2(w.L * w.t * w.n, 3)}</td><td>${w.ok ? f2(w.kf * 100, 1) : '—'}</td><td>${w.ok ? f2(w.rf * 100, 1) : '—'}</td></tr>`;
     ctx.tab = (ctx.tab || 0) + 1;
@@ -280,7 +281,7 @@ registerBlock('cilindro', {
       for (let i = 0; i <= 10; i++) s += Lne(x0, Yy(i / 10), x0 + wdt, Yy(i / 10), C.grid, 0.4);
       s += Lne(X(0), top, X(0), top + hgt, C.ink, 1);
       s += poly([[X(0), Yy(0)], ...fine.map(([y, v]) => [X(v), Yy(y)]), [X(0), Yy(1)]], col === C.blue ? C.blueF : C.redF, col, 1.6);
-      vals.forEach((v, i) => { if (i % 2 === 0 || i === 10) s += T(X(v) + (v >= 0 ? 4 : -4), Yy(i / 10) + 3, fmt(v), { fs: 8.5, a: v >= 0 ? 'start' : 'end', c: col }); });
+      vals.forEach((v, i) => { if (i % 2 === 0 || i === 10) s += T(X(v) + (v >= 0 ? 4 : -4), Yy(i / 10) + 3, fmt(v), { fs: 9, a: v >= 0 ? 'start' : 'end', c: col }); });
       s += T(x0 + wdt / 2, top - 22, titulo, { fs: 11, b: 1 }) + T(x0 + wdt / 2, top - 9, unit, { fs: 9, c: C.axis });
       return s;
     };
@@ -290,7 +291,7 @@ registerBlock('cilindro', {
     g += rect(44, top, 18, hgt, C.conc, C.ink, 1.2);
     g += rect(62, top, 22, hgt, water, 'none') + Lne(62, top, 84, top, C.blue, 1.2);
     g += `<rect x="36" y="${top + hgt}" width="60" height="10" fill="${basen === 1 ? C.conc : '#fff'}" stroke="${C.ink}"/>`;
-    for (let i = 0; i <= 10; i += 2) g += T(38, Yy(i / 10) + 3, f2(i / 10, 1) + 'H', { fs: 8.5, a: 'end', c: C.axis });
+    for (let i = 0; i <= 10; i += 2) g += T(38, Yy(i / 10) + 3, f2(i / 10, 1) + 'H', { fs: 9, a: 'end', c: C.axis });
     g += panel(130, 230, CT.map(c => c * w * H * R), Tv, 'Tensión anular T', '[tonf/m] · T = CT·w·H·R', C.blue, (v) => f2(v, 1));
     g += panel(430, 230, CMv.map(c => c * w * H ** 3), Mv, 'Momento vertical M', '[tonf·m/m] · (−) tracción cara interior', C.red, (v) => f2(v, 2));
     g += T(Wd / 2, Hd - 14, `H²/(D·t) = ${f2(k, 2)} · βH = ${f2(sh.bH, 2)} · base ${basen === 1 ? 'empotrada' : 'articulada'} · Tmax = ${sh.Tmax.toFixed(3)}·wHR en ${f2(sh.yTmax, 2)}H · Mbase = ${sh.Mbase.toFixed(4)}·wH³`, { fs: 9.5, c: '#24292f' });
@@ -441,10 +442,10 @@ registerBlock('tijeral', {
       const A = nodes[br.a], B = nodes[br.b], col = Math.abs(br.N) < 1e-6 * Nmax ? C.axis : br.N > 0 ? C.blue : C.red;
       g += Lne(X(A.x), Y(A.y), X(B.x), Y(B.y), col, 1.2 + 3 * Math.abs(br.N) / Nmax);
       const mx = (X(A.x) + X(B.x)) / 2, my = (Y(A.y) + Y(B.y)) / 2;
-      g += `<rect x="${(mx - 17).toFixed(1)}" y="${(my - 7).toFixed(1)}" width="34" height="12" rx="2" fill="#fff" opacity=".85"/>` + T(mx, my + 2.5, f2(br.N, 2), { fs: 8.5, c: col });
+      g += `<rect x="${(mx - 17).toFixed(1)}" y="${(my - 7).toFixed(1)}" width="34" height="12" rx="2" fill="#fff" opacity=".85"/>` + T(mx, my + 2.5, f2(br.N, 2), { fs: 9, c: col });
     }
     nodes.forEach(nd => { g += circ(X(nd.x), Y(nd.y), 2.6, '#fff', C.ink, 1); });
-    top.forEach((ni, i) => { const f = i === 0 || i === n ? 0.5 : 1, nd = nodes[ni]; if (P > 0) g += arrow(X(nd.x), Y(nd.y) - 30, X(nd.x), Y(nd.y) - 5) + T(X(nd.x), Y(nd.y) - 33, f2(P * f, 2), { fs: 8.5 }); });
+    top.forEach((ni, i) => { const f = i === 0 || i === n ? 0.5 : 1, nd = nodes[ni]; if (P > 0) g += arrow(X(nd.x), Y(nd.y) - 30, X(nd.x), Y(nd.y) - 5) + T(X(nd.x), Y(nd.y) - 33, f2(P * f, 2), { fs: 9 }); });
     g += `<path d="M${X(0)},${Y(0) + 3} l-8,13 h16 z" fill="none" stroke="${C.ink}"/><path d="M${X(L)},${Y(0) + 3} l-8,13 h16 z" fill="none" stroke="${C.ink}"/>` + Lne(X(L) - 9, Y(0) + 19, X(L) + 9, Y(0) + 19);
     g += dimH(X(0), X(L), Y(0) + 38, 'L = ' + f2(L) + ' m (' + n + ' paneles de ' + f2(L / n) + ' m)') + Lne(X(0) - 30, Y(Hc), X(L / 2) - 4, Y(Hc), C.grid, 0.8, '3 3') + dimV(X(0) - 26, Y(Hc), Y(0), 'H = ' + f2(Hc) + ' m');
     g += T(Wd / 2, 18, `Tijeral ${/howe/i.test(b.tipo || 'Howe') ? 'Howe' : 'Pratt'} · fuerzas axiales en tonf (+ tracción, − compresión) · R = ${f2(Ra, 2)} t`, { fs: 10.5, b: 1 });

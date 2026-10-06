@@ -844,7 +844,7 @@ function supportGlyph(md, n, v, col = C.ink) {
     const below = supDir(md, n, v) === 0 ? 1 : -1;
     rot = -a + (below > 0 ? 0 : 180); void nx0; void ny0;
     g = `<path d="M0,0 L-8,11 L8,11 Z" fill="#fff" stroke="${col}" stroke-width="1.3"/><circle cx="-4.5" cy="14" r="2.8" fill="#fff" stroke="${col}"/><circle cx="4.5" cy="14" r="2.8" fill="#fff" stroke="${col}"/><rect x="-15" y="17" width="30" height="5" fill="url(#anH)"/><line x1="-15" y1="17" x2="15" y2="17" stroke="${col}" stroke-width="1.2"/>`;
-    return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(1)})">${g}</g>` + TH(x + 16, y + 26, 'α = ' + f2(a, 1) + '°', { fs: 8.5, c: '#5b6b7b', a: 'start' });
+    return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(1)})">${g}</g>` + TH(x + 16, y + 26, 'α = ' + f2(a, 1) + '°', { fs: 9, c: '#5b6b7b', a: 'start' });
   }
   if (r === '111') g = `<rect x="-15" y="0" width="30" height="7" fill="url(#anH)" stroke="none"/><line x1="-15" y1="0" x2="15" y2="0" stroke="${col}" stroke-width="2.2"/>`;
   else if (r === '110') g = `<path d="M0,0 L-8,13 L8,13 Z" fill="#fff" stroke="${col}" stroke-width="1.3"/><rect x="-13" y="13" width="26" height="5" fill="url(#anH)"/><line x1="-13" y1="13" x2="13" y2="13" stroke="${col}" stroke-width="1.2"/>`;
@@ -854,13 +854,13 @@ function supportGlyph(md, n, v, col = C.ink) {
   } else if (r === '011' || r === '101') {
     if (r === '011') rot = rot === 180 ? 180 : 0; else rot = rot === -90 ? -90 : 90;
     g = `<rect x="-11" y="0" width="22" height="5" fill="#fff" stroke="${col}"/><circle cx="-6" cy="8" r="2.8" fill="#fff" stroke="${col}"/><circle cx="6" cy="8" r="2.8" fill="#fff" stroke="${col}"/><rect x="-14" y="11" width="28" height="5" fill="url(#anH)"/><line x1="-14" y1="11" x2="14" y2="11" stroke="${col}" stroke-width="1.2"/>`;
-  } else if (r !== '000') g = `<rect x="-6" y="-6" width="12" height="12" fill="none" stroke="${col}" stroke-dasharray="2 1.5"/>` + `<text x="0" y="20" font-size="8" text-anchor="middle" fill="${col}" font-family="Inter,Arial">${r}</text>`;
+  } else if (r !== '000') g = `<rect x="-6" y="-6" width="12" height="12" fill="none" stroke="${col}" stroke-dasharray="2 1.5"/>` + `<text x="0" y="20" font-size="9" text-anchor="middle" fill="${col}" font-family="Inter,Segoe UI,Arial">${r}</text>`;
   let out = g ? `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot})">${g}</g>` : '';
   // resortes
   const zig = (len) => { let d = 'M0,0 L0,4'; for (let k = 0; k < 6; k++) d += ` L${k % 2 ? -5 : 5},${4 + (k + 0.5) * (len - 8) / 6}`; return d + ` L0,${len - 4} L0,${len}`; };
   if (s.k[1]) out += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><path d="${zig(24)}" fill="none" stroke="${C.orange}" stroke-width="1.3"/><line x1="-10" y1="24" x2="10" y2="24" stroke="${col}" stroke-width="1.4"/><rect x="-10" y="24" width="20" height="4" fill="url(#anH)"/></g>`;
   if (s.k[0]) out += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(90)"><path d="${zig(24)}" fill="none" stroke="${C.orange}" stroke-width="1.3"/><line x1="-10" y1="24" x2="10" y2="24" stroke="${col}" stroke-width="1.4"/></g>`;
-  if (s.k[2]) out += `<path d="M${x + 7},${y} a7,7 0 1,1 -3,-5.7" fill="none" stroke="${C.orange}" stroke-width="1.3"/>` + TH(x + 12, y + 14, 'kθ', { fs: 8, c: C.orange });
+  if (s.k[2]) out += `<path d="M${x + 7},${y} a7,7 0 1,1 -3,-5.7" fill="none" stroke="${C.orange}" stroke-width="1.3"/>` + TH(x + 12, y + 14, 'kθ', { fs: 9, c: C.orange });
   return out;
 }
 function hingeGlyphs(md, v) {
@@ -931,7 +931,7 @@ function drawModel(md, W) {
   md.nodes.forEach((n) => {
     const [x, y] = P(v, n); const w = 6.5 * String(n.id).length + 4;
     const p = lb.place([[x - 9, y - 9], [x + 9, y - 9], [x - 9, y + 13], [x + 9, y + 13], [x - 14, y], [x + 14, y]], w, 11);
-    if (p) g += `<text x="${p[0].toFixed(1)}" y="${(p[1] + 3).toFixed(1)}" font-size="9.5" font-weight="600" fill="${C.red}" text-anchor="middle" font-family="Inter,Arial" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(n.id)}</text>`;
+    if (p) g += `<text x="${p[0].toFixed(1)}" y="${(p[1] + 3).toFixed(1)}" font-size="9.5" font-weight="600" fill="${C.red}" text-anchor="middle" font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(n.id)}</text>`;
   });
   let leg = '';
   if (multi) leg = '<div class="legend">' + md.secs.map((s, i) => `<span><i style="background:${PAL[i % PAL.length]}"></i>${esc(s.id)}${s.desc ? ' (' + esc(s.desc) + ')' : ''}</span>`).join('') + '</div>';
@@ -1024,7 +1024,7 @@ function drawLoads(md, ci, W, maxH) {
     const [x, y] = P(v, md.nodes[l.n]);
     g += TH(x + 16, y + 26, 'Δ = (' + l.vals.slice(0, 2).map(q => fx(q * 1000, 1)).join('; ') + ') mm', { fs: 9, c: '#8250df', a: 'start', b: 1 });
   }
-  g += T(10, 16, ttl, { fs: 11.5, b: 1, a: 'start' });
+  g += T(10, 16, ttl, { fs: 11, b: 1, a: 'start' });
   return { svg: g, H: v.H };
 }
 // diagramas N, V o M sobre la geometría
@@ -1122,7 +1122,7 @@ function drawDiagram(md, sets, key, W, opts = {}) {
     g += `<circle cx="${L.x.toFixed(1)}" cy="${L.y.toFixed(1)}" r="1.9" fill="${col}"/>` + TH(p[0], p[1], s, { fs: 9.5, c: col, b: 1 });
   }
   const title = { N: 'Fuerza axial N [' + md.U.lab + '] (+ tracción)', V: 'Fuerza cortante V [' + md.U.lab + ']', M: 'Momento flector M [' + md.U.lab + '·m] — dibujado del lado en tracción' }[key];
-  g += T(10, 16, title + (opts.sub ? ' · ' + opts.sub : ''), { fs: 11.5, b: 1, a: 'start' });
+  g += T(10, 16, title + (opts.sub ? ' · ' + opts.sub : ''), { fs: 11, b: 1, a: 'start' });
   return svgWrap(W, v.H, g);
 }
 function drawTruss(md, sets, W, opts = {}) {
@@ -1156,7 +1156,7 @@ function drawTruss(md, sets, W, opts = {}) {
     const p = lb.place(cands.map(q => [q[0], q[1]]), Math.abs(Math.cos(ang * Math.PI / 180)) * w + 8 * Math.abs(Math.sin(ang * Math.PI / 180)), Math.abs(Math.sin(ang * Math.PI / 180)) * w + 11 * Math.abs(Math.cos(ang * Math.PI / 180)));
     if (p) g += TH(p[0], p[1], s, { fs: 9, c: col, b: 1, r: ang });
   });
-  g += T(10, 16, 'Fuerzas axiales N [' + md.U.lab + ']' + (opts.sub ? ' · ' + opts.sub : ''), { fs: 11.5, b: 1, a: 'start' });
+  g += T(10, 16, 'Fuerzas axiales N [' + md.U.lab + ']' + (opts.sub ? ' · ' + opts.sub : ''), { fs: 11, b: 1, a: 'start' });
   return svgWrap(W, v.H, g) + `<div class="legend"><span><i style="background:${COL.T}"></i>Tracción (+)</span><span><i style="background:${COL.Cc}"></i>Compresión (−)</span><span><i style="background:#9aa5b1"></i>Barra sin fuerza</span></div>`;
 }
 function drawDeformed(md, set, W) {
@@ -1182,7 +1182,7 @@ function drawDeformed(md, set, W) {
   if (Math.abs(set.u[3 * ix]) > 1e-12) mark(ix, 'Δx = ' + fx(set.u[3 * ix] * 1000) + ' mm (nudo ' + md.nodes[ix].id + ')');
   if (Math.abs(set.u[3 * iy + 1]) > 1e-12 && iy !== ix) mark(iy, 'Δy = ' + fx(set.u[3 * iy + 1] * 1000) + ' mm (nudo ' + md.nodes[iy].id + ')');
   else if (Math.abs(set.u[3 * iy + 1]) > 1e-12) mark(iy, 'Δy = ' + fx(set.u[3 * iy + 1] * 1000) + ' mm');
-  g += T(10, 16, 'Deformada · ' + set.name + ' · amplificación ×' + f2(amp, 0), { fs: 11.5, b: 1, a: 'start' });
+  g += T(10, 16, 'Deformada · ' + set.name + ' · amplificación ×' + f2(amp, 0), { fs: 11, b: 1, a: 'start' });
   return svgWrap(W, v.H, g);
 }
 
@@ -1245,16 +1245,16 @@ registerBlock('frame2d', {
     F('ver', 'Diagramas para (caso/combinación; vacío = envolvente)', ''),
     F('servicio', 'Deformada y desplazamientos para (vacío = suma de casos)', ''),
     F('graficos', 'Gráficos (M V N D C = momento, cortante, axial, deformada, cargas)', 'C M V N D'),
-    F('deflim', 'Deflexión límite de vigas L/… (vacío = no verificar)', '360'),
+    F('deflim', 'Deflexión límite de vigas L/… (vacío = no verificar)', 'p. ej. 360'),
     F('deflbarras', 'Barras para la deflexión (vacío = horizontales)', ''),
-    F('deriva_caso', 'Caso/combinación para derivas (vacío = no verificar)', 'CS'),
-    F('deriva_f', 'Factor de amplificación de desplazamientos (p. ej. 0.75 R)', '0.75*8'),
-    F('deriva_lim', 'Deriva límite Δ/h', '0.007'),
+    F('deriva_caso', 'Caso/combinación para derivas (vacío = no verificar)', 'p. ej. CS'),
+    F('deriva_f', 'Factor de amplificación de desplazamientos (vacío = 1)', 'p. ej. 0.75*R'),
+    F('deriva_lim', 'Deriva límite Δ/h', 'p. ej. 0.007'),
     F('pdelta', 'Efecto P-Δ en las combinaciones (análisis de 2.º orden)', '', 'check'),
     F('cortante', 'Deformación por cortante: ν (vacío = no; p. ej. 0.2)', ''),
     F('brazos', 'Zonas rígidas en nudos: factor 0–1 (vacío = no)', ''),
     F('masas', 'Masas (modal): nudos peso [x|y]  ·  = CM + 0.25 CV', '', 'area'),
-    F('modos', 'N.º de modos a reportar', '3'),
+    F('modos', 'N.º de modos a reportar (vacío = 3)', 'p. ej. 3'),
     F('sufijo', 'Sufijo de variables exportadas (opcional)', ''),
     F('titulo', 'Título', ''),
   ],
@@ -1262,6 +1262,7 @@ registerBlock('frame2d', {
   def: {
     tipo: 'portico', nudos: '1 0 0\n2 0 3.5\n3 6 3.5\n4 6 0', secciones: 'C rect 0.40 0.40 2.17e6\nV rect 0.30 0.60 2.17e6', barras: '1 1 2 C\n2 2 3 V\n3 4 3 C', apoyos: '1,4 E',
     cargas: 'CM: U 2 2.5\nCV: U 2 1.0\nCS: N 2 4 0', combinaciones: 'U1 = 1.4 CM + 1.7 CV\nU2 = 1.25(CM + CV) ± CS\nU3 = 0.9 CM ± CS', graficos: 'C M V N D',
+    deflim: '360', deriva_caso: 'CS', deriva_f: '0.75*8', deriva_lim: '0.007', modos: '3',
   },
   render: renderFrame,
 });
@@ -1429,9 +1430,13 @@ function renderFrame(b, ctx) {
     }
   }
   const dcase = pick(b.deriva_caso, 'Derivas');
-  let driftTb = '';
-  if (dcase) {
-    const fD = evalParam(b.deriva_f, S, '', 1), lim = evalParam(b.deriva_lim, S, '', 0.007);
+  let driftTb = '', driftMsg = '';
+  const hasLim = String(b.deriva_lim ?? '').trim() !== '', hasF = String(b.deriva_f ?? '').trim() !== '';
+  // el texto de ejemplo de los campos no es un valor por defecto: sin caso no se verifica; sin límite, se avisa
+  if (!dcase && (hasLim || hasF)) driftMsg = '<div class="warn">Derivas no verificadas: indique «Caso/combinación para derivas» (p. ej. CS); las variables <code>deriva_1…</code> y <code>derivamax</code> no se definen.</div>';
+  if (dcase && !hasLim) driftMsg = '<div class="warn">Derivas no verificadas: indique la «Deriva límite Δ/h» (p. ej. 0.007 en E.030 para concreto armado).</div>';
+  if (dcase && hasLim) {
+    const fD = hasF ? evalParam(b.deriva_f, S, '', 1) : 1, lim = evalParam(b.deriva_lim, S, '', 0.007);
     const cols = md.mems.map((m, i) => i).filter(i => Math.abs(md.mems[i].c) < 0.1);
     if (!cols.length) throw new Error('Derivas: no hay barras verticales (columnas)');
     const lv = new Map();
@@ -1532,6 +1537,7 @@ function renderFrame(b, ctx) {
       groups.map(gr => `<tr><td>${esc(gr.name)}</td><td>${esc(gr.ids.map(i => md.mems[i].id).join(', '))}</td>${md.truss ? '' : `<td>${fx(gr.Mpos)}</td><td>${fx(gr.Mneg)}</td><td>${fx(gr.Vmax)}</td>`}<td>${fx(gr.Nt)}</td><td>${fx(-gr.Nc)}</td><td>${fx(gr.Lmax)}</td></tr>`).join('') + '</tbody></table>';
   }
   if (driftTb) html += `<div class="dt">Control de derivas de entrepiso — ${esc(dcase.name)}</div>` + driftTb;
+  if (driftMsg) html += driftMsg;
   // P-Δ: amplificación por combinación
   if (md.pdelta) {
     const pr = combSets.filter(q => q.pd);
