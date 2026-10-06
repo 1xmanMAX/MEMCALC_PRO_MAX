@@ -161,7 +161,7 @@ Flexión (art. 13): $M_a = a_t\\,f_t\\,j$ con $j = 7d/8$. Cortante (art. 15, ed.
 
 - largo plazo: $Q_{AL} = b\\,j\\,\\alpha f_s$;
 - corto plazo, **control de daño** con $Q_{DS} = Q_L + Q_E$: $Q_{AS} = b\\,j\\,[\\tfrac{2}{3}\\alpha f_s + 0.5\\,{}_wf_t\\,(p_w - 0.002)]$;
-- corto plazo, **seguridad** con $Q_D = Q_L + n\\,Q_E$: $Q_A = b\\,j\\,[\\alpha f_s + 0.5\\,{}_wf_t\\,(p_w - 0.002)]$, con $p_w \\le 1.2\\%$ y ${}_wf_t \\le 390$ N/mm².
+- corto plazo, **seguridad** con $Q_D = Q_L + n\\,Q_E$: $Q_A = b\\,j\\,[\\alpha f_s + 0.5\\,{}_wf_t\\,(p_w - 0.002)]$, con $p_w \\le 1.2\\%$ y $\\,{}_wf_t \\le 390$ N/mm².
 
 Para garantizar la falla dúctil (diseño de garantía) se compara la resistencia a cortante de **Arakawa** (fórmula mínima) $Q_{su}$ con el cortante del mecanismo amplificado $Q_L + n_m\\cdot 2M_u/l_0$.
 
@@ -396,29 +396,29 @@ check delta <= dlim // Deflexión de largo plazo`),
   // ------------------------------------------------------------------
   {
     id: 'jp-madera-kaberyo', pais: 'JP', cat: 'Madera y tierra', icon: 'wall', settings: { sys: 'si' },
-    name: 'Casa de madera — cantidad de muros (壁量) y balance 1/4',
+    name: 'Casa de madera — cantidad de muros (kabe-ryo) y balance 1/4',
     normas: 'Building Standard Law · Enforcement Order Art. 46 · Notif. MOC 1352 (2000, yonbun-wari) · Notif. MOC 1100 (multiplicadores de muro)',
     desc: 'Método de cantidad de muros por sismo (longitud por m² de planta) y por viento (50 cm/m² de área proyectada), con multiplicadores de muro y balance por cuartos (yonbun-wari).',
-    titulo: 'Verificación de muros resistentes de casa de madera de 2 pisos (método 壁量計算)',
+    titulo: 'Verificación de muros resistentes de casa de madera de 2 pisos (método de cantidad de muros, kabe-ryo keisan)',
     blocks: [
       text(`# Generalidades
-Las viviendas de madera con entramado (在来軸組工法) de hasta 2 pisos se verifican con el **método de cantidad de muros** (壁量計算, Enforcement Order Art. 46):
+Las viviendas de madera de entramado de postes y vigas (*zairai jikugumi koho*) de hasta 2 pisos se verifican con el **método de cantidad de muros** (*kabe-ryo keisan*, Enforcement Order Art. 46):
 
-1. **Longitud efectiva** de muros por dirección: $L_e = \\sum k \\cdot L$, con $k$ el **multiplicador de muro** (壁倍率): arriostre 45×90 simple 2.0, doble 4.0; tablero estructural de 9 mm (N50 @ 150) 2.5; placa de yeso 12.5 mm 0.9 (Order Art. 46 tabla 1; Notif. 1100). La suma por muro no excede 5.0.
+1. **Longitud efectiva** de muros por dirección: $L_e = \\sum k \\cdot L$, con $k$ el **multiplicador de muro** (*kabe-bairitsu*): arriostre 45×90 simple 2.0, doble 4.0; tablero estructural de 9 mm (N50 @ 150) 2.5; placa de yeso 12.5 mm 0.9 (Order Art. 46 tabla 1; Notif. 1100). La suma por muro no excede 5.0.
 2. **Requisito sísmico**: $L_{req} = c_w\\,A_{piso}$, con $c_w$ según el tipo de techo y el número de pisos (Art. 46-4, tabla 2).
 3. **Requisito por viento**: $L_{req} = 50\\ \\text{cm/m}^2 \\times$ área de fachada proyectada por encima de 1.35 m del nivel del piso (Art. 46-4, tabla 3).
-4. **Balance por cuartos** (四分割法, Notif. 1352): en las franjas extremas de 1/4 de la planta, la **suficiencia** (longitud efectiva/requerida) debe superar 1.0 en ambas, o la relación entre la menor y la mayor debe ser ≥ 0.5.
+4. **Balance por cuartos** (*yonbun-wari-ho*, Notif. 1352): en las franjas extremas de 1/4 de la planta, la **suficiencia** (longitud efectiva/requerida) debe superar 1.0 en ambas, o la relación entre la menor y la mayor debe ser ≥ 0.5. La longitud requerida de cada franja usa su propia área y el coeficiente $c_w$ que corresponde al número de pisos **de esa franja** (si sobre la franja no hay 2F, se usa el valor de 1 piso).
 
 Vivienda de 2 pisos, techo ligero de lámina metálica, planta del 1F de 10.92 × 7.28 m (módulo 910 mm).
 > Desde abril de 2025 la reforma de la BSL reemplazó la tabla de $c_w$ por valores en función del peso real (paneles solares, aislamiento). El valor $c_w$ de esta memoria es editable.`),
       calc(`# Datos de la vivienda
 techo = 1 // Tipo de techo [1 : Ligero (lámina metálica, pizarra)|2 : Pesado (teja cerámica)]
-pisos = 2 // Número de pisos [1 : 1 piso|2 : 2 pisos|3 : 3 pisos]
+niv = 2 // Número de pisos [1 : 1 piso|2 : 2 pisos|3 : 3 pisos]
 Lx = 10.92 m // Largo de la planta del 1F (dirección X)
 Ly = 7.28 m // Ancho de la planta del 1F (dirección Y)
 A1 = Lx*Ly // Área de piso del 1F
-cw1 = kabeBSL(techo, pisos, 1) // Longitud requerida por sismo, 1F (Order Art. 46-4, tabla 2)
-cw2 = kabeBSL(techo, pisos, 2) // Longitud requerida por sismo, 2F
+cw1 = kabeBSL(techo, niv, 1) // Longitud requerida por sismo, 1F (Order Art. 46-4, tabla 2)
+cw2 = kabeBSL(techo, niv, 2) // Longitud requerida por sismo, 2F
 cv = 50 cm/m^2 // Longitud requerida por viento (Order Art. 46-4, tabla 3) [50 cm/m^2 : Zona general|75 cm/m^2 : Zona de vientos fuertes]
 AvX = 31.0 m^2 // Área de fachada proyectada que recibe viento en X (por encima de 1.35 m del 1F)
 AvY = 49.5 m^2 // Área de fachada proyectada que recibe viento en Y
@@ -430,6 +430,7 @@ LreqX = max(LsX, LwX) // Longitud requerida en X
 LreqY = max(LsX, LwY) // Longitud requerida en Y`),
       { type: 'kaberyo', Lx: 'Lx', Ly: 'Ly', coef: 'cw1', coefLado: 'cw1', muros: '0 0 2.73 0 2.5 // fachada sur, tablero 9 mm\n8.19 0 10.92 0 2.5\n0 7.28 3.64 7.28 2.5 // fachada norte\n7.28 7.28 10.92 7.28 2.5\n5.46 3.64 7.28 3.64 2.0 // muro interior, arriostre 45×90\n0 0 0 2.73 2.5 // fachada oeste\n0 4.55 0 7.28 2.5\n10.92 0 10.92 1.82 2.5 // fachada este\n10.92 4.55 10.92 7.28 2.5\n4.55 3.64 4.55 7.28 2.0 // tabique interior, arriostre 45×90\n7.28 0 7.28 1.82 2.0', titulo: 'Planta del 1F: muros resistentes y franjas de 1/4 (yonbun-wari, Notif. 1352)' },
       calc(`# Verificación de cantidad de muros del 1F (Order Art. 46-4)
+"El 2F (7.28 × 7.28 m) no cubre toda la planta del 1F; en las cuatro franjas se usó del lado de la seguridad $c_w$ de 2 pisos ({cw1}). Si sobre una franja no hay 2F puede usarse el valor de 1 piso.
 check LeX >= LreqX // Longitud efectiva en X ≥ requerida (sismo y viento)
 check LeY >= LreqY // Longitud efectiva en Y ≥ requerida (sismo y viento)
 # Verificación simplificada del 2F
@@ -438,8 +439,10 @@ Le2X = 21.8 m // Longitud efectiva de muros del 2F en X (Σk·L)
 Le2Y = 23.7 m // Longitud efectiva de muros del 2F en Y (Σk·L)
 Av2X = 14.5 m^2 // Área de fachada del 2F que recibe viento en X
 Av2Y = 21.0 m^2 // Área de fachada del 2F que recibe viento en Y
-check Le2X >= max(cw2*A2, cv*Av2X) // 2F en X (Order Art. 46-4)
-check Le2Y >= max(cw2*A2, cv*Av2Y) // 2F en Y (Order Art. 46-4)
+Lreq2X = max(cw2*A2, cv*Av2X) -> m // Longitud requerida del 2F en X (sismo o viento)
+Lreq2Y = max(cw2*A2, cv*Av2Y) -> m // Longitud requerida del 2F en Y (sismo o viento)
+check Le2X >= Lreq2X // 2F en X (Order Art. 46-4)
+check Le2Y >= Lreq2Y // 2F en Y (Order Art. 46-4)
 "Complementariamente deben verificarse los herrajes de columnas (Notif. 1460, método del valor N) y, para 3 pisos o más de 500 m², el cálculo estructural (Order Art. 82).`),
       summary(),
     ],
@@ -451,7 +454,7 @@ check Le2Y >= max(cw2*A2, cv*Av2Y) // 2F en Y (Order Art. 46-4)
     id: 'jp-bsl-viento-nieve', pais: 'JP', cat: 'Cargas y combinaciones', icon: 'calc', settings: { sys: 'si' },
     name: 'Presión de viento y carga de nieve BSL (Japón)',
     normas: 'Building Standard Law · Enforcement Order Art. 86 (nieve) y 87 (viento) · Notif. MOC 1454 (viento) · Notif. MOC 1455 (nieve)',
-    desc: 'q = 0.6·E·V0² con E = Er²·Gf por categoría de rugosidad, coeficientes de presión de muros y fuerza de viento global; carga de nieve S = ρ·ds·μb para zona general o de nieve intensa.',
+    desc: 'q = 0.6·E·V0² con E = Er²·Gf por categoría de rugosidad, coeficientes de presión de muros y fuerza de viento global sobre la estructura; carga de nieve S = ρ·ds·μb para zona general o de nieve intensa.',
     titulo: 'Cargas de viento y nieve según la Building Standard Law de Japón',
     blocks: [
       text(`# Generalidades
@@ -464,9 +467,9 @@ $$E_r = 1.7\\left(\\frac{\\max(H, Z_b)}{Z_G}\\right)^{\\alpha}$$
 | III (suburbano) | 5 | 450 | 0.20 | 2.5 | 2.1 |
 | IV (urbano denso) | 10 | 550 | 0.27 | 3.1 | 2.3 |
 
-La fuerza es $W = q\\,C_f\\,A$, con $C_f = C_{pe} - C_{pi}$: barlovento $C_{pe} = 0.8\\,k_z$, sotavento $C_{pe} = -0.4$, interior $C_{pi} = 0$ o $-0.2$.
+La fuerza sobre la estructura principal es $W = q\\,C_f\\,A$, con $C_f = C_{pe} - C_{pi}$: barlovento $C_{pe} = 0.8\\,k_z$, sotavento $C_{pe} = -0.4$, interior $C_{pi} = 0$ o $-0.2$ (edificio cerrado). Los **cerramientos y techos** no se diseñan con este $q$: usan la presión pico $\\hat q = 0.6\\,E_r^2\\,V_0^2$ y los coeficientes pico $\\hat C_f$ de la Notif. 1458.
 
-**Nieve** (Order Art. 86; Notif. 1455): $S = \\rho\\,d_s\\,\\mu_b$ con $\\rho = 20$ N/m²/cm (zona general) o 30 N/m²/cm en zonas de nieve intensa (多雪区域), y $\\mu_b = \\sqrt{\\cos(1.5\\beta)}$ ($\\beta \\le 60°$).
+**Nieve** (Order Art. 86; Notif. 1455): $S = \\rho\\,d_s\\,\\mu_b$ con $\\rho = 20$ N/m²/cm (zona general) o 30 N/m²/cm en zonas de nieve intensa (*tasetsu kuiki*), y $\\mu_b = \\sqrt{\\cos(1.5\\beta)}$ ($\\beta \\le 60°$).
 
 Edificio de 3 pisos en Tokio ($V_0 = 34$ m/s), zona suburbana, techo a dos aguas de 20°.`),
       calc(`# Presión de viento (Order Art. 87)
@@ -477,20 +480,18 @@ Bw = 20.0 m // Ancho de la fachada expuesta
 Er = ErBSL(Hb, cat) // Factor de distribución vertical (Notif. 1454 Art. 1)
 Gf = GfBSL(Hb, cat) // Factor de ráfaga (Notif. 1454 Art. 1)
 E = Er^2*Gf // Factor de exposición E = Er²·Gf
-q = 0.6*E*V0^2*1 N*s^2/m^4 // Presión de velocidad q = 0.6·E·V0² (Order Art. 87-2)
+q = 0.6 kg/m^3*E*V0^2 -> N/m^2 // Presión de velocidad q = 0.6·E·V0² (Order Art. 87-2)
 kz = kzBSL(Hb, Hb, cat) // Factor de altura en la cumbre (Notif. 1454 Art. 3)
 Cpe1 = 0.8*kz // Coeficiente de presión exterior, barlovento
 Cpe2 = -0.4 // Coeficiente de presión exterior, sotavento
-Cpi = -0.2 // Coeficiente de presión interior (edificio cerrado) [0|-0.2]
-## Presión sobre el cerramiento y fuerza global
-pw = q*(Cpe1 - Cpi) -> N/m^2 // Presión neta de diseño en el muro de barlovento
-pcap = 1500 N/m^2 // Resistencia de diseño del panel de fachada (ensayo del fabricante)
-check pw <= pcap // Presión de viento ≤ resistencia del panel
+Cp_i = -0.2 // Coeficiente de presión interior (edificio cerrado) [0|-0.2]
+## Presiones y fuerza global sobre la estructura principal
+pw = q*(Cpe1 - Cp_i) -> N/m^2 // Presión neta en el muro de barlovento (estructura principal)
 Qw = q*(Cpe1 - Cpe2)*Bw*Hb -> kN // Fuerza global de viento sobre el edificio
 QE1 = 1450 kN // Cortante sísmico basal de primera fase (Co = 0.2) del mismo edificio
 check Qw <= QE1 // El sismo controla el diseño lateral (si no, diseñar por viento)
 # Carga de nieve (Order Art. 86)
-reg = 1 // Región (Order Art. 86-2) [1 : Zona general|2 : Zona de nieve intensa (多雪区域)]
+reg = 1 // Región (Order Art. 86-2) [1 : Zona general|2 : Zona de nieve intensa (tasetsu kuiki)]
 ds = 30 cm // Profundidad de nieve de diseño (Notif. 1455; reglamento de la prefectura)
 beta = 20 deg // Pendiente del techo
 rho = si(reg == 1, 20, 30)*1 N/m^2/cm // Peso unitario de la nieve por cm (Order Art. 86-2)
@@ -510,48 +511,53 @@ check S <= scap // Carga de nieve ≤ capacidad de la cubierta`),
   {
     id: 'jp-jra-espectro', pais: 'JP', cat: 'Puentes', icon: 'spectrum', settings: { sys: 'si' },
     name: 'Espectros sísmicos JRA para puentes (nivel 1 y nivel 2)',
-    normas: 'JRA Specifications for Highway Bridges, Part V Seismic Design (道路橋示方書 V 耐震設計編, 2012)',
-    desc: 'Clasificación del suelo por TG, espectros estándar de nivel 1 y nivel 2 (tipo I subducción y tipo II cortical), coeficientes cz y cD, y verificación de la pila por el método de capacidad de carga horizontal.',
+    normas: 'JRA Specifications for Highway Bridges, Part V Seismic Design (Doro-kyo Shiho-sho V, ed. 2012)',
+    desc: 'Clasificación del suelo por TG, espectros estándar de nivel 1 y nivel 2 (tipo I subducción, revisado en 2012, y tipo II cortical), coeficientes sísmicos kh0 y khc0 del método estático y verificación de la pila por capacidad de carga horizontal.',
     titulo: 'Espectros de diseño sísmico de puentes — JRA Parte V',
     blocks: [
       text(`# Generalidades
-Las **Specifications for Highway Bridges** de la Japan Road Association (JRA, 道路橋示方書) Parte V definen dos niveles de movimiento sísmico:
+Las **Specifications for Highway Bridges** de la Japan Road Association (JRA, *Doro-kyo Shiho-sho*) Parte V definen dos niveles de movimiento sísmico:
 
 - **Nivel 1**: sismo de alta probabilidad durante la vida útil; el puente debe permanecer elástico (diseño por esfuerzos admisibles).
-- **Nivel 2**: sismo severo de baja probabilidad, con dos tipos: **tipo I**, de gran magnitud en zonas de subducción (p. ej. 2011 Tohoku), y **tipo II**, cortical de corta distancia (p. ej. 1995 Hyogo-ken Nanbu, Kobe).
+- **Nivel 2**: sismo severo de baja probabilidad, con dos tipos: **tipo I**, de gran magnitud en zonas de subducción (revisado en la edición 2012 tras el sismo de Tohoku de 2011), y **tipo II**, cortical de corta distancia (p. ej. 1995 Hyogo-ken Nanbu, Kobe).
 
-La aceleración espectral es $S = c_z\\,c_D\\,S_0(T)$ [gal], con $c_z$ el coeficiente de zona (A: 1.0, B: 0.85, C: 0.7) y $c_D = \\dfrac{1.5}{40h + 1} + 0.5$ la corrección por amortiguamiento. El tipo de suelo se clasifica con el periodo característico $T_G = 4\\sum H_i/V_{si}$: tipo I ($T_G < 0.2$ s), II ($0.2 \\le T_G < 0.6$ s), III ($T_G \\ge 0.6$ s).
+Para el **análisis dinámico** se usa el espectro $S = c_z\\,c_D\\,S_0(T)$ [gal], con $c_D = \\dfrac{1.5}{40h + 1} + 0.5$; para el tipo I se usa el coeficiente regional $c_{Iz}$ (1.2 / 1.0 / 0.8) y para el nivel 1 y el tipo II, $c_z$ (A: 1.0, B: 0.85, C: 0.7). El tipo de suelo se clasifica con el periodo característico $T_G = 4\\sum H_i/V_{si}$: tipo I ($T_G < 0.2$ s), II ($0.2 \\le T_G < 0.6$ s), III ($T_G \\ge 0.6$ s).
 
-Para nivel 2 se usa el **método de capacidad de carga horizontal**: $k_{he} = c_z\\,k_{hc0}/\\sqrt{2\\mu_a - 1} \\ge 0.4\\,c_z$ y debe cumplirse $P_a \\ge k_{he}\\,W$.`),
-      calc(`# Suelo de cimentación (JRA V 4.5)
-Hi = [3.0, 5.0, 4.0] m // Espesor de cada estrato hasta la base sísmica
+Para el **método estático** de una pila de un solo grado de libertad:
+
+- nivel 1 (6.3): $k_h = c_z\\,k_{h0}(T) \\ge 0.1$, que la pila debe resistir con esfuerzos admisibles;
+- nivel 2 (6.4, método de capacidad de carga horizontal): $k_{hc} = c_s\\,c_{z}\\,k_{hc0}(T) \\ge 0.4\\,c_z$, con $c_s = 1/\\sqrt{2\\mu_a - 1}$, y debe cumplirse $P_a \\ge k_{hc}\\,W$.`),
+      calc(`# Suelo de cimentación (JRA V 3.6)
+Hi = [3.0, 5.0, 4.0] m // Espesor de cada estrato hasta la superficie de diseño sísmico
 Vsi = [130, 190, 260] m/s // Velocidad de onda de corte de cada estrato
-TG = 4*sum(Hi ./ Vsi) // Periodo característico del suelo TG = 4ΣHi/Vsi
-suelo = sueloJRA(TG) // Tipo de suelo (I, II o III)
+TG = 4*sum(Hi ./ Vsi) -> s // Periodo característico del suelo TG = 4ΣHi/Vsi
+suelo = sueloJRA(TG) // Tipo de suelo (1 = I, 2 = II, 3 = III)
 # Parámetros del puente
-zona = 1 // Zona sísmica JRA [1 : A (cz = 1.0)|2 : B (cz = 0.85)|3 : C (cz = 0.7)]
-cz = czJRA(zona) // Coeficiente de zona
-h = 0.05 // Amortiguamiento del sistema
+zona = 1 // Zona sísmica JRA para nivel 1 y nivel 2 tipo II [1 : A (cz = 1.0)|2 : B (cz = 0.85)|3 : C (cz = 0.7)]
+cz = czJRA(zona) // Coeficiente de zona cz
+cIz = 1.0 // Coeficiente regional para nivel 2 tipo I (JRA 2012, mapa de cIz) [1.2|1.0|0.8]
+h = 0.05 // Amortiguamiento del sistema (para el espectro dinámico)
 cD = cDJRA(h) // Corrección por amortiguamiento
 T = 0.80 s // Periodo natural de la pila en la dirección analizada
-g0 = 980 // Gravedad en gal
-# Nivel 1 (JRA V 4.2)
-S1 = cz*cD*SJRA1(T, suelo) // Aceleración espectral nivel 1 [gal]
-kh1 = S1/g0 // Coeficiente sísmico horizontal nivel 1
-check kh1 >= 0.1 // kh ≥ 0.1 (mínimo nivel 1)
-khA1 = 0.30 // Coeficiente sísmico resistido a esfuerzos admisibles por la pila (análisis)
-check kh1 <= khA1 // Nivel 1: respuesta elástica (esfuerzos admisibles)
-# Nivel 2 (JRA V 4.3 y 6.4)
-SI = cz*cD*SJRA2I(T, suelo) // Nivel 2 tipo I (subducción) [gal]
-SII = cz*cD*SJRA2II(T, suelo) // Nivel 2 tipo II (cortical) [gal]
-muA = 3.0 // Ductilidad admisible de la pila (JRA V 10.2)
-kheI = max(SI/g0/sqrt(2*muA - 1), 0.4*cz) // Coef. sísmico equivalente tipo I
-kheII = max(SII/g0/sqrt(2*muA - 1), 0.4*cz) // Coef. sísmico equivalente tipo II
 W = 9800 kN // Peso equivalente (superestructura + 1/2 pila)
+# Nivel 1 — método estático (JRA V 6.3)
+kh0 = kh0JRA(T, suelo) // Coeficiente sísmico estándar de nivel 1
+kh = max(cz*kh0, 0.1) // Coeficiente sísmico de diseño kh = cz·kh0 ≥ 0.1
+khA = 0.30 // Coeficiente sísmico que la pila resiste con esfuerzos admisibles (análisis de la pila)
+check kh <= khA // Nivel 1: respuesta elástica con esfuerzos admisibles
+# Nivel 2 — capacidad de carga horizontal (JRA V 6.4 y 10.2)
+muA = 3.0 // Ductilidad admisible de la pila μa (JRA V 10.2)
+cs = 1/sqrt(2*muA - 1) // Coeficiente de características estructurales cs
+khcI = max(cs*cIz*khc0JRA(T, suelo, 1), 0.4*cIz) // Coeficiente sísmico de diseño, tipo I
+khcII = max(cs*cz*khc0JRA(T, suelo, 2), 0.4*cz) // Coeficiente sísmico de diseño, tipo II
 Pa = 8200 kN // Capacidad de carga horizontal de la pila (curva de capacidad)
-check kheI*W <= Pa // Nivel 2 tipo I: Pa ≥ khe·W
-check kheII*W <= Pa // Nivel 2 tipo II: Pa ≥ khe·W`),
-      { type: 'plot', expr: 'cz*cD*SJRA1(x, suelo); cz*cD*SJRA2I(x, suelo); cz*cD*SJRA2II(x, suelo)', var: 'x', desde: '0.02', hasta: '4', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'S [gal]', leyenda: true, nombres: 'Nivel 1; Nivel 2 tipo I (subducción); Nivel 2 tipo II (cortical)', titulo: 'Espectros de diseño JRA para el tipo de suelo del sitio (h = 5 %)' },
+check khcI*W <= Pa // Nivel 2 tipo I: Pa ≥ khc·W
+check khcII*W <= Pa // Nivel 2 tipo II: Pa ≥ khc·W
+# Espectros de aceleración en el sitio (análisis dinámico, JRA V 4.2 y 4.3)
+S1 = cz*cD*SJRA1(T, suelo) // Nivel 1 [gal]
+SI = cIz*cD*SJRA2I(T, suelo) // Nivel 2 tipo I [gal]
+SII = cz*cD*SJRA2II(T, suelo) // Nivel 2 tipo II [gal]`),
+      { type: 'plot', expr: 'cz*cD*SJRA1(x, suelo); cIz*cD*SJRA2I(x, suelo); cz*cD*SJRA2II(x, suelo)', var: 'x', desde: '0.02', hasta: '4', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'S [gal]', leyenda: true, nombres: 'Nivel 1; Nivel 2 tipo I (subducción, 2012); Nivel 2 tipo II (cortical)', titulo: 'Espectros de aceleración JRA 2012 para el tipo de suelo del sitio' },
       { type: 'plot', expr: 'SJRA2II(x, 1); SJRA2II(x, 2); SJRA2II(x, 3)', var: 'x', desde: '0.02', hasta: '4', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'S_II0 [gal]', leyenda: true, nombres: 'Suelo tipo I; Suelo tipo II; Suelo tipo III', titulo: 'Espectro estándar nivel 2 tipo II según el tipo de suelo' },
       summary(),
     ],
@@ -562,35 +568,38 @@ check kheII*W <= Pa // Nivel 2 tipo II: Pa ≥ khe·W`),
   {
     id: 'jp-bsl-n1461', pais: 'JP', cat: 'Sismo — Japón', icon: 'spectrum', settings: { sys: 'si' },
     name: 'Espectro BSL de la roca de ingeniería (Notif. 1461 / cálculo de límites)',
-    normas: 'Building Standard Law · Enforcement Order Art. 82-5 (限界耐力計算) · Notif. MOC 1457 (2000) · Notif. MOC 1461 (2000)',
+    normas: 'Building Standard Law · Enforcement Order Art. 82-5 (cálculo de límites, genkai tairyoku keisan) · Notif. MOC 1457 (2000, mod. 2007) · Notif. MOC 1461 (2000)',
     desc: 'Espectro de aceleración en la roca de ingeniería para sismo raro y muy raro, amplificación simplificada del suelo Gs, reducción por amortiguamiento Fh y verificación de un sistema equivalente de 1 GDL.',
     titulo: 'Espectro de respuesta BSL y verificación por el método de cálculo de límites',
     blocks: [
       text(`# Generalidades
-El **cálculo de límites de resistencia** (限界耐力計算, Order Art. 82-5) y el análisis dinámico de edificios altos (Notif. 1461) definen el sismo mediante un **espectro de aceleración en la roca de ingeniería** (Vs ≥ 400 m/s), con 5 % de amortiguamiento [m/s²]:
-$$S_0(T) = \\begin{cases} 0.64 + 6T & T < 0.16 \\\\ 1.6 & 0.16 \\le T < 0.64 \\\\ 1.024/T & T \\ge 0.64 \\end{cases} \\quad \\text{(sismo raro, 稀)}$$
-y 5 veces estos valores para el **sismo muy raro** (極めて稀). En superficie, $S_a = Z\\,G_s\\,S_0$, con $G_s$ la amplificación del suelo (método simplificado de la Notif. 1457 Art. 10) y la reducción por amortiguamiento $F_h = 1.5/(1 + 10h)$.
+El **cálculo de límites de resistencia** (*genkai tairyoku keisan*, Order Art. 82-5) y el análisis dinámico de edificios altos (Notif. 1461) definen el sismo mediante un **espectro de aceleración en la roca de ingeniería** (Vs ≥ 400 m/s), con 5 % de amortiguamiento [m/s²]:
+$$S_0(T) = \\begin{cases} 0.64 + 6T & T < 0.16 \\\\ 1.6 & 0.16 \\le T < 0.64 \\\\ 1.024/T & T \\ge 0.64 \\end{cases} \\quad \\text{(sismo raro)}$$
+y 5 veces estos valores para el **sismo muy raro**. En superficie, para el límite de daño $S_a = Z\\,G_s\\,S_0$ y para el límite de seguridad $S_a = Z\\,G_s\\,F_h\\,S_0$, con $G_s$ la amplificación del suelo (método simplificado de la Notif. 1457 Art. 10: suelo tipo 1: 1.5 → 0.864/T → 1.35; tipos 2 y 3: 1.5 → 1.5T/0.64 → 2.025 o 2.7) y la reducción por amortiguamiento $F_h = 1.5/(1 + 10h)$.
 
-Se verifica un edificio de 4 pisos idealizado como sistema equivalente de 1 GDL: en el **límite de daño** (sismo raro) y en el **límite de seguridad** (sismo muy raro).`),
+Se verifica un edificio de 4 pisos idealizado como sistema equivalente de 1 GDL: en el **límite de daño** (sismo raro: fuerza ≤ resistencia de daño y deriva ≤ 1/200) y en el **límite de seguridad** (sismo muy raro: fuerza ≤ resistencia última y deriva de seguridad ≤ 1/75, Notif. 1457 Art. 6).`),
       calc(`# Datos
 ${ZONA}
 Z = ZBSL(zona) // Coeficiente de zona (Notif. 1793)
 M = 1450 tonne // Masa equivalente del sistema de 1 GDL
 Td = 0.55 s // Periodo equivalente en el límite de daño
 Ts = 1.05 s // Periodo equivalente (secante) en el límite de seguridad
-hd = 0.05 // Amortiguamiento en el límite de daño
 hs = 0.15 // Amortiguamiento equivalente en el límite de seguridad (histerético + 5 %)
 # Límite de daño — sismo raro (Notif. 1457 Art. 9)
-Sad = Z*GsN1457(Td, suelo)*S0N1461(Td, 1)*FhBSL(hd)*1 m/s^2 // Aceleración de respuesta
+Sad = Z*GsN1457(Td, suelo)*S0N1461(Td, 1)*1 m/s^2 // Aceleración de respuesta Sa = Z·Gs·S0 (h = 5 %)
 Qdem1 = M*Sad -> kN // Cortante basal demandado
 Qd = 4200 kN // Resistencia en el límite de daño (primer elemento que alcanza el esfuerzo admisible de corto plazo)
-check Qdem1 <= Qd // Límite de daño (Order Art. 82-5-3)
+check Qdem1 <= Qd // Límite de daño: fuerza (Order Art. 82-5, inc. 3)
+thd = 1/260 // Deriva máxima de entrepiso en el límite de daño (análisis incremental)
+check thd <= 1/200 // Límite de daño: deriva ≤ 1/200 (Order Art. 82-5, inc. 3)
 # Límite de seguridad — sismo muy raro (Notif. 1457 Art. 7)
 Sas = Z*GsN1457(Ts, suelo)*S0N1461(Ts, 2)*FhBSL(hs)*1 m/s^2 // Aceleración de respuesta reducida
 Qdem2 = M*Sas -> kN // Cortante basal demandado
 Qs = 9800 kN // Resistencia en el límite de seguridad (curva de capacidad)
-check Qdem2 <= Qs // Límite de seguridad (Order Art. 82-5-5)`),
-      { type: 'plot', expr: 'S0N1461(x, 1); S0N1461(x, 2); Z*GsN1457(x, suelo)*S0N1461(x, 2); Z*GsN1457(x, suelo)*S0N1461(x, 2)*FhBSL(hs)', var: 'x', desde: '0.02', hasta: '3', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Sa [m/s²]', leyenda: true, nombres: 'Roca de ingeniería, sismo raro; Roca de ingeniería, sismo muy raro; Superficie Z·Gs·S0 (muy raro); Con reducción Fh (h = 15 %)', titulo: 'Espectros de aceleración de la Notif. 1461 / 1457 (h = 5 %)' },
+check Qdem2 <= Qs // Límite de seguridad: fuerza (Order Art. 82-5, inc. 5)
+ths = 1/90 // Deriva máxima de entrepiso en el límite de seguridad (análisis incremental)
+check ths <= 1/75 // Límite de seguridad: deriva ≤ 1/75 (Notif. 1457 Art. 6, mod. 2007)`),
+      { type: 'plot', expr: 'S0N1461(x, 1); S0N1461(x, 2); Z*GsN1457(x, suelo)*S0N1461(x, 2); Z*GsN1457(x, suelo)*S0N1461(x, 2)*FhBSL(hs)', var: 'x', desde: '0.02', hasta: '3', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Sa [m/s²]', leyenda: true, nombres: 'Roca de ingeniería, sismo raro; Roca de ingeniería, sismo muy raro; Superficie Z·Gs·S0 (muy raro, h = 5 %); Con reducción Fh (h del proyecto)', titulo: 'Espectros de aceleración de la Notif. 1461 / 1457' },
       summary(),
     ],
   },

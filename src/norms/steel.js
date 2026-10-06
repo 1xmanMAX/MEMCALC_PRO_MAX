@@ -22,12 +22,13 @@ export const SHAPES = DB;
 const TIPOS = { K: 'Canal atiesado conformado en frío', I: 'Perfil I (AISC)', C: 'Canal C/MC', L: 'Ángulo L', R: 'Tubo HSS rectangular/cuadrado', O: 'Tubo HSS redondo / Pipe', E: 'Perfil I europeo' };
 
 function normName(s) {
-  let n = String(s).toUpperCase().replace(/[\s×*]/g, 'X').replace(/X+/g, 'X').replace(/^([A-Z]+)X(?=\d)/, '$1');
-  n = n.replace(/X\./g, 'X0.');
-  // europeos: "HE200B", "HE 200 B", "HEB-200"
-  let m = /^HE-?(\d+)-?([ABM])$/.exec(n); if (m) n = 'HE' + m[2] + m[1];
-  m = /^(IPE|HEA|HEB|HEM)-?(\d+)$/.exec(n); if (m) n = m[1] + m[2];
-  return n;
+  const up = String(s).toUpperCase().trim();
+  // europeos: "HE200B", "HE 200 B", "HEB-200", "IPE 300"
+  const c = up.replace(/[\s-]/g, '');
+  let m = /^HE(\d+)([ABM])$/.exec(c); if (m) return 'HE' + m[2] + m[1];
+  m = /^(IPE|HEA|HEB|HEM)(\d+)$/.exec(c); if (m) return m[1] + m[2];
+  let n = up.replace(/[\s×*]/g, 'X').replace(/X+/g, 'X').replace(/^([A-Z]+)X(?=\d)/, '$1');
+  return n.replace(/X\./g, 'X0.');
 }
 export function getShape(name) {
   if (name && name.fam) return name;

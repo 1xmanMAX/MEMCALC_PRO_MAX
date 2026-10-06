@@ -27,16 +27,27 @@ section('Distribución Ai — edificio de 5 pisos con pesos iguales, T = 0.3 s (
   truthy('El bloque aidist dibuja la figura SVG', /<svg/.test(g.html));
 }
 
-section('Ds y Fes (Notif. 1792)');
+section('Ds y Fes (Notif. 1792) — tablas oficiales (MEXT 2024, tablas 6.1 y 6.2; Sato 2011, tabla 2.8)');
 {
   const g = calc('a = DsRC(1, 1, 0)\nb2 = DsRC(2, 1, 0.5)\nc = DsRC(4, 1, 0.8)\nd = DsS(1, 1, 0)\ne = DsS(3, 2, 0.5)\nf = DsS(4, 3, 0.6)\ng2 = DsS(2, 3, 0.2)\nfe = FeN1792(0.225)\nfs = FsN1792(0.45)\nfes = FesBSL(0.45, 0.4)');
   near('RC FA, pórtico puro: Ds = 0.30', g('a'), 0.30);
   near('RC FB + WA, βu = 0.5: Ds = 0.40', g('b2'), 0.40);
   near('RC FD, βu = 0.8: Ds = 0.55', g('c'), 0.55);
+  // Celdas de la tabla oficial de C°A° que NO siguen la regla «rango del menos dúctil» (error corregido en la revisión)
+  const r = calc('a1 = DsRC(1, 3, 0.2)\na2 = DsRC(1, 4, 0.2)\na3 = DsRC(3, 1, 0.8)\na4 = DsRC(2, 3, 0.5)\na5 = DsRC(1, 2, 0.5)\na6 = DsRC(1, 4, 0.5)\na7 = DsRC(2, 4, 0.2)\na8 = DsRC(4, 4, 0.5)');
+  near('MEXT tabla 6.1: FA + WC, βu ≤ 0.3 → 0.35', r('a1'), 0.35);
+  near('MEXT tabla 6.1: FA + WD, βu ≤ 0.3 → 0.40', r('a2'), 0.40);
+  near('MEXT tabla 6.1: FC + WA, βu > 0.7 → 0.45', r('a3'), 0.45);
+  near('MEXT tabla 6.1: FB + WC, 0.3 < βu ≤ 0.7 → 0.45', r('a4'), 0.45);
+  near('MEXT tabla 6.1: FA + WB, 0.3 < βu ≤ 0.7 → 0.40', r('a5'), 0.40);
+  near('MEXT tabla 6.1: FA + WD, 0.3 < βu ≤ 0.7 → 0.45', r('a6'), 0.45);
+  near('MEXT tabla 6.1: FB + WD, βu ≤ 0.3 → 0.40', r('a7'), 0.40);
+  near('MEXT tabla 6.1: FD + WD, 0.3 < βu ≤ 0.7 → 0.50', r('a8'), 0.50);
   near('Acero FA, sin arriostres: Ds = 0.25', g('d'), 0.25);
   near('Acero FC + BB, 0.3 < βu ≤ 0.7: Ds = 0.35', g('e'), 0.35);
   near('Acero FD + BC, βu > 0.5: Ds = 0.50', g('f'), 0.50);
   near('Acero FB + BC, βu ≤ 0.3: Ds = 0.30', g('g2'), 0.30);
+  near('Sato tabla 2.8: FD + BB, 0.3 < βu ≤ 0.7 → 0.45', calc('x = DsS(4, 2, 0.5)')('x'), 0.45);
   near('Fe(Re = 0.225) = 1.25 (interpolación 0.15–0.30)', g('fe'), 1.25);
   near('Fs(Rs = 0.45) = 2 − 0.45/0.6 = 1.25', g('fs'), 1.25);
   near('Fes(0.45, 0.40) = 1.25 × 1.5', g('fes'), 1.875);
@@ -52,15 +63,21 @@ section('AIJ concreto armado');
   near('ft largo plazo SD345 D25 = 215 N/mm²', g('ftL', 'N/mm^2'), 215);
   near('ft largo plazo SD345 D32 = 195 N/mm²', g('ftL2', 'N/mm^2'), 195);
   near('α = 4/(M/(Qd) + 1) = 4/2.875', g('al'), 4 / 2.875);
-  // Ejemplo manual: [0.068·0.8^0.23·42/2.12 + 0.85·√(0.004·295)]·400·560 = 493.5 kN
-  near('Qsu Arakawa (b=400, j=560, pt=0.8 %, pw=0.4 %) = 493.5 kN', g('Qsu', 'kN'), 493.5, 0.002);
+  // Fórmula mínima de Arakawa (荒川min式, coef. 0.053; la versión «media» usa 0.068):
+  // [0.053·0.8^0.23·42/2.12 + 0.85·√(0.004·295)]·400·560 = (1.0027 + 0.9233)·224000 = 431.4 kN
+  near('Qsu Arakawa mín. (b=400, j=560, pt=0.8 %, pw=0.4 %) = 431.4 kN', g('Qsu', 'kN'), (0.053 * 0.8 ** 0.23 * 42 / 2.12 + 0.85 * Math.sqrt(0.004 * 295)) * 224, 0.001);
+  near('… valor numérico de control 431.4 kN', g('Qsu', 'kN'), 431.4, 0.002);
   near('Mu = 0.9·at·σy·d = 443.3 kN·m', g('Mu', 'kN*m'), 0.9 * 2028 * 379.5 * 640 / 1e6);
   near('QA corto plazo = b·j·(α·fs + 0.5·wft·(pw − 0.002))', g('Qa', 'kN'), 400 * 560 * (1.44 * 1.095 + 0.5 * 345 * 0.00038) / 1000);
   near('n = 13 para 27 < Fc ≤ 36', g('n'), 13);
+  const q2 = calc('Qas = QasAIJ(400 mm, 560 mm, 1.0, 1.095 N/mm^2, 295 N/mm^2, 0.003)\nQw = QaAIJ(400 mm, 560 mm, 1.0, 1.095 N/mm^2, 490 N/mm^2, 0.003)');
+  near('QAS control de daño = b·j·((2/3)α·fs + 0.5·wft·(pw − 0.002)) (AIJ 2010 ec. 15.3)', q2('Qas', 'kN'), 224 * (2 / 3 * 1.095 + 0.5 * 295 * 0.001));
+  near('QA con wft = 490 se limita a wft = 390 N/mm² (AIJ 2010 art. 15)', q2('Qw', 'kN'), 224 * (1.095 + 0.5 * 390 * 0.001));
   // Columna: momento admisible con N = 0 ≈ at·ft·j (sección doblemente armada)
   const c = calc('Ma0 = MaColAIJ(0 kN, 500 mm, 500 mm, 1548 mm^2, 60 mm, 8 N/mm^2, 215 N/mm^2, 15)\nMu = MucAIJ(2027 mm^2, 379.5 N/mm^2, 600 mm, 1800 kN, 600 mm, 24 N/mm^2)');
   near('Columna N = 0: MA ≈ at·ft·(7/8)d', c('Ma0', 'kN*m'), 1548 * 215 * 0.875 * 440 / 1e6, 0.03);
   near('Mu columna = 0.8·at·σy·D + 0.5·N·D(1 − N/bDFc)', c('Mu', 'kN*m'), (0.8 * 2027 * 379.5 * 600 + 0.5 * 1.8e6 * 600 * (1 - 1.8e6 / (600 * 600 * 24))) / 1e6);
+  near('Mu columna en tracción N = −500 kN: 0.8·at·σy·D + 0.4·N·D', calc('Mt = MucAIJ(2027 mm^2, 379.5 N/mm^2, 600 mm, -500 kN, 600 mm, 24 N/mm^2)')('Mt', 'kN*m'), (0.8 * 2027 * 379.5 * 600 - 0.4 * 5e5 * 600) / 1e6);
 }
 
 section('AIJ acero');

@@ -76,11 +76,11 @@ Pbar = wbar*1 m // Barrera concentrada a 0.17 m del borde (DC)
 Epos = EposLRFD(S) // Momento positivo: 660 + 0.55 S (mm)
 Eneg = EnegLRFD(S) // Momento negativo: 1220 + 0.25 S (mm)
 "La franja se analiza como viga continua sobre las vigas, con ruedas de 7.26 t (eje de 14.52 t del camión de diseño) a 1.80 m, a no menos de 0.30 m de la cara de la barrera (3.6.1.3.1). Para luces transversales ≤ 4.60 m solo se consideran los ejes del camión, sin carga de carril (3.6.1.3.3). Se evalúan uno ($m$ = 1.20) y dos camiones ($m$ = 1.00, ruedas adyacentes a 1.20 m).`),
-    { type: 'hl93env', tramos: 'vol, S, S, S, vol', apoyos: 'L A A A A L', vehiculo: 'Ejes', ejes: '7.26 0; 7.26 1.8', IM: 'IM', g: 'mpLRFD(1)', carril: '0', xmin: 'bbar + 0.30 m', xmax: 'B - bbar - 0.30 m', DC: 'U * wlosa\nP 0.17 Pbar\nP B-0.17m Pbar', DW: 'UP bbar B-bbar wasf', gLL: '1.75', sufijo: '1', titulo: 'Franja transversal de losa: un camión (m = 1.20), cargas DC y DW' },
-    { type: 'hl93env', tramos: 'vol, S, S, S, vol', apoyos: 'L A A A A L', vehiculo: 'Ejes', ejes: '7.26 0; 7.26 1.8; 7.26 3.0; 7.26 4.8', IM: 'IM', g: 'mpLRFD(2)', carril: '0', xmin: 'bbar + 0.30 m', xmax: 'B - bbar - 0.30 m', sufijo: '2', titulo: 'Franja transversal de losa: dos camiones adyacentes (m = 1.00)' },
+    { type: 'hl93env', tramos: 'vol, S, S, S, vol', apoyos: 'L A A A A L', vehiculo: 'Ejes', ejes: '7.26 0; 7.26 1.8', IM: 'IM', g: 'mpLRFD(1)', carril: '0', Epos: 'Epos', Eneg: 'Eneg', xmin: 'bbar + 0.30 m', xmax: 'B - bbar - 0.30 m', DC: 'U * wlosa\nP 0.17 Pbar\nP B-0.17m Pbar', DW: 'UP bbar B-bbar wasf', gLL: '1.75', sufijo: '1', titulo: 'Franja transversal de losa de 1 m: un camión (m = 1.20), cargas DC y DW, Resistencia I' },
+    { type: 'hl93env', tramos: 'vol, S, S, S, vol', apoyos: 'L A A A A L', vehiculo: 'Ejes', ejes: '7.26 0; 7.26 1.8; 7.26 3.0; 7.26 4.8', IM: 'IM', g: 'mpLRFD(2)', carril: '0', Epos: 'Epos', Eneg: 'Eneg', xmin: 'bbar + 0.30 m', xmax: 'B - bbar - 0.30 m', sufijo: '2', titulo: 'Franja transversal de losa: dos camiones adyacentes (m = 1.00)' },
     calc(`## Momentos de diseño de la losa (por metro de ancho)
-MLLpos = max(MLLp1, MLLp2)/Epos -> tonf*m/m // M⁺ por carga viva + IM en la franja positiva
-MLLneg = min(MLLn1, MLLn2)/Eneg -> tonf*m/m // M⁻ por carga viva + IM sobre vigas interiores
+MLLpos = max(MLLp1, MLLp2)/(1 m) -> tonf*m/m // M⁺ por carga viva + IM (ya dividido entre E⁺ en el análisis)
+MLLneg = min(MLLn1, MLLn2)/(1 m) -> tonf*m/m // M⁻ por carga viva + IM (dividido entre E⁻)
 MDCpos = MDCp1/(1 m) -> tonf*m/m // M⁺ máximo por DC
 MDWpos = MDWp1/(1 m) -> tonf*m/m // M⁺ máximo por DW
 MDCneg = MDCn1/(1 m) -> tonf*m/m // M⁻ máximo por DC

@@ -71,6 +71,11 @@ function renderHL93(b, ctx) {
   const gLL = evalParam(b.gLL, S, '', 1.75);
   const wl = evalParam(b.carril, S, 'tonf/m', isFat || isCustom ? 0 : W_LANE);
   const xmin = evalParam(b.xmin, S, 'm', 0), xmax = evalParam(b.xmax, S, 'm', Lt);
+  // anchos de franja (losas): la carga viva positiva se divide entre E⁺ y la negativa entre E⁻ (resultados por metro)
+  const Ep = evalParam(b.Epos, S, 'm', 0), En = evalParam(b.Eneg, S, 'm', 0);
+  const strip = Ep > 0 || En > 0;
+  if (strip && !(Ep > 0 && En > 0)) throw new Error('Indique ambos anchos de franja E⁺ y E⁻');
+  const fP = strip ? 1 / Ep : 1, fN = strip ? 1 / En : 1;
   if (!(IM >= 0) || !(gdf > 0) || !(xmax > xmin)) throw new Error('Revise IM, g y el rango de circulación (xmin < xmax)');
   const secs = evalList(b.secciones, S, 'm');
   secs.forEach(x => { if (x < 0 || x > Lt) throw new Error('Sección fuera de la viga: x = ' + f2(x) + ' m'); });
@@ -214,11 +219,11 @@ function renderHL93(b, ctx) {
     const [lmP, lmN] = wl > 0 ? ILm.area() : [0, 0], [lvP, lvN] = wl > 0 ? ILv.area() : [0, 0];
     o.trP = tm.mx; o.taP = am.mx; o.lnP = wl * lmP; o.trN = tm.mn; o.taN = am.mn; o.lnN = wl * lmN;
     o.pl = tm.mx >= am.mx ? tm.pmx : am.pmx;
-    o.Mp = gdf * (Math.max(tm.mx, am.mx) * (1 + IM) + wl * lmP);
-    o.Mn = gdf * (Math.min(tm.mn, am.mn) * (1 + IM) + wl * lmN);
-    if (fams.dt.length) { const dm = evalFam(ILM[k], -1, null, cand.dt); o.Mn = Math.min(o.Mn, gdf * 0.9 * (dm.mn * (1 + IM) + wl * lmN)); }
-    o.Vp = gdf * (Math.max(tv.mx, av.mx) * (1 + IM) + wl * lvP);
-    o.Vn = gdf * (Math.min(tv.mn, av.mn) * (1 + IM) + wl * lvN);
+    o.Mp = fP * gdf * (Math.max(tm.mx, am.mx) * (1 + IM) + wl * lmP);
+    o.Mn = fN * gdf * (Math.min(tm.mn, am.mn) * (1 + IM) + wl * lmN);
+    if (fams.dt.length) { const dm = evalFam(ILM[k], -1, null, cand.dt); o.Mn = Math.min(o.Mn, fN * gdf * 0.9 * (dm.mn * (1 + IM) + wl * lmN)); }
+    o.Vp = fP * gdf * (Math.max(tv.mx, av.mx) * (1 + IM) + wl * lvP);
+    o.Vn = fP * gdf * (Math.min(tv.mn, av.mn) * (1 + IM) + wl * lvN);
     o.MDC = PDC ? PDC[ie].M : 0; o.VDC = PDC ? PDC[ie].V : 0; o.MDW = PDW ? PDW[ie].M : 0; o.VDW = PDW ? PDW[ie].V : 0;
     const comb = (dc, dw, ll, mx) => (mx ? Math.max(1.25 * dc, 0.9 * dc) + Math.max(1.5 * dw, 0.65 * dw) : Math.min(1.25 * dc, 0.9 * dc) + Math.min(1.5 * dw, 0.65 * dw)) + gLL * ll;
     o.Mup = eta * comb(o.MDC, o.MDW, o.Mp, true); o.Mun = eta * comb(o.MDC, o.MDW, o.Mn, false);
@@ -306,7 +311,7 @@ function renderHL93(b, ctx) {
   };
   const cM = [[C.blue, C.blueF], [C.red, C.redF]], cV = [[C.green, C.greenF], [C.orange, 'rgba(212,115,12,.14)']];
   const lbl = isFat ? 'camión de fatiga' : 'LL+IM';
-  out += `<div class="dt">Envolvente de momento flector por ${lbl}${gdf !== 1 ? ' × g = ' + f2(gdf, 3) : ' (por carril)'}${hasPerm ? '; en trazo discontinuo: Resistencia I (η = ' + f2(eta) + ')' : ''}</div>`;
+  out += `<div class="dt">Envolvente de momento flector por ${lbl}${gdf !== 1 ? ' × g = ' + f2(gdf, 3) : strip ? '' : ' (por carril)'}${strip ? ' por metro de ancho (÷ E⁺ = ' + f2(Ep) + ' m, ÷ E⁻ = ' + f2(En) + ' m)' : ''}${hasPerm ? '; en trazo discontinuo: Resistencia I (η = ' + f2(eta) + ')' : ''}</div>`;
   out += diag(res.map(o => o.Mp), res.map(o => o.Mn), hasPerm ? res.map(o => o.Mup) : null, hasPerm ? res.map(o => o.Mun) : null, 'M', 't·m', cM);
   out += `<div class="dt">Envolvente de fuerza cortante por ${lbl}${hasPerm ? '; en trazo discontinuo: Resistencia I' : ''}</div>`;
   out += diag(res.map(o => o.Vp), res.map(o => o.Vn), hasPerm ? res.map(o => o.Vup) : null, hasPerm ? res.map(o => o.Vun) : null, 'V', 't', cV);
@@ -334,7 +339,7 @@ registerBlock('hl93env', {
     F('tramos', 'Luces de los tramos [m]', '20', 'text'), F('apoyos', 'Apoyos (A articulado, E empotrado, L libre)', 'A A'),
     F('vehiculo', 'Vehículo', 'HL-93', 'select', ['HL-93', 'Fatiga', 'Ejes']), F('ejes', 'Ejes propios "P x; P x" [t, m]', '7.26 0; 7.26 1.8'),
     F('IM', 'IM (incremento dinámico)', '0.33'), F('g', 'Factor de distribución g (× m si aplica)', '1'), F('carril', 'Carga de carril [t/m]', '0.952'),
-    F('xmin', 'Inicio del rango de circulación [m]', ''), F('xmax', 'Fin del rango de circulación [m]', ''),
+    F('Epos', 'Ancho de franja E⁺ (losas) [m]', ''), F('Eneg', 'Ancho de franja E⁻ (losas) [m]', ''), F('xmin', 'Inicio del rango de circulación [m]', ''), F('xmax', 'Fin del rango de circulación [m]', ''),
     F('DC', 'Cargas DC (U * w | P x P | UP x1 x2 w)', '', 'area'), F('DW', 'Cargas DW', '', 'area'), F('eta', 'η (modificador de carga)', '1'), F('gLL', 'γ LL Resistencia I', '1.75'),
     F('secciones', 'Secciones de interés x [m] (exporta MLLx1, VLLx1…)', ''), F('sufijo', 'Sufijo de variables', ''), F('titulo', 'Título', ''),
   ],
@@ -482,10 +487,10 @@ function renderAbut(b, ctx) {
   g += `<rect x="${(X(p + 0.12)).toFixed(1)}" y="${(Y(ys + 0.08)).toFixed(1)}" width="${(0.36 * sc).toFixed(1)}" height="${(0.08 * sc).toFixed(1)}" fill="#333"/>`;
   g += `<path d="M${gx0},${Y(ys + 0.08)} H${gx1} V${Y(ys + 0.08 + hg)} H${gx0}" fill="#dfe5ec" stroke="${C.ink}" stroke-width="1"/>`;
   g += `<path d="M${gx0},${Y(H - 0.2)} H${gx1} V${Y(H)} H${gx0}" fill="#dfe5ec" stroke="${C.ink}" stroke-width="1"/>`;
-  g += T(X(p - 0.9), Y(ys + 0.08 + hg / 2) + 4, 'viga', { fs: 9, c: C.axis });
+  g += T(X(p - 1.2), Y(ys + 0.08 + hg / 2) + 4, 'viga', { fs: 9, c: C.axis });
   // reacción y frenado
   const xr = X(p + bc / 2);
-  g += `<line x1="${xr}" y1="${Y(ys) - 70}" x2="${xr}" y2="${Y(ys + 0.1) - 2}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + T(xr + 4, Y(ys) - 72, 'R DC, DW, LL', { fs: 9, c: C.red, a: 'start' });
+  g += `<line x1="${xr}" y1="${Y(ys) - 60}" x2="${xr}" y2="${Y(ys + 0.1) - 2}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + T(xr - 5, Y(ys) - 40, 'R (DC, DW, LL)', { fs: 9, c: C.red, a: 'end' });
   g += `<line x1="${X(p - 1.5)}" y1="${Y(H + 0.0) - 14}" x2="${X(p - 0.2)}" y2="${Y(H) - 14}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + T(X(p - 1.5), Y(H) - 20, 'BR (1.80 m sobre rasante)', { fs: 9, c: C.red, a: 'start' });
   // empujes
   const pa = Ka * gs * H, ps = Ka * gs * heq, ph = 80 / Math.max(pa + ps, 1e-6), xb = X(B + 0.8) + 14;

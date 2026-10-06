@@ -278,7 +278,7 @@ registerBlock('secjp', {
     g += Lne(X(0), Y(D) + 22, X(bw), Y(D) + 22, C.ink, 0.8) + T(X(bw / 2), Y(D) + 18, `b = ${f2(bw, 0)} mm`, { fs: 10 });
     g += Lne(X(0) - 22, Y(0), X(0) - 22, Y(D), C.ink, 0.8) + T(X(0) - 27, Y(D / 2), `D = ${f2(D, 0)} mm`, { fs: 10, r: -90 });
     g += Lne(X(0) - 26, Y(0), X(0) - 18, Y(0), C.ink, 0.8) + Lne(X(0) - 26, Y(D), X(0) - 18, Y(D), C.ink, 0.8);
-    g += T(X(bw / 2), Y(D) + 46, `${col ? 'Zunchos' : 'Estribos'} ${interpTxt(b.est, S)} · dt = ${f2(dt, 0)} mm`, { fs: 10, c: C.axis });
+    g += T(X(bw / 2), Y(D) + 46, `Estribos ${interpTxt(b.est, S)} · dt = ${f2(dt, 0)} mm`, { fs: 10, c: C.axis });
     return `<div class="figure fig-sm">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Sección transversal')}</div>`;
   },
 });
