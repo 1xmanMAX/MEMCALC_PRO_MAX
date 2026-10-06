@@ -81,24 +81,24 @@ fm = fmE070(uni) // Resistencia característica a compresión de pilas f'm (Tabl
 vm = vmE070(uni) // Resistencia característica a corte de muretes v'm (Tabla 9)
 Em = EmE070(fm, matE070(uni)) // Módulo de elasticidad Em = 500 f'm (Art. 24.7)
 Gm = 0.4*Em // Módulo de corte Gm = 0.4 Em (Art. 24.7)
-fc = 175 kgf/cm^2 // Concreto de confinamiento f'c ≥ 175 kg/cm² (Art. 20.1.f) [175 kgf/cm^2|210 kgf/cm^2]
-fy = 4200 kgf/cm^2 // Acero corrugado ASTM A615 grado 60
+fc = 175 kgf/cm^2 // Concreto de confinamiento f'c ≥ 175 kg/cm² (Art. 20.1.f) [175 kgf/cm^2|210 kgf/cm^2] [175..280]
+fy = 4200 kgf/cm^2 // Acero corrugado ASTM A615 grado 60 [2800..4200]
 # Parámetros de la edificación
-N = 4 // Número de pisos (E.070 Art. 27 a: hasta 5 pisos o 15 m)
-h1 = 2.60 m // Altura de entrepiso (piso a piso)
-hl = 2.40 m // Altura libre del muro (Art. 19.1.a)
-wp = 0.90 tonf/m^2 // Peso sísmico por m² de planta (CM + 25 % CV, E.030 Art. 31)
-Z = 0.45 // Factor de zona (E.030 Tabla N° 1) ${ZONA}
-U = 1.0 // Factor de uso — vivienda, categoría C (E.030 Tabla N° 7) [1.0|1.3|1.5]
-S = 1.05 // Factor de suelo (E.030 Tabla N° 4) ${SUELO}
-Tp = 0.6 s // Periodo TP (E.030 Tabla N° 5) ${TP}
-Tl = 2.0 s // Periodo TL (E.030 Tabla N° 5) ${TL}`),
+N = 4 // Número de pisos (E.070 Art. 27 a: hasta 5 pisos o 15 m) [1..5]
+h1 = 2.60 m // Altura de entrepiso (piso a piso) [2.30 m..3.00 m]
+hl = 2.40 m // Altura libre del muro (Art. 19.1.a) [2.10 m..2.80 m]
+wp = 0.90 tonf/m^2 // Peso sísmico por m² de planta (CM + 25 % CV, E.030 Art. 31) [0.70..1.10]
+Z = 0.45 // Factor de zona (E.030 Tabla N° 1) ${ZONA} [0.10..0.45]
+U = 1.0 // Factor de uso — vivienda, categoría C (E.030 Tabla N° 7) [1.0|1.3|1.5] [1.0..1.5]
+S = 1.05 // Factor de suelo (E.030 Tabla N° 4) ${SUELO} [0.80..2.00]
+Tp = 0.6 s // Periodo TP (E.030 Tabla N° 5) ${TP} [0.3 s..1.0 s]
+Tl = 2.0 s // Periodo TL (E.030 Tabla N° 5) ${TL} [1.6 s..3.0 s]`),
       { type: 'wallplan', muros: MUROS_EDIF, planta: '0 0 10 15', Ap: '', cm: '', Z: 'Z', U: 'U', S: 'S', N: 'N', h: 'h1', hl: 'hl', apoyo: 'voladizo', ea: '0.05', titulo: 'Planta típica de muros (muros de soga t = 13 cm y de cabeza t = 23 cm), CM y CR' },
       calc(`# Análisis sísmico (E.030 Art. 33 a 36 — fuerzas estáticas equivalentes)
 hn = N*h1 // Altura total de la edificación
 check N <= 5 // Albañilería confinada: hasta 5 pisos (E.070 Art. 27 a)
 check hn <= 15 m // Albañilería confinada: altura total ≤ 15 m (E.070 Art. 27 a)
-CT = 60 m/s // Coeficiente CT para albañilería (E.030 Art. 36.1)
+CT = 60 m/s // Coeficiente CT para albañilería (E.030 Art. 36.1) [35..60]
 Te = hn/CT -> s // Periodo fundamental T = hn/CT
 Cs = CE030(Te, Tp, Tl) // Factor de amplificación sísmica (E.030 Art. 18, Tabla N° 6)
 P = N*wp*Ap -> tonf // Peso sísmico de la edificación (E.030 Art. 31)
@@ -127,9 +127,9 @@ tw = tX[iw] // Espesor efectivo
 Vm1 = VmX[iw] -> tonf // Cortante de agrietamiento diagonal Vm1
 Mu1 = MuX[iw] -> tonf*m // Momento último Mu1 = Me1·Vm1/Ve1
 Pgw = PgX[iw] -> tonf // Carga de gravedad con 25 % de sobrecarga
-Nc = 2 // Número de columnas de confinamiento (muro de un paño)
+Nc = 2 // Número de columnas de confinamiento (muro de un paño) [2..5]
 Lm = Lw // Longitud del paño mayor (muro de un paño: Lm = L, Tabla 11)
-Pt = 4.0 tonf // Carga tributaria del muro transversal Y1 sobre la columna extrema (Art. 24.6)
+Pt = 4.0 tonf // Carga tributaria del muro transversal Y1 sobre la columna extrema (Art. 24.6) [0..10]
 check Lw/(Nc - 1) <= min(2*hl, 5 m) // Espaciamiento de columnas ≤ 2h y ≤ 5 m (Art. 20.1.b)
 ## Fuerzas internas en la columna extrema (Tabla 11)
 Mc = Mu1 - Vm1*h1/2 -> tonf*m // M = Mu1 − ½ Vm1 h
@@ -142,7 +142,7 @@ Ccol = Pc + Fc -> tonf // Compresión C = Pc + F
 phi = 0.85 // Factor de reducción (corte-fricción)
 Acf = Vc/(0.2*fc*phi) -> cm^2 // Acf = Vc/(0.2 f'c φ)
 bc = tw // Ancho de la columna = espesor del muro (Art. 20.3)
-dc = 30 cm // Peralte de la columna en la dirección del muro
+dc = 30 cm // Peralte de la columna en la dirección del muro [20..50]
 Ac = bc*dc -> cm^2 // Área de la sección
 check Ac >= Acf // Sección mínima por corte-fricción (Art. 27.3.a.1)
 check Ac >= 15*tw*1 cm // Sección mínima Ac ≥ 15 t (Art. 27.3.a.1)
@@ -152,12 +152,12 @@ Asf = Vc/(fy*mu*phi) -> cm^2 // Acero por corte-fricción
 Ast = max(Tcol, 0 tonf)/(fy*phi) -> cm^2 // Acero por tracción (T > 0; si T ≤ 0 no hay tracción)
 Asmin = 0.1*fc*Ac/fy -> cm^2 // Mínimo 0.1 f'c Ac/fy
 Asreq = max(Asf + Ast, Asmin) // Refuerzo vertical requerido
-nb = 4 // Número de varillas (mínimo 4)
+nb = 4 // Número de varillas (mínimo 4) [4..8]
 bar = 6 // Diámetro de las varillas [4 : 1/2"|5 : 5/8"|6 : 3/4"]
 As = nb*Ab(bar) // Refuerzo vertical colocado
 check As >= Asreq // Refuerzo vertical de la columna extrema (Art. 27.3.a.2)
 ## Núcleo confinado por compresión (Art. 27.3.a.1)
-rec = 2 cm // Recubrimiento al estribo (Art. 11.10)
+rec = 2 cm // Recubrimiento al estribo (Art. 11.10) [2..4]
 An = (bc - 2*rec)*(dc - 2*rec) -> cm^2 // Área del núcleo confinado
 delta = 1.0 // δ = 0.8 sin muros transversales; 1.0 con muro transversal (Y1) [0.8|1.0]
 phic = 0.7 // φ para estribos cerrados
@@ -175,7 +175,7 @@ zc = max(45 cm, 1.5*dc) // Longitud de confinamiento en cada extremo
 "Estribos: [] 6 mm, 1 @ 5 cm, resto @ {sc} en {zc} de cada extremo y @ 25 cm en la zona central (mínimo [] 6 mm, 1 @ 5, 4 @ 10, r @ 25 cm).
 ## Viga solera (Art. 27.3.b)
 Ts = Vm1*Lm/(2*Lw) -> tonf // Tracción en la solera Ts = Vm1 Lm/(2L)
-hsol = 20 cm // Peralte de la solera = espesor del aligerado (Art. 20.4)
+hsol = 20 cm // Peralte de la solera = espesor del aligerado (Art. 20.4) [17..30]
 Acs = tw*hsol -> cm^2 // Sección de la solera
 Assreq = max(Ts/(0.9*fy), 0.1*fc*Acs/fy) -> cm^2 // As = Ts/(φ fy) ≥ 0.1 f'c Acs/fy, φ = 0.9
 Ass = 4*Ab(3) // Refuerzo colocado 4 φ 3/8"
@@ -183,7 +183,7 @@ check Ass >= Assreq // Refuerzo longitudinal de la solera (Art. 27.3.b)
 ## Refuerzo horizontal en los muros del primer piso (Art. 27.1)
 "Edificio de más de tres pisos: todos los muros portantes del primer nivel llevan refuerzo horizontal continuo anclado en las columnas.
 Ash = Ab(3) // Una varilla de 3/8" en la junta
-sh = 30 cm // Cada 3 hiladas
+sh = 30 cm // Cada 3 hiladas [20..40]
 rhoh = Ash/(sh*tw) // Cuantía ρ = As/(s t)
 check rhoh >= 0.001 // Cuantía mínima de refuerzo horizontal (Art. 27.1)`),
       text(`> **Pisos superiores (Art. 27.2 y 27.4):** en cada entrepiso $i > 1$ debe cumplirse $V_{mi} > V_{ui}$; de no cumplirse, sus confinamientos se diseñan como en el primer piso. Las columnas extremas de los pisos no agrietados se diseñan con $M_{ui} = M_{ei}\\,(V_{m1}/V_{e1})$ y las soleras con $T_s = V_u L_m/(2L)$.`),
@@ -207,14 +207,14 @@ Fuerzas del análisis elástico ante sismo moderado tomadas del modelo del edifi
 uni = 10 // Unidad (E.070 Tabla 9) ${UNI}
 fm = fmE070(uni) // Resistencia característica f'm
 vm = vmE070(uni) // Resistencia característica v'm
-fy = 4200 kgf/cm^2 // Acero de refuerzo
-L = 4.00 m // Longitud del muro
-t = 14 cm // Espesor efectivo (bloque de 14 cm)
-hl = 2.40 m // Altura libre
-Pg = 30 tonf // Carga de gravedad con 25 % de sobrecarga
-Pm = 36 tonf // Carga de gravedad con 100 % de sobrecarga
-Ve = 12 tonf // Cortante del sismo moderado
-Me = 50 tonf*m // Momento del sismo moderado
+fy = 4200 kgf/cm^2 // Acero de refuerzo [2800..4200]
+L = 4.00 m // Longitud del muro [1.20 m..8.00 m]
+t = 14 cm // Espesor efectivo (bloque de 14 cm) [12..24]
+hl = 2.40 m // Altura libre [2.10 m..3.00 m]
+Pg = 30 tonf // Carga de gravedad con 25 % de sobrecarga [5..80]
+Pm = 36 tonf // Carga de gravedad con 100 % de sobrecarga [5..100]
+Ve = 12 tonf // Cortante del sismo moderado [1..30]
+Me = 50 tonf*m // Momento del sismo moderado [5..120]
 # Requisitos generales
 check t >= hl/20 // Espesor efectivo mínimo t ≥ h/20 (Art. 19.1.a)
 sigmam = Pm/(L*t) -> kgf/cm^2 // Esfuerzo axial máximo
@@ -231,7 +231,7 @@ Po = 0.1*fm*t*L -> tonf // Po = 0.1 f'm t L (Art. 28.3)
 phif = min(max(0.85 - 0.2*Pu/Po, 0.65), 0.85) // 0.65 ≤ φ = 0.85 − 0.2 Pu/Po ≤ 0.85
 D = 0.8*L // Brazo D = 0.8 L
 Asreq = max((Mu/phif - Pu*L/2)/(fy*D), 2*Ab(3)) -> cm^2 // As = (Mu/φ − Pu L/2)/(fy D) ≥ 2 φ 3/8"
-nb = 2 // Varillas en cada extremo
+nb = 2 // Varillas en cada extremo [2..4]
 bar = 4 // Diámetro [3 : 3/8"|4 : 1/2"|5 : 5/8"]
 As = nb*Ab(bar) // Acero vertical de borde colocado
 check As >= Asreq // Refuerzo vertical en los extremos (Art. 28.3)
@@ -251,7 +251,7 @@ Vuf = max(1.25*Vu*Mn1/Mu, Vm) -> tonf // Vuf1 = 1.25 Vu1 (Mn1/Mu1), no menor que
 vi = Vuf/(t*L) -> kgf/cm^2 // Esfuerzo de corte
 check vi <= 0.1*fm // vi ≤ 0.10 f'm en la zona de rótula plástica (Art. 28.5)
 Dh = si(Me/(Ve*L) >= 1, 0.8*L, L) // D = 0.8 L (esbelto) o L (no esbelto)
-sh = 20 cm // Espaciamiento del refuerzo horizontal (≤ 200 mm, edificio de más de 3 pisos, Art. 28.1 d)
+sh = 20 cm // Espaciamiento del refuerzo horizontal (≤ 200 mm, edificio de más de 3 pisos, Art. 28.1 d) [10..40]
 Ashreq = Vuf*sh/(fy*Dh) -> cm^2 // Ash = Vuf s/(fy D)
 Ash = Ab(3) // Refuerzo horizontal colocado: 1 φ 3/8" @ 20 cm
 check Ash >= Ashreq // Refuerzo horizontal por corte (Art. 28.5)
@@ -271,15 +271,15 @@ check Ash/(sh*t) >= 0.001 // Cuantía horizontal mínima 0.1 % (Art. 28.1 a)`),
       text(`# Generalidades
 Cerco perimétrico de ladrillo King Kong industrial en aparejo de soga, arriostrado por columnas de concreto armado cada 3.0 m, viga solera superior y cimiento corrido de concreto ciclópeo. El paño se analiza como una losa apoyada en sus arriostres sujeta a la carga sísmica perpendicular a su plano (NTE E.070 Art. 29), sin admitir tracciones por flexión mayores que $f'_t$ (Art. 31). Ejemplo basado en el procedimiento de A. San Bartolomé, *Construcciones de albañilería* (PUCP).`),
       calc(`# Datos
-Z = 0.45 // Factor de zona ${ZONA}
-U = 1.0 // Factor de uso [1.0|1.3|1.5]
-S = 1.05 // Factor de suelo (E.030 Tabla N° 4) ${SUELO}
+Z = 0.45 // Factor de zona ${ZONA} [0.10..0.45]
+U = 1.0 // Factor de uso [1.0|1.3|1.5] [1.0..1.5]
+S = 1.05 // Factor de suelo (E.030 Tabla N° 4) ${SUELO} [0.80..2.00]
 C1 = C1E030a(4) // C1 = 0.6 para cercos (E.030-2003 Tabla N° 9, a la que remite E.070 Art. 29.6)
-gm = 1.8 tonf/m^3 // Peso volumétrico de la albañilería con tarrajeo
-t = 13 cm // Espesor efectivo (soga)
-esp = 15 cm // Espesor bruto con tarrajeo e
-ha = 2.40 m // Altura libre del paño (entre sobrecimiento y solera)
-bp = 3.00 m // Distancia entre columnas de arriostre
+gm = 1.8 tonf/m^3 // Peso volumétrico de la albañilería con tarrajeo [1.6..2.0]
+t = 13 cm // Espesor efectivo (soga) [9..25]
+esp = 15 cm // Espesor bruto con tarrajeo e [11..27]
+ha = 2.40 m // Altura libre del paño (entre sobrecimiento y solera) [1.50 m..3.50 m]
+bp = 3.00 m // Distancia entre columnas de arriostre [2.00 m..5.00 m]
 caso = 1 // Caso de la Tabla 12 [1 : 4 bordes arriostrados|2 : 3 bordes (sin solera)|3 : bordes horizontales|4 : voladizo]
 # Carga sísmica y momento en el paño (Art. 29.6 y 29.7)
 w070 = 0.8*Z*U*C1*gm*esp -> kgf/m^2 // w = 0.8 Z U C1 γ e (E.070 Art. 29.6, esfuerzos admisibles)
@@ -295,11 +295,11 @@ check fmt <= ftad // Tracción por flexión en el paño (Art. 31.3)
 treq = sqrt(6*Ms/ftad) -> cm // Espesor mínimo requerido t ≥ √(6 Ms/f't)
 check t >= treq // Espesor efectivo del cerco (E.070 Art. 29.8 y 31.3)
 # Diseño de la columna de arriostre (Art. 29.9 y 31.5)
-fcc = 175 kgf/cm^2 // Concreto de columnas y soleras
-fy = 4200 kgf/cm^2
+fcc = 175 kgf/cm^2 // Concreto de columnas y soleras [140..280]
+fy = 4200 kgf/cm^2 // Acero de refuerzo [2800..4200]
 fu = 1.25 // Paso de cargas de servicio a rotura de los arriostres: 1/0.8 (E.030 Art. 29)
 bcol = t // Ancho de la columna (= espesor del muro)
-hcol = 25 cm // Peralte de la columna (perpendicular al muro)
+hcol = 25 cm // Peralte de la columna (perpendicular al muro) [15..40]
 Mcol = fu*w*bp*ha^2/2 -> tonf*m // Voladizo con la carga del paño tributario
 dcol = hcol - 4 cm // Peralte efectivo
 Rn = Mcol/(0.9*bcol*dcol^2) -> kgf/cm^2
@@ -314,7 +314,7 @@ phiVc = 0.85*0.53*sqrtfc(fcc)*bcol*dcol -> tonf // Resistencia al corte del conc
 check Vcol <= phiVc // Corte en la columna (E.060 11.3)
 # Diseño de la viga solera
 bsol = t // Ancho de la solera
-hsol = 20 cm // Peralte de la solera
+hsol = 20 cm // Peralte de la solera [15..30]
 Msol = fu*w*(a/2)*bp^2/8 -> tonf*m // Faja superior del paño (a/2) simplemente apoyada entre columnas
 Rns = Msol/(0.9*hsol*(bsol - 3 cm)^2) -> kgf/cm^2 // Flexión fuera del plano del muro (ancho resistente hsol)
 rhos = 0.85*fcc/fy*(1 - sqrt(max(0, 1 - 2*Rns/(0.85*fcc))))
@@ -322,13 +322,13 @@ check rhos <= rhomax // Sección de la solera suficiente: ρ ≤ 0.75 ρb (E.060
 Assol = max(rhos*hsol*(bsol - 3 cm), 0.7*sqrtfc(fcc)/fy*hsol*(bsol - 3 cm)) -> cm^2
 check 2*Ab(3) >= Assol // Solera 4 φ 3/8" (2 por cara)
 # Cimiento corrido (Art. 31.6, por metro lineal)
-gcc = 2.3 tonf/m^3 // Concreto ciclópeo
-Bc = 0.60 m // Ancho del cimiento
-hc = 0.80 m // Altura del cimiento (profundidad de cimentación)
-hsob = 0.50 m // Altura del sobrecimiento (0.30 m sobre el terreno)
-gs = 1.8 tonf/m^3 // Peso unitario del suelo
-phis = 30 deg // Ángulo de fricción del suelo
-qadm = 1.0 kgf/cm^2 // Capacidad admisible del suelo (E.050)
+gcc = 2.3 tonf/m^3 // Concreto ciclópeo [2.2..2.4]
+Bc = 0.60 m // Ancho del cimiento [0.40 m..1.20 m]
+hc = 0.80 m // Altura del cimiento (profundidad de cimentación) [0.60 m..1.50 m]
+hsob = 0.50 m // Altura del sobrecimiento (0.30 m sobre el terreno) [0.30 m..0.80 m]
+gs = 1.8 tonf/m^3 // Peso unitario del suelo [1.4..2.1]
+phis = 30 deg // Ángulo de fricción del suelo [20..40]
+qadm = 1.0 kgf/cm^2 // Capacidad admisible del suelo (E.050) [0.5..4.0]
 Pmur = gm*esp*ha*1 m -> tonf // Peso del muro por metro
 Pcim = gcc*(Bc*hc + esp*hsob)*1 m -> tonf // Cimiento y sobrecimiento
 Ptot = Pmur + Pcim // Carga vertical total
@@ -361,28 +361,28 @@ check qmax <= 1.33*qadm // Presión en el suelo con sismo (E.050: +33 %)`),
       text(`# Generalidades
 Vivienda unifamiliar de **un piso** de adobe reforzado con geomalla, viga collar de madera y techo liviano de calamina sobre tijerales de madera, ubicada en la sierra (zona sísmica 2). La NTE E.080 (2017) establece criterios de **resistencia** (corte en el plano y flexión fuera del plano con esfuerzos admisibles, Art. 7.3.1), de **estabilidad** (límites de espesor, esbeltez y arriostre, Art. 6 y Fig. 2) y de **desempeño** (refuerzos compatibles, Art. 7.3.3). Las edificaciones de tierra reforzada son de un piso en zonas 3 y 4 y hasta dos pisos en zonas 1 y 2 (Art. 4.2).`),
       calc(`# Datos
-zona = 2 // Zona sísmica (E.030) [4|3|2|1]
-Np = 1 // Número de pisos
+zona = 2 // Zona sísmica (E.030) [4|3|2|1] [1..4]
+Np = 1 // Número de pisos [1..2]
 Ss = SE080(1) // Factor de suelo — Tipo I, roca o suelo muy resistente (Tabla 1)
 U = UE080(1) // Factor de uso — vivienda (Tabla 2)
 Cz = CE080(zona) // Coeficiente sísmico (Tabla 3)
 check Np <= si(zona >= 3, 1, 2) // Número de pisos permitido (Art. 4.2)
 ## Geometría
-esp = 0.40 m // Espesor de muro e (adobe de 40 × 40 × 10 cm)
-H = 2.40 m // Altura libre del muro
-Larr = 4.00 m // Distancia máxima entre arriostres verticales
-av = 1.00 m // Ancho máximo de vano
-bar = 1.60 m // Longitud mínima de muro de arriostre (contrafuerte o muro transversal)
-Bx = 7.60 m // Dimensión exterior en X
-By = 5.60 m // Dimensión exterior en Y
+esp = 0.40 m // Espesor de muro e (adobe de 40 × 40 × 10 cm) [0.40 m..0.70 m]
+H = 2.40 m // Altura libre del muro [2.00 m..3.00 m]
+Larr = 4.00 m // Distancia máxima entre arriostres verticales [2.00 m..5.00 m]
+av = 1.00 m // Ancho máximo de vano [0.60 m..1.50 m]
+bar = 1.60 m // Longitud mínima de muro de arriostre (contrafuerte o muro transversal) [1.20 m..2.50 m]
+Bx = 7.60 m // Dimensión exterior en X [4.00 m..12.00 m]
+By = 5.60 m // Dimensión exterior en Y [4.00 m..12.00 m]
 Ap = Bx*By // Área techada
 SLX = 5.70 m + 6.60 m + 3.40 m // Longitud neta de muros en X (sin vanos)
 SLY = 5.60 m + 4.60 m + 4.70 m // Longitud neta de muros en Y (sin vanos)
 ## Materiales (Art. 8 y 9)
-gad = 1.70 tonf/m^3 // Peso volumétrico del adobe
-fo = 12 kgf/cm^2 // Resistencia a compresión de cubos (ensayo, ≥ 10.2 kgf/cm²)
-fpm = 6.5 kgf/cm^2 // Resistencia a compresión de muretes f'm (ensayo)
-fpt = 0.30 kgf/cm^2 // Resistencia a tracción indirecta de muretes f't (ensayo)
+gad = 1.70 tonf/m^3 // Peso volumétrico del adobe [1.50..1.90]
+fo = 12 kgf/cm^2 // Resistencia a compresión de cubos (ensayo, ≥ 10.2 kgf/cm²) [10.2..20]
+fpm = 6.5 kgf/cm^2 // Resistencia a compresión de muretes f'm (ensayo) [6.12..12]
+fpt = 0.30 kgf/cm^2 // Resistencia a tracción indirecta de muretes f't (ensayo) [0.25..0.60]
 check fo >= 10.2 kgf/cm^2 // Resistencia mínima de la unidad (Art. 8.1)
 check fpm >= 6.12 kgf/cm^2 // Resistencia mínima de muretes a compresión (Art. 8.4)
 check fpt >= 0.25 kgf/cm^2 // Resistencia mínima de muretes a tracción indirecta (Art. 8.5)
@@ -405,8 +405,8 @@ densY = SLY*esp/Ap // Densidad en Y
 check densX >= dmin // Densidad de muros en X (Tabla 2)
 check densY >= dmin // Densidad de muros en Y (Tabla 2)
 # Fuerza sísmica (Art. 6.8)
-wt = 0.12 tonf/m^2 // Peso del techo (calamina, tijerales, cielo raso)
-wl = 0.05 tonf/m^2 // Sobrecarga de techo
+wt = 0.12 tonf/m^2 // Peso del techo (calamina, tijerales, cielo raso) [0.03..0.30]
+wl = 0.05 tonf/m^2 // Sobrecarga de techo [0.03..0.10]
 Pmur = gad*esp*H*(SLX + SLY) -> tonf // Peso de los muros
 Ptech = (wt + 0.5*wl)*Ap -> tonf // Techo con 50 % de carga viva
 P = Pmur + Ptech // Peso total
@@ -417,7 +417,7 @@ tauY = Hs/(1.2*SLY*esp) -> kgf/cm^2
 check tauX <= vmad // Esfuerzo de corte en X (E.080 Art. 7.3.1 a y 8.5)
 check tauY <= vmad // Esfuerzo de corte en Y (E.080 Art. 7.3.1 a y 8.5)
 ## Compresión en la base del muro más cargado
-At = 2.0 m^2 // Área tributaria de techo por metro de muro
+At = 2.0 m^2 // Área tributaria de techo por metro de muro [0.5..4.0]
 sigma = (gad*H*esp*1 m + (wt + wl)*At)/(esp*1 m) -> kgf/cm^2 // Peso propio + techo
 check sigma <= fmad // Compresión admisible (Art. 8.4)
 ## Flexión fuera del plano (Art. 7.3.1.b)
@@ -446,14 +446,14 @@ check ff <= ftad // Tracción por flexión admisible (Art. 8.6)`),
 Diseño por **esfuerzos admisibles** de las vigas de un entrepiso de madera (viguetas con entablado y cielo raso de yeso), según la NTE E.010 y el *Manual de Diseño para Maderas del Grupo Andino* (JUNAC, Cap. 8). Se usa madera estructural seca (CH ≤ 22 %) de dimensiones reales comerciales. Para viguetas con acción de conjunto (entablado y separación ≤ 60 cm) se emplea el módulo de elasticidad promedio $E_{prom}$ y los esfuerzos admisibles se incrementan 10 % (Art. 16.3 y 17); en elementos aislados, $E_{min}$.`),
       calc(`# Datos
 grupo = 2 // Grupo estructural de la madera (E.010 Tabla 1) ${GRUPO}
-Lv = 4.20 m // Luz de cálculo de la vigueta
-sv = 0.60 m // Separación entre viguetas
-b = 6.5 cm // Ancho real (sección comercial 3" × 10")
-h = 24 cm // Peralte real
-apoyo = 8 cm // Longitud de apoyo
-wD = 100 kgf/m^2 // Carga muerta (entablado, cielo raso, acabados)
-wL = 200 kgf/m^2 // Sobrecarga de vivienda (E.020)
-gmad = 650 kgf/m^3 // Densidad de la madera seca del grupo B (peso propio)
+Lv = 4.20 m // Luz de cálculo de la vigueta [1.50 m..6.00 m]
+sv = 0.60 m // Separación entre viguetas [0.30 m..1.20 m]
+b = 6.5 cm // Ancho real (sección comercial 3" × 10") [4..20]
+h = 24 cm // Peralte real [9..35]
+apoyo = 8 cm // Longitud de apoyo [5..20]
+wD = 100 kgf/m^2 // Carga muerta (entablado, cielo raso, acabados) [50..300]
+wL = 200 kgf/m^2 // Sobrecarga de vivienda (E.020) [100..500]
+gmad = 650 kgf/m^3 // Densidad de la madera seca del grupo B (peso propio) [400..1100]
 conj = 1 // Acción de conjunto (viguetas con entablado a ≤ 60 cm) [1 : Sí — Eprom y +10 %|0 : No — Emin]
 lim = 300 // Deflexión admisible L/k (E.010 Art. 18.2 a) [300 : Con cielo raso de yeso|250 : Sin cielo raso de yeso]
 check si(conj == 1, sv, 0.60 m) <= 0.60 m // Acción de conjunto solo con separación ≤ 60 cm (E.010 Art. 16.3)
@@ -510,12 +510,12 @@ check rhb <= 5 // h/b ≤ 5 (máxima relación con arriostre normado: entablado 
 Columna de madera de sección rectangular maciza sometida a carga axial y momento (carga lateral de viento o excentricidad), diseñada por esfuerzos admisibles según la NTE E.010 y el Manual JUNAC (Cap. 9). Las columnas se clasifican por su esbeltez $\\lambda = l_{ef}/d$ en **cortas** ($\\lambda < 10$), **intermedias** ($10 \\le \\lambda \\le C_k$) y **largas** ($C_k < \\lambda \\le 50$); en flexocompresión se usa $E_{min}$.`),
       calc(`# Datos
 grupo = 2 // Grupo estructural ${GRUPO}
-b = 14 cm // Ancho real (sección comercial 6" × 6")
-d = 14 cm // Dimensión en la dirección del pandeo y de la flexión
-lc = 2.60 m // Longitud no arriostrada
+b = 14 cm // Ancho real (sección comercial 6" × 6") [6.5..30]
+d = 14 cm // Dimensión en la dirección del pandeo y de la flexión [6.5..30]
+lc = 2.60 m // Longitud no arriostrada [1.50 m..4.50 m]
 k = 1.0 // Factor de longitud efectiva (E.010 Art. 26 / JUNAC Tabla 9.1) [1.0 : Articulada–articulada|1.2 : Empotrada–articulada con desplazamiento|2.0 : Voladizo|0.65 : Empotrada–empotrada]
-Nd = 6.0 tonf // Carga axial de servicio
-Md = 0.15 tonf*m // Momento de servicio
+Nd = 6.0 tonf // Carga axial de servicio [0.5..30]
+Md = 0.15 tonf*m // Momento de servicio [0..2]
 # Propiedades (E.010 Tablas 3 y 4)
 Emin = EminE010(grupo) // Módulo de elasticidad mínimo
 fc = fcE010(grupo) // Compresión paralela admisible
@@ -553,13 +553,13 @@ check ic < 1 // N/Nadm + km|M|/(Z fm) < 1`),
 Tijeral de madera a dos aguas para cobertura liviana (teja andina de fibrocemento sobre correas), con cielo raso colgado de la cuerda inferior. La armadura se analiza con nudos articulados y cargas aplicadas en los nudos (JUNAC Cap. 11); la cuerda superior se verifica además a flexocompresión por la carga repartida de las correas entre nudos, y la longitud efectiva en el plano se toma como 0.9 veces la longitud entre nudos (E.010 Art. 43.2; el Manual JUNAC admitía 0.8 l).`),
       calc(`# Datos
 grupo = 2 // Grupo estructural ${GRUPO}
-Lt = 8.00 m // Luz del tijeral
-Ht = 2.00 m // Altura en la cumbrera
-np = 6 // Número de paneles
-st = 1.00 m // Separación entre tijerales
-wcob = 30 kgf/m^2 // Cobertura y correas (por m² en proyección horizontal)
-wcr = 30 kgf/m^2 // Cielo raso
-wsc = 50 kgf/m^2 // Sobrecarga de techo inclinado (E.020 Art. 7.1: ≥ 50 kg/m²)
+Lt = 8.00 m // Luz del tijeral [4.00 m..15.00 m]
+Ht = 2.00 m // Altura en la cumbrera [0.80 m..4.00 m]
+np = 6 // Número de paneles [4..12]
+st = 1.00 m // Separación entre tijerales [0.60 m..1.50 m]
+wcob = 30 kgf/m^2 // Cobertura y correas (por m² en proyección horizontal) [10..100]
+wcr = 30 kgf/m^2 // Cielo raso [10..50]
+wsc = 50 kgf/m^2 // Sobrecarga de techo inclinado (E.020 Art. 7.1: ≥ 50 kg/m²) [30..100]
 theta = atan(Ht/(Lt/2)) -> deg // Pendiente del techo
 Lpan = Lt/np // Longitud horizontal del panel
 P = (wcob + wsc)*st*Lpan -> tonf // Carga por nudo de la cuerda superior
@@ -572,13 +572,13 @@ fm = fmE010(grupo)
 ft = ftE010(grupo)
 Ck = CkE010(Emin, fc) // Esbeltez límite
 # Cuerda superior — flexocompresión (JUNAC 11.4)
-b1 = 4 cm // Ancho (sección comercial 2" × 4")
-d1 = 9 cm // Peralte (en el plano del tijeral)
+b1 = 4 cm // Ancho (sección comercial 2" × 4") [4..9]
+d1 = 9 cm // Peralte (en el plano del tijeral) [6.5..19]
 A1 = b1*d1
 Z1 = b1*d1^2/6
 lef1 = 0.9*Lcs // Longitud efectiva en el plano: 0.9 l (E.010 Art. 43.2)
 lam1 = lef1/d1 // Esbeltez en el plano
-lc1 = 0.55 m // Separación de correas (arriostre fuera del plano)
+lc1 = 0.55 m // Separación de correas (arriostre fuera del plano) [0.30 m..1.20 m]
 lam1b = lc1/b1 // Esbeltez fuera del plano (correas como arriostre, Art. 43.1)
 check max(lam1, lam1b) <= 50 // Esbeltez máxima en compresión (Art. 43.5)
 check lam1b <= lam1 // Separación de correas: esbeltez fuera del plano ≤ en el plano (Art. 43.4)
@@ -590,14 +590,14 @@ km1 = kmE010(Ncs, Ncr1)
 ic1 = Ncs/Nadm1 + km1*M1/(Z1*fm) // Interacción
 check ic1 < 1 // Flexocompresión de la cuerda superior (E.010 Art. 31 y 41.6)
 # Cuerda inferior — tracción (JUNAC 11.4)
-b2 = 4 cm
-d2 = 9 cm // Sección 2" × 4"
+b2 = 4 cm // Ancho [4..9]
+d2 = 9 cm // Sección 2" × 4" [6.5..19]
 An2 = 0.85*b2*d2 // Área neta (descuento por perforaciones de pernos)
 check Nti/An2 <= ft // Tracción en la cuerda inferior (E.010 Art. 23)
 check Lpan/b2 <= 80 // Esbeltez máxima en tracción (lef/b ≤ 80, Art. 43.5)
 # Diagonales y montantes — compresión
-b3 = 4 cm
-d3 = 6.5 cm // Sección 2" × 3"
+b3 = 4 cm // Ancho [4..9]
+d3 = 6.5 cm // Sección 2" × 3" [6.5..14]
 lam3 = max(0.9*Ldc/d3, Ldc/b3) // Esbeltez: en el plano 0.9 l/d; fuera del plano l/b (sin arriostre intermedio)
 check lam3 <= 50 // Esbeltez máxima de la diagonal (Art. 43.5)
 Nadm3 = NadmE010(fc, Emin, b3*d3, lam3, Ck) -> tonf
@@ -620,23 +620,23 @@ check Ndt/(0.85*b3*d3) <= ft // Tracción en montantes y diagonales
       text(`# Generalidades
 Reservorio cilíndrico apoyado de concreto armado, con pared empotrada en la losa de fondo y cubierta de losa maciza. El análisis hidrostático usa la solución de la **cáscara cilíndrica** (Timoshenko, ν = 0.2), equivalente a las Tablas A-1, A-2 y A-12 del PCA *Circular Concrete Tanks without Prestressing*; el refuerzo se dimensiona por resistencia con el **factor de durabilidad ambiental** $S_d = \\phi f_y/(\\gamma f_s)$ de ACI 350-06 (9.2.6), o —a elección— con los coeficientes sanitarios del PCA/ACI 350R-89 (1.7 × 1.65 en tracción anular y 1.7 × 1.30 en flexión), que dan resultados similares. El análisis sísmico sigue **ACI 350.3-06** (modelo de Housner) con el espectro de la NTE E.030 ($S_{DS} = 2.5ZS$, $T_S = T_P$). Si el oleaje $d_{max}$ supera el borde libre, la cubierta restringe la masa convectiva: se trata como impulsiva (Malhotra, 2005) y se verifica el anclaje de la cubierta al empuje ascendente.`),
       calc(`# Datos
-D = 9.00 m // Diámetro interior
-HL = 4.00 m // Altura de agua (nivel de rebose)
-Hw = 4.60 m // Altura de la pared
-tw = 0.30 m // Espesor de la pared
-er = 0.15 m // Espesor de la losa de cubierta
-gw = 1.0 tonf/m^3 // Peso específico del agua
-gc = 2.4 tonf/m^3 // Peso específico del concreto
-fc = 280 kgf/cm^2 // Resistencia del concreto (ACI 350: ≥ 4000 psi)
-fy = 4200 kgf/cm^2
-rec = 5 cm // Recubrimiento (ACI 350 7.7.1: 2 in)
+D = 9.00 m // Diámetro interior [3.00 m..30.00 m]
+HL = 4.00 m // Altura de agua (nivel de rebose) [2.00 m..10.00 m]
+Hw = 4.60 m // Altura de la pared [2.50 m..11.00 m]
+tw = 0.30 m // Espesor de la pared [0.20 m..0.60 m]
+er = 0.15 m // Espesor de la losa de cubierta [0.10 m..0.25 m]
+gw = 1.0 tonf/m^3 // Peso específico del agua [1.0..1.1]
+gc = 2.4 tonf/m^3 // Peso específico del concreto [2.3..2.5]
+fc = 280 kgf/cm^2 // Resistencia del concreto (ACI 350: ≥ 4000 psi) [280..420]
+fy = 4200 kgf/cm^2 // Acero de refuerzo [2800..4200]
+rec = 5 cm // Recubrimiento (ACI 350 7.7.1: 2 in) [5..7.5]
 Vol = pi*D^2/4*HL -> m^3 // Capacidad útil
 check tw >= si(Hw >= 3.05 m, 30 cm, 20 cm) // Espesor mínimo: 12 in en muros de 10 ft o más en contacto con líquido (ACI 350-06 14.6.2)
 # Factores de diseño por durabilidad (ACI 350-06 9.2.6)
 metodo = 2 // Factores de diseño del refuerzo [1 : PCA / ACI 350R-89 (1.7 × 1.65 tracción, 1.7 × 1.30 flexión)|2 : ACI 350-06 (1.4 F × Sd)]
-fsh = 1400 kgf/cm^2 // fs admisible en tracción anular, exposición normal: 20 ksi (severa: 17 ksi = 1200 kgf/cm²) (9.2.6.3)
+fsh = 1400 kgf/cm^2 // fs admisible en tracción anular, exposición normal: 20 ksi (severa: 17 ksi = 1200 kgf/cm²) (9.2.6.3) [1200..1400]
 barv = 5 // Varilla vertical [4 : 1/2"|5 : 5/8"|6 : 3/4"]
-sv = 20 cm // Espaciamiento del refuerzo vertical en la cara interior
+sv = 20 cm // Espaciamiento del refuerzo vertical en la cara interior [10..30]
 fsf = min(320 ksi/(si(tw >= 40.6 cm, 1.2, 1.35)*sqrt((sv/(1 inch))^2 + 4*(2 + db(barv)/(2 inch))^2)), 36 ksi) -> kgf/cm^2 // fs en flexión, exposición normal (ACI 350-06 Ec. 10-4, recubrimiento 2 in)
 Sdh = max(0.9*fy/(1.4*fsh), 1) // Sd en tracción anular, γ = 1.4 (U = 1.4 F)
 Sdf = max(0.9*fy/(1.4*fsf), 1) // Sd en flexión
@@ -652,13 +652,13 @@ Tu = fach*Tmax -> tonf/m // Tracción anular última (factor de carga × durabil
 Ashreq = Tu/(0.9*fy) -> cm^2/m // Acero anular total requerido
 Astemp = 0.005*tw*1 m/m -> cm^2/m // Mínimo por contracción y temperatura (ACI 350 Tabla 7.12.2.1)
 barh = 5 // Varilla anular (dos caras) [4 : 1/2"|5 : 5/8"|6 : 3/4"]
-sh = 20 cm // Espaciamiento en cada cara
+sh = 20 cm // Espaciamiento en cada cara [10..30]
 Ash = 2*Ab(barh)/sh -> cm^2/m // Acero anular colocado (dos caras)
 check Ash >= Ashreq // Refuerzo anular por tracción (ACI 350-06 9.2.6; PCA)
 check Ash >= Astemp // Refuerzo mínimo por contracción y temperatura (ACI 350-06 Tabla 7.12.2.1)
 check sh <= 30 cm // Espaciamiento máximo 12 in (ACI 350 7.6.5)
 ## Esfuerzo de tracción en el concreto (PCA)
-Csh = 0.0003 // Coeficiente de contracción del concreto
+Csh = 0.0003 // Coeficiente de contracción del concreto [0.0002..0.0004]
 Es = 2.0e6 kgf/cm^2
 Ec = 15000*sqrtfc(fc) // Módulo de elasticidad del concreto (E.060 8.5)
 nr = Es/Ec // Relación modular
@@ -679,11 +679,11 @@ Vu = facv*Vbase -> tonf/m // Cortante último
 phiVc = 0.75*0.53*sqrtfc(fc)*100 cm*dv/(1 m) -> tonf/m // φVc (ACI 350 11.3, φ = 0.75)
 check Vu <= phiVc // Cortante en la unión pared–losa de fondo (ACI 350-06 11.3, φ = 0.75)
 # Análisis sísmico (ACI 350.3-06 con espectro E.030)
-Z = 0.45 // Factor de zona ${ZONA}
-S = 1.05 // Factor de suelo ${SUELO}
-Tp = 0.6 s // Periodo TP ${TP}
-I = 1.5 // Importancia: ACI 350.3 Tabla 4.1.1(a) da 1.25 (línea vital); se adopta U = 1.5 (reservorios: categoría A2, E.030 Tabla N° 7 y Art. 7.3) [1.0|1.25|1.5]
-Ri = 2.0 // Factor de modificación impulsivo: base empotrada, sobre el terreno (ACI 350.3 Tabla 4.1.1(b))
+Z = 0.45 // Factor de zona ${ZONA} [0.10..0.45]
+S = 1.05 // Factor de suelo ${SUELO} [0.80..2.00]
+Tp = 0.6 s // Periodo TP ${TP} [0.3 s..1.0 s]
+I = 1.5 // Importancia: ACI 350.3 Tabla 4.1.1(a) da 1.25 (línea vital); se adopta U = 1.5 (reservorios: categoría A2, E.030 Tabla N° 7 y Art. 7.3) [1.0|1.25|1.5] [1.0..1.5]
+Ri = 2.0 // Factor de modificación impulsivo: base empotrada, sobre el terreno (ACI 350.3 Tabla 4.1.1(b)) [1.5..3.25]
 Rc = 1.0 // Factor de modificación convectivo
 SDS = 2.5*Z*S // Aceleración espectral de diseño en periodos cortos (meseta E.030)
 SD1 = SDS*Tp/(1 s) // Aceleración espectral a 1 s (TS = TP)
@@ -764,21 +764,21 @@ Cisterna enterrada de concreto armado con losa de techo, paredes empotradas en l
 
 Se consideran dos estados: **(1) prueba hidráulica** — tanque lleno sin relleno exterior; **(2) tanque vacío** con empuje de suelo en reposo y sobrecarga. Coeficientes sanitarios ACI 350R/PCA: 1.30 en flexión, factor de carga 1.7.`),
       calc(`# Datos
-Li = 4.00 m // Longitud interior
-Bi = 3.00 m // Ancho interior
-Hc = 2.50 m // Altura libre interior
-HL = 2.20 m // Altura máxima de agua
-tw = 0.20 m // Espesor de las paredes
-tf = 0.25 m // Espesor de la losa de fondo
-tt = 0.15 m // Espesor de la losa de techo
-gw = 1.0 tonf/m^3
-gs = 1.8 tonf/m^3 // Peso unitario del relleno
-phis = 30 deg // Ángulo de fricción del relleno
-ws = 0.50 tonf/m^2 // Sobrecarga sobre el terreno
-fc = 280 kgf/cm^2
-fy = 4200 kgf/cm^2
-rec = 5 cm // Recubrimiento
-qadm = 1.5 kgf/cm^2 // Capacidad admisible del suelo
+Li = 4.00 m // Longitud interior [1.50 m..10.00 m]
+Bi = 3.00 m // Ancho interior [1.50 m..10.00 m]
+Hc = 2.50 m // Altura libre interior [1.50 m..4.50 m]
+HL = 2.20 m // Altura máxima de agua [1.00 m..4.00 m]
+tw = 0.20 m // Espesor de las paredes [0.15 m..0.40 m]
+tf = 0.25 m // Espesor de la losa de fondo [0.20 m..0.50 m]
+tt = 0.15 m // Espesor de la losa de techo [0.12 m..0.25 m]
+gw = 1.0 tonf/m^3 // Peso específico del agua [1.0..1.1]
+gs = 1.8 tonf/m^3 // Peso unitario del relleno [1.4..2.1]
+phis = 30 deg // Ángulo de fricción del relleno [20..40]
+ws = 0.50 tonf/m^2 // Sobrecarga sobre el terreno [0..2]
+fc = 280 kgf/cm^2 // Resistencia del concreto [210..420]
+fy = 4200 kgf/cm^2 // Acero de refuerzo [2800..4200]
+rec = 5 cm // Recubrimiento [4..7.5]
+qadm = 1.5 kgf/cm^2 // Capacidad admisible del suelo [0.5..4.0]
 Vol = Li*Bi*HL -> m^3 // Volumen útil
 # Presiones
 Ko = 1 - sin(phis) // Empuje en reposo (paredes restringidas por el techo)
@@ -804,7 +804,7 @@ Mve = max(MyPa, MyNs) -> tonf*m/m // Cara exterior: tramo con agua / base con su
 Asvi = As(Mvi) -> cm^2/m
 Asve = As(Mve) -> cm^2/m
 Asmin = 0.0015*tw*1 m/m -> cm^2/m // Mínimo por cara: 0.003 tw/2 (ACI 350 Tabla 7.12.2.1, L < 6 m entre juntas)
-s = 20 cm // Espaciamiento
+s = 20 cm // Espaciamiento [10..30]
 Asp = Ab(bar)/s -> cm^2/m // Acero colocado por cara
 check Asp >= max(Asvi, Asmin) // Refuerzo vertical, cara interior
 check Asp >= max(Asve, Asmin) // Refuerzo vertical, cara exterior
@@ -822,7 +822,7 @@ phiVc = 0.75*0.53*sqrtfc(fc)*100 cm*d/(1 m) -> tonf/m // φVc (φ = 0.75)
 check Vu <= phiVc // Cortante en la unión con la losa de fondo (ACI 350-06 11.3, φ = 0.75)
 # Losa de techo (placa articulada en sus cuatro bordes)
 wt = 2.4 tonf/m^3*tt + 0.10 tonf/m^2 // Peso propio + acabados
-wlt = 0.25 tonf/m^2 // Sobrecarga del techo (E.020)
+wlt = 0.25 tonf/m^2 // Sobrecarga del techo (E.020) [0.10..0.50]
 wu = 1.4*wt + 1.7*wlt -> tonf/m^2 // Carga última (E.060 9.2)`),
       { type: 'tankwall', a: 'Li + tw', b: 'Bi + tw', inf: 'articulado', sup: 'articulado', lat: 'articulado', qb: 'wu', qs: 'wu', hq: '', nu: '0.2', ndiv: '20', sufijo: 't', titulo: 'Losa de techo con carga última uniforme (momentos en la luz menor = My)' },
       calc(`dt = tt - 3 cm // Peralte efectivo de la losa de techo
@@ -852,25 +852,25 @@ check qs <= qadm // Presión de contacto (E.050)`),
       text(`# Generalidades
 Tanque elevado con cuba cilíndrica de concreto armado sobre un **fuste cilíndrico** hueco empotrado en la cimentación. El análisis sísmico emplea el modelo de **dos masas de Housner** (ACI 350.3-06 Sec. 9.7 y R9.7): la masa impulsiva del agua se suma a la de la cuba y a una fracción de la del fuste, y oscila con la rigidez lateral del soporte; la masa convectiva oscila con su propio periodo largo. Las aceleraciones se obtienen del espectro de la NTE E.030 con $R_i = 2.0$ (tanque sobre pedestal) y $R_c = 1.0$; la ordenada convectiva se amplifica por 1.5 para pasar de 5 % a 0.5 % de amortiguamiento (ACI 350.3 R9.4.2). Ambas respuestas se combinan por SRSS (Ec. 4-5). Si el oleaje supera el borde libre, la masa convectiva restringida por la cubierta se suma a la impulsiva (Malhotra, 2005).`),
       calc(`# Datos
-D = 6.00 m // Diámetro interior de la cuba
-HL = 3.00 m // Altura de agua
-Hw = 3.60 m // Altura de la pared de la cuba
-tw = 0.30 m // Espesor de la pared de la cuba
-tb = 0.25 m // Espesor de la losa de fondo
-er = 0.12 m // Espesor de la losa de cubierta
-Hf = 12.0 m // Altura del fuste (cimentación a fondo de cuba)
-De = 3.50 m // Diámetro exterior del fuste
-tf = 0.25 m // Espesor del fuste
-gw = 1.0 tonf/m^3
-gc = 2.4 tonf/m^3
-fc = 280 kgf/cm^2
-fy = 4200 kgf/cm^2
-Z = 0.45 // Factor de zona ${ZONA}
-U = 1.5 // Factor de uso: reservorio de agua, categoría A2 (E.030 Tabla N° 7; Art. 7.3)
-S = 1.05 // Factor de suelo ${SUELO}
-Tp = 0.6 s // ${TP}
-Tl = 2.0 s // ${TL}
-Ri = 2.0 // Tanque sobre pedestal (ACI 350.3 Tabla 4.1.1(b))
+D = 6.00 m // Diámetro interior de la cuba [3.00 m..15.00 m]
+HL = 3.00 m // Altura de agua [2.00 m..8.00 m]
+Hw = 3.60 m // Altura de la pared de la cuba [2.50 m..9.00 m]
+tw = 0.30 m // Espesor de la pared de la cuba [0.20 m..0.50 m]
+tb = 0.25 m // Espesor de la losa de fondo [0.20 m..0.50 m]
+er = 0.12 m // Espesor de la losa de cubierta [0.10 m..0.20 m]
+Hf = 12.0 m // Altura del fuste (cimentación a fondo de cuba) [5.00 m..30.00 m]
+De = 3.50 m // Diámetro exterior del fuste [2.00 m..8.00 m]
+tf = 0.25 m // Espesor del fuste [0.20 m..0.50 m]
+gw = 1.0 tonf/m^3 // Peso específico del agua [1.0..1.1]
+gc = 2.4 tonf/m^3 // Peso específico del concreto [2.3..2.5]
+fc = 280 kgf/cm^2 // Resistencia del concreto (ACI 350: ≥ 4000 psi) [280..420]
+fy = 4200 kgf/cm^2 // Acero de refuerzo [2800..4200]
+Z = 0.45 // Factor de zona ${ZONA} [0.10..0.45]
+U = 1.5 // Factor de uso: reservorio de agua, categoría A2 (E.030 Tabla N° 7; Art. 7.3) [1.0..1.5]
+S = 1.05 // Factor de suelo ${SUELO} [0.80..2.00]
+Tp = 0.6 s // ${TP} [0.3 s..1.0 s]
+Tl = 2.0 s // ${TL} [1.6 s..3.0 s]
+Ri = 2.0 // Tanque sobre pedestal (ACI 350.3 Tabla 4.1.1(b)) [1.5..3.0]
 Rc = 1.0
 grav = 9.81 m/s^2
 check tw >= si(Hw >= 3.05 m, 30 cm, 20 cm) // Espesor mínimo de la pared en contacto con líquido (ACI 350-06 14.6.2)
@@ -911,7 +911,7 @@ dlat = Pi/kf -> cm // Desplazamiento elástico de la cuba (impulsivo)
 rm = (De - tf)/2 // Radio medio
 Ag = pi*(De^2 - (De - 2*tf)^2)/4 // Área bruta
 barf = 6 // Varilla vertical [5 : 5/8"|6 : 3/4"|8 : 1"]
-sf = 10 cm // Espaciamiento en cada cara
+sf = 10 cm // Espaciamiento en cada cara [10..30]
 nbf = 2*floor(2*pi*rm/sf) // Número de varillas (dos capas)
 Asf = nbf*Ab(barf) -> cm^2 // Acero vertical total
 rhof = Asf/Ag // Cuantía
@@ -925,7 +925,7 @@ check phif*Mn >= Mu // Flexocompresión del fuste (E.060 10.2 y 9.3.2.2; anillo 
 Vuf = Vs // Cortante último
 Acw = pi*rm*tf // Área efectiva de corte del tubo (A/2)
 barh = 4 // Refuerzo horizontal (dos capas) [4 : 1/2"|5 : 5/8"]
-shf = 20 cm // Espaciamiento vertical del refuerzo horizontal
+shf = 20 cm // Espaciamiento vertical del refuerzo horizontal [10..30]
 rhoh = 2*Ab(barh)/(shf*tf) // Cuantía horizontal
 check rhoh >= 0.0025 // Cuantía horizontal mínima (E.060 11.10.7)
 phiVf = 0.85*Acw*(0.53*sqrtfc(fc) + rhoh*fy) -> tonf // φVn = φ Acw (0.53√f'c + ρh fy) (E.060 11.10)

@@ -39,12 +39,17 @@ if (opts.tiles) fs.mkdirSync(path.join(OUT, 'tiles'), { recursive: true });
 // ---- lista de plantillas (id → módulo)
 const MODS = ['peru', 'chile', 'japan', 'concrete', 'geotech', 'walls', 'bridges', 'steel', 'analysis', 'masonry', 'dynamics'];
 const modOf = new Map();
+// (si un módulo no carga —p. ej. otro desarrollador lo está editando— se extraen los id con una expresión regular)
+const idsOf = (file) => [...fs.readFileSync(file, 'utf8').matchAll(/^\s*id: '([\w-]+)'/gm)].map(m => m[1]);
+let todo = [];
 for (const m of MODS) {
-  const list = (await import(pathToFileURL(path.join(ROOT, 'src/templates', m + '.js')).href)).default;
-  for (const t of list) modOf.set(t.id, m);
+  const file = path.join(ROOT, 'src/templates', m + '.js');
+  let ids;
+  try { ids = (await import(pathToFileURL(file).href)).default.map(t => t.id); } catch (e) { console.log(`(aviso) ${m}.js no carga en Node: ${e.message.split('\n')[0]}`); ids = idsOf(file); }
+  for (const id of ids) modOf.set(id, m);
 }
-const { TEMPLATES } = await import(pathToFileURL(path.join(ROOT, 'src/templates.js')).href);
-let todo = TEMPLATES.map(t => ({ id: t.id, mod: modOf.get(t.id) || 'base', name: t.name }));
+for (const id of idsOf(path.join(ROOT, 'src/templates.js'))) todo.push({ id, mod: 'base' });
+for (const [id, mod] of modOf) todo.push({ id, mod });
 if (filters.length) todo = todo.filter(t => filters.some(f => f.startsWith('mod:') ? t.mod === f.slice(4) : t.id === f));
 if (!todo.length) { console.log('Ninguna plantilla coincide con', filters.join(' ')); process.exit(1); }
 
@@ -90,8 +95,8 @@ function inspect() {
 
   const seen = new Set();
   const once = (kind, sev, msg, el) => { const k = kind + msg; if (seen.has(k)) return; seen.add(k); add(kind, sev, msg, el); };
-  const SAFE = /[\u0009\u000a\u000d -~ -ÿΑ-ωᴀ-ᶿϑϕϵ  ​‐-―‘-„•…′″⁄⁰-ₜ←-↕⇒∀-⋿≤≥⌀-⌒■-◿☐-☒✓-✘⚠─-╿·−⁡ıŒœŠš™€ΔΣΦΩ]/;
-  const NOACCENT = /\b(seccion|secciones|calculo|calculos|analisis|segun|tambien|minimo|minima|maximo|maxima|numero|razon|direccion|compresion|traccion|flexion|torsion|revision|verificacion|combinacion|ecuacion|funcion|relacion|condicion|solicitacion|cimentacion|deformacion|area|areas|basico|critico|critica|unico|unica|practica|tecnico|tecnica|geometria|metodo|modulo|angulo|diametro|perimetro|parametro|parametros|dinamico|dinamica|sismico|sismica|estatico|estatica|elastico|elastica|plastico|plastica|ultimo|ultima|teorico|empirico|empirica|tipico|tipica|limite|limites|transicion|reduccion|distribucion|excitacion|aceleracion|regimen|indice|carateristica|caracteristica|caracteristicas|especifico|especifica|categoria|clasificacion|presion|tension|friccion|cohesion|adhesion|rotacion|traslacion|vibracion|disipacion|ductil|fragil|util|facil|dificil|nucleo|bovedas?|tunel|puntal|vehiculo|camion)\b/i;
+  const SAFE = /[\u0009\u000a\u000d -~ -ÿΑ-ωᴀ-ᶿℓ̀-ͯȳ⅐-⅟†‡ϑϕϵ  ​‐-―‘-„•…′″⁄⁰-ₜ←-↕⇒∀-⋿≤≥⌀-⌒■-◿☐-☒✓-✘⚠─-╿·−⁡ıŒœŠš™€ΔΣΦΩ]/;
+  const NOACCENT = /\b(seccion|calculo|calculos|analisis|segun|tambien|minimo|minima|maximo|maxima|numero|razon|direccion|compresion|traccion|flexion|torsion|revision|verificacion|combinacion|ecuacion|funcion|relacion|condicion|solicitacion|cimentacion|deformacion|area|areas|basico|critico|unico|unica|tecnico|tecnica|geometria|metodo|modulo|angulo|diametro|perimetro|parametro|parametros|dinamico|dinamica|sismico|sismica|estatico|estatica|elastico|elastica|plastico|plastica|ultimo|ultima|teorico|empirico|empirica|tipico|tipica|transicion|reduccion|distribucion|excitacion|aceleracion|regimen|indice|carateristica|caracteristica|caracteristicas|especifico|categoria|clasificacion|presion|tension|friccion|cohesion|adhesion|rotacion|traslacion|vibracion|disipacion|ductil|fragil|util|facil|dificil|nucleo|bovedas?|tunel|vehiculo|camion)\b/i;
   const ANGL = /\b(check|input|output|default|layout|performance|shear|moment|load|span|deck|girder|footing|bolt|weld|spacing|strength|design|buckling|bearing|slab|wall|beam|column|bracing|stiffness|drift|story|plot|fix|tips?)\b/i;
   for (const { s, el, svg } of texts) {
     if (/\bNaN\b/.test(s)) once('valor', 'E', '«NaN» en el texto: ' + s, el);
@@ -106,8 +111,8 @@ function inspect() {
     if (/\dº/.test(s)) once('glifo', 'W', '«º» (ordinal) usado como grado: ' + s, el);
     if (/[⌀�]/.test(s)) once('glifo', 'E', 'Símbolo con riesgo de no mostrarse (⌀ o �): ' + s, el);
     for (const ch of s) if (!SAFE.test(ch) && !/[぀-ヿ㐀-鿿＀-￯]/.test(ch)) { once('glifo', 'W', `Carácter poco común «${ch}» (U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}): ` + s, el); break; }
-    const m = NOACCENT.exec(s); if (m && !el.closest('a,.nref')) once('orto', 'W', `Posible falta de tilde «${m[1]}»: ` + s, el);
-    const d = /\b(\p{L}{2,})\s+\1\b/iu.exec(s); if (d && !/^(\d|la|lo)$/i.test(d[1])) once('orto', 'W', `Palabra repetida «${d[1]} ${d[1]}»: ` + s, el);
+    const m = NOACCENT.exec(s.replace(/[\w-]*-[\w-]+/g, '')); if (m && !el.closest('a,.nref')) once('orto', 'W', `Posible falta de tilde «${m[1]}»: ` + s, el);
+    const d = /(?<!\p{L})(\p{L}{2,})\s+\1(?!\p{L})/u.exec(s); if (d && !/^(\d|la|lo)$/i.test(d[1])) once('orto', 'W', `Palabra repetida «${d[1]} ${d[1]}»: ` + s, el);
     const a = ANGL.exec(s); if (a && !svg && !el.closest('.nref,em,i')) once('estilo', 'I', `Posible anglicismo «${a[1]}»: ` + s, el);
   }
   for (const { s, el } of tex) {
@@ -213,12 +218,14 @@ for (const t of todo) {
     for (let k = 0; k < 20; k++) { await page.waitForTimeout(250); const n = await page.evaluate(() => document.querySelector('#paper')?.innerHTML.length || 0); if (n === last) break; last = n; }
     await page.evaluate(() => document.querySelectorAll('.ov,.toast').forEach(o => o.remove()));
     await page.addStyleTag({ content: PAPER_CSS });
+    // sin content-visibility:auto (style.css): las secciones fuera de pantalla no se pintan ni se miden
+    await page.evaluate(() => document.querySelector('#paper')?.classList.add('cvoff'));
     await page.waitForTimeout(300);
     res = await page.evaluate(inspect);
     for (const e of perr) res.issues.push({ kind: 'js', sev: 'E', msg: e.slice(0, 200), at: '' });
     if (!opts['no-shot']) {
       const loc = page.locator('#paper');
-      await loc.screenshot({ path: path.join(OUT, t.id + '.png') });
+      await loc.screenshot({ path: path.join(OUT, t.id + '.png'), timeout: 120000 });
       if (opts.tiles) {
         const bb = await loc.boundingBox();
         const TH = 1300; let k = 0;

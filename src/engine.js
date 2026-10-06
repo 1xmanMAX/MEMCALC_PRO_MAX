@@ -741,7 +741,10 @@ export function runCalc(src, ctx) {
             const prev = new Map(S); prev.delete(name);
             if (ctx.prevVals.has(name)) prev.set(name, ctx.prevVals.get(name));
             const subT = tex(rhs, { mode: 'sub', scope: prev, dec });
-            if (subT !== symT && subT !== valTex(value, dec)) parts.push(subT);
+            // sustituciones con varios vectores largos no caben en la hoja: se omiten (fórmula = resultado)
+            const nVec = (subT.match(/\\begin\{bmatrix\}/g) || []).length;
+            const tooWide = nVec >= 1 && texLen(subT) > 110;
+            if (subT !== symT && subT !== valTex(value, dec) && !tooWide) parts.push(subT);
           }
           const vt = valTex(value, dec);
           if (parts[parts.length - 1] !== vt) parts.push(vt);

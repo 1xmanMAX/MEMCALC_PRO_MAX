@@ -364,6 +364,79 @@ function pushoverIncr({ st, theta, Sx, h, druEnd, cap }) {
   const VbAt = (d) => stateAt(d).Vb;
   return { curve, ev, dEnd, VbEnd: curve[curve.length - 1].Vb, stateAt, VbAt, drifts: null, roof: null, endBy: R.endBy, Vbmax: R.Vmax, bb };
 }
+// ---------------------------------------------------------------------
+//  Tiempo-historia NO LINEAL de edificio de cortante (resortes bilineales de entrepiso con endurecimiento
+//  cinemático, P-Δ opcional con columna ficticia, amortiguamiento de Rayleigh con la rigidez inicial)
+//  Newmark-β (γ = 1/2, β = 1/4) + Newton-Raphson con la rigidez tangente tridiagonal (Chopra §16.3, Tabla 16.3.3)
+//  m (kg), k (N/m), Vy (N), h (m); ag (m/s²). linear = true → resortes elásticos (contraste)
+// ---------------------------------------------------------------------
+export function nlShearTH({ m, k, Vy, alpha = 0, h, ag, dt, a0 = 0, a1 = 0, pdelta = false, fP = 1, linear = false, beta = 0.25, gamma = 0.5, hmax = Infinity, collapse = 0.10, tol = 1e-8, maxit = 40 }) {
+  const n = m.length, N = ag.length;
+  const al = Array.isArray(alpha) ? alpha : m.map(() => alpha);
+  const th = m.map((_, i) => (pdelta ? G * fP * m.slice(i).reduce((a, b) => a + b, 0) / h[i] : 0));
+  const sp = m.map((_, i) => bilinearSpring(k[i], linear ? 1e30 : Vy[i], al[i]));
+  const ns = Math.max(1, Math.ceil(dt / hmax - 1e-9)), hs = dt / ns;
+  // C = a0 M + a1 K0 (tridiagonal: cd = diagonal, co = fuera de la diagonal (i, i+1))
+  const kd = (i) => k[i] + (i + 1 < n ? k[i + 1] : 0);
+  const cd = m.map((x, i) => a0 * x + a1 * kd(i)), co = m.map((_, i) => (i + 1 < n ? -a1 * k[i + 1] : 0));
+  const Cmul = (x, i) => cd[i] * x[i] + (i > 0 ? co[i - 1] * x[i - 1] : 0) + (i + 1 < n ? co[i] * x[i + 1] : 0);
+  const b1 = 1 / (beta * hs * hs), b2 = gamma / (beta * hs), b3 = 1 / (beta * hs), b4 = gamma / beta - 1, b5 = 1 / (2 * beta) - 1, b6 = hs * (gamma / (2 * beta) - 1);
+  let u = new Float64Array(n), v = new Float64Array(n), a = new Float64Array(n).fill(-ag[0]);
+  const U = Array.from({ length: n }, () => new Float32Array(N)), Fs = Array.from({ length: n }, () => new Float32Array(N));
+  const uPk = new Float64Array(n), tuPk = new Float64Array(n), drPk = new Float64Array(n), Fpk = new Float64Array(n), Eh = new Float64Array(n), fPrev = new Float64Array(n), dPrev = new Float64Array(n);
+  let VbPk = 0, tVb = 0, itMax = 0, nfail = 0, tCol = null, steps = 0;
+  const fref = m.map((_, r) => Math.min(linear ? Infinity : Vy[r], 0.02 * k[r] * h[r]));   // escala de fuerzas del residuo
+  const dg = new Float64Array(n), up = new Float64Array(n), lo = new Float64Array(n), rhs = new Float64Array(n), du = new Float64Array(n), cp = new Float64Array(n), dp = new Float64Array(n);
+  outer:
+  for (let i = 0; i < N - 1; i++) {
+    for (let jj = 1; jj <= ns; jj++) {
+      const agN = ag[i] + (ag[i + 1] - ag[i]) * jj / ns;
+      // p̂ = −M ι üg + (M b1 + C b2) u + (M b3 + C b4) v + (M b5 + C b6) a
+      const ph = new Float64Array(n);
+      for (let r = 0; r < n; r++) ph[r] = -m[r] * agN + m[r] * (b1 * u[r] + b3 * v[r] + b5 * a[r]) + b2 * Cmul(u, r) + b4 * Cmul(v, r) + b6 * Cmul(a, r);
+      const uj = Float64Array.from(u); let conv = false, it = 0;
+      for (; it < maxit; it++) {
+        // fuerzas de entrepiso y tangentes
+        const F = new Float64Array(n), kt = new Float64Array(n);
+        for (let r = 0; r < n; r++) { const d = uj[r] - (r ? uj[r - 1] : 0); F[r] = sp[r].trial(d) - th[r] * d; kt[r] = sp[r].kt - th[r]; }
+        let rn = 0;
+        for (let r = 0; r < n; r++) {
+          const fS = F[r] - (r + 1 < n ? F[r + 1] : 0);
+          rhs[r] = ph[r] - fS - m[r] * b1 * uj[r] - b2 * Cmul(uj, r);
+          rn = Math.max(rn, Math.abs(rhs[r]) / fref[r]);
+          dg[r] = kt[r] + (r + 1 < n ? kt[r + 1] : 0) + m[r] * b1 + b2 * cd[r];
+          up[r] = r + 1 < n ? -kt[r + 1] + b2 * co[r] : 0; lo[r] = r > 0 ? -kt[r] + b2 * co[r - 1] : 0;
+        }
+        if (rn < tol) { conv = true; break; }
+        // Thomas (tridiagonal)
+        cp[0] = up[0] / dg[0]; dp[0] = rhs[0] / dg[0];
+        for (let r = 1; r < n; r++) { const den = dg[r] - lo[r] * cp[r - 1]; cp[r] = up[r] / den; dp[r] = (rhs[r] - lo[r] * dp[r - 1]) / den; }
+        du[n - 1] = dp[n - 1]; for (let r = n - 2; r >= 0; r--) du[r] = dp[r] - cp[r] * du[r + 1];
+        for (let r = 0; r < n; r++) uj[r] += du[r];
+      }
+      if (!conv) nfail++; itMax = Math.max(itMax, it);
+      const vn = new Float64Array(n), an = new Float64Array(n);
+      for (let r = 0; r < n; r++) {
+        an[r] = b1 * (uj[r] - u[r]) - b3 * v[r] - b5 * a[r];
+        vn[r] = v[r] + hs * ((1 - gamma) * a[r] + gamma * an[r]);
+      }
+      for (let r = 0; r < n; r++) {
+        const d = uj[r] - (r ? uj[r - 1] : 0); sp[r].commit(d);
+        Eh[r] += (sp[r].f + fPrev[r]) / 2 * (d - dPrev[r]); fPrev[r] = sp[r].f; dPrev[r] = d;
+        if (Math.abs(d) > drPk[r]) drPk[r] = Math.abs(d); if (Math.abs(sp[r].f) > Fpk[r]) Fpk[r] = Math.abs(sp[r].f);
+        if (Math.abs(d) > collapse * h[r] && tCol === null) tCol = (i + jj / ns) * dt;
+      }
+      const Vb = Math.abs(sp[0].f - th[0] * dPrev[0]); if (Vb > VbPk) { VbPk = Vb; tVb = (i + jj / ns) * dt; }
+      for (let r = 0; r < n; r++) if (Math.abs(uj[r]) > uPk[r]) { uPk[r] = Math.abs(uj[r]); tuPk[r] = (i + jj / ns) * dt; }
+      u = uj; v = vn; a = an; steps++;
+      if (tCol !== null) { for (let r = 0; r < n; r++) { U[r][i + 1] = u[r]; Fs[r][i + 1] = sp[r].f; } break outer; }
+    }
+    for (let r = 0; r < n; r++) { U[r][i + 1] = u[r]; Fs[r][i + 1] = sp[r].f; }
+  }
+  const dres = m.map((_, r) => dPrev[r]);
+  return { U, Fs, uPk, tuPk, drPk, Fpk, Eh, VbPk, tVb, itMax, nfail, tCol, ns, hs, theta: th, dres, steps };
+}
+
 // curva tabulada [x, y] (desde el origen): interpolación y área acumulada
 export function tab(pts) {
   const P = pts[0][0] === 0 && pts[0][1] === 0 ? pts : [[0, 0], ...pts];

@@ -39,7 +39,8 @@ if (opts.fig) { const sel = `#paper .figure >> nth=${(+opts.fig || 1) - 1}`; tar
 if (opts.el) { target = p.locator(String(opts.el)).first(); await target.scrollIntoViewIfNeeded().catch(() => console.log('noel', opts.el)); }
 if (opts.paper) {
   // desplegar la vista previa a su altura natural y capturar el papel completo
-  await p.addStyleTag({ content: 'html,body,#app{height:auto!important;overflow:visible!important}.main{display:block!important}.left,.split,.sbar,.bnav,.top{display:none!important}.right{display:block!important;overflow:visible!important;height:auto!important}' });
+  await p.evaluate(() => document.getElementById('paper')?.classList.add('cvoff'));
+  await p.addStyleTag({ content: '#paper section.blk{content-visibility:visible!important}html,body,#app{height:auto!important;overflow:visible!important}.main{display:block!important}.left,.split,.sbar,.bnav,.top{display:none!important}.right{display:block!important;overflow:visible!important;height:auto!important}' });
   await p.waitForTimeout(300);
   target = p.locator('#paper');
 }
