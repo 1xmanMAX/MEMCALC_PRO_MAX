@@ -2,7 +2,7 @@
 // bloques (steelsec, basepl, boltgroup) y plantillas contra ejemplos resueltos.
 import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES, math } from './helpers.mjs';
 import { settings } from '../src/engine.js';
-import { getShape, compAISC, flexI, flexIy, shearAISC, fcrE3 } from '../src/norms/steel.js';
+import { getShape, compAISC, compE5, flexI, flexIy, flexT, flexHSS, mnF4F5, shearAISC, fcrE3, kLabioAISI, SHAPES } from '../src/norms/steel.js';
 
 const KSI = 6894757.29, IN = 0.0254, KIP = 4448.2216, KIPFT = KIP * 0.3048;
 const us = (src) => { settings.sys = 'us'; return calc(src); };
@@ -203,8 +203,11 @@ section('Plantillas contra ejemplos resueltos');
   near('Armadura: cuerda superior = wL²/(8h) = 8.1 t', g('Fcs', 'tonf'), 0.36 * 144 / 8 / 0.8, 1e-6);
   near('Armadura: diagonal extrema = (R − P/2)/sen α = 4.02 t', g('Fd', 'tonf'), (2.16 - 0.27) / (0.8 / Math.hypot(1.5, 0.8)), 1e-6);
   g = runTemplate('st-nave');
-  { const k = 0.45; near('Nave: Kleinlogel cg = 1/(4(2k+3))', g('cg'), 1 / (4 * (2 * k + 3)), 1e-9);
-    near('Nave: K de pórtico no arriostrado con GA = 10, GB = 2.22 ≈ 2.16', g('Kx'), 2.159, 0.002); }
+  { near('Nave (frame2d a dos aguas): empuje bajo CM = Kleinlogel wL²(3+5m)/(16hN)', Math.abs(g('R1x_CM', 'tonf')), g('HKL', 'tonf'), 0.005);
+    near('Nave: K de pórtico no arriostrado con GA = 10, GB = 2.22 ≈ 2.16', g('Kx'), 2.159, 0.002);
+    const V = 0.45 * 1 * 1.05 * Math.max(2.5 / 4, 0.11) * g('Psis', 'tonf');
+    near('Nave: V = ZUCS·P/R (E.030, C = 2.5, R = 4)', g('Vsis', 'tonf'), V, 1e-6);
+    truthy('Nave: B2 entre 1.0 y 1.5 (Apéndice 8)', g('B2') > 1 && g('B2') < 1.5, 'B2 = ' + g('B2').toFixed(3)); }
   g = runTemplate('st-compuesta');
   near('Viga compuesta: Qn = Rg·Rp·Asa·Fu = 7.82 t (I8-1)', g('Qn', 'tonf'), 0.6 * Math.PI * 1.905 ** 2 / 4 * 4570 / 1000, 1e-6);
   near('Viga compuesta: φMn = 28.7 t·m (cálculo manual)', g('phiMn', 'tonf*m'), 28.7, 0.003);
@@ -216,7 +219,113 @@ section('Plantillas contra ejemplos resueltos');
     const r = runTemplate(t.id).res.ctx;
     truthy(`Plantilla «${t.name}»: sin errores y todo cumple`, r.errors.length === 0 && r.checks.length > 0 && r.checks.every(c => c.ok), `${r.checks.length} verif., ${r.errors.length} errores ${r.errors.map(e => e.msg).join('; ')}`);
   }
-  truthy('Al menos 10 plantillas de acero', TEMPLATES.filter(x => x.id.startsWith('st-')).length >= 10);
+  truthy('Al menos 11 plantillas de acero (incluye la casa metálica)', TEMPLATES.filter(x => x.id.startsWith('st-')).length >= 11);
+}
+
+section('Revisión 2026 — base de datos: consistencia y contraste con AISC v15/v16 y ArcelorMittal');
+{
+  // consistencia interna de toda la base: r = √(I/A), S = I/(d/2) en perfiles I
+  let bad = 0, n = 0;
+  for (const s of SHAPES.values()) { const p = s.p; if (!(p.A && p.Ix && p.rx)) continue; n++;
+    if (Math.abs(Math.sqrt(p.Ix / p.A) - p.rx) / p.rx > 0.02) bad++;
+    if (p.Iy && p.ry && Math.abs(Math.sqrt(p.Iy / p.A) - p.ry) / p.ry > 0.02) bad++;
+    if ((s.fam === 'I' || s.fam === 'E') && Math.abs(p.Ix / (p.d / 2) - p.Sx) / p.Sx > 0.02) bad++; }
+  truthy(`Consistencia r = √(I/A) y Sx = 2Ix/d en ${n} perfiles`, bad === 0, bad + ' discrepancias');
+  truthy('Ángulos desiguales: d = ala larga (vertical, coherente con Ix, ȳ de la Tabla 1-7)', [...SHAPES.values()].filter(s => s.fam === 'L').every(s => s.p.d >= s.p.b2 && (s.p.d === s.p.b2 || s.p.y > s.p.x)));
+  near('L6×4×½: d = 6 in (ala larga), b = 4 in', getShape('L6X4X1/2').p.d, 6, 1e-9);
+  // 20 perfiles al azar contra el Manual AISC (valores tabulados)
+  const aisc = [['W44X335', 'A', 98.5], ['W44X335', 'Ix', 31100], ['W33X201', 'Zx', 773], ['W33X201', 'Ix', 11600], ['W8X10', 'Zx', 8.87], ['W8X10', 'Ix', 30.8],
+    ['S4X9.5', 'A', 2.79], ['C6X10.5', 'Ix', 15.1], ['MC4X13.8', 'A', 4.03], ['L3X3X1/2', 'A', 2.76], ['HSS16X12X3/8', 'A', 18.7], ['HSS16X12X3/8', 'Ix', 702],
+    ['HSS16X12X3/8', 'J', 862], ['HSS16X12X3/8', 'Zx', 104], ['HSS6X3X3/8', 'A', 5.48], ['HSS5X4X3/16', 'tdes', 0.174], ['HSS8X2X1/4', 'Ix', 28.5], ['HSS7X5X1/8', 'A', 2.70],
+    ['HSS4.500X0.188', 'A', 2.36], ['W12X26', 'Ix', 204]];
+  for (const [n, k, v] of aisc) near(`AISC ${n} ${k}`, getShape(n).p[k], v, 0.005);
+  // 5 perfiles europeos contra ArcelorMittal (A, Iy, Wpl,y, It, Iw)
+  const am = [['IPE200', 28.48, 1943, 220.6, 6.98, 12990], ['IPE400', 84.46, 23130, 1307, 51.08, 490000], ['HEB300', 149.1, 25170, 1869, 185.0, 1688000], ['HEB160', 54.25, 2492, 354.0, 31.24, 47940], ['HEA240', 76.84, 7763, 744.6, 41.55, 328500]];
+  for (const [n, A, I, Z, J, Cw] of am) { const p = getShape(n).p; near(`${n} A, Iy, Wpl,y, It, Iw (ArcelorMittal)`, (p.A / A + p.Ix / I + p.Zx / Z + p.J / J + p.Cw / Cw) / 5, 1, 0.002); }
+}
+
+section('Revisión 2026 — perfiles T (WT) y dobles ángulos 2L (propiedades calculadas)');
+{
+  const t = getShape('WT6X13').p;  // AISC Shapes Database: y = 1.25, Ix = 11.7, Zx = 4.20, Sx = 2.40, ro = 2.54, H = 0.827, Cw = 0.174
+  near('WT6×13 ȳ = 1.25 in (AISC)', t.y, 1.25, 0.01); near('WT6×13 Ix = 11.7 in⁴ (AISC)', t.Ix, 11.7, 0.01);
+  near('WT6×13 Zx = 4.20 in³ (AISC)', t.Zx, 4.20, 0.01); near('WT6×13 Sx = 2.40 in³ (AISC)', t.Sx, 2.40, 0.01);
+  near('WT6×13 r̄o = 2.54 in (AISC)', t.ro, 2.54, 0.01); near('WT6×13 H = 0.827 (AISC)', t.H3, 0.827, 0.005); near('WT6×13 Cw = 0.174 in⁶ (AISC)', t.Cw, 0.174, 0.01);
+  near('2L4×4×½ (s = 3/8 in): ry = 1.83 in (Manual Tabla 1-15)', getShape('2L4X4X1/2').p.ry, 1.83, 0.005);
+  near('2L4×4×½: A = 2·3.75 in²', getShape('2L4X4X1/2X3/4').p.A, 7.5, 1e-9);
+}
+
+section('Revisión 2026 — ejemplos AISC adicionales (E4, E5, E7, F4/F5, F7, F9, G3)');
+{
+  // AISC Design Examples v15/v16, Ej. E.8: WT7×15 A992, Lc = 20 ft → Fex = 21.3, Fey = 11.0, Fe = 10.5 ksi, Fcr = 9.21 ksi, Pn/Ω = 24.4 kip
+  const w = compAISC('WT7X15', 50 * KSI, 20 * 12 * IN, 20 * 12 * IN);
+  near('E.8: WT7×15 Fe (flexo-torsional E4) = 10.5 ksi', w.Fe / KSI, 10.5, 0.005);
+  near('E.8: WT7×15 Fcr = 9.21 ksi', w.Fcr / KSI, 9.21, 0.003);
+  near('E.8: WT7×15 Pn/Ωc = 24.4 kip (ASD)', w.Pn / KIP / 1.67, 24.4, 0.003);
+  // Ej. E.10: HSS12×8×3/16 A500 Gr. C (50 ksi), Lc = 24 ft → Fcr = 29.1 ksi, Ae = 5.77 in² (E7)
+  const h = compAISC('HSS12X8X3/16', 50 * KSI, 24 * 12 * IN, 24 * 12 * IN);
+  near('E.10: HSS12×8×3/16 Fcr = 29.1 ksi', h.Fcr / KSI, 29.1, 0.003);
+  near('E.10: HSS12×8×3/16 Ae = 5.77 in² (E7)', h.Ae / IN ** 2, 5.77, 0.003);
+  // E5: ángulo simple, verificación de las ecuaciones E5-1/E5-2
+  const a = compE5('L3X3X1/4', 36 * KSI, 4 * 12 * IN), Lr = 48 / getShape('L3X3X1/4').p.rx;
+  near('E5-1: Lc/r = 72 + 0.75·L/ra (L/ra ≤ 80)', a.esb, 72 + 0.75 * Lr, 1e-9);
+  const a2 = compE5('L2X2X1/8', 36 * KSI, 8 * 12 * IN), a3 = compE5('L2X2X1/8', 36 * KSI, 0.5 * 12 * IN), Lr2 = 96 / getShape('L2X2X1/8').p.rx;
+  near('E5-2: Lc/r = 32 + 1.25·L/ra (L/ra > 80)', a2.esb, 32 + 1.25 * Lr2, 1e-9);
+  truthy('E5 + E7: L2×2×1/8 (b/t = 16 > 0.45√(E/Fy) = 12.8) con L = 6 in tiene Ae < Ag', a3.Ae < a3.A);
+  // F5: viga armada 50 × ⅝ … d = 50 in, bf = 16 in, tf = 1 in, tw = 5/16 in, Fy = 50 ksi, Lb = 0 (cálculo manual)
+  const pg = mnF4F5({ d: 50 * IN, bf: 16 * IN, tf: 1 * IN, tw: 5 / 16 * IN }, 50 * KSI, 0);
+  { const Sx = (16 * 50 ** 3 - (16 - 5 / 16) * 48 ** 3) / 300, aw = 48 * 5 / 16 / 16, Rpg = 1 - aw / (1200 + 300 * aw) * (48 / (5 / 16) - 5.7 * Math.sqrt(580));
+    near('F5 (alma esbelta): Mn = Rpg·Fy·Sxc (cálculo manual)', pg.Mn / KIPFT, Rpg * 50 * Sx / 12, 1e-6); }
+  // F4: continuidad con F2 en λw = λpw (Rpc = Mp/My)
+  const tw4 = 48 / (3.76 * Math.sqrt(580)) * 1.0001;
+  const f4 = mnF4F5({ d: 50 * IN, bf: 16 * IN, tf: 1 * IN, tw: tw4 * IN }, 50 * KSI, 0);
+  near('F4: en λw = λpw, Mn = Mp (continuidad con F2)', f4.Mn / f4.Mp, 1, 0.001);
+  truthy('MnW ya no da error con alma no compacta (W con Fy alto evaluado por F4)', (() => { try { flexI('W44X230', 100 * KSI, 0); return true; } catch (e) { return false; } })());
+  // F9: WT6×13 sin PLT, alma en tracción: Mn = min(FyZx, 1.6My)
+  const ft = flexT('WT6X13', 50 * KSI, 0);
+  near('F9-2: WT6×13 Mn = min(FyZx, 1.6My) (alma en tracción)', ft.Mn / (KIP * IN), Math.min(50 * getShape('WT6X13').p.Zx, 1.6 * 50 * getShape('WT6X13').p.Sx), 1e-6);
+  truthy('F9: alma en compresión resiste menos que en tracción', flexT('WT6X13', 50 * KSI, 10 * 12 * IN, 1, 'compresion').Mn < flexT('WT6X13', 50 * KSI, 10 * 12 * IN).Mn);
+  // F7: HSS12×12×3/16 (b/t = 66 > 1.40√(E/Fy)) → ala esbelta con Se < Sx
+  const fh = flexHSS('HSS12X12X3/16', 46 * KSI);
+  truthy('F7-3: ala esbelta, Mn < Fy·Sx', fh.Mn < 46 * KSI * getShape('HSS12X12X3/16').p.Sx * IN ** 3, fh.estado);
+  // G3 (AISC Design Example G.4): L5×3×¼ A36, ala larga vertical: φvVn = 0.9·0.6·36·5·0.25 = 24.3 kip
+  const vg = shearAISC('L5X3X1/4', 36 * KSI);
+  near('G.4: L5×3×¼ φvVn = 24.3 kip (G3, Cv2 = 1)', vg.phi * vg.Vn / KIP, 24.3, 0.002);
+  // AISI S100 §1.3: ala con labio adecuado (RI = 1) → k = 4.82 − 5D/w + 0.43
+  const kl = kLabioAISI(23, 0.326, 6.5, 248e6);
+  near('AISI §1.3: k = (4.82 − 5D/w)·RI^n + 0.43 con RI = 1', kl.k, 4.82 - 5 * 0.326 + 0.43, 1e-9);
+}
+
+section('Revisión 2026 — placa base: anclajes ACI 318-19 Cap. 17');
+{
+  const g = runTemplate('st-placa-base');
+  near('Ase de varilla ¾"-10 UNC = 0.334 in² (ACI R17.6.1.2)', g('Ase', 'in^2'), 0.334, 0.005);
+  near('Abrg de tuerca hexagonal pesada ¾" = 0.91 in² (DG1 Tabla 3.2)', g('Abrg', 'in^2'), 0.91, 0.01);
+  { const hefp = Math.max(12.5 / 1.5, 35 / 3), Nb = 10 * Math.sqrt(210 * 0.0980665) * (hefp * 10) ** 1.5 / 9806.65, psi = 0.7 + 0.3 * 12.5 / (1.5 * hefp);
+    near("Arrancamiento: h′ef = máx(ca,máx/1.5, s/3) (17.6.2.1.2)", g('hefp', 'cm'), hefp, 1e-9);
+    near('φNcbg = 0.70·ANc/ANco·ψed·Nb (cálculo manual)', g('phiNcbg', 'tonf'), 0.7 * 3000 / (9 * hefp * hefp) * psi * Nb, 1e-6); }
+}
+
+section('Revisión 2026 — plantilla «Casa de dos pisos en estructura metálica»');
+{
+  const g = runTemplate('st-casa');
+  near('Casa: Vx = ZUCS·P/R con C = 2.5, R = 4', g('Vx', 'tonf'), 0.45 * 1.05 * 2.5 / 4 * g('Psis', 'tonf'), 1e-9);
+  near('Casa: fracción del pórtico de borde 1/4 + 0.05·9·4.5/45 = 0.295', g('ft'), 0.295, 1e-9);
+  near('Casa: Fbr = V/(2 cos θ) en la cruz', g('Fbr', 'tonf'), g('VY1', 'tonf') / (2 * 3 / Math.hypot(3, 2.8)), 1e-9);
+}
+
+section('Revisión 2026 — datos extremos: NO CUMPLE sin errores ni NaN');
+{
+  const ext = [
+    ['st-columna', 'P_L = 420 kip', 'P_L = 2500 kip'], ['st-vigacolumna', 'Mux = 250 kip*ft', 'Mux = 900 kip*ft'], ['st-traccion', 'P_L = 45 kip', 'P_L = 200 kip'],
+    ['st-shear-tab', 'Vu = 18 tonf', 'Vu = 60 tonf'], ['st-placa-base', 'P_L = 40 tonf', 'P_L = 400 tonf'], ['st-correas', 'Lc = 6 m', 'Lc = 11 m'],
+    ['st-armadura', 'Lt = 12 m', 'Lt = 30 m'], ['st-nave', 'Lf = 10 m', 'Lf = 30 m'], ['st-compuesta', 'Lv = 9 m', 'Lv = 16 m'],
+    ['st-viga-ipe', 'wLs = 1.0 tonf/m', 'wLs = 6 tonf/m'], ['st-casa', 'h1 = 2.8 m', 'h1 = 6 m'],
+  ];
+  for (const [id, a, b] of ext) {
+    const r = runTemplate(id, (d) => { const bl = d.blocks.find(x => x.type === 'calc' && x.src.includes(a)); bl.src = bl.src.replace(a, b); }).res.ctx;
+    const nan = r.checks.some(c => c.ratio !== undefined && !Number.isFinite(+c.ratio));
+    truthy(`${id} con ${b}: sin errores, sin NaN y alguna verificación NO CUMPLE`, r.errors.length === 0 && !nan && r.checks.some(c => !c.ok), `${r.errors.length} errores ${r.errors.map(e => e.msg).join('; ').slice(0, 160)}; ${r.checks.filter(c => !c.ok).length} no cumplen`);
+  }
 }
 void math;
 done();

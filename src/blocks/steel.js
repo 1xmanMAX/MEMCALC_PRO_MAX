@@ -100,7 +100,7 @@ const NAMEF = { T: 'Perfil T (WT) cortado de un W — propiedades calculadas', D
 
 registerBlock('steelsec', {
   name: 'Perfil de acero', icon: 'steel', group: 'Acero',
-  fields: [F('perfil', 'Perfil (W12X26, HSS6X6X3/8, HSS6.625X0.280, C10X15.3, L4X4X1/2, IPE300, HEB200…) o variable de texto', 'W12X26'),
+  fields: [F('perfil', 'Perfil (W12X26, HSS6X6X3/8, HSS6.625X0.280, C10X15.3, L4X4X1/2, WT6X13, 2L4X4X1/2, 2L6X4X3/8X3/4SLBB, IPE300, HEB200, CF150X50X15X2…) o variable de texto', 'W12X26'),
     F('sufijo', 'Sufijo de variables exportadas (A_c, Zx_c…; vacío = sin sufijo)', ''), F('tabla', 'Mostrar tabla de propiedades', '', 'check'), F('titulo', 'Título', '')],
   hint: 'Dibuja el perfil a escala con sus cotas, lee la base de datos (AISC Shapes Database y perfiles europeos) y exporta al documento A, d, bf, tf, tw, Ix, Sx, Zx, rx, Iy, Sy, Zy, ry, J, Cw, rts, ho, λf = bf/2tf, λw = h/tw, peso y la variable de texto <code>perfil</code>.',
   def: { perfil: 'W12X26', tabla: true },

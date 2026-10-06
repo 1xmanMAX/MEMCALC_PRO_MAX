@@ -161,6 +161,7 @@ export function parseFrame(b, S) {
     if ((m.zi > 0 || m.zj > 0) && truss) throw new Error(m.where + ': las zonas rígidas no se usan en armaduras');
   }
   if (!mems.length) throw new Error('Defina al menos una barra («id ni nj [sección]»)');
+  { const used = new Uint8Array(nodes.length); for (const m of mems) { used[m.i] = 1; used[m.j] = 1; } const k = used.indexOf(0); if (k >= 0) throw new Error('El nudo ' + nids[k] + ' no está conectado a ninguna barra: elimínelo o agregue sus barras'); }
   // apoyos
   const sup = nodes.map(() => ({ r: [0, 0, 0], k: [0, 0, 0], any: false, ang: null }));
   for (const l of cleanLines(b.apoyos)) {
@@ -496,7 +497,6 @@ function jacobiEig(A0) {
 }
 
 // ---------- preparación de la estructura ----------
-const DOFN = ['ux', 'uy', 'θz'];
 function prepStations(md, LL, nseg) {
   md.mems.forEach((m, mi) => {
     const set = []; for (let k = 0; k <= nseg; k++) set.push([m.L * k / nseg, 0]);

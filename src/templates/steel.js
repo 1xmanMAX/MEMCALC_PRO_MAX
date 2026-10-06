@@ -332,7 +332,7 @@ check Pu <= phiPp // Aplastamiento del concreto bajo la placa
 check Np/2 - ed >= d/2 + 4 cm // Pernos fuera de las alas con holgura para tuerca y arandela
 # Espesor de la placa (DG1 §3.1.2, método de Thornton)
 Xt = 4*d*bf/(d + bf)^2*Pu/phiPp // Parámetro X (DG1 §3.1.2)
-lam = min(2*sqrt(Xt)/(1 + sqrt(1 - Xt)), 1) // Factor λ (DG1 §3.1.2)
+lam = min(2*sqrt(Xt)/(1 + sqrt(max(1 - Xt, 0))), 1) // Factor λ (DG1 §3.1.2); si X > 1 el aplastamiento ya no cumple
 lnp = lam*lambdanp // λn' (DG1 §3.1.2)
 lmax = max(m_pl, n_pl, lnp) // Voladizo crítico ℓ = máx(m, n, λn')
 fpu = Pu/A1 // Presión de contacto bajo la placa

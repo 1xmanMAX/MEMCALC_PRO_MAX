@@ -240,4 +240,141 @@ near('Reservorio: Wi/WL (D/HL = 2.25)', g('Wi', 'tonf') / g('WL', 'tonf'), Math.
 g = runTemplate('ma-cerco');
 near('Cerco: w = 0.8 Z U C1 γ e = 58.3 kg/m²', g('w', 'kgf/m^2'), 0.8 * 0.45 * 0.6 * 1800 * 0.15);
 { const t = TEMPLATES.find(x => x.id === 'ma-armada'); const r = runTemplate('ma-armada', d => { d.blocks[1].src = d.blocks[1].src.replace('Ve = 12 tonf', 'Ve = 40 tonf'); }).res; truthy('Datos absurdos (Ve = 40 t en muro armado) producen verificaciones que no cumplen', r.ctx.checks.some(c => !c.ok)); void t; }
+// =====================================================================
+//  Revisión independiente (supervisor): ejemplos publicados y datos extremos
+// =====================================================================
+section('Revisión — San Bartolomé (2006), «Ejemplo de aplicación de la Norma E.070», Tablas 8, 16 y 21');
+g = calc(`P = 432.11 tonf
+VE = 0.4*1*2.5*1/3*P
+aX1 = alphaE070(6.29 tonf, 3.13 m, 34.22 tonf*m)
+VmX1 = VmE070(8.1 kgf/cm^2, 0.58, 13 cm, 3.13 m, 14.20 tonf)
+VmX1e = VmE070(8.1 kgf/cm^2, aX1, 13 cm, 3.13 m, 14.20 tonf)
+aX3 = alphaE070(5.72 tonf, 3.13 m, 22.51 tonf*m)
+VmX3 = VmE070(8.1 kgf/cm^2, 0.80, 13 cm, 3.13 m, 19.89 tonf)
+fX1 = factE070(12.82 tonf, 6.29 tonf)
+fX3 = factE070(17.76 tonf, 5.72 tonf)
+VuX3 = fX3*5.72 tonf
+MuX3 = fX3*22.51 tonf*m
+fc = 175 kgf/cm^2
+fy = 4200 kgf/cm^2
+VcX3 = 1.5*17.76 tonf*3.13 m/(3.13 m*3)
+AcfX3 = VcX3/(0.2*fc*0.85)
+TC3 = (67.53 tonf*m - 17.76 tonf*2.52 m/2)/3.13 m - 9.95 tonf
+CC3 = (67.53 tonf*m - 17.76 tonf*2.52 m/2)/3.13 m + 9.95 tonf
+AnC3 = 4.00 cm^2 + (CC3/0.7 - 4.00 cm^2*fy)/(0.85*0.8*fc)
+s1C3 = 0.64 cm^2*fy/(0.3*9 cm*fc*(325/189 - 1))
+s2C3 = 0.64 cm^2*fy/(0.12*9 cm*fc)`);
+near('Tabla 8: VE = ZUCS/R·P = 0.4·1·2.5·1/3·432.11 = 144.0 t', g('VE', 'tonf'), 144.0, 0.001);
+near('Tabla 16: α muro X1 = 0.58 (Ve L/Me)', g('aX1'), 0.58, 0.01);
+near('Tabla 16: Vm muro X1 = 12.82 t (α = 0.58)', g('VmX1', 'tonf'), 12.82, 0.002);
+near('Tabla 16: Vm muro X1 con α sin redondear ≈ 12.75 t (0.6 % menor)', g('VmX1e', 'tonf'), 12.82, 0.01);
+near('Tabla 16: α muro X3 = 0.80', g('aX3'), 0.80, 0.01);
+near('Tabla 16: Vm muro X3 = 17.76 t', g('VmX3', 'tonf'), 17.76, 0.002);
+near('Tabla 16: Vm1/Ve1 muro X1 = 2.04', g('fX1'), 2.04, 0.003);
+near('Tabla 16: Vm1/Ve1 muro X3 = 3.10 → acotado a 3.00', g('fX3'), 3.0);
+near('Tabla 16: Vu muro X3 = 17.16 t', g('VuX3', 'tonf'), 17.16, 0.001);
+near('Tabla 16: Mu muro X3 = 67.53 t·m', g('MuX3', 'tonf*m'), 67.53, 0.001);
+near('Tabla 21: Vc columna C3 (X3) = 8.88 t', g('VcX3', 'tonf'), 8.88, 0.002);
+near('Tabla 21: Acf C3 = 298 cm²', g('AcfX3', 'cm^2'), 298, 0.003);
+near('Tabla 21: T C3 = 4.47 t (Pt = 0)', g('TC3', 'tonf'), 4.47, 0.005);
+near('Tabla 21: C C3 = 24.37 t', g('CC3', 'tonf'), 24.37, 0.002);
+near('Tabla 21: An C3 = 155 cm² (δ = 0.8, As = 4.00 cm²)', g('AnC3', 'cm^2'), 155, 0.005);
+near('Tabla 21: s1 (13×25, núcleo 9×21) = 7.91 cm', g('s1C3', 'cm'), 7.91, 0.002);
+near('Tabla 21: s2 = 14.22 cm', g('s2C3', 'cm'), 14.22, 0.002);
+
+section('Revisión — PCA / U. de Colorado (CVEN 4830, 2008): D = 90 ft, H = 16 ft, t = 12 in');
+{ const s3 = shellPCA(3, 1);
+  near('Mu base = 0.0333·(1.3·1.7·65 pcf)·H³ = 19 642 lb·ft/ft', Math.abs(s3.Mbase) * 1.3 * 1.7 * 65 * 16 ** 3, 19642, 0.01);
+  near('Vu base = 0.262·(1.7·65 pcf)·H² = 7 445 lb/ft', s3.Vbase * 1.7 * 65 * 16 ** 2, 7445, 0.01);
+  const T = 68384 / (1.65 * 1.7), fct = (0.0003 * 29e6 * 1.32 + T) / (144 + 8 * 1.32);
+  near('Tracción en el concreto fc = (C Es As + T)/(Ac + n As) = 233 psi', fct, 233, 0.005);
+  const d = 9.625, As = 0.88, c = As * 60000 / (0.85 * 12 * 0.85 * 4000), phiMn = 0.9 * As * 60000 * (d - 0.85 * c / 2) / 12;
+  near('φMn (#6 @ 6", d = 9.625") = 35 553 lb·ft/ft', phiMn, 35553, 0.002);
+  const sx = shellPCA(16 * 16 / 90, 1); truthy(`Con el H²/Dt real (2.84) el momento en la base es ${Math.abs(sx.Mbase).toFixed(4)}·wH³ (el ejemplo redondea a 3.0 → 0.0333)`, Math.abs(sx.Mbase) > 0.0333 && Math.abs(sx.Mbase) < 0.037); }
+g = calc(`fsf = min(320 ksi/(1.35*sqrt((8)^2 + 4*(2 + 0.625/2)^2)), 36 ksi) -> ksi
+Sdh = 0.9*60 ksi/(1.4*20 ksi)
+Sdf = 0.9*60 ksi/(1.4*fsf)`);
+near('ACI 350-06 Ec. 10-4: fs (s = 8 in, #5, h < 16 in) = 320/(1.35·√(8² + 4·2.31²)) = 25.65 ksi', g('fsf', 'ksi'), 320 / (1.35 * Math.sqrt(64 + 4 * 2.3125 ** 2)), 0.001);
+near('ACI 350-06 9.2.6: Sd tracción anular (fs = 20 ksi) = 1.93 → 1.4·Sd = 2.70 ≈ PCA 1.7·1.65 = 2.81', g('Sdh'), 1.929, 0.002);
+near('ACI 350-06 9.2.6: Sd flexión = 1.50 → 1.4·Sd = 2.11 ≈ PCA 1.7·1.30 = 2.21', g('Sdf'), 54 / (1.4 * 320 / (1.35 * Math.sqrt(64 + 4 * 2.3125 ** 2))), 0.001);
+
+section('Revisión — ACI 350.3-06 (texto de la norma) y ejemplo publicado (Najah Univ., tanque rectangular L/HL = 1.72)');
+g = calc(`wi = WiWLr(3.8/2.2)
+wc = WcWLr(3.8/2.2)
+hi = hiHLr(3.8/2.2)
+hc = hcHLr(3.8/2.2)
+hip = hipHLc(0.75)
+hip2 = hipHLc(0.7499)
+Tv = TvACIc(9 m, 4 m, 0.30 m, 250998 kgf/cm^2, 1 tonf/m^3)
+ctc = CtACI(0.02 s, 1.18, 0.709)
+ctl = CtACI(1.0 s, 1.18, 0.709)
+ctr = CtACI(0.02 s, 1.18, 0.709, 2)
+cA = CkE010(EminE010(1), fcE010(1), 2)
+cD = CkE010(EminE010(4), fcE010(4))
+NlC = NadmE010(fcE010(2), EminE010(2), 100 cm^2, 30, CkE010(EminE010(2), fcE010(2), 2), 2)
+NcC = NadmE010(fcE010(2), EminE010(2), 100 cm^2, 8.5, 15.89, 2)
+km9 = kmE010(10 tonf, 14 tonf)
+N55 = NadmE010(fcE010(2), EminE010(2), 196 cm^2, 55, 18.34)`);
+near('Najah: Wi/WL (L/HL = 1.72) = 0.60 (gráfico Fig. 9.2)', g('wi'), 0.60, 0.02);
+near('Najah: Wc/WL = 0.40 (gráfico; la ecuación 9-2 da 0.43)', g('wc'), 0.40, 0.09);
+near('Najah: hi/HL = 0.37 (0.375 por Ec. 9-4)', g('hi'), 0.37, 0.015);
+near('Najah: hc/HL = 0.60', g('hc'), 0.60, 0.015);
+near("h'i/HL continuo en D/HL = 0.75 (Ec. 9-20/21: 0.45)", g('hip'), 0.45, 0.02);
+near('Ec. 9-31 (SI): Tv = 2π√(γL D HL²/(2 g tw Ec)) — tanque de la plantilla', g('Tv', 's'), 2 * Math.PI * Math.sqrt(9806.65 * 9 * 16 / (2 * 9.80665 * 0.30 * 250998 * 98066.5)), 0.001);
+near('Ec. 9-39: Ct = SDS para Tv ≤ Ts', g('ctc'), 1.18);
+near('Ec. 9-40: Ct = SD1/Tv para Tv > Ts', g('ctl'), 0.709);
+near('9.4.3: Ct = 0.4 SDS en tanques rectangulares', g('ctr'), 0.472);
+near('E.010 Tabla 9: Ck circular grupo A = 15.57', g('cA'), 15.57, 0.002);
+near('E.010 Tabla 8 (2021): Ck grupo D = 18.77', g('cD'), 18.77, 0.002);
+near('E.010 Art. 30: columna circular larga Nadm = 0.2467 E A/λ²', g('NlC', 'tonf'), 0.2467 * 75000 * 100 / 900 / 1000);
+near('E.010 Art. 28: columna circular corta λ < 9 → fc A', g('NcC', 'tonf'), 110 * 100 / 1000);
+near('kmE010 con N ≥ Ncr/1.5 devuelve 1000 (la interacción no cumple, sin error)', g('km9'), 1000);
+truthy('NadmE010 con λ = 55 > 50 no lanza error (la plantilla verifica λ ≤ 50)', g('N55', 'tonf') > 0);
+{ const Ncy = 16 / (9 * Math.PI), Niy = 2 / Math.PI; truthy(`ACI 350.3 R6.2: Ncy = 16 Pcy/(9π) = ${Ncy.toFixed(3)} Pcy < Niy = 2/π = ${Niy.toFixed(3)} (se corrigió la plantilla, que usaba 2/π)`, Ncy < Niy); }
+
+section('Revisión — fuste del tanque elevado: fórmula plástica del anillo vs compatibilidad de deformaciones');
+function ringMn(Ro, t, As, fc, fy, P, Es = 2e6, ecu = 0.003) {
+  const Ri = Ro - t, rm = Ro - t / 2, b1 = 0.85, N = 720, M = 16;
+  const res = (c) => { let F = 0, Mo = 0; const yNA = Ro - c, yb = Ro - b1 * c;
+    for (let i = 0; i < N; i++) { const th = (i + 0.5) / N * 2 * Math.PI;
+      for (let j = 0; j < M; j++) { const r = Ri + (j + 0.5) / M * t, y = r * Math.cos(th), dA = r * (t / M) * (2 * Math.PI / N); if (y >= yb) { F += 0.85 * fc * dA; Mo += 0.85 * fc * dA * y; } }
+      const y = rm * Math.cos(th), fs = Math.max(-fy, Math.min(fy, Es * ecu * (y - yNA) / c)), dAs = As / N, f = y >= yb ? fs - 0.85 * fc : fs; F += f * dAs; Mo += f * dAs * y; }
+    return [F, Mo]; };
+  let lo = 1, hi = 6 * Ro; for (let k = 0; k < 60; k++) { const c = (lo + hi) / 2; if (res(c)[0] > P) hi = c; else lo = c; }
+  return res((lo + hi) / 2)[1];
+}
+{ const r = runTemplate('ma-elevado'); const Ro = r('De', 'cm') / 2, t = r('tf', 'cm'), As = r('Asf', 'cm^2'), P = r('Pu', 'kgf');
+  const Mfib = ringMn(Ro, t, As, 280, 4200, P) / 1e5, Mpl = r('Mn', 'tonf*m');
+  near(`Mn plástico (${Mpl.toFixed(0)} t·m) ≈ Mn por fibras (${Mfib.toFixed(0)} t·m), error < 3 %`, Mpl, Mfib, 0.03);
+  truthy('Plantilla del tanque elevado: φ de flexocompresión según E.060 9.3.2.2 (< 0.9 con carga axial)', r('phif') < 0.9 && r('phif') >= 0.7); }
+
+section('Revisión — oleaje y borde libre (ACI 350.3 Cap. 7)');
+{ const r = runTemplate('ma-reservorio');
+  truthy(`Reservorio: dmax = ${r('dmax', 'm').toFixed(2)} m > borde libre ${r('fbl', 'm').toFixed(2)} m → Wc pasa a impulsiva`, r('dmax', 'm') > r('fbl', 'm') && Math.abs(r('Wcr', 'tonf') - r('Wc', 'tonf')) < 1e-6 && r('Pc', 'tonf') === 0);
+  const r2 = runTemplate('ma-reservorio', d => { for (const b of d.blocks) if (b.src) b.src = b.src.replace('Hw = 4.60 m', 'Hw = 6.00 m'); });
+  truthy('Reservorio con borde libre suficiente (Hw = 6 m): Wcr = 0 y Pc > 0', r2('Wcr', 'tonf') === 0 && r2('Pc', 'tonf') > 0 && r2.res.ctx.errors.length === 0);
+  near('Reservorio: üv = Ct I b/Ri ≥ 0.2 SDS (Ec. 4-15)', r('uv'), Math.max(r('Ct') * 1.5 * (2 / 3) / 2, 0.2 * r('SDS')));
+  const e = runTemplate('ma-elevado'); truthy('Tanque elevado: con oleaje > borde libre la masa convectiva se suma al peso impulsivo', e('Wst', 'tonf') > e('Wi', 'tonf') + e('Wcuba', 'tonf') + 0.25 * e('Wfus', 'tonf') + 1); }
+
+section('Revisión — cercos: E.070 (C1 de la E.030-2003) frente a la E.030-2018 (Art. 41 y 43)');
+{ const r = runTemplate('ma-cerco');
+  near('w E.070 = 0.8·Z·U·C1·γ·e (C1 = 0.6)', r('w070', 'kgf/m^2'), 0.8 * 0.45 * 1 * 0.6 * 1800 * 0.15);
+  near('w E.030-2018 = 0.8·0.5·Z·U·S·γ·e', r('w030', 'kgf/m^2'), 0.8 * 0.5 * 0.45 * 1 * 1.05 * 1800 * 0.15);
+  const r2 = runTemplate('ma-cerco', d => { for (const b of d.blocks) if (b.src) b.src = b.src.replace('S = 1.05 //', 'S = 1.20 //'); });
+  truthy('Con S = 1.20 gobierna la E.030-2018 (0.48 ZUγe = 0.48 ZUγe con C1 = 0.6: iguales)', Math.abs(r2('w', 'kgf/m^2') - r2('w070', 'kgf/m^2')) < 1e-6 && Math.abs(r2('w030', 'kgf/m^2') - r2('w070', 'kgf/m^2')) < 0.01); }
+
+section('Revisión — datos extremos: las plantillas reportan NO CUMPLE sin errores ni NaN');
+for (const [id, a, b] of [
+  ['ma-edificio', 'wp = 0.90 tonf/m^2', 'wp = 1.60 tonf/m^2'], ['ma-edificio', 'N = 4 //', 'N = 6 //'],
+  ['ma-armada', 'Me = 50 tonf*m', 'Me = 150 tonf*m'], ['ma-cerco', 'ha = 2.40 m', 'ha = 4.00 m'],
+  ['ma-adobe', 'zona = 2 //', 'zona = 4 //'], ['ma-vigamadera', 'Lv = 4.20 m', 'Lv = 7.00 m'],
+  ['ma-colmadera', 'lc = 2.60 m', 'lc = 8.00 m'], ['ma-colmadera', 'Nd = 6.0 tonf', 'Nd = 40 tonf'],
+  ['ma-tijeral', 'wsc = 50 kgf/m^2', 'wsc = 600 kgf/m^2'], ['ma-reservorio', 'tw = 0.30 m', 'tw = 0.15 m'],
+  ['ma-reservorio', 'D = 9.00 m', 'D = 25.00 m'], ['ma-cisterna', 'tw = 0.20 m', 'tw = 0.10 m'],
+  ['ma-cisterna', 'Hc = 2.50 m', 'Hc = 5.00 m'], ['ma-elevado', 'Hf = 12.0 m', 'Hf = 35.0 m'], ['ma-elevado', 'tf = 0.25 m', 'tf = 0.10 m']]) {
+  let hit = false;
+  const r = runTemplate(id, d => { for (const bl of d.blocks) if (bl.src && bl.src.includes(a)) { bl.src = bl.src.replace(a, b); hit = true; } }).res;
+  const bad = r.ctx.checks.filter(c => !c.ok), nan = r.ctx.checks.filter(c => c.ratio !== null && !Number.isFinite(+c.ratio));
+  truthy(`${id} con «${b}»: ${bad.length} NO CUMPLE, ${r.ctx.errors.length} errores`, hit && bad.length > 0 && r.ctx.errors.length === 0 && nan.length === 0, r.ctx.errors.map(e => e.msg).join('; '));
+}
 done();

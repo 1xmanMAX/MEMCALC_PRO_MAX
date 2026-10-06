@@ -603,7 +603,7 @@ check (categoria == 2 and (regular == 1 or (zona == 1 and extrema == 0))) or (ca
 check zona == 1 or (regular == 1 and hn <= 30 m) or ((sistema == 9 or sistema == 10 or sistema == 11) and hn <= 15 m) // Método estático aplicable: zona 1, regular ≤ 30 m, o muros portantes ≤ 15 m (Art. 33.2); si no, análisis dinámico
 ## Periodo y factor de amplificación
 R = R0*Ia*Ip // Coeficiente de reducción de las fuerzas sísmicas (Art. 26)
-muroscaja = 0 // Pórticos de C°A° con muros en las muroscaja de ascensores y escaleras [0 : No|1 : Sí (CT = 45)]
+muroscaja = 0 // Pórticos de C°A° con muros en las cajas de ascensores y escaleras [0 : No|1 : Sí (CT = 45)]
 CT = si(sistema == 7 and muroscaja == 1, 45, CTE030(sistema)) // Coeficiente para estimar el periodo (Art. 36.1)
 T = hn/CT*1 s/m -> s // Periodo fundamental aproximado, hn en metros (Art. 36.1)
 C = CE030(T, Tp, Tl) // Factor de amplificación; en el análisis estático C = 2.5 para T ≤ TP (Art. 18.3 y 34.1)
@@ -807,7 +807,7 @@ check (categoria == 2 and (regular == 1 or (zona == 1 and extrema == 0))) or (ca
 check zona == 1 or (regular == 1 and hn <= 30 m) or ((sistema == 9 or sistema == 10 or sistema == 11) and hn <= 15 m) // Método estático aplicable: zona 1, regular ≤ 30 m, o muros portantes de C°A°/albañilería ≤ 15 m (Art. 28.1.2)
 ## Periodo y factor de amplificación
 R = R0*Ia*Ip // Coeficiente de reducción (Art. 22)
-muroscaja = 0 // Pórticos de C°A° con muros en las muroscaja de ascensores y escaleras [0 : No|1 : Sí (CT = 45)]
+muroscaja = 0 // Pórticos de C°A° con muros en las cajas de ascensores y escaleras [0 : No|1 : Sí (CT = 45)]
 CT = si(sistema == 7 and muroscaja == 1, 45, CTE030(sistema)) // Coeficiente para el periodo (Art. 28.4.1)
 T = hn/CT*1 s/m -> s // Periodo fundamental aproximado (Art. 28.4.1)
 C = si(T < Tp, 2.5, si(T <= Tl, 2.5*Tp/T, 2.5*Tp*Tl/T^2)) // Factor de amplificación sísmica (Art. 14)
