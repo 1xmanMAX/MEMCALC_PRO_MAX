@@ -68,6 +68,17 @@ export default [
     name: 'Edificio de albañilería confinada (E.070)', normas: 'RNE — NTE E.070 Albañilería (2006), E.030 Diseño Sismorresistente (2018, mod. RM 183-2026-VIVIENDA), E.060, E.020',
     desc: 'Edificio de 4 pisos: densidad y planta de muros (CM/CR), cargas axiales, sismo por muro según rigidez con torsión, fisuración, resistencia global y diseño de columnas y soleras (Art. 27).',
     titulo: 'Memoria de cálculo — Edificio multifamiliar de albañilería confinada de 4 pisos',
+    validacion: {
+      fuente: 'A. San Bartolomé (2006), «Ejemplo de aplicación de la Norma E.070» (PUCP): Fa = 93.8 t/m² (t = 13 cm, h = 2.40 m, f\'m = 65 kg/cm²); NTE E.070 Tabla 9',
+      nota: 'La planta por defecto NO es la del edificio de San Bartolomé: solo Fa (muro de soga, h = 2.40 m) y f\'m, v\'m (Tabla 9) son valores publicados. dmin y Vm1 son valores de control calculados a mano con las fórmulas de la E.070 (Art. 19.2 b y 26.3), no publicados.',
+      valores: [
+        { var: 'fm', unidad: 'kgf/cm^2', esperado: 65, tol: 0.001, desc: "f'm King Kong industrial (E.070 Tabla 9)" },
+        { var: 'vm', unidad: 'kgf/cm^2', esperado: 8.1, tol: 0.001, desc: "v'm King Kong industrial (E.070 Tabla 9)" },
+        { var: 'min(FaX)', unidad: 'tonf/m^2', esperado: 93.8, tol: 0.001, desc: 'Fa muros de soga t = 13 cm (San Bartolomé 2006)' },
+        { var: 'dmin', esperado: 0.03375, tol: 0.001, desc: 'Control: ZUSN/56 = 0.45·1·1.05·4/56' },
+        { var: 'Vm1', unidad: 'tonf', esperado: 21.00, tol: 0.002, desc: "Control: Vm muro X1 = 0.5 v'm α t L + 0.23 Pg (α = 3.6/7.8)" },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 La presente memoria desarrolla el diseño estructural de un **edificio multifamiliar de cuatro pisos** de albañilería confinada (ladrillo de arcilla King Kong industrial, losas aligeradas de 20 cm que conforman diafragmas rígidos), siguiendo el método de diseño por desempeño de la **NTE E.070 Albañilería** (2006): el sismo moderado ($R = 6$) no debe fisurar ningún muro y la resistencia al corte del edificio debe superar la demanda del sismo severo ($R = 3$).
@@ -267,6 +278,14 @@ check Ash/(sh*t) >= 0.001 // Cuantía horizontal mínima 0.1 % (Art. 28.1 a)`),
     name: 'Cerco perimétrico de albañilería (E.070 Art. 29–31)', normas: 'RNE — NTE E.070 Albañilería (Art. 29 a 31), E.030 (C1), E.060, E.050',
     desc: 'Muro no portante arriostrado: carga sísmica w = 0.8ZUC1γe, momento Ms = m w a² (Tabla 12), espesor, diseño de columnas y soleras de arriostre y cimiento corrido (volteo y deslizamiento).',
     titulo: 'Diseño de cerco perimétrico de albañilería confinada',
+    validacion: {
+      fuente: 'Valores de control (E.070 Art. 29.6 y E.030-2018 Art. 41/43)',
+      nota: 'No reproduce un ejemplo publicado: valores de control calculados a mano con los datos por defecto (Z = 0.45, U = 1, C1 = 0.6, S = 1.05, γ = 1.8 t/m³, e = 0.15 m).',
+      valores: [
+        { var: 'w070', unidad: 'kgf/m^2', esperado: 58.32, tol: 0.001, desc: 'Control: w = 0.8 Z U C1 γ e' },
+        { var: 'w030', unidad: 'kgf/m^2', esperado: 51.03, tol: 0.001, desc: 'Control: w = 0.8·0.5 Z U S γ e' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Cerco perimétrico de ladrillo King Kong industrial en aparejo de soga, arriostrado por columnas de concreto armado cada 3.0 m, viga solera superior y cimiento corrido de concreto ciclópeo. El paño se analiza como una losa apoyada en sus arriostres sujeta a la carga sísmica perpendicular a su plano (NTE E.070 Art. 29), sin admitir tracciones por flexión mayores que $f'_t$ (Art. 31). Ejemplo basado en el procedimiento de A. San Bartolomé, *Construcciones de albañilería* (PUCP).`),
@@ -505,6 +524,16 @@ check rhb <= 5 // h/b ≤ 5 (máxima relación con arriostre normado: entablado 
     name: 'Columna de madera (E.010 / JUNAC)', normas: 'RNE — NTE E.010 Madera (texto vigente 2021; antes DS 005-2014); Manual de Diseño para Maderas del Grupo Andino (JUNAC, Cap. 9)',
     desc: 'Columna rectangular: esbeltez λ = lef/d, Ck = 0.7025√(E/fc), carga admisible (corta, intermedia, larga) y flexocompresión N/Nadm + km M/(Z fm) < 1.',
     titulo: 'Diseño de columna de madera a flexocompresión — NTE E.010',
+    validacion: {
+      fuente: 'Manual de Diseño para Maderas del Grupo Andino (JUNAC), Tabla 9.2, y NTE E.010 Tablas 3, 4 y 8 — grupo B',
+      nota: 'Ck, fc y Emin del grupo B son valores publicados. Nadm es un valor de control (columna larga, 0.329 Emin A/λ² con λ = 2.60/0.14), no publicado.',
+      valores: [
+        { var: 'Ck', esperado: 18.34, tol: 0.001, desc: 'Esbeltez límite Ck grupo B (JUNAC Tabla 9.2)' },
+        { var: 'fc', unidad: 'kgf/cm^2', esperado: 110, tol: 0.001, desc: 'Compresión paralela admisible, grupo B' },
+        { var: 'Emin', unidad: 'kgf/cm^2', esperado: 75000, tol: 0.001, desc: 'Emin grupo B' },
+        { var: 'Nadm', unidad: 'tonf', esperado: 14.02, tol: 0.002, desc: 'Control: 0.329·75 000·196/18.57² (columna larga)' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Columna de madera de sección rectangular maciza sometida a carga axial y momento (carga lateral de viento o excentricidad), diseñada por esfuerzos admisibles según la NTE E.010 y el Manual JUNAC (Cap. 9). Las columnas se clasifican por su esbeltez $\\lambda = l_{ef}/d$ en **cortas** ($\\lambda < 10$), **intermedias** ($10 \\le \\lambda \\le C_k$) y **largas** ($C_k < \\lambda \\le 50$); en flexocompresión se usa $E_{min}$.`),
@@ -616,6 +645,15 @@ check Ndt/(0.85*b3*d3) <= ft // Tracción en montantes y diagonales
     name: 'Reservorio circular apoyado (ACI 350 / 350.3 / PCA)', normas: 'ACI 350-06, ACI 350.3-06 (Housner), PCA Circular Concrete Tanks without Prestressing; RNE E.030, E.060',
     desc: 'Reservorio de 250 m³: tensión anular y momento en la base por teoría de cáscaras (tablas PCA), refuerzo, fisuración, sismo con masas impulsiva y convectiva y altura de oleaje.',
     titulo: 'Diseño estructural de reservorio circular apoyado de concreto armado — 250 m³',
+    validacion: {
+      fuente: 'Valores de control (ACI 350.3-06 Ec. 9-15, 9-16, 9-17 y 9-28 a 9-30)',
+      nota: 'No reproduce un ejemplo publicado: valores de control calculados a mano con las ecuaciones de Housner para D = 9 m y HL = 4 m (D/HL = 2.25).',
+      valores: [
+        { var: 'Wi/WL', esperado: 0.4928, tol: 0.001, desc: 'Control: Wi/WL = tanh(0.866 D/HL)/(0.866 D/HL)' },
+        { var: 'hi', unidad: 'm', esperado: 1.50, tol: 0.001, desc: 'Control: hi = 0.375 HL (D/HL ≥ 1.333)' },
+        { var: 'Tc', unidad: 's', esperado: 3.259, tol: 0.002, desc: 'Control: Tc = 2π√(D/(3.68 g tanh(3.68 HL/D)))' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Reservorio cilíndrico apoyado de concreto armado, con pared empotrada en la losa de fondo y cubierta de losa maciza. El análisis hidrostático usa la solución de la **cáscara cilíndrica** (Timoshenko, ν = 0.2), equivalente a las Tablas A-1, A-2 y A-12 del PCA *Circular Concrete Tanks without Prestressing*; el refuerzo se dimensiona por resistencia con el **factor de durabilidad ambiental** $S_d = \\phi f_y/(\\gamma f_s)$ de ACI 350-06 (9.2.6), o —a elección— con los coeficientes sanitarios del PCA/ACI 350R-89 (1.7 × 1.65 en tracción anular y 1.7 × 1.30 en flexión), que dan resultados similares. El análisis sísmico sigue **ACI 350.3-06** (modelo de Housner) con el espectro de la NTE E.030 ($S_{DS} = 2.5ZS$, $T_S = T_P$). Si el oleaje $d_{max}$ supera el borde libre, la cubierta restringe la masa convectiva: se trata como impulsiva (Malhotra, 2005) y se verifica el anclaje de la cubierta al empuje ascendente.`),
