@@ -348,4 +348,329 @@ wcol = max(wminJ2(tf), 5 mm) // Filete perimetral mínimo (Tabla J2.4): la compr
       summary(),
     ],
   },
+  // ------------------------------------------------------------------
+  //  6) Correas de techo conformadas en frío — AISI S100 + E.020
+  // ------------------------------------------------------------------
+  {
+    id: 'st-correas', pais: 'PE', cat: CAT, icon: 'beam', settings: TEC,
+    name: 'Correas de techo de perfil conformado en frío (AISI S100, viento E.020)',
+    normas: 'AISI S100-16 (Apéndice 1, F, G, H, I6.2.1) · NTE E.020 (cargas y viento) · NTE E.090 1.4 (combinaciones)',
+    desc: 'Correa C atiesada simplemente apoyada entre pórticos: metrado de cobertura, viento E.020 con succión, ancho efectivo, flexión biaxial, método R por levante, cortante, deflexión y templadores.',
+    titulo: 'Diseño de correas de techo de perfil conformado en frío',
+    blocks: [
+      text(`# Generalidades
+Las correas soportan la cobertura liviana (plancha de acero aluzinc / TR-4) y apoyan sobre los pórticos principales. Se diseñan como vigas **simplemente apoyadas** de perfil **C atiesado conformado en frío**, con el ala superior arriostrada por la cobertura atornillada (*through-fastened*) y **templadores** (tirantes) a los tercios de la luz para tomar la componente de la carga paralela a la pendiente.
+
+- **Normas:** AISI S100-16 *North American Specification for the Design of Cold-Formed Steel Structural Members* (LRFD); NTE E.020 Cargas (carga viva de techo Art. 7.1 y viento Art. 12); combinaciones NTE E.090 Art. 1.4.1.
+- **Ancho efectivo simplificado:** se calcula el factor ρ de cada elemento comprimido (Apéndice 1); el ala con labio se trata como elemento atiesado (k = 4) verificando la proporción del labio; si el alma no resultase totalmente efectiva se requiere un análisis más detallado.
+- **Levante por viento:** el ala inferior (comprimida) no está arriostrada; se usa el **método R** de AISI S100 §I6.2.1 para correas con cobertura atornillada.`),
+      { type: 'steelsec', perfil: 'CF150X50X15X2', tabla: true, titulo: 'Correa C 150×50×15×2 mm (esquinas rectas)' },
+      calc(`# Datos
+## Geometría
+Lc = 6 m // Luz de la correa (separación entre pórticos)
+sc = 1.20 m // Separación entre correas (medida en la pendiente)
+theta = 10 deg // Pendiente del techo
+nt = 2 // Número de líneas de templadores por tramo [1|2]
+ncw = 5 // Correas por agua que cuelgan de un templador
+hz = 7 m // Altura de la edificación
+## Material (plancha laminada en caliente ASTM A36)
+Fy = 2530 kgf/cm^2 // Esfuerzo de fluencia [2320 kgf/cm^2|2530 kgf/cm^2|3515 kgf/cm^2]
+Fu = 4080 kgf/cm^2 // Resistencia a tracción
+E = 2070000 kgf/cm^2 // Módulo de elasticidad (AISI: 29 500 ksi)
+## Cargas (E.020)
+wcob = 5 kgf/m^2 // Cobertura de acero aluzinc TR-4 e = 0.40 mm (catálogo)
+wacc = 5 kgf/m^2 // Accesorios, luminarias e instalaciones
+WLr = 30 kgf/m^2 // Carga viva de techo liviano, cualquier pendiente (E.020 Art. 7.1 b)
+Vv = 75 km/h // Velocidad básica de viento a 10 m (E.020 Anexo 2; mínimo 75 km/h)
+Cext = -0.7 // Factor de forma exterior, superficie inclinada ≤ 15°, succión (E.020 Tabla 4)
+Cint = 0.3 // Presión interior por aberturas (E.020 Art. 12.5, ±0.3)
+# Presión de viento (E.020 Art. 12)
+Vh = Vv*max(1, (hz/(10 m))^0.22) // Velocidad de diseño Vh = V(h/10)^0.22 ≥ V (E.020 12.3)
+ph = 0.005*abs(Cext - Cint)*(Vh/(1 km/h))^2*1 kgf/m^2 // Presión de succión neta ph = 0.005·C·Vh² (E.020 12.4)
+# Metrado por metro de correa
+wD = (wcob + wacc)*sc + peso -> kgf/m // Carga muerta (incluye peso propio)
+wLr = WLr*sc*cos(theta) -> kgf/m // Carga viva sobre la proyección horizontal
+wW = ph*sc -> kgf/m // Viento normal a la cubierta (levante)
+# Combinaciones de diseño (E.090 1.4.1)
+wu = max(1.4*wD, 1.2*wD + 1.6*wLr) -> kgf/m // Gravedad: 1.2D + 1.6Lr
+wun = wu*cos(theta) -> kgf/m // Componente normal a la cubierta (eje x de la correa)
+wut = wu*sin(theta) -> kgf/m // Componente paralela a la pendiente (eje y)
+wup = 1.3*wW - 0.9*wD*cos(theta) -> kgf/m // Levante neto: 0.9D − 1.3W
+# Solicitaciones
+Mux = wun*Lc^2/8 -> kgf*m // Momento eje mayor (simplemente apoyada)
+cty = si(nt == 1, 0.125, 0.10) // Coeficiente de viga continua sobre templadores
+Muy = cty*wut*(Lc/(nt + 1))^2 -> kgf*m // Momento eje menor entre templadores
+Vu = wun*Lc/2 -> kgf // Cortante máximo
+Mup = wup*Lc^2/8 -> kgf*m // Momento por levante (ala inferior comprimida)`),
+      { type: 'beam', tramos: 'Lc', apoyos: 'A A', E: 'E', I: 'Ix', cargas: 'U 1 wun', titulo: 'Correa simplemente apoyada bajo 1.2D + 1.6Lr (componente normal)' },
+      calc(`# Anchos efectivos (AISI S100-16, Apéndice 1)
+wf = bf - 2*t // Ancho plano del ala comprimida (aprox. esquinas rectas)
+rho_f = rhoAISI(wf/t, Fy, E, 4) // Ala con labio tratada como atiesada, k = 4 (Ap. 1, 1.1-1 a 1.1-4)
+check D/wf <= 0.8 // Proporción del labio D/w ≤ 0.8 (Ap. 1, §1.3)
+rho_l = rhoAISI((D - t)/t, Fy, E, 0.43) // Labio (no atiesado, k = 0.43, Ap. 1 §1.4)
+psi = 1 // |f2/f1| en el alma (flexión simétrica)
+kw = 4 + 2*(1 + psi)^3 + 2*(1 + psi) // Coeficiente de pandeo del alma con gradiente (Ap. 1, Ec. 1.2-1)
+rho_w = rhoAISI((d - 2*t)/t, Fy, E, kw) // Alma
+check rho_w == 1 // Alma totalmente efectiva (hipótesis del cálculo simplificado)
+check rho_l == 1 // Labio totalmente efectivo
+check (d - 2*t)/t <= 200 // Límite h/t ≤ 200 (B4.2)
+dA = (1 - rho_f)*wf*t // Área no efectiva del ala comprimida
+ey = dA*(d/2 - t/2)/(A - dA) // Desplazamiento del eje neutro
+Ie = Ix - dA*(d/2 - t/2)^2 - (A - dA)*ey^2 // Inercia efectiva
+Se = Ie/(d/2 + ey) -> cm^3 // Módulo efectivo a la fibra comprimida
+# Resistencia a flexión (AISI S100-16 F2, F3, H1.2)
+phib = 0.90 // Factor de resistencia a flexión
+phiMnx = phib*Se*Fy -> kgf*m // Ala superior arriostrada por la cobertura: Mnl = Se·Fy (F3.1)
+phiMny = phib*Sy*Fy -> kgf*m // Eje menor (conservador, sección completa)
+check Mux/phiMnx + Muy/phiMny <= 1.0 // Flexión biaxial (H1.2)
+## Levante por viento — método R (I6.2.1)
+check d <= 165 mm // R = 0.70 válido para C o Z simplemente apoyada con d ≤ 6.5 in (Tabla I6.2.1-1)
+Rr = 0.70 // Factor de reducción R (Tabla I6.2.1-1)
+phiMnu = phib*Rr*Se*Fy -> kgf*m // Resistencia con ala inferior libre (I6.2.1-1)
+check Mup <= phiMnu // Flexión por levante 0.9D − 1.3W
+# Cortante (AISI S100-16 G2.1)
+kv = 5.34 // Alma sin atiesadores
+ht = (d - 2*t)/t // Esbeltez del alma
+Fv = si(ht <= sqrt(E*kv/Fy), 0.6*Fy, si(ht <= 1.51*sqrt(E*kv/Fy), 0.6*sqrt(E*kv*Fy)/ht, 0.904*E*kv/ht^2)) // Esfuerzo nominal de corte (G2.1-2 a G2.1-4)
+phiVn = 0.95*(d - 2*t)*t*Fv -> kgf // φv = 0.95
+check Vu <= phiVn // Resistencia a cortante
+check (Vu/phiVn)^2 + (Mux/phiMnx)^2 <= 1 // Flexión + cortante (H2-1)
+# Deflexión en servicio
+ds = 5*(wD + wLr)*cos(theta)*Lc^4/(384*E*Ix) -> cm // Flecha D + Lr
+check ds <= Lc/180 // Límite L/180, techos sin cielo raso (IBC Tabla 1604.3)
+# Templadores (tirantes)
+Tr = 1.1*ncw*wut*Lc/(nt + 1) -> kgf // Fuerza acumulada en el templador más cargado
+dt = 9.53 mm // Diámetro del templador liso roscado [9.53 mm : 3/8"|12.7 mm : 1/2"|15.88 mm : 5/8"]
+phiTr = 0.75*0.75*Fu*pi*dt^2/4 -> kgf // Parte roscada: Fnt = 0.75Fu (AISC 360 Tabla J3.2, J3-1)
+check Tr <= phiTr // Resistencia del templador`),
+      summary(),
+    ],
+  },
+  // ------------------------------------------------------------------
+  //  7) Vigueta / armadura de techo de cuerdas paralelas (tipo Pratt)
+  // ------------------------------------------------------------------
+  {
+    id: 'st-armadura', pais: 'PE', cat: CAT, icon: 'grid', settings: TEC,
+    name: 'Vigueta / armadura de techo de cuerdas paralelas (Pratt)',
+    normas: 'ANSI/AISC 360-16/22 Cap. D, E (E3, E5) · NTE E.090 · NTE E.020',
+    desc: 'Armadura Pratt simplemente apoyada: cargas en nudos, fuerzas por el método de las secciones (cuerdas y montantes) y de los nudos (diagonal), diseño de cuerdas HSS y alma de ángulos (E5), levante por viento y flecha.',
+    titulo: 'Diseño de vigueta metálica de techo (armadura Pratt)',
+    blocks: [
+      text(`# Generalidades
+Vigueta metálica de **cuerdas paralelas tipo Pratt** (diagonales traccionadas bajo gravedad), simplemente apoyada en su cuerda inferior, con montantes en cada nudo. Las correas apoyan sobre los nudos de la cuerda superior, de modo que las cargas se aplican como **fuerzas en los nudos** y las barras trabajan a fuerza axial.
+
+- **Análisis:** la fuerza en las cuerdas se obtiene por el **método de las secciones**, F = M/h, con el momento de viga simple en el nudo de corte; la diagonal y el montante extremos, por el **método de los nudos** (el cortante del panel es tomado por la componente vertical de la diagonal).
+- **Diseño (LRFD):** cuerdas de tubo HSS cuadrado ASTM A500 Gr. B (E3, D2); diagonales y montantes de ángulo simple ASTM A36 soldado por un ala (E5, D2/D3).
+- **Arriostramiento:** la cuerda superior está arriostrada fuera del plano en cada nudo por las correas; la inferior, por arriostres (*bridging*) cada Lbr.`),
+      { type: 'steelsec', perfil: 'HSS2X2X1/8', sufijo: 'c', tabla: false, titulo: 'Cuerdas superior e inferior: HSS 2×2×1/8' },
+      { type: 'steelsec', perfil: 'L2X2X3/16', sufijo: 'd', tabla: false, titulo: 'Diagonales y montantes: L 2×2×3/16' },
+      calc(`# Datos
+## Geometría
+Lt = 12 m // Luz de la vigueta
+ht = 0.80 m // Peralte entre ejes de cuerdas
+np = 8 // Número de paneles (par)
+st = 5 m // Separación entre viguetas (ancho tributario)
+Lbr = 3 m // Separación de arriostres de la cuerda inferior
+lw = 6 cm // Longitud de soldadura longitudinal de cada ángulo
+## Materiales
+Fyc = 3235 kgf/cm^2 // Fluencia HSS ASTM A500 Gr. B (46 ksi) [3235 kgf/cm^2|3515 kgf/cm^2]
+Fya = 2530 kgf/cm^2 // Fluencia de ángulos ASTM A36
+Fua = 4080 kgf/cm^2 // Resistencia a tracción de ángulos ASTM A36
+E = 2039000 kgf/cm^2 // Módulo de elasticidad (29 000 ksi)
+## Cargas sobre la proyección horizontal (E.020)
+wD = 20 kgf/m^2 // Muerta: cobertura, correas, vigueta y arriostres
+wLr = 30 kgf/m^2 // Viva de techo liviano (E.020 7.1 b)
+pW = 28 kgf/m^2 // Succión neta de viento sobre la cubierta (E.020 12.4, ver memoria de correas)
+# Cargas de diseño (E.090 1.4.1)
+wu = (1.2*wD + 1.6*wLr)*st -> tonf/m // 1.2D + 1.6Lr por metro de vigueta
+wup = (1.3*pW - 0.9*wD)*st -> tonf/m // Levante neto 0.9D − 1.3W
+a = Lt/np // Longitud de panel
+P = wu*a -> tonf // Carga en cada nudo interior de la cuerda superior
+R = wu*Lt/2 -> tonf // Reacción en cada apoyo
+alpha = atan(ht/a) -> deg // Inclinación de las diagonales
+Ld = sqrt(a^2 + ht^2) // Longitud de la diagonal
+# Fuerzas en las barras
+Mt(x) = wu*x*(Lt - x)/2 // Momento de viga simple en los nudos (cargas nodales equivalentes)
+Fcs = Mt(Lt/2)/ht -> tonf // Cuerda superior central: secciones, momento en el nudo inferior central (compresión)
+Fci = Mt(Lt/2 - a)/ht -> tonf // Cuerda inferior central: momento en el nudo superior adyacente (tracción)
+Fd = (R - P/2)/sin(alpha) -> tonf // Diagonal extrema: nudo superior extremo, ΣFy = 0 (tracción)
+Fv0 = R // Montante extremo sobre el apoyo: nudo inferior, ΣFy = 0 (compresión)
+Fciu = Mt(Lt/2 - a)/ht*wup/wu -> tonf // Cuerda inferior bajo levante (compresión)
+Fdu = Fd*wup/wu -> tonf // Diagonal extrema bajo levante (compresión)
+# Cuerda superior — compresión (E3)
+check lambdaf_c <= 1.40*sqrt(E/Fyc) // Pared HSS no esbelta (Tabla B4.1a caso 6)
+esbc = a/rx_c // Lc/r con Lc = a en ambos planos (nudos arriostrados por correas)
+Fec = pi^2*E/esbc^2 // Pandeo elástico (E3-4)
+Fcrc = si(Fyc/Fec <= 2.25, 0.658^(Fyc/Fec)*Fyc, 0.877*Fec) // E3-2 / E3-3
+phiPcs = 0.90*Fcrc*A_c -> tonf // Resistencia de diseño
+check Fcs <= phiPcs // Cuerda superior a compresión
+# Cuerda inferior — tracción y compresión por levante
+phiPti = 0.90*Fyc*A_c -> tonf // Fluencia en el área bruta (D2-1); cuerda continua, sin agujeros
+check Fci <= phiPti // Cuerda inferior a tracción
+esbi = Lbr/rx_c // Esbeltez fuera del plano entre arriostres
+check esbi <= 200 // Lc/r ≤ 200 (E2)
+Fei = pi^2*E/esbi^2
+Fcri = si(Fyc/Fei <= 2.25, 0.658^(Fyc/Fei)*Fyc, 0.877*Fei) // E3-2 / E3-3
+phiPci = 0.90*Fcri*A_c -> tonf
+check Fciu <= phiPci // Cuerda inferior a compresión por levante
+# Diagonal extrema — ángulo simple
+phiPdy = 0.90*Fya*A_d -> tonf // Fluencia (D2-1)
+Ud = 1 - xc_d/lw // Retraso de cortante, soldadura longitudinal (Tabla D3.1 caso 2)
+phiPdr = 0.75*Fua*Ud*A_d -> tonf // Rotura (D2-2)
+check Fd <= min(phiPdy, phiPdr) // Diagonal a tracción
+Lrd = Ld/rx_d // L/ra de la diagonal (ra respecto al eje paralelo al ala conectada)
+esbd = si(Lrd <= 80, 72 + 0.75*Lrd, 32 + 1.25*Lrd) // Esbeltez efectiva de ángulo simple en armadura plana (E5-1 / E5-2)
+check esbd <= 200 // Límite de E5
+Fed = pi^2*E/esbd^2
+Fcrd = si(Fya/Fed <= 2.25, 0.658^(Fya/Fed)*Fya, 0.877*Fed)
+phiPdc = 0.90*Fcrd*A_d -> tonf
+check Fdu <= phiPdc // Diagonal a compresión por levante (E5)
+# Montante extremo — compresión (E5)
+Lrv = ht/rx_d
+esbv = si(Lrv <= 80, 72 + 0.75*Lrv, 32 + 1.25*Lrv) // E5-1 / E5-2
+Fev = pi^2*E/esbv^2
+Fcrv = si(Fya/Fev <= 2.25, 0.658^(Fya/Fev)*Fya, 0.877*Fev)
+phiPv = 0.90*Fcrv*A_d -> tonf
+check Fv0 <= phiPv // Montante a compresión
+check lambdaf_d <= 0.45*sqrt(E/Fya) // Ala del ángulo no esbelta (Tabla B4.1a caso 3)
+# Flecha (servicio D + Lr)
+Ieq = 2*A_c*(ht/2)^2 -> cm^4 // Inercia equivalente de las cuerdas
+dv = 1.15*5*(wD + wLr)*st*Lt^4/(384*E*Ieq) -> cm // Incremento de 15 % por deformación de las barras del alma
+check dv <= Lt/240 // Flecha admisible L/240`),
+      { type: 'plot', expr: 'Mt(x m)/ht/(1 tonf); -Mt(x m)/ht/(1 tonf)', var: 'x', desde: '0', hasta: 'Lt/(1 m)', puntos: '100', xlabel: 'x [m]', ylabel: 'Fuerza en cuerdas [t]', nombres: 'Cuerda inferior (tracción, +); Cuerda superior (compresión, −)', leyenda: true, titulo: 'Fuerza axial en las cuerdas F = M(x)/h bajo 1.2D + 1.6Lr' },
+      { type: 'table', titulo: 'Resumen de barras críticas (fuerza última y resistencia de diseño)', columnas: 'Barra = ["Cuerda superior", "Cuerda inferior", "Cuerda inferior (levante)", "Diagonal extrema", "Diagonal (levante)", "Montante extremo"]\nPu [tonf] = [Fcs, Fci, Fciu, Fd, Fdu, Fv0]\nφPn [tonf] = [phiPcs, phiPti, phiPci, min(phiPdy, phiPdr), phiPdc, phiPv]\nD/C = [Fcs/phiPcs, Fci/phiPti, Fciu/phiPci, Fd/min(phiPdy, phiPdr), Fdu/phiPdc, Fv0/phiPv]', dec: '2' },
+      summary(),
+    ],
+  },
+  // ------------------------------------------------------------------
+  //  8) Nave / vivienda de un piso en estructura metálica
+  // ------------------------------------------------------------------
+  {
+    id: 'st-nave', pais: 'PE', cat: CAT, icon: 'steel', settings: TEC,
+    name: 'Nave / vivienda en estructura metálica: correas, viga y columnas de pórtico',
+    normas: 'NTE E.020 (cargas, viento) · NTE E.090 1.4 · ANSI/AISC 360-16/22 (C, E, F, H, App. 7 y 8) · AISI S100-16 · NTE E.030 (verificación sísmica)',
+    desc: 'Pórtico simple biarticulado de techo liviano: metrado de cobertura, viento E.020 en muros y techo, correas conformadas en frío, análisis de Kleinlogel, amplificación B2, diseño de viga y columnas W, flecha y deriva.',
+    titulo: 'Memoria de cálculo — nave metálica de un piso (pórticos simples)',
+    blocks: [
+      text(`# Generalidades
+Edificación metálica de un piso (vivienda, taller o almacén) con **pórticos simples biarticulados** de perfiles W, espaciados *sf*, con **techo liviano** de plancha aluzinc sobre **correas conformadas en frío**. En la dirección longitudinal la estabilidad se confía a arriostres en cruz (no incluidos en esta memoria).
+
+**Hipótesis de análisis.** Techo de pendiente baja (≤ 10 %) idealizado con viga horizontal; bases articuladas; uniones viga–columna rígidas. Las solicitaciones se obtienen con las **fórmulas cerradas de Kleinlogel** para el pórtico biarticulado (deducidas por el método de las fuerzas), y los efectos de segundo orden con el **método de amplificación de momentos B1–B2** (AISC 360 Apéndice 8) junto con el **método de la longitud efectiva** (Apéndice 7).
+
+**Normas:** NTE E.020 Cargas (carga viva de techo Art. 7.1; viento Art. 12); NTE E.090 combinaciones LRFD (Art. 1.4.1); ANSI/AISC 360-16/22; AISI S100-16 (correas); NTE E.030 para comparar el cortante sísmico con el de viento.
+
+**Materiales:** perfiles W ASTM A36 (Fy = 2530 kgf/cm²); correas de plancha A36 conformada en frío; cobertura TR-4 aluzinc 0.40 mm.`),
+      { type: 'steelsec', perfil: 'W12X26', sufijo: 'v', tabla: false, titulo: 'Viga del pórtico W12×26' },
+      { type: 'steelsec', perfil: 'W12X26', sufijo: 'c', tabla: false, titulo: 'Columnas del pórtico W12×26' },
+      calc(`# Datos generales
+## Geometría
+Lf = 10 m // Luz del pórtico (entre ejes de columnas)
+hc = 4.5 m // Altura de columnas (base a eje de la viga)
+sf = 6 m // Separación entre pórticos
+sc = 1.20 m // Separación de correas
+lfb = 2.0 m // Separación de tornapuntas (arriostre del ala inferior de la viga)
+## Materiales
+Fy = 2530 kgf/cm^2 // Fluencia ASTM A36 [2530 kgf/cm^2|3515 kgf/cm^2]
+E = 2039000 kgf/cm^2 // Módulo de elasticidad (29 000 ksi)
+## Cargas de techo (E.020)
+wcob = 5 kgf/m^2 // Cobertura TR-4 aluzinc e = 0.40 mm
+wcor = 5 kgf/m^2 // Correas y templadores
+wacc = 10 kgf/m^2 // Arriostres, instalaciones y luminarias
+WLr = 30 kgf/m^2 // Carga viva de techo liviano (E.020 Art. 7.1 b)
+## Viento (E.020 Art. 12)
+Vv = 75 km/h // Velocidad básica a 10 m (E.020 Anexo 2; mínimo 75 km/h)
+Vh = Vv*max(1, (hc/(10 m))^0.22) // Velocidad de diseño (E.020 12.3)
+p0 = 0.005*(Vh/(1 km/h))^2*1 kgf/m^2 // Presión dinámica 0.005·Vh² (E.020 12.4)
+Cbar = 0.8 // Muro a barlovento, presión (E.020 Tabla 4)
+Csot = 0.6 // Muro a sotavento, succión (E.020 Tabla 4)
+Ctec = 0.7 // Techo ≤ 15°, succión (E.020 Tabla 4)
+Cpi = 0.3 // Presión interior ± (E.020 12.5)
+# Metrado de cargas sobre el pórtico
+wD = (wcob + wcor + wacc)*sf + peso_v -> tonf/m // Carga muerta sobre la viga (incluye peso propio)
+wLr = WLr*sf -> tonf/m // Carga viva de techo
+q1 = Cbar*p0*sf -> tonf/m // Viento sobre la columna de barlovento (hacia sotavento)
+q2 = Csot*p0*sf -> tonf/m // Succión sobre la columna de sotavento (hacia sotavento)
+wr1 = (Ctec - Cpi)*p0*sf -> tonf/m // Succión neta del techo con succión interior (combinaciones de gravedad)
+wr2 = (Ctec + Cpi)*p0*sf -> tonf/m // Succión neta del techo con presión interior (levante)
+# Correas (AISI S100-16) — perfil CF 150×50×15×2
+pc = "CF150X50X15X2" // Perfil de la correa (ver plantilla de correas para el detalle)
+wuc = (1.2*((wcob + wacc/2)*sc + sec(pc, "peso")) + 1.6*WLr*sc) -> kgf/m // 1.2D + 1.6Lr por metro de correa
+Muc = wuc*sf^2/8 -> kgf*m // Correa simplemente apoyada entre pórticos
+phiMc = 0.90*sec(pc, "Sx")*Fy -> kgf*m // Sección totalmente efectiva (AISI Ap. 1), ala superior arriostrada
+check Muc <= phiMc // Flexión de la correa por gravedad
+wupc = 1.3*(Ctec + Cpi)*p0*sc - 0.9*((wcob + wacc/2)*sc + sec(pc, "peso")) -> kgf/m // Levante 0.9D − 1.3W
+check wupc*sf^2/8 <= 0.90*0.70*sec(pc, "Sx")*Fy // Levante: método R = 0.70 (AISI I6.2.1)
+dcor = 5*((wcob + wacc/2 + WLr)*sc + sec(pc, "peso"))*sf^4/(384*E*sec(pc, "Ix")) -> cm // Flecha de servicio
+check dcor <= sf/180 // Flecha L/180`),
+      { type: 'beam', tramos: 'sf', apoyos: 'A A', E: 'E', I: 'sec(pc, "Ix")', cargas: 'U 1 wuc', deflexion: false, titulo: 'Correa entre pórticos bajo 1.2D + 1.6Lr' },
+      calc(`# Análisis del pórtico biarticulado (Kleinlogel)
+kf = Ix_v/Ix_c*hc/Lf // Rigidez relativa k = (Iv/Ic)(h/L)
+cg = 1/(4*(2*kf + 3)) // Carga vertical w: M esquina = −w·L²/(4(2k+3))
+cq = (5*kf + 6)/(8*(2*kf + 3)) // Carga q en una columna: reacción redundante X = q·h·(5k+6)/(8(2k+3))
+## Momentos en las esquinas por caso de carga (− tracción exterior)
+MD = -cg*wD*Lf^2 -> tonf*m // Carga muerta
+MLr = -cg*wLr*Lf^2 -> tonf*m // Carga viva de techo
+MWr = cg*wr1*Lf^2 -> tonf*m // Succión del techo (reduce el momento)
+MCw = -(cq*q1*hc)*hc - (q2*hc^2/2 - cq*q2*hc*hc) -> tonf*m // Viento en muros, esquina de sotavento (crítica)
+MBw = q1*hc^2/2 - cq*q1*hc*hc + cq*q2*hc*hc -> tonf*m // Viento en muros, esquina de barlovento
+Pw = (q1 + q2)*hc^2/(2*Lf) -> tonf // Fuerza axial por volteo (compresión en la columna de sotavento)
+## Amplificación de segundo orden (AISC Apéndices 7 y 8)
+GA = 10 // Base articulada (comentario App. 7)
+GB = (Ix_c/hc)/(Ix_v/Lf) // Nudo superior
+Kx = sqrt((1.6*GA*GB + 4*(GA + GB) + 7.5)/(GA + GB + 7.5)) // K de pórtico no arriostrado (aproximación del nomograma, Comentario App. 7)
+Pstory = (1.2*wD + 1.6*wLr)*Lf + 2*1.2*peso_c*hc -> tonf // Carga vertical total del piso
+Pestory = 2*pi^2*E*Ix_c/(Kx*hc)^2 -> tonf // Carga crítica del piso (A-8-7, RM = 1)
+B2 = 1/(1 - Pstory/Pestory) // Multiplicador P-Δ (A-8-6, α = 1)
+## Combinaciones LRFD (E.090 1.4.1) — esquina de sotavento
+Mr2 = abs(1.2*MD + 1.6*MLr) -> tonf*m // 1.2D + 1.6Lr
+Mr3 = abs(1.2*MD + 1.6*MLr + 0.8*MWr) + B2*abs(0.8*MCw) -> tonf*m // 1.2D + 1.6Lr + 0.8W (Mr = B1·Mnt + B2·Mlt, B1 = 1)
+Mr4 = abs(1.2*MD + 0.5*MLr + 1.3*MWr) + B2*abs(1.3*MCw) -> tonf*m // 1.2D + 1.3W + 0.5Lr
+Mu = max(Mr2, Mr3, Mr4) -> tonf*m // Momento de diseño en la esquina
+Pu = max((1.2*wD + 1.6*wLr)*Lf/2, (1.2*wD + 1.6*wLr - 0.8*wr1)*Lf/2 + 0.8*Pw, (1.2*wD + 0.5*wLr - 1.3*wr1)*Lf/2 + 1.3*Pw) + 1.2*peso_c*hc -> tonf // Axial máxima en la columna
+Hu = Mu/hc -> tonf // Empuje horizontal en la base (compresión en la viga)
+Mpos = (1.2*wD + 1.6*wLr)*Lf^2/8 + (1.2*MD + 1.6*MLr) -> tonf*m // Momento positivo en el centro de la viga
+# Diseño de la viga (AISC 360 F2, H1)
+Lpv = LpF2(ry_v, Fy, E) -> m // Longitud límite plástica (F2-5)
+Lrv = LrF2(rts_v, Fy, J_v, Sx_v, ho_v, E) -> m // Longitud límite inelástica (F2-6)
+phiMnv = 0.90*MnW(perfil_v, Fy, lfb, 1.0, E) -> tonf*m // Zona de esquina: ala inferior comprimida, Lb = tornapuntas, Cb = 1
+phiMpv = 0.90*MnW(perfil_v, Fy, sc, 1.0, E) -> tonf*m // Centro: ala superior arriostrada por las correas (Lb = sc)
+phiPnv = 0.90*PnE3(perfil_v, Fy, Lf, lfb, E) -> tonf // Compresión por el empuje horizontal
+check H1(Hu, phiPnv, Mu, phiMnv) <= 1.0 // Viga en la esquina: flexocompresión (H1-1)
+check Mpos <= phiMpv // Viga en el centro de luz (F2)
+phiVnv = phivG2(perfil_v, Fy, E)*VnG2(perfil_v, Fy, E) -> tonf // Cortante (G2.1)
+check (1.2*wD + 1.6*wLr)*Lf/2 <= phiVnv // Cortante en la viga
+dLr = 5*wLr*Lf^4/(384*E*Ix_v) + MLr*Lf^2/(8*E*Ix_v) -> cm // Flecha por Lr (viga con momentos de extremo)
+check dLr <= Lf/240 // Flecha de la viga L/240
+# Diseño de las columnas (AISC 360 E3, F2, H1)
+Lcx = Kx*hc -> m // Longitud efectiva en el plano del pórtico (App. 7)
+Lcy = hc/2 // Fuera del plano: riostra a media altura (viga de muro + arriostre)
+check max(Lcx/rx_c, Lcy/ry_c) <= 200 // Esbeltez (E2)
+phiPnc = 0.90*PnE3(perfil_c, Fy, Lcx, Lcy, E) -> tonf // Resistencia a compresión (E3)
+phiMnc = 0.90*MnW(perfil_c, Fy, Lcy, 1.0, E) -> tonf*m // Flexión con Lb = hc/2, Cb = 1 (F2)
+ratioc = H1(Pu, phiPnc, Mu, phiMnc) // Interacción H1-1
+check ratioc <= 1.0 // Columna: flexocompresión (H1-1)
+# Deriva por viento (servicio)
+Peq = (q1 + q2)*hc/2 -> tonf // Resultante de viento en muros llevada a la cabeza de las columnas
+Dw = Peq*hc^3/(6*E*Ix_c) + Peq*hc^2*Lf/(12*E*Ix_v) -> cm // Desplazamiento lateral del pórtico biarticulado
+check Dw <= hc/100 // Deriva de servicio h/100 (AISC Design Guide 3)
+# Verificación sísmica (NTE E.030-2018, análisis estático)
+Kl = Peq/Dw -> tonf/cm // Rigidez lateral del pórtico
+Psis = (wD + 0.25*wLr)*Lf + 2*peso_c*hc/2 -> tonf // Peso sísmico por pórtico: CM + 25 % CV de techo + mitad de columnas (E.030 Art. 26)
+Tf = 2*pi*sqrt(Psis/(9.81 m/s^2*Kl)) -> s // Período fundamental T = 2π√(m/k)
+Zs = 0.45 // Factor de zona (Zona 4) [0.10|0.25|0.35|0.45]
+Us = 1.0 // Factor de uso (categoría C) [1.0|1.3|1.5]
+Ss = 1.05 // Factor de suelo (S2, Zona 4)
+Tp = 0.6 s // Período TP (S2)
+Tl = 2.0 s // Período TL (S2)
+Rs = 4 // Coeficiente de reducción: pórtico ordinario resistente a momentos de acero, R0 = 4 (regular)
+Cs = CE030(Tf, Tp, Tl) // Factor de amplificación sísmica (E.030 Art. 14)
+Vsis = Zs*Us*Cs*Ss/Rs*Psis -> tonf // Cortante basal V = ZUCS·P/R (E.030 Art. 28)
+Vw = (q1 + q2)*hc/2 -> tonf // Cortante de viento por pórtico (servicio)
+check Vsis <= 1.3*Vw // Resistencia lateral: el cortante sísmico no excede el de viento factorizado (gobierna el viento)
+Dsis = 0.75*Rs*Vsis/Kl -> cm // Desplazamiento inelástico 0.75·R·Δelástico (E.030 Art. 31, regular)
+check Dsis/hc <= 0.010 // Distorsión máxima de entrepiso para acero (E.030 Tabla N.º 11)`),
+      { type: 'plot', expr: '((1.2*wD + 1.6*wLr)*(x m)*(Lf - x m)/2 - Mr2)/(1 tonf*m); ((1.2*wD + 1.6*wLr - 0.8*wr1)*(x m)*(Lf - x m)/2 - Mr3)/(1 tonf*m)', var: 'x', desde: '0', hasta: 'Lf/(1 m)', puntos: '100', xlabel: 'x [m]', ylabel: 'M [t·m]', nombres: '1.2D + 1.6Lr; 1.2D + 1.6Lr + 0.8W (esquina crítica)', leyenda: true, titulo: 'Momento flector en la viga del pórtico (positivo: tracción en el ala inferior)' },
+      summary(),
+    ],
+  },
 ];

@@ -33,11 +33,12 @@ tw = 25 cm // Espesor del alma [20 cm|25 cm|30 cm]
 lbe = 60 cm // Longitud de cada núcleo de borde
 hm = 21 m // Altura total de la placa (7 pisos)
 hlib = 2.70 m // Altura libre entre losas (apoyo lateral)
-rec = 4 cm // Recubrimiento al centro del estribo
+recl = 2.5 cm // Recubrimiento libre en los elementos de borde (E.060 21.9.7.3: ≥ 25 mm)
 ## Refuerzo
 barb = 6 // Barra de los núcleos [5 : 5/8"|6 : 3/4"|8 : 1"]
 nbe = 6 // Barras por núcleo (2 filas)
 barw = 3 // Barra del refuerzo distribuido [3 : 3/8"|4 : 1/2"]
+este = 3 // Estribo de confinamiento de los núcleos [3 : 3/8"|4 : 1/2"]
 sv = 20 cm // Espaciamiento del refuerzo vertical del alma (dos capas)
 sh = 20 cm // Espaciamiento del refuerzo horizontal (dos capas)
 ## Fuerzas del análisis (base del muro, E.060 9.2.3)
@@ -55,10 +56,11 @@ du = 16 cm // Desplazamiento inelástico en el nivel superior (E.030 Art. 5.1: 0
 check tw >= max(hlib/25, 15 cm) // Espesor mínimo del alma (E.060 21.9.3.2)
 Acw = lm*tw // Área de corte del alma
 Ag = lm*tw // Área bruta
-xb = lm - lbe + rec // Inicio del núcleo derecho`),
+rb = recl + db(este) + db(barb)/2 // Distancia del borde al centro de las barras
+xb = lm - lbe + rb // Primera barra del núcleo derecho`),
     text(`## Sección transversal y diagrama de interacción
 El diagrama se calcula por compatibilidad de deformaciones ($\\varepsilon_{cu} = 0.003$, bloque rectangular equivalente con $\\beta_1$, E.060 10.2), integrando el concreto por fibras e incluyendo **todas** las barras de los núcleos y del alma (E.060 21.9.6.1). El factor $\\phi$ varía de 0.70 a 0.90 según E.060 9.3.2.2 y $\\phi P_{n,max} = 0.80\\,\\phi P_0$ (E.060 10.3.6.2).`),
-    { type: 'pmgen', geom: '0 0 lm tw', barras: 'R rec rec lbe-rec tw-rec 3 2 barb\nR xb rec lm-rec tw-rec 3 2 barb\nM lbe+sv rec lm-lbe-sv rec sv barw\nM lbe+sv tw-rec lm-lbe-sv tw-rec sv barw', nucleos: '0 0 lbe tw // núcleo\nlm-lbe 0 lbe tw // núcleo', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'X', demandas: 'Pu1, Mua1 // 1.25(CM+CV)+CS\nPu1, -Mua1 // 1.25(CM+CV)−CS\nPu2, Mua2 // 0.9CM+CS\nPu2, -Mua2 // 0.9CM−CS\nPu3, Mu3 // 1.4CM+1.7CV', titulo: 'Placa {lm} × {tw}: sección y diagrama de interacción (dirección X)' },
+    { type: 'pmgen', geom: '0 0 lm tw', barras: 'R rb rb lbe-rb tw-rb 3 2 barb\nR xb rb lm-rb tw-rb 3 2 barb\nM lbe+sv rb lm-lbe-sv rb sv barw\nM lbe+sv tw-rb lm-lbe-sv tw-rb sv barw', nucleos: '0 0 lbe tw // núcleo\nlm-lbe 0 lbe tw // núcleo', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'X', demandas: 'Pu1, Mua1 // 1.25(CM+CV)+CS\nPu1, -Mua1 // 1.25(CM+CV)−CS\nPu2, Mua2 // 0.9CM+CS\nPu2, -Mua2 // 0.9CM−CS\nPu3, Mu3 // 1.4CM+1.7CV', titulo: 'Placa {lm} × {tw}: sección y diagrama de interacción (dirección X)' },
     calc(`## Verificación de flexocompresión
 check DCpmg <= 1.0 // Todas las combinaciones dentro del diagrama φPn–φMn (E.060 21.9.6.1)
 rhoBE = nbe*Ab(barb)/(lbe*tw) // Cuantía de los núcleos
@@ -109,15 +111,14 @@ check lbe >= lbe_req // Longitud de núcleo suficiente
 check tw >= 15 cm // Espesor mínimo del elemento de borde (E.060 21.9.7.2)
 hbe = max(lm, Mua1/(4*Vua)) -> m // Altura mínima del confinamiento desde la base (21.9.7.4 b)
 ## Refuerzo transversal de confinamiento
-este = 3 // Estribo de confinamiento [3 : 3/8"|4 : 1/2"]
 check db(este) >= si(barb <= 5, 0.8 cm, si(barb <= 8, db(3), db(4))) - 0.01 cm // Diámetro mínimo del estribo (21.9.7.6 d)
 smax_be = min(10*db(barb), min(lbe, tw), 25 cm) // Espaciamiento máximo (21.9.7.6 e)
-sbe = rounddown(smax_be, 2.5 cm) // Espaciamiento adoptado
-bc = tw - 2*rec // Núcleo confinado normal a las ramas (c. a c.)
-Ash_req = 0.09*sbe*bc*fc/fy // Ash mínimo (ACI 318-19 Tabla 18.10.6.4(f), referencial)
+bc = tw - 2*recl - db(este) // Núcleo confinado normal a las ramas (c. a c. de estribos)
 Ash = 2*Ab(este) // Dos ramas
+sbe = rounddown(min(smax_be, Ash/(0.09*bc*fc/fy)), 2.5 cm) // Espaciamiento adoptado (incluye el criterio de Ash)
+Ash_req = 0.09*sbe*bc*fc/fy // Ash mínimo (ACI 318-19 Tabla 18.10.6.4(f), referencial)
 check Ash >= Ash_req // Área de estribos de confinamiento
-hx = (lbe - 2*rec)/2 // Separación entre ramas o grapas (una grapa central)
+hx = (lbe - 2*rb)/2 // Separación entre ramas o grapas (una grapa central)
 check hx <= 35 cm // Distancia entre ramas ≤ 350 mm (E.060 21.6.4.3)
 "Núcleos de borde: {nbe} #{barb} con estribos #{este} @ {sbe} en una altura de {hbe} desde la base (incluye una grapa central). Fuera de esa altura: estribos @ 25 cm (21.9.7.7).
 # Corte por fricción en la junta de construcción (E.060 21.9.8)
@@ -634,4 +635,571 @@ check db(4) >= max(0.042*s, db(3)) // Diámetro mínimo de barras longitudinales
     summary(),
   ],
 };
-export default [placa, colEsbelta, colBiaxial, vigaDuctil, colDuctil, nudo, vigaT, vigaDoble, torsion];
+
+// ---------------------------------------------------------------------
+// 10) DEFLEXIONES Y FISURACIÓN (E.060 9.6 y 9.9)
+// ---------------------------------------------------------------------
+const deflexion = {
+  id: 'co-deflexion', pais: 'PE', cat: CAT, icon: 'beam', normas: E060 + ' — Art. 9.6 y 9.9 · ACI 318-19 24.2',
+  name: 'Deflexiones inmediatas y diferidas, y fisuración',
+  desc: 'Mcr, Icr con acero en compresión (2n), Ie de Branson (y Bischoff ACI 318-19), deflexiones por CM y CV, factor ξ/(1+50ρ\'), límites de la Tabla 9.2 y parámetro Z de fisuración.',
+  titulo: 'Control de deflexiones y fisuración de viga',
+  blocks: [
+    text(`# Generalidades
+Se calculan las deflexiones de una viga simplemente apoyada bajo cargas de servicio (E.060 9.6.2). La deflexión inmediata se obtiene con $E_c$ (E.060 8.5) y el momento de inercia efectivo $I_e$ de Branson (E.060 9.6.2.3), y la deflexión diferida por flujo plástico y retracción se estima con el factor $\\lambda_\\Delta = \\xi/(1+50\\rho')$ (E.060 9.6.2.5). Se compara con la expresión de Bischoff adoptada por el ACI 318-19 (Tabla 24.2.3.5). El control de la fisuración se realiza con el parámetro $Z$ (E.060 9.9.3).`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero
+Es = 2000000 kgf/cm^2 // Módulo del acero
+b = 30 cm // Ancho
+h = 65 cm // Peralte
+d = 59 cm // Peralte efectivo
+dp = 6 cm // Recubrimiento de A's
+As = 3*Ab(8) // Acero en tracción (3 #8)
+Asp = 2*Ab(5) // Acero en compresión (2 #5)
+L = 6.5 m // Luz de cálculo (simplemente apoyada)
+wD = 2.6 tonf/m // Carga muerta de servicio (incluye peso propio)
+wL = 1.2 tonf/m // Carga viva de servicio
+fsost = 0.30 // Fracción de la carga viva que actúa en forma sostenida
+meses = 60 // Duración de la carga sostenida (meses) [3|6|12|60]
+lim = 240 // Límite de la Tabla 9.2 para elementos no estructurales [240 : no susceptibles de daño|480 : susceptibles de daño]
+## Peralte mínimo sin cálculo de deflexiones (E.060 Tabla 9.1)
+"Peralte mínimo para vigas simplemente apoyadas: ℓ/16 = {L/16}; con h = {h} se calculan las deflexiones (Tabla 9.1 es referencial).
+## Propiedades de la sección
+Ec = 15000*sqrtfc(fc) // Módulo de elasticidad (E.060 8.5, Anexo II)
+n = Es/Ec // Relación modular
+Ig = b*h^3/12 // Inercia bruta
+yt = h/2 // Distancia a la fibra extrema en tracción
+fr = 2*sqrtfc(fc) // Módulo de rotura (ec. 9-12, Anexo II)
+Mcr = fr*Ig/yt -> tonf*m // Momento de agrietamiento (ec. 9-11)
+kd = kdRect(b, d, As, n, dp, Asp) // Eje neutro de la sección agrietada (A's transformado con 2n)
+Icr = icrRect(b, d, As, n, dp, Asp) // Inercia agrietada transformada (E.060 9.6.2.3)
+## Momentos de servicio
+MD = wD*L^2/8 -> tonf*m // Momento por carga muerta
+MDL = (wD + wL)*L^2/8 -> tonf*m // Momento por carga muerta + viva
+## Inercias efectivas de Branson (sección central, E.060 9.6.2.4 c)
+IeD = ieBranson(Mcr, MD, Ig, Icr) // Con carga muerta
+IeDL = ieBranson(Mcr, MDL, Ig, Icr) // Con carga total
+## Deflexiones inmediatas: δ = 5wL⁴/(384 EcIe)
+dD = 5*wD*L^4/(384*Ec*IeD) -> cm // Por carga muerta
+dDL = 5*(wD + wL)*L^4/(384*Ec*IeDL) -> cm // Por carga total
+dL = dDL - dD // Por carga viva
+check dL <= L/360 // Deflexión inmediata por carga viva ≤ ℓ/360 (Tabla 9.2, pisos)
+## Deflexión diferida (E.060 9.6.2.5)
+xi = xiDef(meses) // Factor dependiente del tiempo
+rhop = Asp/(b*d) // Cuantía de A's al centro de la luz
+lamD = lambdaDef(xi, rhop) // ξ/(1 + 50ρ')
+dLs = fsost*dL // Parte sostenida de la carga viva
+dlp = lamD*(dD + dLs) // Deflexión diferida por cargas sostenidas
+dpost = dlp + dL // Deflexión que ocurre después de colocar los elementos no estructurales
+check dpost <= L/lim // Límite de la Tabla 9.2
+## Comparación: Ie de Bischoff (ACI 318-19 Tabla 24.2.3.5)
+IeDL_B = ieBischoff(Mcr, MDL, Ig, Icr) // Inercia efectiva ACI 318-19
+dDL_B = 5*(wD + wL)*L^4/(384*Ec*IeDL_B) -> cm // Deflexión total inmediata con Bischoff
+"Con la expresión de Bischoff la deflexión inmediata total es {dDL_B} frente a {dDL} con Branson (Bischoff es más conservadora para cuantías bajas).`),
+    calc(`# Control de la fisuración (E.060 9.9.3)
+Ms = MDL // Momento en servicio
+fs = Ms/(0.9*d*As) -> kgf/cm^2 // Esfuerzo en el acero (ec. 9-19)
+dc = 4 cm + db(3) + db(8)/2 // Recubrimiento al centro de la barra extrema
+Act = 2*dc*b/3 // Área efectiva en tracción por barra (3 barras)
+Z = fs*(dc*Act)^(1/3) -> kgf/cm // Parámetro Z (ec. 9-18)
+check Z <= 26000 kgf/cm // Z ≤ 26 kN/mm (Anexo II: 26 000 kgf/cm)
+"Por el criterio del ACI 318-19 (24.3.2), el espaciamiento máximo con $f_s = 2/3 f_y$ y $c_c$ = 5 cm resulta {min(38*(2800 kgf/cm^2/(2/3*fy)) - 2.5*5 cm, 30*(2800 kgf/cm^2/(2/3*fy)))} (en cm).`),
+    { type: 'beam', tramos: 'L', apoyos: 'A A', E: 'Ec', I: 'IeDL', cargas: 'U 1 wD + wL', titulo: 'Viga en servicio (CM + CV) con EcIe: comprobación de la deflexión inmediata', sufijo: 's' },
+    calc(`check abs(deltamax_s - dDL) <= 0.02*dDL // El análisis por rigidez reproduce 5wL⁴/384EIe`),
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 11) VIGA EN VOLADIZO (análisis + diseño + deflexión)
+// ---------------------------------------------------------------------
+const voladizo = {
+  id: 'co-voladizo', pais: 'PE', cat: CAT, icon: 'beam', normas: E060 + ' — Art. 9, 10, 11 y 9.6',
+  name: 'Viga en voladizo — análisis, diseño y deflexión',
+  desc: 'Análisis del voladizo con carga repartida y carga en la punta (parapeto), flexión con acero superior, cortante a "d", anclaje en el apoyo, deflexión inmediata y diferida con Ie en el empotramiento.',
+  titulo: 'Diseño de viga en voladizo',
+  blocks: [
+    text(`# Generalidades
+Viga en voladizo empotrada en una columna/placa, que soporta una losa en volado y un parapeto en el extremo libre. Se realiza el análisis (método de rigidez), el diseño por flexión con refuerzo superior, el diseño por cortante (E.060 11.1.3.1) y el control de deflexiones con la inercia efectiva en la sección del apoyo (E.060 9.6.2.4 d).`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero
+Es = 2000000 kgf/cm^2 // Módulo del acero
+b = 30 cm // Ancho
+h = 60 cm // Peralte en el empotramiento
+Lv = 2.50 m // Longitud del voladizo
+wD = 1.8 tonf/m // Carga muerta repartida (incluye peso propio)
+wL = 0.8 tonf/m // Carga viva repartida
+PD = 1.2 tonf // Parapeto en la punta (carga muerta)
+rec = 4 cm // Recubrimiento libre
+bar = 6 // Barra superior [5 : 5/8"|6 : 3/4"|8 : 1"]
+est = 3 // Estribo [3 : 3/8"]
+d = h - rec - db(est) - db(bar)/2 // Peralte efectivo
+## Peralte mínimo (E.060 Tabla 9.1, voladizos ℓ/8)
+check h >= Lv/8 // No se requiere calcular deflexiones (se calculan como verificación)`),
+    { type: 'beam', tramos: 'Lv', apoyos: 'E L', E: '2.17e6 tonf/m^2', I: '0.0054 m^4', cargas: 'U 1 1.4*wD + 1.7*wL\nP Lv 1.4*PD', deflexion: false, titulo: 'Voladizo con cargas amplificadas (1.4 CM + 1.7 CV)' },
+    calc(`# Diseño por flexión (E.060 10)
+Mu = abs(Mneg) // Momento último en el empotramiento
+As_req = asFlex(Mu, b, d, fc, fy) // Acero superior requerido
+As_min = 0.7*sqrtfc(fc)/fy*b*d // Acero mínimo (10.5.2)
+n = max(2, ceil(max(As_req, As_min)/Ab(bar))) // Número de barras
+As = n*Ab(bar) // Acero colocado
+a = As*fy/(0.85*fc*b) // Bloque de compresión
+phiMn = 0.9*As*fy*(d - a/2) -> tonf*m // Resistencia de diseño
+check Mu <= phiMn // Resistencia a flexión
+epst = 0.003*(d - a/beta1E060(fc))/(a/beta1E060(fc)) // Deformación neta del acero
+check epst >= 0.004 // Ductilidad (E.060 10.3.5)
+## Anclaje en el apoyo (E.060 12.5)
+ldg = ldgE060(bar, fc, fy) // Desarrollo con gancho estándar en el elemento de apoyo
+"Las {n} barras #{bar} superiores se anclan en el apoyo con gancho de 90°: ℓdg = {ldg}; en el voladizo se prolongan hasta el extremo (barras superiores, ψt = 1.3: ℓd = {ldE060(bar, fc, fy, 1.3)}).
+# Diseño por cortante (E.060 11)
+Vud = Vmax - (1.4*wD + 1.7*wL)*d // Cortante a "d" de la cara (11.1.3.1)
+phiVc = 0.85*0.53*sqrtfc(fc)*b*d -> tonf // Resistencia del concreto
+Av = 2*Ab(est) // Estribo de dos ramas
+Vs = max(Vud/0.85 - phiVc/0.85, 0 tonf) // Resistencia requerida del acero
+s = rounddown(min(d/2, 60 cm, si(Vs > 0 tonf, Av*fy*d/Vs, 60 cm), Av*fy/(3.5 kgf/cm^2*b)), 2.5 cm) // Espaciamiento (11.5.5 y 11.5.6)
+phiVn = phiVc + 0.85*Av*fy*d/s // Resistencia de diseño
+check Vud <= phiVn // Resistencia a cortante
+# Deflexión (E.060 9.6)
+Ec = 15000*sqrtfc(fc) // Módulo de elasticidad
+nr = Es/Ec // Relación modular
+Ig = b*h^3/12 // Inercia bruta
+Mcr = 2*sqrtfc(fc)*Ig/(h/2) -> tonf*m // Momento de agrietamiento
+Icr = icrRect(b, d, As, nr, 6 cm, 2*Ab(5)) // Inercia agrietada (2 #5 inferiores)
+MD = wD*Lv^2/2 + PD*Lv -> tonf*m // Momento de servicio por CM
+MDL = (wD + wL)*Lv^2/2 + PD*Lv -> tonf*m // Momento de servicio total
+IeD = ieBranson(Mcr, MD, Ig, Icr) // Ie con CM (sección del apoyo, 9.6.2.4 d)
+IeDL = ieBranson(Mcr, MDL, Ig, Icr) // Ie con CM + CV
+dD = (wD*Lv^4/8 + PD*Lv^3/3)/(Ec*IeD) -> cm // Deflexión inmediata por CM
+dDL = ((wD + wL)*Lv^4/8 + PD*Lv^3/3)/(Ec*IeDL) -> cm // Deflexión inmediata total
+dL = dDL - dD // Por carga viva
+lam = lambdaDef(2.0, 2*Ab(5)/(b*d)) // ξ/(1+50ρ') con ξ = 2 (5 años), ρ' en el apoyo
+check dL <= Lv/360 // Deflexión por carga viva (Tabla 9.2)
+check lam*dD + dL <= Lv/240 // Deflexión después de unir elementos no estructurales (no susceptibles)`),
+    { type: 'section', b: 'b', h: 'h', recub: 'rec', estribo: 'est', sup: '{n}#{bar}', inf: '2#5', sest: '@ {s}', titulo: 'Sección en el empotramiento' },
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 12) LOSA MACIZA EN DOS DIRECCIONES (E.060 13.7)
+// ---------------------------------------------------------------------
+const losa2d = {
+  id: 'co-losa2d', pais: 'PE', cat: CAT, icon: 'slab', normas: E060 + ' — Art. 9.6.3, 13.7 · E.020',
+  name: 'Losa maciza en dos direcciones — método de coeficientes',
+  desc: 'Paño apoyado en vigas: espesor mínimo (9-17), caso según bordes continuos, coeficientes de las Tablas 13.1–13.3, momentos negativos y positivos, acero por metro, cortante (13-10) y espaciamientos.',
+  titulo: 'Diseño de losa maciza en dos direcciones',
+  blocks: [
+    text(`# Generalidades
+Paño de esquina de una losa maciza apoyada en vigas peraltadas en todo su perímetro, diseñado con el **Método de Coeficientes** de la NTE E.060 13.7 (equivalente al Método 3 del ACI 318-63). Los momentos en las franjas centrales se calculan con $M_a = C_a\\,w_u\\,A^2$ y $M_b = C_b\\,w_u\\,B^2$, donde $A$ y $B$ son las luces libres corta y larga; en los bordes discontinuos se considera un momento negativo igual a 1/3 del positivo (13.7.3.5). Los momentos en las franjas de columna se reducen gradualmente hasta 1/3 en el borde del paño (13.7.3.3).`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero
+A = 4.50 m // Luz libre corta
+B = 5.60 m // Luz libre larga
+h = 15 cm // Espesor de la losa [12 cm|15 cm|17 cm|20 cm]
+rec = 2.5 cm // Recubrimiento libre
+bar = 3 // Barra [3 : 3/8"|4 : 1/2"]
+gc = 2.4 tonf/m^3 // Peso unitario del concreto armado (E.020)
+wpt = 0.10 tonf/m^2 // Piso terminado
+wtab = 0.10 tonf/m^2 // Tabiquería repartida
+sc = 0.25 tonf/m^2 // Sobrecarga (oficinas, E.020)
+## Metrado (E.020) y cargas amplificadas (E.060 9.2.1)
+wD = gc*h + wpt + wtab -> tonf/m^2 // Carga muerta
+wL = sc // Carga viva
+wud = 1.4*wD // Carga muerta amplificada
+wul = 1.7*wL // Carga viva amplificada
+## Limitaciones del método (E.060 13.7.1)
+check B/A <= 2 // Relación de luces ≤ 2 (13.7.1.2)
+check wL <= 2*wD // Carga viva ≤ 2 veces la carga muerta (13.7.1.4)
+## Espesor mínimo (E.060 9.6.3.3 c, αfm > 2)
+beta = B/A // Relación de luces libres
+hmin = max(B*(0.8 + fy/(14000 kgf/cm^2))/(36 + 9*beta), 9 cm) -> cm // ec. 9-17 (Anexo II)
+check h >= hmin // Espesor mínimo
+d = h - rec - db(bar)/2 // Peralte efectivo (capa exterior)`),
+    { type: 'slab2way', A: 'A', B: 'B', bordes: 'C D D C', wud: 'wud', wul: 'wul', d: 'd', titulo: 'Paño de esquina (caso {caso}): coeficientes y momentos (t·m/m)' },
+    calc(`# Diseño del refuerzo (por metro de ancho)
+bm = 100 cm // Ancho de diseño
+Asmin = 0.0018*bm*h // Acero mínimo (E.060 10.5.4 y 9.7.2)
+smax = min(2*h, 40 cm) // Espaciamiento máximo en losas en dos direcciones (E.060 13.3.2)
+## Dirección corta A
+As_an = max(asFlex(Ma_neg*1 m, bm, d, fc, fy), Asmin) // Negativo en borde continuo
+As_ap = max(asFlex(Ma_pos*1 m, bm, d, fc, fy), Asmin) // Positivo
+s_an = rounddown(min(Ab(bar)/As_an*bm, smax), 2.5 cm) // Espaciamiento negativo
+s_ap = rounddown(min(Ab(bar)/As_ap*bm, smax), 2.5 cm) // Espaciamiento positivo
+## Dirección larga B (segunda capa: d − db)
+db2 = d - db(bar) // Peralte efectivo de la segunda capa
+As_bn = max(asFlex(Mb_neg*1 m, bm, db2, fc, fy), Asmin) // Negativo en borde continuo
+As_bp = max(asFlex(Mb_pos*1 m, bm, db2, fc, fy), Asmin) // Positivo
+s_bn = rounddown(min(Ab(bar)/As_bn*bm, smax), 2.5 cm) // Espaciamiento negativo
+s_bp = rounddown(min(Ab(bar)/As_bp*bm, smax), 2.5 cm) // Espaciamiento positivo
+## Bordes discontinuos (M⁻ = M⁺/3)
+As_disc = max(asFlex(max(Ma_disc, Mb_disc)*1 m, bm, db2, fc, fy), Asmin) // Acero en bordes discontinuos
+check Ab(bar)/s_an*bm >= As_an // Verificación del acero negativo A
+check Ab(bar)/s_ap*bm >= As_ap // Verificación del acero positivo A
+check Ab(bar)/s_bn*bm >= As_bn // Verificación del acero negativo B
+check Ab(bar)/s_bp*bm >= As_bp // Verificación del acero positivo B
+"**Refuerzo:** dirección corta: inferior #{bar} @ {s_ap}, superior en borde continuo #{bar} @ {s_an}; dirección larga: inferior #{bar} @ {s_bp}, superior en borde continuo #{bar} @ {s_bn}; bordes discontinuos #{bar} @ {rounddown(min(Ab(bar)/As_disc*bm, smax), 2.5 cm)}.
+# Cortante (E.060 13.7.4, ec. 13-10)
+phiVc = 0.85*0.53*sqrtfc(fc)*bm*d -> tonf // Resistencia por metro
+check Vua*1 m <= phiVc // Cortante en la dirección corta (incluye +15 % si corresponde)
+check Vub*1 m <= phiVc // Cortante en la dirección larga
+"Carga sobre las vigas: áreas tributarias con líneas a 45° (13.7.3.2); para la viga corta puede usarse $w_u A/3$ = {(wud + wul)*A/3}.`),
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 13) LOSA MACIZA EN UNA DIRECCIÓN (E.060 8.3.4, 9.6, 9.7, 10.5)
+// ---------------------------------------------------------------------
+const losa1d = {
+  id: 'co-losa1d', pais: 'PE', cat: CAT, icon: 'slab', normas: E060 + ' — Art. 8.3.4, 9.6, 9.7 y 10.5',
+  name: 'Losa maciza en una dirección',
+  desc: 'Franja de 1 m de losa continua: espesor mínimo (Tabla 9.1), coeficientes de 8.3.4 contrastados con análisis con alternancia de CV, acero principal, mínimo y de temperatura, cortante.',
+  titulo: 'Diseño de losa maciza armada en una dirección',
+  blocks: [
+    text(`# Generalidades
+Losa maciza continua de tres tramos apoyada en vigas, armada en una dirección (relación de lados del paño mayor que 2). Se diseña una franja de 1.00 m de ancho. Los momentos se obtienen con los **coeficientes aproximados de E.060 8.3.4** y se contrastan con un análisis elástico con alternancia de carga viva (E.060 8.9).`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero
+ln = 3.60 m // Luz libre de cada tramo
+h = 15 cm // Espesor [12 cm|15 cm|17 cm|20 cm]
+rec = 2.5 cm // Recubrimiento libre
+bar = 3 // Barra principal [3 : 3/8"|4 : 1/2"]
+wpt = 0.10 tonf/m^2 // Piso terminado
+wtab = 0.15 tonf/m^2 // Tabiquería repartida
+sc = 0.30 tonf/m^2 // Sobrecarga
+bm = 100 cm // Ancho de diseño
+## Espesor mínimo (E.060 Tabla 9.1)
+check h >= ln/24 // Losa maciza con un extremo continuo (tramo extremo)
+## Cargas por metro de ancho
+wD = (2.4 tonf/m^3*h + wpt + wtab)*1 m -> tonf/m // Carga muerta
+wL = sc*1 m -> tonf/m // Carga viva
+wu = 1.4*wD + 1.7*wL // Carga amplificada (E.060 9.2.1)
+check wL <= 3*wD // Condición (d) de 8.3.4
+## Momentos con los coeficientes de E.060 8.3.4 (apoyo exterior: viga de borde)
+Mext = wu*ln^2/24 -> tonf*m // Negativo en apoyo exterior
+Mp1 = wu*ln^2/14 -> tonf*m // Positivo en tramo extremo (monolítico)
+Mi1 = wu*ln^2/10 -> tonf*m // Negativo en primer apoyo interior (más de dos tramos)
+Mp2 = wu*ln^2/16 -> tonf*m // Positivo en tramo interior
+Vu1 = 1.15*wu*ln/2 -> tonf // Cortante en la cara exterior del primer apoyo interior`),
+    { type: 'beam', tramos: 'ln, ln, ln', apoyos: 'A, A, A, A', E: '2.17e6 tonf/m^2', I: 'bm*h^3/12', cargas: 'CM: U * 1.4*wD\nCV: U * 1.7*wL', alternancia: true, deflexion: false, titulo: 'Análisis elástico con alternancia de carga viva (franja de 1 m)' },
+    calc(`"El análisis con apoyos simples da M⁺ máx = {Mpos} y M⁻ = {abs(Mneg)}; los coeficientes de 8.3.4 dan {Mp1} y {Mi1}. Se diseña con el mayor valor de cada sección.
+# Diseño por flexión
+d = h - rec - db(bar)/2 // Peralte efectivo
+Mup = max(Mp1, Mpos) // Momento positivo de diseño
+Mun = max(Mi1, abs(Mneg)) // Momento negativo de diseño
+Asmin = 0.0018*bm*h // Acero mínimo (E.060 10.5.4, 9.7.2)
+Asp = max(asFlex(Mup, bm, d, fc, fy), Asmin) // Acero positivo
+Asn = max(asFlex(Mun, bm, d, fc, fy), Asmin) // Acero negativo interior
+Ase = max(asFlex(Mext, bm, d, fc, fy), Asmin) // Acero negativo exterior
+smax = min(3*h, 40 cm) // Espaciamiento máximo (E.060 9.8.1)
+sp = rounddown(min(Ab(bar)/Asp*bm, smax), 2.5 cm) // Espaciamiento positivo
+sn = rounddown(min(Ab(bar)/Asn*bm, smax), 2.5 cm) // Espaciamiento negativo
+se = rounddown(min(Ab(bar)/Ase*bm, smax), 2.5 cm) // Espaciamiento negativo exterior
+check Ab(bar)/sp*bm >= Asp // Acero positivo colocado
+check Ab(bar)/sn*bm >= Asn // Acero negativo colocado
+a = Asn*fy/(0.85*fc*bm) // Bloque de compresión
+check 0.003*(d - a/0.85)/(a/0.85) >= 0.004 // Ductilidad εt ≥ 0.004 (E.060 10.3.5)
+## Acero de temperatura (E.060 9.7)
+Ast = 0.0018*bm*h // Cuantía 0.0018 (fy = 4200)
+st = rounddown(min(Ab(3)/Ast*bm, 5*h, 40 cm), 2.5 cm) // Espaciamiento (9.7.3)
+"**Refuerzo:** inferior #{bar} @ {sp}; superior en apoyos interiores #{bar} @ {sn}; en apoyos exteriores #{bar} @ {se}; temperatura #3 @ {st} (perpendicular).
+# Cortante (E.060 11.3)
+phiVc = 0.85*0.53*sqrtfc(fc)*bm*d -> tonf // Resistencia del concreto
+Vud = Vu1 - wu*d // Cortante a "d" de la cara
+check Vud <= phiVc // No requiere refuerzo por cortante`),
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 14) LOSA ALIGERADA EN DOS DIRECCIONES (E.060 8.11 y 13.7)
+// ---------------------------------------------------------------------
+const aligerado2d = {
+  id: 'co-aligerado2d', pais: 'PE', cat: CAT, icon: 'slab', normas: E060 + ' — Art. 8.11, 13.7 · E.020',
+  name: 'Losa aligerada en dos direcciones',
+  desc: 'Aligerado con viguetas en ambas direcciones (bloques 30×30): metrado, momentos por coeficientes (13.7) por metro y por vigueta, acero positivo como sección T, negativo en el alma, cortante con 1.1Vc.',
+  titulo: 'Diseño de losa aligerada en dos direcciones',
+  blocks: [
+    text(`# Generalidades
+Losa nervada (aligerada) en dos direcciones con viguetas de 10 cm de ancho espaciadas a 40 cm en ambos sentidos, bloques de relleno de 30 × 30 cm y losa superior de 5 cm, apoyada en vigas peraltadas en su perímetro. Cumple las proporciones de E.060 8.11 y se analiza con el **Método de Coeficientes** (E.060 13.7); los momentos por metro se convierten a momentos por vigueta multiplicando por la separación entre ejes de nervios.`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero
+A = 5.20 m // Luz libre corta
+B = 6.00 m // Luz libre larga
+h = 25 cm // Peralte total [20 cm|25 cm|30 cm]
+hf = 5 cm // Losa superior
+bw = 10 cm // Ancho de vigueta
+sv = 40 cm // Separación entre ejes de viguetas
+pal = 0.38 tonf/m^2 // Peso propio del aligerado bidireccional h = 25 cm
+wpt = 0.10 tonf/m^2 // Piso terminado
+wtab = 0.10 tonf/m^2 // Tabiquería repartida
+sc = 0.20 tonf/m^2 // Sobrecarga (vivienda)
+## Requisitos geométricos (E.060 8.11)
+check bw >= 10 cm // Ancho de nervio ≥ 100 mm (8.11.2)
+check h - hf <= 3.5*bw // Altura del nervio ≤ 3.5 bw (8.11.2)
+check sv - bw <= 75 cm // Espaciamiento libre ≤ 750 mm (8.11.3)
+check hf >= max((sv - bw)/12, 5 cm) // Losa superior ≥ 1/12 de la luz libre entre nervios y ≥ 50 mm (8.11.5)
+## Cargas amplificadas por m²
+wD = pal + wpt + wtab // Carga muerta
+wL = sc // Carga viva
+wud = 1.4*wD // Muerta amplificada
+wul = 1.7*wL // Viva amplificada
+check B/A <= 2 // Límite del método (13.7.1.2)
+d = h - 3 cm // Peralte efectivo de las viguetas`),
+    { type: 'slab2way', A: 'A', B: 'B', bordes: 'C C D C', wud: 'wud', wul: 'wul', d: 'd', titulo: 'Paño de borde (caso {caso}): momentos por metro de ancho' },
+    calc(`# Diseño por vigueta
+## Momentos por vigueta (M por metro × separación)
+Mvap = Ma_pos*sv // Positivo dirección A
+Mvan = Ma_neg*sv // Negativo dirección A (bordes continuos)
+Mvbp = Mb_pos*sv // Positivo dirección B
+Mvbn = Mb_neg*sv // Negativo dirección B
+## Acero positivo (sección T, ancho bf = sv)
+Asap = asFlexT(Mvap, bw, sv, hf, d, fc, fy) // Dirección A
+Asbp = asFlexT(Mvbp, bw, sv, hf, d - 1.3 cm, fc, fy) // Dirección B (segunda capa)
+Asmin = 0.7*sqrtfc(fc)/fy*bw*d // Acero mínimo en el alma (E.060 10.5.2)
+check Ab(4) >= max(Asap, Asmin) // 1 #4 positivo en dirección A
+check Ab(4) >= max(Asbp, Asmin) // 1 #4 positivo en dirección B
+## Acero negativo (sección rectangular de ancho bw)
+Asan = asFlex(Mvan, bw, d, fc, fy) // Dirección A
+Asbn = asFlex(Mvbn, bw, d, fc, fy) // Dirección B
+check Ab(4) + Ab(3) >= max(Asan, Asmin) // 1 #4 + 1 #3 negativo en A
+check Ab(4) + Ab(3) >= max(Asbn, Asmin) // 1 #4 + 1 #3 negativo en B
+check Asan <= 0.75*rhobE060(fc, fy)*bw*d // Acero máximo en el alma (E.060 10.3.4)
+## Cortante en las viguetas (E.060 8.11.8: 1.1 Vc)
+phiVc = 0.85*1.1*0.53*sqrtfc(fc)*bw*d -> tonf // Resistencia por vigueta
+check Vua*sv <= phiVc // Cortante dirección A
+check Vub*sv <= phiVc // Cortante dirección B
+## Acero de temperatura en la losa superior (E.060 9.7)
+Ast = 0.0018*100 cm*hf // Por metro
+"Temperatura: #3 @ {rounddown(min(Ab(3)/Ast*100 cm, 5*hf, 40 cm), 2.5 cm)} o malla equivalente, en ambas direcciones.`),
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 15) LOSA PLANA — PUNZONAMIENTO CON TRANSFERENCIA DE MOMENTO (E.060 11.12)
+// ---------------------------------------------------------------------
+const punzonamiento = {
+  id: 'co-punzonamiento', pais: 'PE', cat: CAT, icon: 'slab', normas: E060 + ' — Art. 11.12, 13.5.3 y 21.8 · ACI 318-19 22.6 y 8.4.4',
+  name: 'Losa plana — punzonamiento con transferencia de momento',
+  desc: 'Sección crítica a d/2 de columna interior, Vc mínimo de (11-33/34/35), fracciones γf y γv, Jc, esfuerzo máximo vu = Vu/Ac + γv Mu c/Jc, refuerzo por flexión en el ancho c2 + 3h e integridad.',
+  titulo: 'Verificación de punzonamiento en losa plana',
+  blocks: [
+    text(`# Generalidades
+Se verifica la conexión losa–columna interior de una losa plana sin vigas. Además de la fuerza cortante $V_u$, la conexión transfiere un momento no balanceado $M_u$: la fracción $\\gamma_f M_u$ se transfiere por flexión en un ancho $c_2 + 3h$ (E.060 13.5.3) y la fracción $\\gamma_v M_u = (1-\\gamma_f) M_u$ por excentricidad del cortante (E.060 11.12.6.1, ec. 11-39). El esfuerzo cortante máximo en la sección crítica, que varía linealmente (Fig. 11.12.6), no debe exceder $\\phi v_n = \\phi V_c/(b_o d)$ (ec. 11-40).
+
+Recuérdese que la NTE E.060 21.8.2 limita el uso de losas planas a edificios de hasta 5 pisos con muros que tomen al menos el 80 % del cortante sísmico.`),
+    calc(`# Datos
+fc = 280 kgf/cm^2 // Concreto [210 kgf/cm^2|280 kgf/cm^2|350 kgf/cm^2]
+fy = 4200 kgf/cm^2 // Acero
+h = 25 cm // Espesor de la losa
+d = 21 cm // Peralte efectivo promedio
+c1 = 50 cm // Dimensión de la columna en la dirección del momento
+c2 = 50 cm // Dimensión perpendicular
+Vu = 75 tonf // Fuerza cortante amplificada transferida
+Mu = 6 tonf*m // Momento no balanceado amplificado
+alphas = 40 // Columna interior (40), de borde (30), esquina (20) [40|30|20]
+## Sección crítica a d/2 (E.060 11.12.1.2)
+b1 = c1 + d // Lado paralelo al momento
+b2 = c2 + d // Lado perpendicular
+bo = 2*(b1 + b2) // Perímetro crítico
+Ac = bo*d // Área de la sección crítica
+cAB = b1/2 // Distancia del centroide a la cara AB
+Jc = jcInterior(c1, c2, d) // Propiedad análoga al momento polar de inercia (Fig. 11.12.6 a)
+## Fracciones del momento (E.060 13.5.3.2 y 11.12.6.1)
+gf = 1/(1 + 2/3*sqrt(b1/b2)) // Fracción por flexión γf
+gv = 1 - gf // Fracción por excentricidad del cortante γv (ec. 11-39)
+## Esfuerzo cortante máximo
+vu = Vu/Ac + gv*Mu*cAB/Jc -> kgf/cm^2 // Fig. 11.12.6 a
+## Resistencia (E.060 11.12.2.1, Anexo II)
+betac = max(c1, c2)/min(c1, c2) // Relación de lados de la columna
+vc1 = 0.53*(1 + 2/betac)*sqrtfc(fc) // ec. 11-33
+vc2 = 0.27*(alphas*d/bo + 2)*sqrtfc(fc) // ec. 11-34
+vc3 = 1.06*sqrtfc(fc) // ec. 11-35
+vc = min(vc1, vc2, vc3) // Esfuerzo resistente del concreto
+phi = 0.85 // Cortante (E.060 9.3.2.3)
+check vu <= phi*vc // Punzonamiento con transferencia de momento (ec. 11-40)
+check Vu <= phi*vc*Ac // Punzonamiento por cortante directo
+"Según ACI 318-19 (22.6.5.2) el esfuerzo $v_c$ se afecta además por el factor de tamaño $\\lambda_s$ = {lambdasACI(d)} cuando no hay refuerzo mínimo por cortante (aquí $d$ ≤ 25 cm, efecto despreciable).
+# Transferencia de momento por flexión (E.060 13.5.3)
+bt = c2 + 3*h // Ancho efectivo para γf Mu
+Mf = gf*Mu // Momento transferido por flexión
+As_f = asFlex(Mf, bt, d, fc, fy) // Acero requerido en el ancho bt
+nb = 6 // Barras superiores #5 concentradas en el ancho bt (adicionales a las de la franja)
+check nb*Ab(5) >= As_f // Refuerzo de transferencia
+"Se concentran {nb} #5 en un ancho de {bt} centrado en la columna, además del refuerzo de la franja de columna.
+# Integridad estructural (E.060 13.3.8 / 7.13)
+"Al menos dos barras inferiores continuas en cada dirección deben atravesar el núcleo de la columna (integridad).`),
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 16) MÉNSULA (E.060 11.9 / ACI 318-19 16.5)
+// ---------------------------------------------------------------------
+const mensula = {
+  id: 'co-mensula', pais: 'PE', cat: CAT, icon: 'column', normas: E060 + ' — Art. 11.7 y 11.9 · ACI 318-19 16.5',
+  name: 'Ménsula (braquete) — cortante por fricción',
+  desc: 'Límites av/d y Nuc, Vn máximo, Avf por cortante–fricción, Af por flexión, An por tracción, Asc mínimo, estribos Ah en 2/3 d, aplastamiento y dibujo de la ménsula.',
+  titulo: 'Diseño de ménsula de concreto armado',
+  blocks: [
+    text(`# Generalidades
+Ménsula corta que soporta la reacción de una viga prefabricada. Se aplica la NTE E.060 11.9 (equivalente al ACI 318-19 16.5): la sección en la cara del apoyo se diseña para el cortante $V_u$, el momento $M_u = V_u a_v + N_{uc}(h-d)$ y la tracción horizontal $N_{uc}$, con $\\phi = 0.85$ en todos los cálculos (11.9.3.1).`),
+    calc(`# Datos
+fc = 280 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero
+bw = 35 cm // Ancho de la ménsula (= ancho de la columna)
+bc = 40 cm // Dimensión de la columna en la elevación
+lc = 30 cm // Proyección de la ménsula
+h = 45 cm // Peralte en la cara de la columna
+hext = 25 cm // Peralte en el borde exterior
+d = 40 cm // Peralte efectivo
+av = 15 cm // Distancia de la carga a la cara
+Vu = 30 tonf // Reacción vertical amplificada
+Nuc = 6.5 tonf // Tracción horizontal amplificada (restricción de retracción, ≥ 0.2Vu)
+mu = 1.4 // Concreto monolítico (E.060 11.7.4.3) [1.4|1.0]
+lp = 15 cm // Longitud de la placa de apoyo (en la dirección de av)
+bp = 30 cm // Ancho de la placa de apoyo
+phi = 0.85 // E.060 11.9.3.1
+## Límites de aplicación (E.060 11.9.1 y 11.9.2)
+check av/d <= 1 // av/d ≤ 1
+check Nuc <= Vu // Nuc ≤ Vu
+check Nuc >= 0.2*Vu // Nuc ≥ 0.2 Vu (11.9.3.4)
+check hext >= 0.5*d // Altura en el borde exterior ≥ 0.5 d (11.9.2)
+## Resistencia máxima a cortante (E.060 11.9.3.2.1, Anexo II)
+Vnmax = min(0.2*fc*bw*d, 55 kgf/cm^2*bw*d) -> tonf // Límite de Vn
+check Vu <= phi*Vnmax // Sección suficiente
+## Refuerzo
+Avf = Vu/(phi*fy*mu) // Cortante por fricción (11-25)
+Mu = Vu*av + Nuc*(h - d) -> tonf*m // Momento en la cara (11.9.3)
+Af = asFlex(Mu, bw, d, fc, fy, phi) // Acero por flexión (11.9.3.3)
+An = Nuc/(phi*fy) // Acero por tracción directa (11.9.3.4)
+Asc = max(Af + An, 2/3*Avf + An, 0.04*fc/fy*bw*d) // Acero principal (11.9.3.5 y 11.9.5)
+nsc = ceil(Asc/Ab(5)) // Barras #5
+check nsc*Ab(5) >= Asc // Acero principal colocado
+Ah = 0.5*(Asc - An) // Estribos cerrados paralelos a Asc (11.9.4)
+neh = ceil(Ah/(2*Ab(3))) // Estribos #3 de dos ramas
+check neh*2*Ab(3) >= Ah // Estribos colocados en los 2/3 d superiores
+## Aplastamiento bajo la placa (E.060 10.17, φ = 0.70)
+check Vu <= 0.70*0.85*fc*lp*bp // Resistencia al aplastamiento
+"El refuerzo principal se ancla en el borde exterior soldándolo a una barra transversal de igual diámetro (11.9.6 a) y en la columna con gancho estándar: ℓdg = {ldgE060(5, fc, fy)}.`),
+    { type: 'mensula', bc: 'bc', lc: 'lc', h: 'h', hext: 'hext', av: 'av', d: 'd', Vu: 'Vu', Nuc: 'Nuc', asc: '{nsc} #5', ah: '{neh} estribos #3', titulo: '' },
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 17) VIGA DE GRAN PERALTE — PUNTAL-TENSOR (ACI 318-19 Cap. 23)
+// ---------------------------------------------------------------------
+const stm = {
+  id: 'co-stm', pais: 'US', cat: 'Concreto — normas extranjeras', icon: 'beam', settings: { sys: 'si' }, normas: 'ACI 318-19 Cap. 9.9 y 23 (puntal-tensor) · NTE E.060 10.7 y 11.8',
+  name: 'Viga de gran peralte — modelo puntal-tensor (ACI 318-19)',
+  desc: 'Viga de transferencia con dos cargas: geometría del modelo, ancho del puntal superior por equilibrio, puntales, nudos CCC y CCT (βs, βn), tensor, refuerzo distribuido mínimo y anclaje.',
+  titulo: 'Diseño de viga de gran peralte por el método puntal-tensor',
+  blocks: [
+    text(`# Generalidades
+Viga de transferencia simplemente apoyada con dos cargas concentradas simétricas; con $\\ell_n/h \\le 4$ y cargas a menos de $2h$ del apoyo es una **viga de gran peralte** (ACI 318-19 9.9.1.1; NTE E.060 10.7.1) y se diseña con el **método puntal-tensor** del ACI 318-19 Cap. 23 (la NTE E.060 no incluye este método; lo permite 10.7.2 al exigir considerar la distribución no lineal de deformaciones). Se usa $\\phi = 0.75$ para puntales, tensores y nudos (ACI 318-19 Tabla 21.2.1).
+
+Resistencias efectivas: puntales $f_{ce} = 0.85\\,\\beta_c\\,\\beta_s\\,f'_c$ (23.4.3) y nudos $f_{ce} = 0.85\\,\\beta_c\\,\\beta_n\\,f'_c$ (23.9.2).`),
+    calc(`# Datos (unidades SI)
+fc = 28 MPa // Resistencia del concreto
+fy = 420 MPa // Acero
+b = 400 mm // Ancho de la viga
+h = 1500 mm // Peralte total
+L = 3600 mm // Luz entre ejes de apoyos
+a = 1200 mm // Distancia del apoyo a cada carga
+lb = 400 mm // Longitud de la placa de apoyo
+lp = 400 mm // Longitud de la placa de carga
+Pu = 900 kN // Cada carga amplificada
+wt = 200 mm // Altura efectiva del tensor (dos capas, centroide a 100 mm)
+phi = 0.75 // ACI 318-19 Tabla 21.2.1
+## Clasificación (ACI 318-19 9.9.1.1)
+ln = L - lb // Luz libre
+check ln/h <= 4 // Viga de gran peralte
+Vu = Pu // Cortante en el tramo de corte
+check Vu <= phi*0.83*sqrtMPa(fc)*b*(h - wt/2) // Límite de cortante (9.9.2.1)
+## Puntal superior y geometría (nudo CCC, βn = 1.0)
+kc = phi*0.85*1.0*fc*b // Resistencia por unidad de ancho del puntal horizontal
+hp = h - wt/2 // Distancia del tensor a la cara superior
+ws = roundup(hp - sqrt(hp^2 - 2*Pu*a/kc), 5 mm) // Ancho del puntal horizontal por equilibrio (redondeado)
+jd = hp - ws/2 // Brazo del par interno
+theta = atan(jd/a) -> deg // Ángulo del puntal diagonal
+check theta >= 25 deg // Ángulo mínimo puntal–tensor (23.2.7)
+## Fuerzas en los elementos
+Fd = Pu/sin(theta) // Puntal diagonal
+Ft = Pu/tan(theta) // Tensor (= puntal horizontal)
+## Puntales
+wd_b = lb*sin(theta) + wt*cos(theta) // Ancho del puntal diagonal en el nudo inferior
+wd_t = lp*sin(theta) + ws*cos(theta) // Ancho del puntal diagonal en el nudo superior
+betas = 0.75 // Puntal interior con refuerzo distribuido según 23.5 (Tabla 23.4.3 a)
+check Fd <= phi*0.85*betas*fc*b*min(wd_b, wd_t) // Resistencia del puntal diagonal
+check Ft <= phi*0.85*1.0*fc*b*ws // Puntal horizontal (de borde, βs = 1.0)
+## Nudos (ACI 318-19 23.9)
+check Pu <= phi*0.85*0.8*fc*b*lb // Nudo CCT: aplastamiento en la placa de apoyo (βn = 0.8)
+check Fd <= phi*0.85*0.8*fc*b*wd_b // Nudo CCT: cara del puntal diagonal
+check Pu <= phi*0.85*1.0*fc*b*lp // Nudo CCC: placa de carga (βn = 1.0)
+## Tensor (ACI 318-19 23.7)
+Ast_req = Ft/(phi*fy) // Acero requerido del tensor
+nt = 6 // Barras del tensor (dos capas)
+dbt = 25 mm // Diámetro de las barras del tensor [22 mm|25 mm|28 mm]
+Ast = nt*pi*dbt^2/4 // Acero colocado
+check Ast >= Ast_req // Resistencia del tensor
+ldh = ldhACI(dbt, fc, fy) // Anclaje con gancho (25.4.3)
+lanc = lb/2 + 300 mm + wt/2*cot(theta) // Longitud disponible más allá del eje del apoyo (prolongación de 300 mm)
+check ldh <= lanc // Anclaje del tensor en la zona nodal extendida (23.8.3)
+## Refuerzo distribuido mínimo (ACI 318-19 9.9.3 y 23.5)
+dbw = 12 mm // Barras del refuerzo distribuido
+sw = 200 mm // Espaciamiento en cada cara
+rhow = 2*pi*dbw^2/4/(b*sw) // Cuantía vertical y horizontal
+check rhow >= 0.0025 // Cuantía mínima en cada dirección
+check sw <= min((h - wt)/5, 300 mm) // Espaciamiento máximo d/5 y 300 mm (9.9.3.1)`),
+    { type: 'stmbeam', L: 'L', h: 'h', a: 'a', lb: 'lb', lp: 'lp', ws: 'ws', wt: 'wt', Fd: 'Fd', Ft: 'Ft', Pu: 'Pu', titulo: '' },
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 18) LONGITUDES DE DESARROLLO, GANCHOS Y EMPALMES (E.060 Cap. 12)
+// ---------------------------------------------------------------------
+const anclajes = {
+  id: 'co-anclajes', pais: 'PE', cat: CAT, icon: 'table', normas: E060 + ' — Cap. 7 y 12 (Anexo II MKS)',
+  name: 'Longitudes de desarrollo, ganchos y empalmes (tabla)',
+  desc: 'Tabla de ℓd (barras inferiores y superiores), ℓd por la ec. 12-1, ℓdg con gancho estándar, ℓdc en compresión y empalmes clase A, B y en compresión para barras de 3/8" a 1".',
+  titulo: 'Longitudes de desarrollo y empalmes del refuerzo',
+  blocks: [
+    text(`# Generalidades
+Se tabulan las longitudes de anclaje y de empalme por traslape de barras corrugadas según la NTE E.060 Cap. 12, con las ecuaciones en el sistema MKS del Anexo II:
+- **Tracción, Tabla 12.1** (espaciamiento libre ≥ db, recubrimiento ≥ db y estribos mínimos): $\\ell_d = \\dfrac{f_y\\,\\psi_t\\,\\psi_e\\,\\lambda}{8.2\\sqrt{f'_c}}\\,d_b$ para barras de 3/4" y menores y $\\dfrac{f_y\\,\\psi_t\\,\\psi_e\\,\\lambda}{6.6\\sqrt{f'_c}}\\,d_b$ para 7/8" y mayores, $\\ge 300$ mm.
+- **Gancho estándar, 12.5.2:** $\\ell_{dg} = 0.075\\,\\psi_e\\,\\lambda\\,f_y\\,d_b/\\sqrt{f'_c} \\ge \\max(8d_b, 150\\text{ mm})$.
+- **Compresión, 12.3.2:** $\\ell_{dc} = \\max(0.075 f_y d_b/\\sqrt{f'_c},\\ 0.0044 f_y d_b) \\ge 200$ mm.
+- **Empalmes, 12.15 y 12.16:** clase A = 1.0 $\\ell_d$, clase B = 1.3 $\\ell_d$ (≥ 300 mm); compresión $0.007 f_y d_b$ (≥ 300 mm).
+
+Barras superiores: $\\psi_t = 1.3$ (con más de 300 mm de concreto fresco debajo).`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2|350 kgf/cm^2]
+fy = 4200 kgf/cm^2 // Acero
+psie = 1.0 // Sin recubrimiento epóxico (Tabla 12.2) [1.0|1.2|1.5]
+lambda = 1.0 // Concreto de peso normal [1.0|1.3]
+## Ejemplo de cálculo: barra de 3/4" superior
+ld6 = ldE060(6, fc, fy, 1.3, psie, lambda) // ℓd en tracción, barra superior (Tabla 12.1)
+ld6g = ldGenE060(6, fc, fy, 2.5, 1.3, psie, lambda) // Con la ec. 12-1 y (cb+Ktr)/db = 2.5
+ldg6 = ldgE060(6, fc, fy, psie, lambda) // Gancho estándar de 90° (12.5.2)
+l_ext = 12*db(6) // Extensión recta del gancho de 90° (7.1.2)
+Ddob = 6*db(6) // Diámetro mínimo de doblado (Tabla 7.1)
+ls6 = lsE060(6, fc, fy, 2, 1.3, psie, lambda) // Empalme clase B, barra superior
+check ld6g <= ld6 // La ecuación general con confinamiento favorable reduce ℓd`),
+    { type: 'table', columnas: 'Barra = ["3/8\\"", "1/2\\"", "5/8\\"", "3/4\\"", "7/8\\"", "1\\""]\ndb [cm] = [db(3), db(4), db(5), db(6), db(7), db(8)]\nℓd inferior [cm] = [ldE060(3, fc, fy, 1, psie, lambda), ldE060(4, fc, fy, 1, psie, lambda), ldE060(5, fc, fy, 1, psie, lambda), ldE060(6, fc, fy, 1, psie, lambda), ldE060(7, fc, fy, 1, psie, lambda), ldE060(8, fc, fy, 1, psie, lambda)]\nℓd superior [cm] = [ldE060(3, fc, fy, 1.3, psie, lambda), ldE060(4, fc, fy, 1.3, psie, lambda), ldE060(5, fc, fy, 1.3, psie, lambda), ldE060(6, fc, fy, 1.3, psie, lambda), ldE060(7, fc, fy, 1.3, psie, lambda), ldE060(8, fc, fy, 1.3, psie, lambda)]\nℓdg gancho [cm] = [ldgE060(3, fc, fy, psie, lambda), ldgE060(4, fc, fy, psie, lambda), ldgE060(5, fc, fy, psie, lambda), ldgE060(6, fc, fy, psie, lambda), ldgE060(7, fc, fy, psie, lambda), ldgE060(8, fc, fy, psie, lambda)]\nℓdc compresión [cm] = [ldcE060(3, fc, fy), ldcE060(4, fc, fy), ldcE060(5, fc, fy), ldcE060(6, fc, fy), ldcE060(7, fc, fy), ldcE060(8, fc, fy)]\nEmpalme B inf. [cm] = [lsE060(3, fc, fy, 2), lsE060(4, fc, fy, 2), lsE060(5, fc, fy, 2), lsE060(6, fc, fy, 2), lsE060(7, fc, fy, 2), lsE060(8, fc, fy, 2)]\nEmpalme B sup. [cm] = [lsE060(3, fc, fy, 2, 1.3), lsE060(4, fc, fy, 2, 1.3), lsE060(5, fc, fy, 2, 1.3), lsE060(6, fc, fy, 2, 1.3), lsE060(7, fc, fy, 2, 1.3), lsE060(8, fc, fy, 2, 1.3)]\nEmpalme compr. [cm] = [lscE060(3, fc, fy), lscE060(4, fc, fy), lscE060(5, fc, fy), lscE060(6, fc, fy), lscE060(7, fc, fy), lscE060(8, fc, fy)]', dec: '1', titulo: 'Longitudes de desarrollo y empalme para f\'c = {fc} y fy = {fy}' },
+    text(`## Notas
+1. Los empalmes en tracción son clase B salvo que $A_{s,prov}/A_{s,req} \\ge 2$ y se empalme a lo más el 50 % del acero (clase A, Tabla 12.3).
+2. En elementos con responsabilidad sísmica no se permite reducir $\\ell_d$ por refuerzo en exceso (12.2.5) y los empalmes deben ubicarse fuera de las zonas de confinamiento (21.5.2.3, 21.6.3.2).
+3. En muros estructurales, en las zonas de posible fluencia, las longitudes de desarrollo se multiplican por 1.25 (21.9.4.5 c).
+4. Para concreto liviano $\\lambda = 1.3$; para barras con recubrimiento epóxico $\\psi_e = 1.2$ ó 1.5 ($\\psi_t\\psi_e \\le 1.7$).`),
+    summary(),
+  ],
+};
+export default [placa, colEsbelta, colBiaxial, vigaDuctil, colDuctil, nudo, vigaT, vigaDoble, torsion, deflexion, voladizo, losa2d, losa1d, aligerado2d, punzonamiento, mensula, stm, anclajes];

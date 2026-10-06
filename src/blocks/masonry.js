@@ -300,7 +300,7 @@ registerBlock('tankwall', {
     F('inf', 'Borde inferior', 'empotrado', 'select', ['empotrado', 'articulado']),
     F('sup', 'Borde superior', 'articulado', 'select', ['libre', 'articulado', 'empotrado']),
     F('lat', 'Bordes laterales', 'empotrado', 'select', ['empotrado', 'articulado']),
-    F('qb', 'Presión en la base qb', 'qb'), F('qs', 'Presión en el borde superior qs', '0'),
+    F('qb', 'Presión en la base qb', 'qb'), F('qs', 'Presión uniforme qs (sobrecarga, borde superior)', '0'), F('hq', 'Altura de la carga triangular (vacío = b; p. ej. nivel del agua)', ''),
     F('nu', 'Coeficiente de Poisson ν', '0.2'), F('ndiv', 'Divisiones de la malla (≈)', '20'), F('sufijo', 'Sufijo de variables exportadas', ''),
     F('titulo', 'Título', ''),
   ],
@@ -313,7 +313,8 @@ registerBlock('tankwall', {
     if (!(qb >= 0 && qs >= 0) || qb + qs <= 0) throw new Error('Las presiones deben ser ≥ 0 y no ambas nulas');
     const edges = { bot: EDGE(b.inf, 'e'), top: EDGE(b.sup, 'a'), left: EDGE(b.lat, 'e'), right: EDGE(b.lat, 'e') };
     if (edges.bot === 'L') throw new Error('El borde inferior no puede ser libre');
-    const R = tankWall(a, hb, edges, qb, qs, nu, nd), P = R.r, suf = b.sufijo ? String(b.sufijo).trim() : '';
+    const hq = b.hq && String(b.hq).trim() ? evalParam(b.hq, S, 'm', hb) : hb; if (!(hq > 0) || hq > hb + 1e-9) throw new Error('La altura de la carga debe estar entre 0 y b');
+    const R = tankWall(a, hb, edges, qb, qs, nu, nd, hq), P = R.r, suf = b.sufijo ? String(b.sufijo).trim() : '';
     const ex = (n, v, u) => setVar(ctx, n + suf, U(v, u));
     ex('MxN', Math.abs(R.MxN), 'tonf*m/m'); ex('MxP', Math.max(0, R.MxP), 'tonf*m/m'); ex('MyN', Math.abs(R.MyN), 'tonf*m/m'); ex('MyP', Math.max(0, R.MyP), 'tonf*m/m'); ex('Vb', R.Vb, 'tonf/m');
     // dibujo: mapas de My y Mx
@@ -334,7 +335,7 @@ registerBlock('tankwall', {
     };
     let g = drawMap(40, P.My, 'Momento vertical My', 1) + drawMap(400, P.Mx, 'Momento horizontal Mx', 1);
     g += dimH(40, 40 + mw, 50 + mh + 18, 'a = ' + f2(a) + ' m') + dimV(30, 50, 50 + mh, 'b = ' + f2(hb) + ' m');
-    g += T(Wd / 2, Hd - 30, `Bordes: inferior ${edges.bot === 'E' ? 'empotrado' : 'articulado'} · superior ${{ E: 'empotrado', A: 'articulado', L: 'libre' }[edges.top]} · laterales ${edges.left === 'E' ? 'empotrados' : 'articulados'} · q = ${f2(qs)} → ${f2(qb)} t/m² · malla ${P.nx}×${P.ny}`, { fs: 9.5 });
+    g += T(Wd / 2, Hd - 30, `Bordes: inferior ${edges.bot === 'E' ? 'empotrado' : 'articulado'} · superior ${{ E: 'empotrado', A: 'articulado', L: 'libre' }[edges.top]} · laterales ${edges.left === 'E' ? 'empotrados' : 'articulados'} · q = ${f2(qs)} → ${f2(qb)} t/m²${hq < hb - 1e-9 ? ' (hasta ' + f2(hq) + ' m)' : ''} · malla ${P.nx}×${P.ny}`, { fs: 9.5 });
     g += T(Wd / 2, Hd - 14, 'Rojo: momento negativo (tracción en la cara cargada) · Azul: positivo (tracción en la cara opuesta)', { fs: 9, c: C.axis });
     // tabla de coeficientes tipo PCA (coef = M / (q_b·b²) ×1000)
     const q0 = Math.max(qb, qs), den = q0 * hb * hb;

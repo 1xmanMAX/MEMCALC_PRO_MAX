@@ -485,4 +485,632 @@ check DLL <= L/800 // Límite L/800`),
   ],
 };
 
-export default [vigaT, presf];
+// =====================================================================
+//  3) VIGA DE ACERO COMPUESTA (sección compacta en flexión positiva)
+// =====================================================================
+const acero = {
+  id: 'br-acero', pais: 'US', cat: CAT, icon: 'steel', settings: { sys: 'us' },
+  name: 'Viga de acero compuesta con losa (AASHTO LRFD Secc. 6)',
+  normas: 'AASHTO LRFD Bridge Design Specifications 9.ª ed. (2020), Secc. 3, 4, 6 y Apéndice D6 · FHWA Steel Bridge Design Handbook',
+  desc: 'Viga I armada interior de puente simplemente apoyado L = 100 ft compuesta con losa: propiedades n y 3n, momento plástico Mp (D6.1), compacidad y ductilidad, Resistencia I, Servicio II, constructibilidad durante el vaciado de la losa (6.10.3), cortante del alma y deflexión.',
+  titulo: 'Diseño de viga de acero compuesta — AASHTO LRFD Sección 6',
+  blocks: [
+    text(`# Generalidades
+## Descripción
+Viga **interior** de un puente de un tramo de 100 ft con cinco vigas I armadas de acero ASTM A709 Gr. 50 separadas 9.0 ft, conectores de corte y losa de 8.5 in vaciada in situ. En flexión positiva la sección es **compuesta y compacta**; durante el vaciado la viga de acero sola, arriostrada por diafragmas cada 20 ft, resiste su peso, el del concreto fresco y la carga de construcción.
+
+## Normas y referencias
+- AASHTO LRFD Bridge Design Specifications, 9.ª ed. (2020): 6.10.1 (secciones compuestas), 6.10.3 (constructibilidad), 6.10.4 (Servicio II), 6.10.6.2.2 y 6.10.7.1 (sección compacta), 6.10.9 (cortante), Apéndice D6.1 (momento plástico) y D6.3 (Dc).
+- FHWA *Steel Bridge Design Handbook* (2015) y *LRFD Design Example for Steel Girder Superstructure Bridge* (FHWA-NHI-04-041); Barker & Puckett, cap. 8.
+- Manual de Puentes MTC (2018), Secc. 2.4 (cargas) y diseño en acero según AASHTO.
+
+## Etapas de carga
+1. **Construcción** (acero solo): peso del acero, losa fresca y acartelamiento (DC1) + carga de construcción.
+2. **Compuesta largo plazo** ($3n$): barreras (DC2) y superficie de rodadura (DW).
+3. **Compuesta corto plazo** ($n$): carga viva HL-93 con IM.`),
+    calc(`# Datos
+## Puente
+L = 100 ft // Luz de cálculo
+S = 9.0 ft // Separación entre vigas
+Nb = 5 // Número de vigas
+wcc = 40 ft // Ancho de calzada entre barreras
+ts = 8.5 in // Espesor de la losa
+th = 2.0 in // Altura del acartelamiento (borde superior del ala a fondo de losa)
+Lb = 20 ft // Separación de diafragmas (longitud no arriostrada del ala comprimida)
+## Materiales
+Fy = 50 ksi // Acero ASTM A709 Gr. 50 [36 ksi|50 ksi|70 ksi]
+Es = 29000 ksi // Módulo del acero (6.4.1)
+fc = 4.0 ksi // f'c de la losa
+gammac = 0.150 kip/ft^3 // Concreto armado
+gammas = 0.490 kip/ft^3 // Acero
+Ecd = EcLRFD(fc, gammac) // Módulo de la losa
+n = roundup(Es/Ecd, 1) // Relación modular (6.10.1.1.1b)
+## Sección de acero (viga armada)
+bc = 14 in // Ancho del ala superior (comprimida)
+tc = 0.875 in // Espesor del ala superior
+D = 48 in // Altura del alma
+tw = 0.5 in // Espesor del alma
+bt = 16 in // Ancho del ala inferior (traccionada)
+tt = 1.25 in // Espesor del ala inferior
+# Proporciones de la sección (6.10.2)
+check D/tw <= 150 // Alma sin rigidizadores longitudinales (6.10.2.1.1)
+check bc/(2*tc) <= 12 and bt/(2*tt) <= 12 // Esbeltez de alas bf/2tf ≤ 12 (6.10.2.2-1)
+check bc >= D/6 and bt >= D/6 // bf ≥ D/6 (6.10.2.2-2)
+check tc >= 1.1*tw // tf ≥ 1.1 tw (6.10.2.2-3)
+check (bc*tc^3/12)/(bt*tt^3/12) >= 0.1 and (bc*tc^3/12)/(bt*tt^3/12) <= 10 // 0.1 ≤ Iyc/Iyt ≤ 10 (6.10.2.2-4)
+# Propiedades elásticas (desde la fibra inferior)
+As = bc*tc + D*tw + bt*tt // Área de acero
+ys = (bt*tt^2/2 + D*tw*(tt + D/2) + bc*tc*(tt + D + tc/2))/As // Centroide de la viga de acero
+hs = tt + D + tc // Peralte de la viga de acero
+Is = bt*tt^3/12 + bt*tt*(ys - tt/2)^2 + tw*D^3/12 + D*tw*(tt + D/2 - ys)^2 + bc*tc^3/12 + bc*tc*(tt + D + tc/2 - ys)^2 -> in^4
+Sbs = Is/ys // Módulo inferior (acero solo)
+Sts = Is/(hs - ys) // Módulo superior (acero solo)
+beff = S // Ancho efectivo de la losa (4.6.2.6.1)
+yd = hs + th + ts/2 // Centroide de la losa
+Adn = beff*ts/n // Losa transformada, corto plazo
+yn = (As*ys + Adn*yd)/(As + Adn) // Centroide compuesto (n)
+In = Is + As*(yn - ys)^2 + beff/n*ts^3/12 + Adn*(yd - yn)^2 -> in^4
+Sbn = In/yn // Módulo inferior compuesto (n)
+Ad3 = beff*ts/(3*n) // Losa transformada, largo plazo (3n)
+y3 = (As*ys + Ad3*yd)/(As + Ad3) // Centroide compuesto (3n)
+I3 = Is + As*(y3 - ys)^2 + beff/(3*n)*ts^3/12 + Ad3*(yd - y3)^2 -> in^4
+Sb3 = I3/y3 // Módulo inferior compuesto (3n)
+# Cargas y momentos (viga interior, L/2)
+wst = 1.10*gammas*As -> kip/ft // Acero + 10 % por rigidizadores, diafragmas y conexiones
+wsl = gammac*(S*ts + bc*th) -> kip/ft // Losa + acartelamiento (DC1)
+wb = 2*0.40 kip/ft/Nb // Barreras (DC2), repartidas por igual (4.6.2.2.1)
+ww = 0.025 kip/ft^2*wcc/Nb // Superficie de rodadura futura 25 psf (DW)
+wcl = 0.020 kip/ft^2*S // Carga viva de construcción 20 psf (3.4.2.1)
+MDC1 = (wst + wsl)*L^2/8 -> kip*ft
+MDC2 = wb*L^2/8 -> kip*ft
+MDW = ww*L^2/8 -> kip*ft
+# Factores de distribución (4.6.2.2, tipo a)
+eg = hs - ys + th + ts/2 // Distancia entre centroides de viga y losa
+Kg = n*(Is + As*eg^2) -> in^4 // Kg = n(I + A eg²)
+check Kg >= 10000 in^4 and Kg <= 7000000 in^4 // Rango de aplicación
+NL = NLLRFD(wcc) // Carriles de diseño
+gM = max(gMi1LRFD(S, L, ts, Kg), gMi2LRFD(S, L, ts, Kg)) // Momento, viga interior
+gV = max(gVi1LRFD(S), gVi2LRFD(S)) // Cortante, viga interior`),
+    { type: 'bridgesec', tipo: 'acero', B: 'wcc + 2*1.5 ft', ts: 'ts', nv: 'Nb', S: 'S', hv: 'hs + th', bw: 'tw', bf: 'bt', tf: 'tt', barrera: '1.5 ft', hbarrera: '32 in', tasf: '0', titulo: 'Sección transversal: cinco vigas de acero @ 9.0 ft con losa de 8.5 in' },
+    { type: 'hl93env', tramos: 'L', apoyos: 'A A', vehiculo: 'HL-93', IM: 'IMLRFD(1)', g: 'gM', titulo: 'Envolventes HL-93 × gM, viga interior (IM = 33 %)' },
+    calc(`MLL = MLLp // Momento LL+IM en L/2 (distribuido)
+VLLv = gV/gM*VLL // Cortante LL+IM en el apoyo (distribuido con gV)
+# Momento plástico de la sección compuesta (Apéndice D6.1)
+Ps = 0.85*fc*beff*ts -> kip // Fuerza plástica de la losa (se desprecia el refuerzo)
+Pc = Fy*bc*tc -> kip // Ala superior
+Pw = Fy*D*tw -> kip // Alma
+Pt = Fy*bt*tt -> kip // Ala inferior
+## Caso PNA en la losa (Pc + Pw + Pt ≤ Ps)
+Y1 = ts*(Pc + Pw + Pt)/Ps // Profundidad del PNA desde la cara superior de la losa
+Mp1 = (Y1^2*Ps/(2*ts) + Pc*(ts + th + tc/2 - Y1) + Pw*(ts + th + tc + D/2 - Y1) + Pt*(ts + th + tc + D + tt/2 - Y1)) -> kip*ft
+## Caso PNA en el ala superior (Pt + Pw < Pc + Ps ≤ …)
+Y2 = tc/2*((Pw + Pt - Ps)/Pc + 1) // Desde la cara superior del ala
+Mp2 = (Pc/(2*tc)*(Y2^2 + (tc - Y2)^2) + Ps*(Y2 + th + ts/2) + Pw*(tc - Y2 + D/2) + Pt*(tc - Y2 + D + tt/2)) -> kip*ft
+## Caso PNA en el alma (Pt + Pw ≥ Pc + Ps)
+Y3 = D/2*((Pt - Pc - Ps)/Pw + 1) // Desde el borde superior del alma
+Mp3 = (Pw/(2*D)*(Y3^2 + (D - Y3)^2) + Ps*(Y3 + tc + th + ts/2) + Pc*(Y3 + tc/2) + Pt*(D - Y3 + tt/2)) -> kip*ft
+caso = si(Pc + Pw + Pt <= Ps, 1, si(Pt + Pw < Pc + Ps, 2, 3)) // 1: losa, 2: ala superior, 3: alma
+Mp = si(caso == 1, Mp1, si(caso == 2, Mp2, Mp3)) // Momento plástico
+Dp = si(caso == 1, Y1, si(caso == 2, ts + th + Y2, ts + th + tc + Y3)) -> in // Profundidad del PNA desde la cara superior de la losa
+Dt = ts + th + hs // Peralte total de la sección compuesta
+Dcp = si(caso == 3, Y3, 0 in) // Altura del alma comprimida en el estado plástico
+# Resistencia I — flexión positiva (6.10.6.2.2 y 6.10.7.1)
+check Fy <= 70 ksi // Sección compacta: Fy ≤ 70 ksi
+check 2*Dcp/tw <= 3.76*sqrt(Es/Fy) // Esbeltez del alma 2Dcp/tw ≤ 3.76√(E/Fyc) (6.10.6.2.2-1)
+check Dp <= 0.42*Dt // Ductilidad (6.10.7.3-1)
+Mn = si(Dp <= 0.1*Dt, Mp, Mp*(1.07 - 0.7*Dp/Dt)) // Resistencia nominal (6.10.7.1.2)
+Mu = 1.25*(MDC1 + MDC2) + 1.50*MDW + 1.75*MLL // Resistencia I
+check Mu <= 1.00*Mn // φf = 1.00 (6.5.4.2)
+# Servicio II — ala inferior (6.10.4.2.2)
+ff = MDC1/Sbs + (MDC2 + MDW)/Sb3 + 1.30*MLL/Sbn -> ksi // Esfuerzo en el ala inferior
+check ff <= 0.95*1.0*Fy // ff ≤ 0.95 Rh Fyf (Rh = 1)
+# Constructibilidad: vaciado de la losa (6.10.3.2)
+Mcon = (1.25*(wst + wsl) + 1.50*wcl)*L^2/8 -> kip*ft // Cargas factorizadas de construcción (3.4.2.1)
+fbu = Mcon/Sts -> ksi // Esfuerzo en el ala superior (acero solo)
+Dc = hs - ys - tc // Alma en compresión (elástico, acero solo)
+lamf = bc/(2*tc) // Esbeltez del ala comprimida
+lampf = 0.38*sqrt(Es/Fy) // Límite de ala compacta (6.10.8.2.2-4)
+check lamf <= lampf // Ala comprimida compacta: Fnc(FLB) = Rb Rh Fyc
+rt = bc/sqrt(12*(1 + Dc*tw/(3*bc*tc))) // Radio de giro efectivo (6.10.8.2.3-9)
+Lp = 1.0*rt*sqrt(Es/Fy) -> ft // (6.10.8.2.3-4)
+Fyr = max(0.7*Fy, 0.5*Fy) // Fyr = 0.7 Fyc ≥ 0.5 Fyw
+Lr = pi*rt*sqrt(Es/Fyr) -> ft // (6.10.8.2.3-5)
+Cb = 1.0 // Gradiente de momento (segmento central, conservador)
+Fnc = si(Lb <= Lp, Fy, si(Lb <= Lr, min(Cb*(1 - (1 - Fyr/Fy)*(Lb - Lp)/(Lr - Lp))*Fy, Fy), min(Cb*pi^2*Es/(Lb/rt)^2, Fy))) -> ksi // Pandeo lateral-torsional (6.10.8.2.3)
+check fbu <= 1.00*Fy // Fluencia del ala (6.10.3.2.1-1)
+check fbu <= 1.00*Fnc // Pandeo del ala comprimida (6.10.3.2.1-2)
+kw = 9/(Dc/D)^2 // Coeficiente de pandeo por flexión del alma (6.10.1.9.1-2)
+Fcrw = min(0.9*Es*kw/(D/tw)^2, Fy, Fy/0.7) // Pandeo del alma por flexión (6.10.1.9.1-1)
+check fbu <= 1.00*Fcrw // Pandeo del alma durante la construcción (6.10.3.2.1-3)
+# Cortante en el apoyo (6.10.9)
+Vu = (1.25*(wst + wsl + wb) + 1.50*ww)*L/2 + 1.75*VLLv -> kip // Resistencia I en el apoyo
+Vp = 0.58*Fy*D*tw -> kip // Fuerza cortante plástica (6.10.9.2-2)
+kv = 5 // Alma sin rigidizadores transversales
+Cv = si(D/tw <= 1.12*sqrt(Es*kv/Fy), 1, si(D/tw <= 1.40*sqrt(Es*kv/Fy), 1.12/(D/tw)*sqrt(Es*kv/Fy), 1.57/(D/tw)^2*(Es*kv/Fy))) // Relación C (6.10.9.3.2-4 a -6)
+Vn = Cv*Vp // Resistencia nominal del alma no rigidizada (6.10.9.2-1)
+check Vu <= 1.00*Vn // φv = 1.00
+# Deflexión por carga viva (2.5.2.6.2)
+DFd = NL*mpLRFD(NL)/Nb // Todos los carriles cargados
+EIn = Es*In -> kip*in^2
+a1 = L/2 - 14 ft
+dtr = 32 kip*L^3/(48*EIn) + 40 kip*a1*(3*L^2 - 4*a1^2)/(48*EIn) -> in // Camión con el eje central en L/2
+dln = 0.25*1.33*dtr + 5*0.64 kip/ft*L^4/(384*EIn) -> in // 25 % camión + carril
+DLL = DFd*max(1.33*dtr, dln) -> in
+check DLL <= L/800 // Límite L/800`),
+    summary(),
+  ],
+};
+
+// =====================================================================
+//  4) ESTRIBO EN VOLADIZO DE CONCRETO ARMADO
+// =====================================================================
+const estribo = {
+  id: 'br-estribo', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
+  name: 'Estribo de concreto armado en voladizo (AASHTO LRFD / MTC)',
+  normas: NORMAS_PE,
+  desc: 'Estribo en voladizo H = 7.0 m: cargas DC, DW, LL, BR, EH, EV, LS y sismo (Mononobe–Okabe + inercia), Resistencia Ia/Ib y Evento Extremo I, excentricidad, deslizamiento, capacidad portante, longitud de apoyo N y diseño de pantalla, punta y talón.',
+  titulo: 'Diseño de estribo de concreto armado en voladizo H = 7.00 m — AASHTO LRFD / MTC 2018',
+  blocks: [
+    text(`# Generalidades
+## Descripción
+Estribo de concreto armado tipo **voladizo** (pantalla, cajuela y parapeto sobre zapata corrida) que soporta un extremo del puente viga-losa de 20 m de luz y contiene el relleno de acceso. El análisis se hace por **metro lineal** de estribo, repartiendo las reacciones de la superestructura en el ancho del estribo.
+
+## Normas y referencias
+- AASHTO LRFD 9.ª ed.: 3.4.1 (combinaciones y factores, Tablas 3.4.1-1/-2), 3.6.4 (frenado BR), 3.11.5 (empuje EH), 3.11.6.4 (sobrecarga LS, Tabla 3.11.6.4-1), 3.10 y 11.6.5 (sismo, $k_h = 0.5\\,A_s$, Mononobe–Okabe), 10.6.3 (cimentaciones superficiales), 11.6.3 (estabilidad de estribos), 4.7.4.4 (longitud de apoyo $N$), 5 (concreto).
+- Manual de Puentes MTC (2018): cap. 2 (cargas, mapas de isoaceleraciones con 1000 años de periodo de retorno).
+- Rodríguez Serquén, *Puentes con AASHTO-LRFD*, cap. X (estribos); Das, *Principios de ingeniería de cimentaciones*.
+
+## Criterios
+- Estados límite: **Resistencia Ia** (cargas verticales mínimas, para deslizamiento y excentricidad), **Resistencia Ib** (máximas, para presiones y diseño) y **Evento Extremo I** con $\\gamma_{EQ} = 0.5$ para la carga viva (práctica MTC).
+- Excentricidad: $e \\le B/3$ en Resistencia (10.6.3.3) y, en Evento Extremo, interpolando entre $B/3$ ($\\gamma_{EQ}=0$) y $0.40B$ ($\\gamma_{EQ}=1$) (11.6.5.1).
+- Presión de contacto uniforme de Meyerhof sobre $B' = B - 2e$ (10.6.3.1.5).`),
+    calc(`# Datos
+## Superestructura (puente viga-losa L = 20 m)
+L = 20.00 m // Luz del puente
+Ba = 8.00 m // Ancho del estribo (ancho del tablero)
+wDCs = 10.20 tonf/m // Peso DC de la superestructura por metro de puente (vigas, losa, barreras, diafragmas)
+wDWs = 0.81 tonf/m // Peso DW (asfalto) por metro de puente
+NL = 2 // Carriles de diseño
+## Geometría del estribo
+H = 7.00 m // Altura total, desde el fondo de la zapata hasta la rasante
+hz = 0.80 m // Espesor de la zapata
+B = 5.20 m // Ancho de la zapata
+Lp = 1.40 m // Longitud de la punta
+t2 = 0.90 m // Espesor de la pantalla (cuerpo) bajo la cajuela
+t1 = 0.30 m // Espesor del parapeto (muro espaldar)
+hb = 1.65 m // Altura del parapeto: viga + apoyo + losa (1.50 + 0.15)
+Df = 1.50 m // Profundidad de desplante (relleno sobre la punta)
+hp = H - hz // Altura de la pantalla
+Lt = B - Lp - t2 // Longitud del talón
+bc = t2 - t1 // Ancho de la cajuela (asiento de las vigas)
+## Suelos y materiales
+gammas = 1.90 tonf/m^3 // Peso unitario del relleno
+phis = 30 deg // Ángulo de fricción del relleno
+phif = 32 deg // Ángulo de fricción del suelo de fundación
+qn = 75 tonf/m^2 // Capacidad portante nominal (estudio geotécnico)
+gammac = 2.40 tonf/m^3 // Concreto armado del estribo
+fc = 280 kgf/cm^2 // f'c del estribo
+fy = 4200 kgf/cm^2 // Acero Gr. 60
+## Peligro sísmico (MTC 2018 / AASHTO 3.10, Tr = 1000 años)
+PGA = 0.40 // Aceleración pico en roca, en g (mapa de isoaceleraciones MTC)
+sitio = 4 // Clase de sitio [2 : B roca|3 : C suelo muy denso|4 : D suelo rígido|5 : E suelo blando]
+Fpga = FpgaLRFD(PGA, sitio) // Factor de sitio (Tabla 3.10.3.2-1)
+As = Fpga*PGA // Coeficiente de aceleración As = Fpga·PGA (3.10.4.2-2)
+kh = 0.5*As // Coeficiente sísmico horizontal: el estribo puede desplazarse 25–50 mm (11.6.5.2.2)
+gEQ = 0.50 // Factor de carga viva en Evento Extremo I (Tabla 3.4.1-1, práctica MTC)
+# Longitud de apoyo en la cajuela (4.7.4.4)
+Nap = NapLRFD(L, H, 0 deg) // N = (200 + 0.0017L + 0.0067H)(1 + 0.000125S²)
+zona = zonaLRFD(FvLRFD(0.40, sitio)*0.40) // Zona sísmica (Tabla 3.10.6-1) con S1 = 0.40 g
+Nreq = NpctLRFD(zona, As)*Nap // Porcentaje de N según la zona (Tabla 4.7.4.4-1)
+check Nreq <= bc // Ancho de la cajuela suficiente
+# Cargas
+## Reacciones de la superestructura (por metro de estribo)
+IM = IMLRFD(1) // La pantalla está sobre el terreno: se aplica IM (3.6.2.1)
+mp = mpLRFD(NL) // Presencia múltiple
+RDC = wDCs*L/2/Ba -> tonf/m // Reacción DC
+RDW = wDWs*L/2/Ba -> tonf/m // Reacción DW
+RLL = NL*mp*(VtruckHL93(L)*(1 + IM) + VlaneHL93(L))/Ba -> tonf/m // Reacción LL+IM (camión + carril)
+BR = BRLRFD(L, NL)/Ba -> tonf/m // Frenado, a 1.80 m sobre la rasante (3.6.4)
+xR = Lp + bc/2 // Brazo de las reacciones desde la punta
+## Pesos propios (DC) y relleno (EV)
+W1 = gammac*B*hz*1 m // Zapata
+W2 = gammac*t2*(hp - hb)*1 m // Pantalla
+W3 = gammac*t1*hb*1 m // Parapeto
+W4 = gammas*Lt*hp*1 m // Relleno sobre el talón (EV)
+W5 = gammas*Lp*(Df - hz)*1 m // Relleno sobre la punta (EV)
+x1 = B/2 // Brazos respecto a la punta
+x2 = Lp + t2/2
+x3 = Lp + bc + t1/2
+x4 = Lp + t2 + Lt/2
+x5 = Lp/2
+## Empujes del relleno (EH, LS) — Rankine
+Ka = tan(45 deg - phis/2)^2 // Coeficiente de empuje activo (3.11.5.3)
+EH = 0.5*Ka*gammas*H^2*1 m // Empuje del relleno, aplicado a H/3
+heq = heqLRFD(H) // Altura equivalente por sobrecarga vehicular (Tabla 3.11.6.4-1)
+LS = Ka*gammas*heq*H*1 m // Empuje por sobrecarga, aplicado a H/2
+LSv = gammas*heq*Lt*1 m // Peso de la sobrecarga sobre el talón
+## Sismo (EQ) — Mononobe–Okabe (A11.3.1) e inercias
+thq = atan(kh) -> deg // Ángulo sísmico θ = atan[kh/(1 − kv)], kv = 0
+KAE = cos(phis - thq)^2/(cos(thq)^2*(1 + sqrt(sin(phis)*sin(phis - thq)/cos(thq)))^2) // KAE con δ = 0, β = 0, i = 0 (paramento virtual)
+EAE = 0.5*KAE*gammas*H^2*1 m // Empuje activo sísmico total
+DEAE = EAE - EH // Incremento dinámico, aplicado a 0.6H (Seed y Whitman)
+EQw = kh*(W1*hz/2 + W2*(hz + (hp - hb)/2) + W3*(H - hb/2) + W4*(hz + hp/2))/(W1 + W2 + W3 + W4) // Altura de la resultante de inercias
+Fi = kh*(W1 + W2 + W3 + W4) // Fuerza de inercia del estribo y del relleno sobre el talón
+EQs = kh*RDC*1 m // Fuerza sísmica longitudinal de la superestructura en la cajuela
+ys = H - hb // Altura de la cajuela sobre el fondo de la zapata
+# Estabilidad
+## Momentos respecto a la punta (por metro)
+MDCr = W1*x1 + W2*x2 + W3*x3 -> tonf*m // Pesos propios
+MEVr = W4*x4 + W5*x5 -> tonf*m // Relleno
+WDC = W1 + W2 + W3 // Suma de pesos propios
+WEV = W4 + W5
+PDC = RDC*1 m // Reacciones de la superestructura
+PDW = RDW*1 m
+PLL = RLL*1 m
+PBR = BR*1 m
+MEH = EH*H/3 // Momentos de vuelco
+MLS = LS*H/2
+MBR = PBR*(H + 1.80 m)
+## Resistencia Ia (cargas verticales mínimas)
+Va = 0.90*(WDC + PDC) + 0.65*PDW + 1.00*WEV + 1.75*PLL // Fuerza vertical
+Ha = 1.50*EH + 1.75*LS + 1.75*PBR // Fuerza horizontal
+Mra = 0.90*(MDCr + PDC*xR) + 0.65*PDW*xR + 1.00*MEVr + 1.75*PLL*xR // Momento estabilizador
+Mva = 1.50*MEH + 1.75*MLS + 1.75*MBR // Momento de vuelco
+ea = B/2 - (Mra - Mva)/Va // Excentricidad
+check abs(ea) <= B/3 // Excentricidad (10.6.3.3, 11.6.3.3)
+Rta = 0.80*Va*tan(phif) // Resistencia al deslizamiento, φτ = 0.80 (Tabla 10.5.5.2.2-1)
+check Ha <= Rta // Deslizamiento (10.6.3.4)
+## Resistencia Ib (cargas verticales máximas)
+Vb = 1.25*(WDC + PDC) + 1.50*PDW + 1.35*WEV + 1.75*(PLL + LSv) // EV = 1.35 (Tabla 3.4.1-2)
+Mrb = 1.25*(MDCr + PDC*xR) + 1.50*PDW*xR + 1.35*MEVr + 1.75*(PLL*xR + LSv*x4)
+eb = B/2 - (Mrb - Mva)/Vb
+check abs(eb) <= B/3 // Excentricidad
+qb = Vb/((B - 2*eb)*1 m) -> tonf/m^2 // Presión uniforme sobre B' (10.6.3.1.5)
+check qb <= 0.45*qn // Capacidad portante, φb = 0.45 (Tabla 10.5.5.2.2-1)
+## Evento Extremo I
+Vee = 1.00*(WDC + PDC + PDW + WEV) + gEQ*PLL
+Hc = EH + DEAE + Fi + EQs + gEQ*(LS + PBR) // EH + incremento M-O + inercias + superestructura
+Mrc = MDCr + (PDC + PDW)*xR + MEVr + gEQ*PLL*xR
+Mvc = MEH + DEAE*0.6*H + Fi*EQw + EQs*ys + gEQ*(MLS + MBR)
+ec = B/2 - (Mrc - Mvc)/Vee
+emaxc = (2/3 + (0.8 - 2/3)*gEQ)*B/2 // Interpolación B/3 – 0.40B (11.6.5.1)
+check abs(ec) <= emaxc // Excentricidad en sismo
+check Hc <= 1.00*Vee*tan(phif) // Deslizamiento, φ = 1.0 (11.5.8)
+qc = Vee/((B - 2*ec)*1 m) -> tonf/m^2
+check qc <= 1.00*qn // Capacidad portante en sismo, φ = 1.0`),
+    { type: 'estribo', H: 'H', B: 'B', hz: 'hz', punta: 'Lp', t2: 't2', t1: 't1', hb: 'hb', Df: 'Df', Ka: 'Ka', gs: 'gammas', heq: 'heq', titulo: 'Geometría del estribo, empujes EH y LS y reacciones de la superestructura' },
+    calc(`# Diseño estructural
+phif1 = 0.90 // Flexión (5.5.4.2)
+phiv = 0.90 // Cortante
+## Pantalla — sección en la unión con la zapata
+hs = hp // Altura de la pantalla
+EHs = 0.5*Ka*gammas*hs^2*1 m // Empuje sobre la pantalla
+LSs = Ka*gammas*heq*hs*1 m
+Mus = max(1.50*EHs*hs/3 + 1.75*LSs*hs/2 + 1.75*PBR*(hs + 1.80 m), EHs*hs/3 + 0.5*Ka*gammas*hs^2*(KAE/Ka - 1)*1 m*0.6*hs + kh*(W2*(hp - hb)/2 + W3*(hp - hb/2)) + EQs*(hp - hb) + gEQ*(LSs*hs/2 + PBR*(hs + 1.80 m))) -> tonf*m // Máx. (Resistencia I; Evento Extremo I)
+Vus = max(1.50*EHs + 1.75*LSs + 1.75*PBR, EHs + 0.5*Ka*gammas*hs^2*(KAE/Ka - 1)*1 m + kh*(W2 + W3) + EQs + gEQ*(LSs + PBR)) -> tonf
+barP = 8 // Varilla vertical de la pantalla (cara del relleno) [6 : 3/4"|8 : 1"|9 : 1 1/8"]
+dps = t2 - 7.5 cm - db(barP)/2 // Peralte efectivo (recubrimiento 75 mm, Tabla 5.10.1-1)
+Asps = 0.85*fc*100 cm/fy*(dps - sqrt(dps^2 - 2*Mus/(0.85*phif1*fc*100 cm))) // Acero requerido por metro
+sps = rounddown(min(Ab(barP)*100 cm/Asps, 45 cm), 2.5 cm) // Espaciamiento
+Asp = Ab(barP)*100 cm/sps
+phiMp = phif1*Asp*fy*(dps - Asp*fy/(2*0.85*fc*100 cm)) -> tonf*m
+check Mus <= phiMp // Flexión en la base de la pantalla
+Mcrp = 1.6*0.67*frLRFD(fc)*100 cm*t2^2/6 -> tonf*m // γ3·γ1·fr·S (5.6.3.3)
+check phiMp >= min(Mcrp, 1.33*Mus) // Acero mínimo
+Vcp = 0.083*2*sqrtMPa(fc)*100 cm*0.9*dps -> tonf // Vc con β = 2 (5.7.3.3), dv = 0.9d
+check Vus <= phiv*Vcp // Cortante sin estribos
+## Punta (Resistencia Ib)
+qmaxb = Vb/(B*1 m)*(1 + 6*abs(eb)/B) // Presión máxima, distribución lineal (diseño estructural)
+Mut = (qmaxb*Lp^2/2*1 m - 0.90*gammac*hz*Lp^2/2*1 m) -> tonf*m // Momento en la cara de la pantalla
+dz = hz - 7.5 cm - db(barP)/2 // Peralte efectivo de la zapata
+Aspt = 0.85*fc*100 cm/fy*(dz - sqrt(dz^2 - 2*Mut/(0.85*phif1*fc*100 cm)))
+spt = rounddown(min(Ab(barP)*100 cm/Aspt, 45 cm), 2.5 cm)
+phiMt = phif1*Ab(barP)*100 cm/spt*fy*(dz - Ab(barP)*100 cm/spt*fy/(2*0.85*fc*100 cm)) -> tonf*m
+check Mut <= phiMt // Flexión en la punta
+Vut = (qmaxb - 0.90*gammac*hz)*(Lp - dz)*1 m -> tonf // Cortante a dv de la cara
+check Vut <= phiv*0.083*2*sqrtMPa(fc)*100 cm*0.9*dz // Cortante en la punta
+## Talón (Resistencia Ib, sin reacción del suelo: conservador)
+Muh = (1.35*gammas*hp + 1.25*gammac*hz + 1.75*gammas*heq)*Lt^2/2*1 m -> tonf*m // Momento en la cara posterior de la pantalla
+Asph = 0.85*fc*100 cm/fy*(dz - sqrt(dz^2 - 2*Muh/(0.85*phif1*fc*100 cm)))
+sph = rounddown(min(Ab(barP)*100 cm/Asph, 45 cm), 2.5 cm)
+phiMh = phif1*Ab(barP)*100 cm/sph*fy*(dz - Ab(barP)*100 cm/sph*fy/(2*0.85*fc*100 cm)) -> tonf*m
+check Muh <= phiMh // Flexión en el talón
+Vuh = (1.35*gammas*hp + 1.25*gammac*hz + 1.75*gammas*heq)*(Lt - dz)*1 m -> tonf
+check Vuh <= phiv*0.083*2*sqrtMPa(fc)*100 cm*0.9*dz // Cortante en el talón
+"Refuerzo: pantalla #{barP} @ {sps} (cara del relleno); punta #{barP} @ {spt} (inferior); talón #{barP} @ {sph} (superior). Refuerzo de temperatura y contracción en ambas caras según 5.10.6.`),
+    summary(),
+  ],
+};
+
+// =====================================================================
+//  5) PILAR (PÓRTICO DE DOS COLUMNAS) CON SISMO AASHTO / MTC
+// =====================================================================
+const pilar = {
+  id: 'br-pilar', pais: 'PE', cat: CAT, icon: 'column', settings: {},
+  name: 'Pilar de puente con sismo (pórtico de dos columnas)',
+  normas: NORMAS_PE + ' · AASHTO Guide Specifications for LRFD Seismic Bridge Design (referencial)',
+  desc: 'Pilar intermedio de puente continuo 2 × 25 m: masa sísmica, rigidez y periodo en ambas direcciones, espectro AASHTO/MTC (Fpga, Fa, Fv), R (Tabla 3.10.7.1-1), combinación 100 %–30 %, diagrama P–M de las columnas, cortante y confinamiento.',
+  titulo: 'Diseño sísmico de pilar de dos columnas — AASHTO LRFD 3.10 / MTC 2018',
+  blocks: [
+    text(`# Generalidades
+## Descripción
+Pilar central de un puente continuo de dos tramos de 25 m, formado por **dos columnas** de concreto armado de 1.20 × 1.20 m y 8.0 m de altura libre, empotradas en la cimentación y unidas por una viga cabezal. La superestructura se apoya en el pilar con apoyos fijos (transmite la fuerza sísmica longitudinal) y en los estribos con apoyos móviles.
+
+## Normas y referencias
+- AASHTO LRFD 9.ª ed., 3.10 (sismo: 3.10.3 factores de sitio, 3.10.4 espectro, 3.10.6 zonas, 3.10.7 factor $R$, 3.10.8 combinación de efectos, 3.10.9 fuerzas de diseño), 4.7.4.3 (método de carga uniforme), 5.10.11 (detallado sísmico de columnas).
+- Manual de Puentes MTC (2018), 2.4.3.11: espectro con Tr = 1000 años (PGA, Ss, S1 de los mapas de isoaceleraciones).
+- Priestley, Seible y Calvi, *Seismic Design and Retrofit of Bridges*; Rodríguez Serquén, cap. XI.
+
+## Modelo
+Método de un modo con carga uniforme (4.7.4.3.2c): superestructura rígida, masa concentrada en el cabezal, rigidez lateral de las columnas con inercia fisurada $I_e = 0.5\\,I_g$.`),
+    calc(`# Datos
+## Superestructura y pilar
+L1 = 25.0 m // Luz de cada tramo (puente continuo 2 × 25 m)
+wDCs = 10.20 tonf/m // Peso DC de la superestructura por metro
+wDWs = 0.81 tonf/m // Peso DW por metro
+NL = 2 // Carriles de diseño
+ncol = 2 // Número de columnas
+bcol = 1.20 m // Lado de la columna (sección cuadrada)
+Hc = 8.00 m // Altura libre de la columna (empotramiento a eje del cabezal)
+Wcab = 2.40 tonf/m^3*1.2 m*1.4 m*7.0 m -> tonf // Peso de la viga cabezal 1.20 × 1.40 × 7.00 m
+fc = 280 kgf/cm^2 // f'c de las columnas
+fy = 4200 kgf/cm^2 // Acero Gr. 60
+Ec = EcLRFD(fc) -> kgf/cm^2 // Módulo de elasticidad (5.4.2.4-1)
+## Peligro sísmico (mapas MTC, Tr = 1000 años)
+PGA = 0.40 // Aceleración pico del terreno en roca, g
+Ss = 0.95 // Aceleración espectral a 0.2 s en roca, g
+S1 = 0.38 // Aceleración espectral a 1.0 s en roca, g
+sitio = 4 // Clase de sitio (Tabla 3.10.3.1-1) [2 : B roca|3 : C suelo muy denso|4 : D suelo rígido|5 : E suelo blando]
+imp = 2 // Categoría operativa (3.10.5) [1 : Crítico|2 : Esencial|3 : Otros]
+# Espectro de diseño (3.10.4)
+Fpga = FpgaLRFD(PGA, sitio) // Tabla 3.10.3.2-1
+Fa = FaLRFD(Ss, sitio) // Tabla 3.10.3.2-2
+Fv = FvLRFD(S1, sitio) // Tabla 3.10.3.2-3
+As = Fpga*PGA // (3.10.4.2-2)
+SDS = Fa*Ss // (3.10.4.2-3)
+SD1 = Fv*S1 // (3.10.4.2-6)
+Ts = SD1/SDS*1 s // Periodo de esquina
+T0 = 0.2*Ts
+zona = zonaLRFD(SD1) // Zona sísmica (Tabla 3.10.6-1)
+R = si(imp == 1, 1.5, si(imp == 2, 3.5, 5.0)) // Pórtico de varias columnas (Tabla 3.10.7.1-1)
+# Masa, rigidez y periodo
+W = 1.25*(wDCs + wDWs)*L1 + Wcab + ncol*2.40 tonf/m^3*bcol^2*Hc/2 -> tonf // Reacción continua 1.25wL + cabezal + mitad de columnas
+Ig = bcol^4/12 -> m^4 // Inercia bruta de una columna
+Ie = 0.5*Ig // Inercia fisurada efectiva
+KL = ncol*3*Ec*Ie/Hc^3 -> tonf/m // Rigidez longitudinal: columnas en voladizo
+KT = ncol*12*Ec*Ie/Hc^3 -> tonf/m // Rigidez transversal: pórtico con cabezal rígido
+TL = 2*pi*sqrt(W/(9.81 m/s^2*KL)) -> s // Periodo longitudinal (4.7.4.3.2c)
+TT = 2*pi*sqrt(W/(9.81 m/s^2*KT)) -> s // Periodo transversal
+CsL = CsmLRFD(TL, As, SDS, SD1) // Coeficiente sísmico elástico longitudinal (3.10.4.2)
+CsT = CsmLRFD(TT, As, SDS, SD1) // Coeficiente sísmico elástico transversal
+FeL = CsL*W // Fuerza elástica longitudinal
+FeT = CsT*W // Fuerza elástica transversal
+DeltaL = FeL/KL -> cm // Desplazamiento elástico longitudinal
+"Espectro: $A_s$ = {As}, $S_{DS}$ = {SDS}, $S_{D1}$ = {SD1}; zona sísmica {zona}; periodos $T_L$ = {TL} y $T_T$ = {TT}.`),
+    { type: 'plot', expr: 'CsmLRFD(x, As, SDS, SD1); CsmLRFD(x, As, SDS, SD1)/R', var: 'x', desde: '0', hasta: '3', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Csm [g]', leyenda: true, nombres: 'Espectro elástico Csm (5 %); Csm/R (diseño de columnas)', titulo: 'Espectro de respuesta AASHTO LRFD 3.10.4 con factores de sitio (MTC 2018)' },
+    calc(`# Fuerzas de diseño en las columnas
+## Momentos sísmicos reducidos (3.10.7.1)
+MLc = FeL/R/ncol*Hc -> tonf*m // Longitudinal: voladizo, momento en la base
+MTc = FeT/R/ncol*Hc/2 -> tonf*m // Transversal: doble curvatura
+M1 = sqrt(MLc^2 + (0.3*MTc)^2) // 100 % L + 30 % T (3.10.8)
+M2 = sqrt((0.3*MLc)^2 + MTc^2) // 30 % L + 100 % T
+MEQ = max(M1, M2) -> tonf*m // Momento sísmico resultante de diseño
+## Cargas axiales por columna
+PD = (1.25*wDCs*L1 + Wcab)/ncol + 2.40 tonf/m^3*bcol^2*Hc -> tonf // Permanente DC
+PW = 1.25*wDWs*L1/ncol // DW
+PLL = NL*mpLRFD(NL)*(VtruckHL93(2*L1)*1.33 + 1.25*0.952 tonf/m*L1)/ncol -> tonf // LL+IM aproximada (reacción del apoyo central)
+PEQe = MTc*2/(7.0 m - bcol)*1.0 // Variación axial por volteo transversal del pórtico (aprox.)
+## Combinaciones
+Pu1 = 1.25*PD + 1.50*PW + 1.75*PLL // Resistencia I
+Mu1 = 1.75*BRLRFD(2*L1, NL)/ncol*(Hc + 2.5 m) -> tonf*m // Resistencia I: frenado a 1.80 m sobre la rasante
+Pu2 = PD + PW + 0.5*PLL + PEQe // Evento Extremo I (máx. compresión), γEQ = 0.5
+Pu3 = 0.9*PD - PEQe // Evento Extremo I (mín. compresión)
+"Se verifican las columnas con el diagrama de interacción; los factores $\\phi$ de la NTE E.060 (0.70 en compresión) son conservadores frente a AASHTO (0.75 en Resistencia, 1.00 en Evento Extremo, 1.3.2.1).`),
+    { type: 'pm', b: 'bcol', h: 'bcol', fc: 'fc', fy: 'fy', dp: '7.5', nx: '8', ny: '6', barra: '10', demandas: 'Pu1, Mu1 // Resistencia I\nPu2, MEQ // Evento Extremo I (Pmáx)\nPu3, MEQ // Evento Extremo I (Pmín)', titulo: 'Diagrama de interacción de la columna 1.20 × 1.20 m (28 #10)' },
+    calc(`# Detallado sísmico de las columnas (5.10.11.4)
+check rhog >= 0.01 and rhog <= 0.04 // Cuantía longitudinal 1 % – 4 % (5.10.11.4.1a)
+## Cortante (3.10.9.4.3 y 5.10.11.4.1c)
+VuL = FeL/ncol // Cortante con la fuerza elástica no reducida (R = 1), cota superior de la rótula plástica
+Ag = bcol^2
+Vc = si(Pu3 > 0.10*fc*Ag, 0.083*2*sqrtMPa(fc)*bcol*0.9*(bcol - 7.5 cm), 0 tonf) -> tonf // Vc en zona de rótula (Vc = 0 si Pu < 0.10 f'c Ag)
+est = 5 // Estribo / gancho [4 : 1/2"|5 : 5/8"]
+nr = 5 // Ramas de estribo en cada dirección (estribo perimetral + ganchos)
+se = 10 cm // Espaciamiento en la zona de rótula plástica
+dvc = 0.9*(bcol - 7.5 cm) // Peralte efectivo de corte
+Vs = nr*Ab(est)*fy*dvc/se -> tonf
+check VuL <= 0.90*min(Vc + Vs, 0.25*fc*bcol*dvc) // Resistencia a cortante
+## Confinamiento (5.10.11.4.1d)
+hcn = bcol - 2*5 cm // Núcleo confinado
+Acn = hcn^2 // Área del núcleo
+Ash1 = 0.30*se*hcn*fc/fy*(Ag/Acn - 1) // (5.10.11.4.1d-3)
+Ash2 = 0.12*se*hcn*fc/fy // (5.10.11.4.1d-4)
+check nr*Ab(est) >= max(Ash1, Ash2) // Refuerzo transversal de confinamiento
+check se <= min(0.25*bcol, 6*db(10), 15 cm) // Espaciamiento máximo en la rótula (5.10.11.4.1e)
+Lrot = max(bcol, Hc/6, 45 cm) // Longitud de la zona de rótula plástica (5.10.11.4.1e)
+"Estribos #{est} con {nr} ramas por dirección @ {se} en {Lrot} desde la base y bajo el cabezal; en el resto, el espaciamiento puede duplicarse sin exceder 30 cm.
+# Longitud de apoyo en los estribos (4.7.4.4)
+Nmin = NpctLRFD(zona, As)*NapLRFD(2*L1, Hc, 0 deg) // N por zona sísmica
+"La cajuela de los estribos debe tener al menos {Nmin} de longitud de apoyo.`),
+    summary(),
+  ],
+};
+
+// =====================================================================
+//  6) APOYO ELASTOMÉRICO REFORZADO CON ACERO (NEOPRENO ZUNCHADO)
+// =====================================================================
+const neopreno = {
+  id: 'br-neopreno', pais: 'PE', cat: CAT, icon: 'bridge', settings: { sys: 'si' },
+  name: 'Apoyo elastomérico reforzado (neopreno zunchado) — Métodos A y B',
+  normas: 'AASHTO LRFD 9.ª ed. Secc. 14 (14.4, 14.6, 14.7.5 Método B, 14.7.6 Método A) · Manual de Puentes MTC 2018 · AASHTO M 251',
+  desc: 'Apoyo de 300 × 450 mm con 4 capas internas de 12 mm: factor de forma, compresión (Método A), deformaciones por corte (Método B: axial, rotación y corte, estáticas y cíclicas), estabilidad, zunchos de acero, deflexión y anclaje.',
+  titulo: 'Diseño de apoyo elastomérico reforzado con acero — AASHTO LRFD Sección 14',
+  blocks: [
+    text(`# Generalidades
+Apoyo de **neopreno zunchado** (elastómero con láminas de acero vulcanizadas) bajo una viga interior del puente viga-losa de 20 m. El apoyo permite la rotación de la viga y los desplazamientos longitudinales por temperatura, contracción y flujo plástico mediante deformación por corte del elastómero.
+
+## Normas y referencias
+- AASHTO LRFD Bridge Design Specifications, 9.ª ed., Secc. 14: 14.4.2.1 (rotaciones de diseño, +0.005 rad de tolerancia), 14.7.5 (**Método B**), 14.7.6 (**Método A**), 14.8.3 (anclaje). Especificación de materiales AASHTO M 251.
+- Manual de Puentes MTC (2018) y Rodríguez Serquén, *Puentes con AASHTO-LRFD*, cap. XII (dispositivos de apoyo).
+- NCHRP Report 596, *Rotation Limits for Elastomeric Bearings* (base de las ecuaciones del Método B).
+
+## Criterio
+Estado límite de **Servicio** (γ = 1.0). Las cargas estáticas (st) son DC + DW; las cíclicas (cy) corresponden a la carga viva. Para las verificaciones de compresión se toma el módulo de corte mínimo del rango de dureza y, para las fuerzas transmitidas, el máximo (14.7.5.2).`),
+    calc(`# Datos
+## Cargas de servicio por apoyo (viga interior, L = 20 m)
+PDC = 255 kN // Reacción por carga muerta DC
+PDW = 23 kN // Reacción por superficie de rodadura DW
+PLL = 342 kN // Reacción por carga viva LL+IM (con factor de distribución de cortante)
+thst = 0.0030 // Rotación estática por cargas permanentes y contraflecha (rad)
+thcy = 0.0020 // Rotación por carga viva (rad)
+Lexp = 10.0 m // Longitud de dilatación (desde el punto fijo, mitad de la luz)
+DT = 35 // Rango de temperatura de diseño (°C, Método A / MTC costa)
+alfa = 10.8e-6 // Coeficiente de dilatación del concreto (1/°C, 5.4.2.2)
+## Apoyo
+Lb = 300 mm // Dimensión paralela al eje del puente
+Wb = 450 mm // Dimensión transversal
+hri = 12 mm // Espesor de cada capa interior de elastómero
+nint = 4 // Número de capas interiores
+hrc = 6 mm // Espesor de las capas exteriores (≤ 0.7 hri)
+hs = 3 mm // Espesor de los zunchos de acero
+Fys = 250 MPa // Fluencia de los zunchos (ASTM A36)
+dur = 60 // Dureza Shore A [50 : 50|60 : 60|70 : 70]
+Gmin = si(dur == 50, 0.66 MPa, si(dur == 60, 0.90 MPa, 1.38 MPa)) // Módulo de corte mínimo (14.7.6.2)
+Gmax = si(dur == 50, 0.90 MPa, si(dur == 60, 1.38 MPa, 2.07 MPa)) // Módulo de corte máximo
+# Propiedades del apoyo
+check hrc <= 0.7*hri // Capas exteriores ≤ 70 % de las interiores (14.7.5.1)
+hrt = nint*hri + 2*hrc // Espesor total de elastómero
+Hbt = hrt + (nint + 1)*hs // Altura total del apoyo
+Ab = Lb*Wb -> mm^2 // Área en planta
+Si = SbearLRFD(Lb, Wb, hri) // Factor de forma de la capa interior (14.7.5.1-1)
+n = nint + 0.5*2 // Número de capas para rotación: interiores + mitad de cada exterior gruesa (14.7.5.3.3)
+## Esfuerzos de compresión
+sst = (PDC + PDW)/Ab -> MPa // Esfuerzo estático
+scy = PLL/Ab -> MPa // Esfuerzo cíclico
+ss = sst + scy // Esfuerzo total de servicio
+## Desplazamiento de diseño por corte
+Ds = 1.2*alfa*DT*Lexp + 0.0002*Lexp -> mm // TU con γ = 1.2 + contracción y flujo plástico (0.0002)
+# Método A (14.7.6)
+check Si^2/nint < 22 // Límite de aplicabilidad S²/n < 22, apoyo rectangular (14.7.6.1)
+check ss <= 1.25*Gmin*Si // Compresión σs ≤ 1.25 G S (14.7.6.3.2-7)
+check ss <= 8.6 MPa // σs ≤ 1.25 ksi (8.6 MPa)
+check hrt >= 2*Ds // Deformación por corte hrt ≥ 2Δs (14.7.6.3.4-1)
+check Hbt <= min(Lb, Wb)/3 // Estabilidad: espesor total ≤ L/3 y W/3 (14.7.6.3.6)
+# Método B (14.7.5)
+Da = 1.4 // Coeficiente para apoyo rectangular (14.7.5.3.3)
+Dr = 0.5
+thsd = thst + 0.005 // Rotación estática + tolerancia de construcción (14.4.2.1)
+gast = Da*sst/(Gmin*Si) // Deformación por carga axial estática (14.7.5.3.3-3)
+gacy = Da*scy/(Gmin*Si) // Deformación por carga axial cíclica
+grst = Dr*(Lb/hri)^2*thsd/n // Deformación por rotación estática (14.7.5.3.3-6)
+grcy = Dr*(Lb/hri)^2*thcy/n // Deformación por rotación cíclica
+gsst = Ds/hrt // Deformación por corte estática (14.7.5.3.3-9)
+gscy = 0 // Sin desplazamientos cíclicos significativos (frenado absorbido por el apoyo fijo)
+check gast <= 3.0 // γa,st ≤ 3.0 (14.7.5.3.3-1)
+check gast + grst + gsst + 1.75*(gacy + grcy + gscy) <= 5.0 // Suma de deformaciones ≤ 5.0 (14.7.5.3.3-2)
+check gsst <= 0.5 // γs ≤ 0.5 (14.7.5.3.3-10)
+## Estabilidad (14.7.5.3.4)
+Ast = 1.92*(hrt/Lb)/sqrt(1 + 2*Lb/Wb) // A (14.7.5.3.4-2)
+Bst = 2.67/((Si + 2)*(1 + Lb/(4*Wb))) // B (14.7.5.3.4-3)
+scr = si(2*Ast <= Bst, 100 MPa, Gmin*Si/(2*Ast - Bst)) // Estable si 2A ≤ B; si no, σs ≤ GS/(2A − B) (tablero libre de trasladarse)
+check ss <= scr // Estabilidad del apoyo (14.7.5.3.4-1 y -4)
+## Refuerzo de acero (14.7.5.3.5)
+check hs >= 3*hri*ss/Fys // Servicio (14.7.5.3.5-1)
+check hs >= 2*hri*scy/(165 MPa) // Fatiga, ΔFTH = 165 MPa (24 ksi, categoría A) (14.7.5.3.5-2)
+## Deflexión instantánea por carga viva (14.7.5.3.6, C14.7.5.3.6)
+epsLL = scy/(6*Gmin*Si^2) // Deformación axial aproximada de la capa
+dLL = epsLL*(nint*hri + 2*hrc) -> mm // Deflexión por carga viva
+check epsLL <= 0.07 // Deflexión de cada capa ≤ 0.07 hri (práctica recomendada)
+# Fuerza horizontal y anclaje (14.6.3.1, 14.8.3.1)
+Hbu = Gmax*Ab*Ds/hrt -> kN // Fuerza de corte transmitida a la subestructura (G máx.)
+check Hbu <= 0.2*(PDC + PDW) // Sin deslizamiento: Hbu ≤ 0.2 P permanente (no requiere anclaje)
+"Apoyo adoptado: {Lb} × {Wb} con {nint} capas interiores de {hri}, capas exteriores de {hrc} y {nint + 1} zunchos de {hs}; altura total {Hbt}. Fuerza horizontal transmitida {Hbu}.`),
+    summary(),
+  ],
+};
+
+// =====================================================================
+//  7) ANÁLISIS SÍSMICO AASHTO LRFD / MTC 2018
+// =====================================================================
+const sismo = {
+  id: 'br-sismo', pais: 'PE', cat: CAT, icon: 'spectrum', settings: {},
+  name: 'Análisis sísmico de puentes AASHTO LRFD / MTC (espectro, zona y N)',
+  normas: 'AASHTO LRFD 9.ª ed. Art. 3.10, 4.7.4 · Manual de Puentes MTC (2018) 2.4.3.11',
+  desc: 'Factores de sitio Fpga, Fa, Fv con interpolación, espectro de diseño Csm (gráfico y tabla), zona sísmica, método de análisis mínimo, factores R, método de carga uniforme para un puente continuo y longitud mínima de apoyo N.',
+  titulo: 'Análisis sísmico de puente — AASHTO LRFD 3.10 / Manual de Puentes MTC 2018',
+  blocks: [
+    text(`# Generalidades
+El Manual de Puentes del MTC (2018) adopta el procedimiento de AASHTO LRFD: los parámetros de peligro **PGA**, **S_s** (0.2 s) y **S_1** (1.0 s) en roca (clase B) se obtienen de los mapas de isoaceleraciones para un periodo de retorno de **1000 años** (7 % de probabilidad de excedencia en 75 años) y se corrigen por la clase de sitio.
+
+## Clasificación del sitio (Tabla 3.10.3.1-1)
+| Clase | Descripción | $\\bar v_s$ (m/s) |
+|---|---|---|
+| A | Roca dura | > 1500 |
+| B | Roca | 760 – 1500 |
+| C | Suelo muy denso y roca blanda | 360 – 760 |
+| D | Suelo rígido | 180 – 360 |
+| E | Suelo blando | < 180 |
+| F | Requiere evaluación específica | — |
+
+## Método
+1. Factores de sitio (Tablas 3.10.3.2-1 a -3) con interpolación lineal.
+2. Espectro de respuesta elástico (5 % de amortiguamiento, 3.10.4.2): $C_{sm} = A_s + (S_{DS} - A_s)\\,T/T_0$ para $T < T_0$; $C_{sm} = S_{DS}$ para $T_0 \\le T \\le T_S$; $C_{sm} = S_{D1}/T$ para $T > T_S$.
+3. Zona sísmica (Tabla 3.10.6-1), método mínimo de análisis (Tabla 4.7.4.3.1-1) y factores de modificación de respuesta $R$ (Tabla 3.10.7.1-1).
+4. **Método de carga uniforme** (4.7.4.3.2c) en dirección longitudinal y longitud mínima de apoyo $N$ (4.7.4.4).`),
+    calc(`# Peligro sísmico y espectro
+PGA = 0.45 // Aceleración pico del terreno en roca (g), mapa MTC Tr = 1000 años
+Ss = 1.05 // Aceleración espectral a 0.2 s en roca (g)
+S1 = 0.42 // Aceleración espectral a 1.0 s en roca (g)
+sitio = 4 // Clase de sitio [1 : A roca dura|2 : B roca|3 : C suelo muy denso|4 : D suelo rígido|5 : E suelo blando]
+imp = 2 // Categoría operativa del puente (3.10.5) [1 : Crítico|2 : Esencial|3 : Otros]
+Fpga = FpgaLRFD(PGA, sitio) // Factor de sitio para PGA (Tabla 3.10.3.2-1)
+Fa = FaLRFD(Ss, sitio) // Factor de sitio de periodo corto (Tabla 3.10.3.2-2)
+Fv = FvLRFD(S1, sitio) // Factor de sitio de periodo largo (Tabla 3.10.3.2-3)
+As = Fpga*PGA // Coeficiente de aceleración efectiva (3.10.4.2-2)
+SDS = Fa*Ss // Aceleración espectral de periodo corto (3.10.4.2-3)
+SD1 = Fv*S1 // Aceleración espectral a 1.0 s (3.10.4.2-6)
+Ts = SD1/SDS*1 s // Periodo de esquina TS
+T0 = 0.2*Ts // Periodo T0
+zona = zonaLRFD(SD1) // Zona sísmica: 1 (SD1 ≤ 0.15), 2 (≤ 0.30), 3 (≤ 0.50), 4 (> 0.50) (Tabla 3.10.6-1)
+Tv = [0, 0.05, T0/(1 s), Ts/(1 s), 0.75, 1.0, 1.5, 2.0, 3.0, 4.0] // Periodos para la tabla (s)
+Cv = CsmLRFD(Tv, As, SDS, SD1) // Ordenadas espectrales (g)`),
+    { type: 'plot', expr: 'CsmLRFD(x, As, SDS, SD1)', var: 'x', desde: '0', hasta: '4', puntos: '400', xlabel: 'Periodo T [s]', ylabel: 'Csm [g]', titulo: 'Espectro de respuesta elástico de diseño (AASHTO LRFD 3.10.4, MTC 2018)' },
+    { type: 'table', columnas: 'Periodo T [s] = Tv\nCsm [g] = Cv', dec: '3', titulo: 'Ordenadas del espectro de diseño' },
+    text(`## Requisitos por zona sísmica
+- **Método mínimo de análisis** (Tabla 4.7.4.3.1-1): los puentes de un solo tramo no requieren análisis sísmico (4.7.4.1), pero sí la longitud mínima de apoyo y la fuerza de conexión mínima; en zona 1 no se requiere análisis; en zonas 2 a 4, puentes regulares: método **unimodal (SM/UL)**; irregulares: **multimodal (MM)**, y para puentes críticos en zonas 3–4, historia de tiempo o multimodal.
+- **Factores R** para subestructuras (Tabla 3.10.7.1-1) — crítico / esencial / otros: pilares tipo muro (dirección mayor) 1.5 / 1.5 / 2.0; pilotes verticales de concreto 1.5 / 2.0 / 3.0; columnas simples 1.5 / 2.0 / 3.0; pilotes de acero o compuestos 1.5 / 3.5 / 5.0; **pórticos de varias columnas 1.5 / 3.5 / 5.0**. Conexiones: superestructura–estribo 0.8; juntas de expansión 0.8; columnas–viga cabezal o superestructura 1.0; columnas–cimentación 1.0.
+- **Combinación direccional** (3.10.8): 100 % de una dirección + 30 % de la ortogonal.`),
+    calc(`# Método de carga uniforme — dirección longitudinal (4.7.4.3.2c)
+## Puente continuo de dos tramos
+Ltot = 50.0 m // Longitud total del puente (2 × 25 m)
+wsup = 11.0 tonf/m // Peso de la superestructura por metro (DC + DW)
+Wsub = 40 tonf // Peso participante de la subestructura (cabezal y mitad de columnas)
+Klong = 4600 tonf/m // Rigidez longitudinal total de los apoyos (pilar con apoyos fijos)
+po = 1 tonf/m // Carga uniforme de referencia
+vsmax = po*Ltot/Klong -> m // Desplazamiento bajo po (todas las secciones se desplazan igual)
+Kb = po*Ltot/vsmax -> tonf/m // Rigidez lateral del puente (4.7.4.3.2c-1)
+W = wsup*Ltot + Wsub // Peso total (4.7.4.3.2c-2)
+Tm = 2*pi*sqrt(W/(9.81 m/s^2*Kb)) -> s // Periodo fundamental (4.7.4.3.2c-3)
+Csm = CsmLRFD(Tm, As, SDS, SD1) // Coeficiente de respuesta elástico (3.10.4.2)
+pe = Csm*W/Ltot -> tonf/m // Carga sísmica uniforme equivalente (4.7.4.3.2c-4)
+Fe = pe*Ltot // Fuerza sísmica elástica total
+De = pe*Ltot/Kb -> cm // Desplazamiento elástico
+R = si(imp == 1, 1.5, si(imp == 2, 3.5, 5.0)) // Pórtico de varias columnas (Tabla 3.10.7.1-1)
+FR = Fe/R // Fuerza de diseño de la subestructura
+check zona >= 1 and zona <= 4 // Zona sísmica definida
+"Periodo $T_m$ = {Tm}: $C_{sm}$ = {Csm}; fuerza elástica {Fe} y de diseño {FR} con $R$ = {R}.
+# Fuerzas mínimas en conexiones (3.10.9)
+Fcon1 = si(As < 0.05, 0.15, 0.25)*W // Zona 1: 0.15 o 0.25 de la carga permanente tributaria (3.10.9.2)
+Fcon = si(zona == 1, Fcon1, Fe/0.8) // Zonas 2–4: fuerza elástica / R de conexión (0.8)
+# Longitud mínima de apoyo (4.7.4.4)
+Hpil = 8.0 m // Altura promedio de las columnas que soportan el tramo hasta la junta
+skew = 0 deg // Esviaje del apoyo [0 deg|15 deg|30 deg|45 deg]
+Nap = NapLRFD(Ltot, Hpil, skew) // N = (200 + 0.0017L + 0.0067H)(1 + 0.000125S²) mm (4.7.4.4-1)
+pctN = NpctLRFD(zona, As) // Porcentaje de N (Tabla 4.7.4.4-1)
+Nreq = pctN*Nap // Longitud de apoyo requerida en los estribos
+bseat = 0.60 m // Ancho de cajuela disponible
+check Nreq <= bseat // Longitud de apoyo suficiente`),
+    summary(),
+  ],
+};
+
+export default [vigaT, presf, acero, estribo, pilar, neopreno, sismo];

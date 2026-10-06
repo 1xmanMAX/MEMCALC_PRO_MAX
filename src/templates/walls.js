@@ -320,7 +320,7 @@ qas = qaSismoE050(qa)
 Ka = KaRankine(phis) // Rankine
 Kae = KaeMO(phis, 0 deg, kh, kv) // Mononobe–Okabe en el plano virtual (δ = β = 0)
 DKae = Kae - Ka`),
-    { type: 'retwall', tipo: 'voladizo', metodo: 'rankine', H: 'H', B: 'B', hz: 'hz', punta: 'Lp', t1: 'tp', t2: 'tp', ie: '0 m', bk: 'bk', hk: 'hk', xk: 'Lp', q: 'ws', gs: 'gammas', phi: 'phis', gc: 'gammac', gf: 'gammaf', phif: 'phif', mu: 'mu', Df: 'Df', fp: '1', kh: 'kh', kv: 'kv', qa: 'qa', qas: 'qas', fsv: '2.0', fsd: '1.5', fsvs: '1.5', fsds: '1.25', titulo: 'Muro con contrafuertes: sección típica entre contrafuertes, empujes y presiones' },
+    { type: 'retwall', tipo: 'voladizo', metodo: 'rankine', H: 'H', B: 'B', hz: 'hz', punta: 'Lp', t1: 'tp', t2: 'tp', ie: '0 m', bk: 'bk', hk: 'hk', xk: 'Lp', q: 'ws', gs: 'gammas', phi: 'phis', gc: 'gammac', gf: 'gammaf', phif: 'phif', mu: 'mu', Df: 'Df', fp: '1', kh: 'kh', kv: 'kv', qa: 'qa', qas: 'qas', fsv: '2.0', fsd: '1.5', fsvs: '1.5', fsds: '1.25', contrafuerte: true, titulo: 'Muro con contrafuertes: sección típica (contrafuerte en línea discontinua), empujes y presiones' },
     calc(`# Pantalla: losa continua apoyada en los contrafuertes
 ## Presión de diseño en la franja inferior (z = hp)
 pus = 1.7*Ka*(gammas*hp + ws) // Presión última estática (E.060 9.2.3)
@@ -501,4 +501,312 @@ check Kpe <= KpR // El sismo reduce la resistencia pasiva`),
   ],
 };
 
-export default [voladizo, gravedad, contrafuertes, sotano, comparativo];
+// =====================================================================
+//  5) MURO DE GAVIONES
+// =====================================================================
+const gaviones = {
+  id: 'wa-gaviones', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
+  name: 'Muro de gaviones',
+  normas: 'RNE — NTE E.030, E.050 (39.13); Maccaferri; Das; AASHTO LRFD 11.6',
+  desc: 'Muro de gravedad de gaviones escalonados: peso con porosidad, estabilidad estática y sísmica por hiladas (vectores), verificación de la junta entre hiladas (φ* y σ admisible de Maccaferri) y presiones en la base.',
+  titulo: 'Diseño de muro de gaviones H = 4.00 m',
+  blocks: [
+    text(`# Generalidades
+Muro de gravedad formado por **gaviones caja** de malla hexagonal de doble torsión (alambre galvanizado/PVC) rellenos de piedra, en 4 hiladas de 1.00 m con escalones hacia el relleno. Es una estructura flexible y permeable: tolera asentamientos diferenciales y no genera presión de agua si se coloca un geotextil filtrante entre el relleno y los gaviones.
+
+**Referencias:** RNE NTE E.050 39.13 (FS 1.50 / 1.25) y Art. 21; E.030 (Z, S); Maccaferri do Brasil, *Estructuras flexibles en gaviones en obras de contención* (peso específico con porosidad, ángulo de fricción entre gaviones $\\phi^* = 25\\gamma_g - 10$ y esfuerzo normal admisible $\\sigma_{adm} = 50\\gamma_g - 30$, con $\\gamma_g$ en t/m³ y $\\sigma$ en t/m²); B. M. Das cap. 8. El empuje se calcula con Rankine en el plano vertical que pasa por el talón; el suelo sobre los escalones forma parte del muro.
+
+> En zonas sísmicas 3 y 4 la inercia del propio muro suele gobernar el deslizamiento: se recomienda ensanchar la base o inclinar el muro 6° hacia el relleno.`),
+    calc(`# Datos
+h = 1.00 m // Altura de cada hilada (gavión caja de 1.0 m)
+b1 = 3.00 m // Ancho de la hilada 1 (base)
+b2 = 2.50 m // Ancho de la hilada 2
+b3 = 2.00 m // Ancho de la hilada 3
+b4 = 1.50 m // Ancho de la hilada 4 (corona)
+bv = [b1, b2, b3, b4] // Anchos de abajo hacia arriba (paramento vertical, escalones hacia el relleno)
+nh = 4 // Número de hiladas
+H = nh*h // Altura total
+B = b1 // Ancho de la base
+## Materiales y suelos
+gammap = 2.60 tonf/m^3 // Peso específico de la piedra (andesita/granito)
+np = 0.30 // Porosidad del relleno de piedra (Maccaferri: 0.30–0.40)
+gammag = gammap*(1 - np) // Peso específico del gavión
+gammas = 1.80 tonf/m^3 // Peso unitario del relleno
+phis = 30 deg // Fricción del relleno
+ws = 1.00 tonf/m^2 // Sobrecarga (E.020)
+mu = 0.62 // Coeficiente de fricción gavión–suelo de fundación tan φf (EMS)
+qa = 2.00 kgf/cm^2 // Presión admisible
+${SISMO.replace('zona = 4 //', 'zona = 2 //')}
+qas = qaSismoE050(qa)
+# Empujes
+Ka = KaRankine(phis) // Rankine (β = 0)
+Ea = 0.5*Ka*gammas*H^2 -> tonf/m // Empuje del relleno, a H/3
+Eq = Ka*ws*H -> tonf/m // Empuje de la sobrecarga, a H/2
+Kae = KaeMO(phis, 0 deg, kh, kv) // Mononobe–Okabe en el plano vertical (δ = β = 0)
+DEae = 0.5*(Kae - Ka)*gammas*H^2*(1 - kv) -> tonf/m // Incremento dinámico, a 0.6H (Seed–Whitman)
+Eqe = Kae*0.5*ws*H -> tonf/m // Sobrecarga con sismo (50 %)
+# Pesos y momentos estabilizantes (respecto a la arista exterior de la base)
+kk = 1:4 // Índice de la hilada
+yv = h*(kk - 1/2) // Altura del centroide de cada hilada
+Wg = gammag*h*bv // Peso de los gaviones por hilada
+Ws = gammas*h*(B - bv) // Peso del suelo sobre los escalones
+Mg = Wg .* bv/2 // Momento de los gaviones (paramento vertical en x = 0)
+Ms = Ws .* (B + bv)/2 // Momento del suelo sobre los escalones
+SV = sum(Wg) + sum(Ws) -> tonf/m // Fuerza vertical total
+Mr = sum(Mg) + sum(Ms) -> tonf*m/m // Momento estabilizante`),
+    { type: 'table', columnas: 'Hilada = kk\nAncho [m] = bv\nW gavión [t/m] = Wg\nW suelo [t/m] = Ws\ny [m] = yv\nM gavión [t·m/m] = Mg\nM suelo [t·m/m] = Ms', total: true, titulo: 'Pesos y momentos estabilizantes por hilada' },
+    calc(`# Estabilidad estática
+Mo = Ea*H/3 + Eq*H/2 -> tonf*m/m // Momento de volteo
+FSv = Mr/Mo // Volteo
+check FSv >= FSminE050(0) // Volteo, estático (E.050 39.13.6)
+FSd = mu*SV/(Ea + Eq) // Deslizamiento (sin empuje pasivo)
+check FSd >= FSminE050(0) // Deslizamiento, estático (E.050 39.13.6)
+xr = (Mr - Mo)/SV -> m // Posición de la resultante (sobrecarga sobre el muro despreciada)
+e = B/2 - xr -> m // Excentricidad
+check abs(e) <= B/6 // Resultante en el tercio central
+qmax = SV/B*(1 + 6*abs(e)/B) -> tonf/m^2
+qmin = SV/B*(1 - 6*abs(e)/B) -> tonf/m^2
+check qmax <= qa // Presión máxima (E.050 Art. 22)
+# Estabilidad sísmica
+Fi = kh*SV -> tonf/m // Inercia del muro y del suelo sobre los escalones
+Mi = kh*(sum(Wg .* yv) + sum(Ws .* yv)) -> tonf*m/m
+Mos = Ea*H/3 + DEae*0.6*H + Eqe*H/2 + Mi -> tonf*m/m // Momento de volteo sísmico
+FSvs = Mr/Mos
+check FSvs >= FSminE050(1) // Volteo, sismo (E.050 39.13.6)
+FSds = mu*SV/(Ea + DEae + Eqe + Fi)
+check FSds >= FSminE050(1) // Deslizamiento, sismo (E.050 39.13.6)
+es = B/2 - (Mr - Mos)/SV -> m
+check abs(es) <= B/3 // Excentricidad sísmica (AASHTO 11.6.5.1)
+qmaxs = si(abs(es) <= B/6, SV/B*(1 + 6*abs(es)/B), 2*SV/(3*(B/2 - abs(es)))) -> tonf/m^2
+check qmaxs <= qas // Presión máxima con sismo (E.050 Art. 21)`),
+    { type: 'gabionwall', anchos: 'bv', h: 'h', Ka: 'Ka', gs: 'gammas', q: 'ws', qmax: 'qmax', qmin: 'qmin', e: 'e' },
+    calc(`# Junta entre las hiladas 1 y 2 (estabilidad interna)
+"Se verifica el bloque formado por las hiladas 2 a 4 sobre la hilada 1, con el empuje en el plano vertical que pasa por el talón de la hilada 2.
+bu = [b2, b3, b4] // Anchos sobre la junta
+Hu = 3*h // Altura sobre la junta
+yu = h*([1, 2, 3] - 1/2) // Centroides sobre la junta
+Wu = sum(gammag*h*bu) + sum(gammas*h*(b2 - bu)) -> tonf/m // Peso sobre la junta
+Mru = sum(gammag*h*bu .* bu/2) + sum(gammas*h*(b2 - bu) .* (b2 + bu)/2) -> tonf*m/m
+Eu = 0.5*Ka*gammas*Hu^2 + Ka*ws*Hu -> tonf/m
+Mou = 0.5*Ka*gammas*Hu^2*Hu/3 + Ka*ws*Hu^2/2 -> tonf*m/m
+phig = (25*gammag/(1 tonf/m^3) - 10)*1 deg // Ángulo de fricción entre gaviones φ* (Maccaferri)
+FSdu = Wu*tan(phig)/Eu // Deslizamiento en la junta
+check FSdu >= FSminE050(0) // Deslizamiento entre hiladas
+FSdus = Wu*tan(phig)/(Eu + 0.5*(Kae - Ka)*gammas*Hu^2 + kh*Wu) // Deslizamiento en la junta con sismo
+check FSdus >= FSminE050(1) // Deslizamiento entre hiladas, sismo
+eu = b2/2 - (Mru - Mou)/Wu -> m
+sigu = Wu/b2*(1 + 6*abs(eu)/b2) -> tonf/m^2 // Esfuerzo normal máximo en la junta
+sigadm = (50*gammag/(1 tonf/m^3) - 30)*1 tonf/m^2 // Esfuerzo normal admisible en gaviones (Maccaferri)
+check sigu <= sigadm // Compresión en la junta`),
+    text(`> **Detalles:** malla 10×12 cm, alambre Ø 2.7 mm galvanizado (Zn/Al) con recubrimiento de PVC en ambientes agresivos; piedra de 4" a 8" (≥ 1.5 veces la abertura de la malla); tirantes cada 0.33 m de altura en el paramento; geotextil no tejido entre el relleno y los gaviones; base sobre material granular compactado de 0.20 m.`),
+    summary(),
+  ],
+};
+
+// =====================================================================
+//  6) MURO DE SUELO REFORZADO (MSE) — AASHTO LRFD 11.10
+// =====================================================================
+const mse = {
+  id: 'wa-mse', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
+  name: 'Muro de suelo reforzado con geomallas (MSE, AASHTO 11.10)',
+  normas: 'AASHTO LRFD 11.10 (MSE), 3.4.1, 3.11; FHWA-NHI-10-024; RNE E.030, E.050',
+  desc: 'Estabilidad externa por LRFD (deslizamiento, excentricidad, capacidad portante con Meyerhof y caso sísmico) y estabilidad interna capa por capa: rotura (Tal con factores de reducción) y arranque (F*, α, Le) con vectores.',
+  titulo: 'Muro de suelo mecánicamente estabilizado con geomallas H = 6.00 m',
+  blocks: [
+    text(`# Generalidades
+Muro de **suelo mecánicamente estabilizado** (MSE) con refuerzo extensible de **geomalla** de HDPE/PET y paramento de bloques prefabricados. Se diseña por **LRFD** según AASHTO LRFD Bridge Design Specifications, art. 11.10 (y FHWA-NHI-10-024):
+- **Externa** (11.10.5): el macizo reforzado de ancho $L$ se trata como un muro de gravedad sometido al empuje del relleno retenido: deslizamiento, excentricidad y capacidad portante (presión uniforme de Meyerhof sobre $L-2e$).
+- **Interna** (11.10.6): método simplificado; esfuerzo horizontal $\\sigma_H = K_r\\,\\sigma_v$ con $K_r/K_a = 1$ para geosintéticos; tracción máxima $T_{max} = \\sigma_H S_v$; **rotura** con $T_{al} = T_{ult}/RF$ y **arranque** con $P_r = F^*\\alpha\\,\\sigma_v\\,C\\,L_e$ en la zona resistente, más allá de la superficie de Rankine $45° + \\phi_r/2$.
+- Factores de carga (Tabla 3.4.1-1/2): $\\gamma_{EV} = 1.35$ (máx.) / $1.00$ (mín.), $\\gamma_{EH} = 1.50$, $\\gamma_{LS} = 1.75$; resistencia (Tabla 11.5.7-1): deslizamiento $\\phi_\\tau = 1.0$, capacidad portante $\\phi_b = 0.65$, rotura de geosintético $\\phi = 0.90$, arranque $\\phi = 0.90$.`),
+    calc(`# Datos
+H = 6.00 m // Altura del muro
+L = 4.50 m // Longitud del refuerzo (≥ 0.7H y ≥ 2.4 m)
+Sv = 0.60 m // Separación vertical de las geomallas
+nr = 10 // Número de capas
+zr = Sv*(1:nr) - Sv/2 // Profundidad de cada capa bajo la corona
+## Suelos
+gammar = 2.00 tonf/m^3 // Relleno reforzado (granular seleccionado)
+phir = 34 deg // Fricción del relleno reforzado
+gammaf = 1.90 tonf/m^3 // Relleno retenido
+phif = 30 deg // Fricción del relleno retenido
+phib = 30 deg // Fricción del suelo de fundación
+qn = 60 tonf/m^2 // Capacidad portante nominal del suelo de fundación (EMS)
+ws = 1.20 tonf/m^2 // Sobrecarga viva de tránsito: heq = 0.60 m (AASHTO Tabla 3.11.6.4-2)
+## Geomalla
+Tult = 120 kN/m // Resistencia última a la tracción (ASTM D6637)
+RFID = 1.10 // Factor de daño de instalación
+RFCR = 2.60 // Factor de fluencia (creep), 75 años (HDPE)
+RFD = 1.10 // Factor de durabilidad
+alphar = alphaAASHTO(3) // Factor de escala α para geomallas (Tabla 11.10.6.3.2-1)
+Cr = 2 // Perímetro efectivo (refuerzo en forma de lámina)
+check L >= max(0.7*H, 2.4 m) // Longitud mínima del refuerzo (11.10.2.1)
+# Estabilidad externa (11.10.5)
+Kaf = KaRankine(phif) // Empuje del relleno retenido (δ = β = 0)
+F1 = 0.5*Kaf*gammaf*H^2 -> tonf/m // Empuje del suelo (EH), a H/3
+F2 = Kaf*ws*H -> tonf/m // Empuje de la sobrecarga (LS), a H/2
+V1 = gammar*H*L -> tonf/m // Peso del macizo reforzado (EV)
+## Deslizamiento (Resistencia I: EV mín. 1.00; EH 1.50; LS 1.75)
+mub = tan(min(phir, phif, phib)) // Fricción en la base: el menor de los ángulos (11.10.5.3)
+Rt = 1.0*mub*1.00*V1 -> tonf/m // φτ = 1.0
+Pdrv = 1.50*F1 + 1.75*F2 -> tonf/m
+check Pdrv <= Rt // Deslizamiento (11.10.5.3)
+## Excentricidad (Resistencia I)
+eb = (1.50*F1*H/3 + 1.75*F2*H/2)/(1.00*V1) -> m
+check eb <= L/3 // Resultante dentro de los 2/3 centrales en suelo (11.6.3.3)
+## Capacidad portante (Resistencia I: EV 1.35, LS sobre el macizo 1.75)
+Vb = 1.35*V1 + 1.75*ws*L -> tonf/m
+Mb = 1.50*F1*H/3 + 1.75*F2*H/2 -> tonf*m/m
+ebb = Mb/Vb -> m
+sigv = Vb/(L - 2*ebb) -> tonf/m^2 // Presión uniforme de Meyerhof (11.6.3.2)
+qR = 0.65*qn // φb = 0.65 (Tabla 11.5.7-1)
+check sigv <= qR // Capacidad portante
+## Sismo (Evento Extremo I, 11.10.7.1)
+${SISMO}
+PIR = 0.5*kh*gammar*H^2 -> tonf/m // Inercia del macizo de ancho 0.5H (11.10.7.1)
+PAE = 0.375*kh*gammaf*H^2 -> tonf/m // Incremento dinámico del relleno retenido (Seed–Whitman)
+Pdrve = F1 + 0.5*F2 + PIR + 0.5*PAE -> tonf/m // PIR + 50 % PAE (11.10.7.1), γEQ = 0.5 para LS
+Rte = mub*V1 -> tonf/m // φ = 1.0 en Evento Extremo (11.5.8)
+check Pdrve <= Rte // Deslizamiento sísmico
+ebe = (F1*H/3 + 0.5*F2*H/2 + PIR*H/2 + 0.5*PAE*0.6*H)/V1 -> m
+check ebe <= 0.4*L // Excentricidad sísmica: 8/10 centrales (11.6.5.1)
+# Estabilidad interna (11.10.6)
+Kar = KaRankine(phir) // Ka del relleno reforzado
+KrKa = KrKaAASHTO(0 m, 3) // Kr/Ka = 1 para geosintéticos (Fig. 11.10.6.2.1-3)
+Kr = KrKa*Kar
+sigH = Kr*(1.35*gammar*zr + 1.75*ws) // Esfuerzo horizontal mayorado en cada capa (11.10.6.2.1-1)
+Tmax = sigH*Sv -> tonf/m // Tracción máxima por metro de muro (11.10.6.2.1-2, Rc = 1)
+## Rotura del refuerzo (11.10.6.4)
+Tal = Tult/(RFID*RFCR*RFD) -> tonf/m // Resistencia de diseño a largo plazo
+DCr = Tmax/(0.90*Tal) // Demanda/capacidad por capa
+check max(DCr) <= 1 // Rotura de la geomalla (capa más cargada)
+## Arranque (11.10.6.3)
+La = (H - zr)*tan(45 deg - phir/2) // Longitud en la zona activa (superficie de Rankine)
+Le = L - La // Longitud de anclaje en la zona resistente
+check min(Le) >= 0.90 m // Longitud de anclaje mínima (11.10.6.3.2)
+Fst = FstarAASHTO(0 m, phir, 3) // F* = 0.67 tan φr para geosintéticos
+Pr = Fst*alphar*gammar*zr*Cr .* Le -> tonf/m // Resistencia al arranque (sin sobrecarga viva)
+DCp = Tmax ./ (0.90*Pr) // Demanda/capacidad por capa
+check max(DCp) <= 1 // Arranque de la geomalla (capa crítica)`),
+    { type: 'table', columnas: 'Capa = 1:nr\nz [m] = zr\nσH [t/m²] = sigH\nTmax [t/m] = Tmax\nD/C rotura = DCr\nLa [m] = La\nLe [m] = Le\nPr [t/m] = Pr\nD/C arranque = DCp', titulo: 'Estabilidad interna por capa (rotura y arranque)', dec: '2' },
+    { type: 'msewall', H: 'H', L: 'L', z: 'zr', phi: 'phir', tipo: 'extensible', q: 'ws', dc: '(DCr + DCp + abs(DCr - DCp))/2' },
+    summary(),
+  ],
+};
+
+// =====================================================================
+//  7) TABLESTACA EN VOLADIZO (BLUM)
+// =====================================================================
+const PERFILES = '[973 cm^3/m : PZ 22|1623 cm^3/m : PZ 27|1300 cm^3/m : AZ 13-770|1800 cm^3/m : AZ 18-700|2600 cm^3/m : AZ 26-700]';
+const tablestaca = {
+  id: 'wa-tablestaca', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
+  name: 'Tablestaca / muro pantalla en voladizo (Blum)',
+  normas: 'Blum (1931); USS Steel Sheet Piling Design Manual; Das cap. 9; Bowles §13; RNE E.050',
+  desc: 'Profundidad de empotramiento por el método simplificado de Blum (ΣM = 0 en el punto de giro, D = 1.2 D0), punto de cortante nulo, momento máximo y módulo resistente de la tablestaca, con verificación numérica.',
+  titulo: 'Tablestaca metálica en voladizo — excavación de 4.00 m',
+  blocks: [
+    text(`# Generalidades
+Tablestaca (o muro pantalla) **en voladizo** que sostiene una excavación de altura $H$ en arena seca. Por debajo del fondo la pared gira alrededor de un punto $O$ a la profundidad $D_0$: sobre ella actúan el empuje activo detrás (en toda la altura $H + D_0$) y el pasivo delante; bajo $O$ se desarrolla una contrafuerza $R$ que **Blum** concentra en $O$. Equilibrio de momentos respecto a $O$:
+$$\\tfrac16 K_{pd}\\,\\gamma D_0^3 = \\tfrac16 K_a\\gamma (H+D_0)^3 + \\tfrac12 K_a q (H+D_0)^2$$
+y para desarrollar $R$ se prolonga la tablestaca: $D = 1.2\\,D_0$ (Blum; USS *Steel Sheet Piling Design Manual*). El coeficiente pasivo se reduce con un factor de seguridad $FS_p = 1.5$ (USS: 1.5–2.0). Sin nivel freático (para agua, usar pesos sumergidos y la presión neta del agua).`),
+    calc(`# Datos
+H = 4.00 m // Altura libre de la excavación
+gammas = 1.80 tonf/m^3 // Peso unitario de la arena
+phis = 32 deg // Ángulo de fricción
+ws = 1.00 tonf/m^2 // Sobrecarga en el borde de la excavación (E.020)
+FSp = 1.50 // Factor de seguridad sobre el empuje pasivo (USS 1.5–2.0)
+fys = 3515 kgf/cm^2 // Acero de la tablestaca ASTM A572 Gr 50
+Sx = 1300 cm^3/m // Módulo resistente del perfil (catálogo) ${PERFILES}
+# Coeficientes
+Ka = KaRankine(phis) // Activo (δ = 0, conservador)
+Kp = KpRankine(phis) // Pasivo (δ = 0)
+Kpd = Kp/FSp // Pasivo de diseño
+# Empotramiento (Blum)
+D0 = D0Blum(H, gammas, Ka, Kpd, ws) // Profundidad del punto de giro (ΣMO = 0)
+D = roundup(1.2*D0, 0.25 m) // Empotramiento de diseño (+20 % para la contrafuerza)
+Lt = H + D // Longitud total de la tablestaca
+R = Kpd*gammas*D0^2/2 - Ka*gammas*(H + D0)^2/2 - Ka*ws*(H + D0) -> tonf/m // Contrafuerza en O
+check R >= 0 tonf/m // La contrafuerza resulta positiva (equilibrio de fuerzas posible)
+# Momento máximo
+"El momento máximo ocurre donde el cortante es nulo, a la profundidad $z_0$ bajo el fondo: $\\tfrac12(K_{pd} - K_a)\\gamma z^2 - (K_a\\gamma H + K_a q)\\,z - \\left(\\tfrac12 K_a\\gamma H^2 + K_a q H\\right) = 0$.
+aq = (Kpd - Ka)*gammas/2
+bq = -(Ka*gammas*H + Ka*ws)
+cq = -(Ka*gammas*H^2/2 + Ka*ws*H)
+z0 = (-bq + sqrt(bq^2 - 4*aq*cq))/(2*aq) // Profundidad del cortante nulo bajo el fondo
+Mmax = Ka*gammas*(H + z0)^3/6 + Ka*ws*(H + z0)^2/2 - Kpd*gammas*z0^3/6 -> tonf*m/m // Momento máximo (servicio)`),
+    { type: 'sheetpile', H: 'H', D: 'D0', Dt: 'D', gs: 'gammas', Ka: 'Ka', Kp: 'Kpd', q: 'ws' },
+    calc(`# Verificación de la tablestaca
+check abs(Mmaxn - Mmax) <= 0.02*Mmax // Comprobación: integración numérica del bloque = solución cerrada
+sigadm = 0.65*fys // Esfuerzo admisible en flexión (USS Steel Sheet Piling Design Manual)
+Sreq = Mmax/sigadm -> cm^3/m // Módulo resistente requerido
+check Sreq <= Sx // Módulo resistente del perfil elegido
+"Longitud total de la tablestaca: {Lt} (empotramiento {D}). Verificar además la hinca (SPT/rechazo), la corrosión (sobreespesor o protección) y la deflexión en la corona.`),
+    summary(),
+  ],
+};
+
+// =====================================================================
+//  8) TABLESTACA ANCLADA (APOYO LIBRE)
+// =====================================================================
+const anclada = {
+  id: 'wa-tablestaca-anclada', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
+  name: 'Tablestaca anclada (método del apoyo libre)',
+  normas: 'USS Steel Sheet Piling Design Manual; Das cap. 9; Bowles §13; AISC 360 (tirante y viga de reparto)',
+  desc: 'Empotramiento por el método del apoyo libre (free earth support), fuerza en el anclaje, momento máximo, tablestaca, tirante, viga de reparto y ubicación del muerto de anclaje fuera de la cuña activa.',
+  titulo: 'Tablestaca anclada — excavación de 6.00 m',
+  blocks: [
+    text(`# Generalidades
+Con un nivel de anclaje (tirante y muerto, o ancla inyectada) cerca de la corona, la tablestaca se comporta como una viga apoyada en el anclaje y en el suelo pasivo. En el **método del apoyo libre** (*free earth support*) la punta puede rotar; la profundidad $D$ se obtiene con $\\Sigma M = 0$ respecto al anclaje:
+$$\\tfrac12 K_{pd}\\gamma D^2\\left(H + \\tfrac23 D - a\\right) = \\tfrac12 K_a\\gamma (H+D)^2\\left[\\tfrac23(H+D) - a\\right] + K_a q (H+D)\\left[\\tfrac12(H+D) - a\\right]$$
+y la fuerza del anclaje con $\\Sigma F_h = 0$. Se aplica $FS_p = 1.5$ al pasivo (USS). No se aplica la reducción de momentos de Rowe (conservador).`),
+    calc(`# Datos
+H = 6.00 m // Altura libre de la excavación
+a = 1.20 m // Profundidad del anclaje bajo la corona
+sa = 2.40 m // Separación horizontal de los tirantes
+gammas = 1.80 tonf/m^3 // Peso unitario de la arena
+phis = 32 deg // Ángulo de fricción
+ws = 1.00 tonf/m^2 // Sobrecarga
+FSp = 1.50 // Factor de seguridad del pasivo
+fys = 3515 kgf/cm^2 // Tablestaca ASTM A572 Gr 50
+Sx = 1300 cm^3/m // Módulo resistente del perfil ${PERFILES}
+fyt = 4200 kgf/cm^2 // Tirante: barra ASTM A615 Gr 60
+bart = 11 // Barra del tirante [8 : 1"|9 : 1 1/8"|10 : 1 1/4"|11 : 1 3/8"|14 : 1 3/4"]
+hd = 2.50 m // Altura del muerto de anclaje (bloque continuo de concreto desde la superficie)
+# Empotramiento y fuerza en el anclaje
+Ka = KaRankine(phis)
+Kp = KpRankine(phis)
+Kpd = Kp/FSp
+D = DFreeEarth(H, a, gammas, Ka, Kpd, ws) // ΣM respecto al anclaje = 0
+Dd = roundup(D, 0.25 m) // Empotramiento colocado
+Ta = Ka*gammas*(H + D)^2/2 + Ka*ws*(H + D) - Kpd*gammas*D^2/2 -> tonf/m // Fuerza del anclaje por metro (ΣFh = 0)
+check Ta >= 0 tonf/m // Anclaje en tracción
+# Momento máximo (cortante nulo sobre el fondo)
+zq = (-Ka*ws + sqrt((Ka*ws)^2 + 2*Ka*gammas*Ta))/(Ka*gammas) // Profundidad bajo la corona donde V = 0
+check zq <= H // El cortante nulo está sobre el fondo (hipótesis de la fórmula)
+Mmax = Ta*(zq - a) - Ka*gammas*zq^3/6 - Ka*ws*zq^2/2 -> tonf*m/m // Momento máximo`),
+    { type: 'sheetpile', H: 'H', D: 'D', Dt: 'Dd', a: 'a', gs: 'gammas', Ka: 'Ka', Kp: 'Kpd', q: 'ws' },
+    calc(`# Verificaciones
+check abs(Tn - Ta) <= 0.02*Ta // Comprobación numérica de la fuerza del anclaje
+check abs(Mmaxn - Mmax) <= 0.02*Mmax // Comprobación numérica del momento máximo
+sigadm = 0.65*fys // Esfuerzo admisible en flexión (USS)
+Sreq = Mmax/sigadm -> cm^3/m
+check Sreq <= Sx // Módulo resistente del perfil
+## Tirante
+Tt = Ta*sa -> tonf // Fuerza por tirante
+Treq = Tt/(0.60*fyt) -> cm^2 // Área requerida, esfuerzo admisible 0.60 fy
+check Treq <= Ab(bart) // Área de la barra del tirante
+## Viga de reparto (2 canales C10×15.3, S = 2 × 221 cm³)
+Mw = Ta*sa^2/10 -> tonf*m // Momento en la viga continua de reparto (USS)
+Sw = 2*221 cm^3
+check Mw/(0.60*2530 kgf/cm^2) <= Sw // Viga de reparto ASTM A36, 0.60 fy
+## Ubicación del muerto de anclaje
+Lmin = (H + Dd)*tan(45 deg - phis/2) + hd*tan(45 deg + phis/2) // Fuera de la cuña activa desde la punta y de la cuña pasiva del muerto (Das 9.13)
+La = roundup(Lmin, 0.5 m) // Distancia colocada desde la tablestaca
+Pdm = 0.5*gammas*hd^2*(Kp - Ka) -> tonf/m // Capacidad del muerto continuo (Das 9.13)
+FSdm = Pdm*sa/Tt // Factor de seguridad del muerto (por tirante, muerto continuo)
+check FSdm >= 2.0 // Capacidad del muerto de anclaje (Das 9.13: FS ≥ 2)
+"Tirante Ø según lista @ {sa}, a {La} de la tablestaca; longitud total de la tablestaca {H + Dd}.`),
+    summary(),
+  ],
+};
+
+export default [voladizo, gravedad, contrafuertes, sotano, gaviones, mse, tablestaca, anclada, comparativo];

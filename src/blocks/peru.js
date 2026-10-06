@@ -14,7 +14,7 @@ import { C, T, Lne, svgWrap, arrowDefs, niceTicks, caption, setVar, f2 } from '.
 import { IaRig, IaRes, IaMas, IaGeo, IpTor, stiffRatios, BME031num } from '../norms/peru.js';
 
 const G = 9.80665;
-const COLS = [C.blue, C.red, C.green, C.orange, '#8250df', '#0a7e8c'];
+const COLS = [C.blue, C.red, C.green, C.orange, '#8250df', '#0a7e8c', '#9a6700', '#6e7781'];
 const prefF = () => ({ tec: 'tonf', si: 'kN', us: 'kip' }[settings.sys] || 'tonf');
 const prefM = () => ({ tec: 'tonf*m', si: 'kN*m', us: 'kip*ft' }[settings.sys] || 'tonf*m');
 const prefL = () => ({ tec: 'cm', si: 'mm', us: 'in' }[settings.sys] || 'cm');
@@ -184,7 +184,7 @@ function frame(x0, y0, w, h, xr, yr, o = {}) {
 registerBlock('modal', {
   name: 'Análisis modal espectral (edificio de cortante)', icon: 'spectrum', group: 'Sismo',
   fields: [
-    F('masas', 'Pesos o masas por nivel (1 → n): vector o lista (números = tonf de peso)', 'Pi'),
+    F('masas', 'Pesos o masas por nivel (1 → n): vector o lista (números = tonf de peso)', 'P_i'),
     F('rigideces', 'Rigidez lateral de cada entrepiso (1 → n) o matriz K condensada (números = tonf/m)', 'Ki'),
     F('alturas', 'Altura de cada entrepiso (1 → n) [m]', 'hei'),
     F('Sa', 'Espectro en función de T (Sa/g adimensional o aceleración)', 'Z*U*CE030d(T, Tp, Tl)*S/R'),
@@ -198,7 +198,7 @@ registerBlock('modal', {
     F('sufijo', 'Sufijo de las variables exportadas (p. ej. x, y)', ''),
     F('titulo', 'Título', ''),
   ],
-  def: { masas: 'Pi', rigideces: 'Ki', alturas: 'hei', Sa: 'Sa(T)', comb: 'CQC', fdesp: '0.75*R', dlim: '0.007', pmin: '0.80' },
+  def: { masas: 'P_i', rigideces: 'Ki', alturas: 'hei', Sa: 'Sa(T)', comb: 'CQC', fdesp: '0.75*R', dlim: '0.007', pmin: '0.80' },
   hint: 'Resuelve K·φ = ω²·M·φ (Jacobi) para un edificio de cortante con diafragmas rígidos (1 GDL por piso). Calcula periodos, formas modales, masas participativas, fuerzas, cortantes, momentos de volteo, desplazamientos y derivas con combinación CQC/SRSS. Exporta <code>T1, T2…</code>, <code>Vdin</code>, <code>Vi_din</code>, <code>Fi_din</code>, <code>ui_din</code>, <code>deriva_din</code>, <code>Mpart</code>, <code>fesc</code>. El espectro es cualquier expresión en <code>T</code> (sirve para E.030, NCh433, BSL…).',
   render(b, ctx) {
     const S = ctx.scope, sf = sfx(b);
@@ -277,14 +277,14 @@ registerBlock('modal', {
     let h = `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || `Análisis modal espectral: formas modales, cortantes (${comb}) y derivas inelásticas`)}</div>`;
     // ---- tabla de modos ----
     let acc = 0;
-    const rows1 = r.modes.map((md, i) => { acc += md.ratio; return [String(i + 1) + (i < nmod ? '' : ' *'), f2(md.T, 3), f2(md.w, 2), f2(md.Gam, 3), f2(md.ratio * 100, 2), f2(acc * 100, 2), f2(md.Sa / G, 4), f2(nf(md.Vb), 2)]; });
+    const rows1 = r.modes.map((md, i) => { acc += md.ratio; return [String(i + 1) + (i < nmod ? '' : ' *'), f2(md.T, 3), f2(md.w, 2), f2(md.Gam, 3), f2(md.ratio * 100, 2), f2(acc * 100, 2), f2(md.Sa / G, 3), f2(nf(md.Vb), 2)]; });
     h += tableHtml(ctx, 'Periodos, factores de participación y masas efectivas', ['Modo', kx('T_n') + ' [s]', kx('\\omega_n') + ' [rad/s]', kx('\\Gamma_n'), kx('M^*_n/M') + ' [%]', kx('\\Sigma') + ' [%]', kx('S_a/g'), kx('V_{b,n}') + ` [${lblF()}]`], rows1);
     const rows2 = [];
     for (let i = n - 1; i >= 0; i--) rows2.push([String(i + 1), f2(r.H[i], 2), f2(nf(m[i] * G), 2), f2(nf(r.F[i]), 2), f2(nf(r.V[i]), 2), f2(nm(r.Mo[i]), 2), f2(nl(uin[i]), 3), f2(drift[i], 3), dlim > 0 ? okMark(drift[i] <= dlim) : '—']);
     h += tableHtml(ctx, `Respuesta combinada (${comb}) por nivel; desplazamientos y derivas inelásticos (× ${f2(fd, 3)})`, ['Nivel', kx('h_i') + ' [m]', kx('P_i') + ` [${lblF()}]`, kx('F_i') + ` [${lblF()}]`, kx('V_i') + ` [${lblF()}]`, kx('M_i') + ` [${lblM()}]`, kx('u_i') + ` [${lblL()}]`, kx('\\Delta_i/h_i'), 'Estado'], rows2);
     // ---- verificaciones ----
     h += chkLine(ctx, r.Mpart >= 0.9 - 1e-9, `\\sum M^*_n/M = ${f2(r.Mpart * 100, 2)}\\,\\% \\;\\ge\\; 90\\,\\%`, `Masa participativa de los ${nmod} modos combinados (E.030 Art. 40.2)`, 0.9 / r.Mpart);
-    if (dlim > 0) { const dmax = Math.max(...drift); h += chkLine(ctx, dmax <= dlim, `\\left(\\Delta/h\\right)_{max} = ${f2(dmax, 5)} \\;\\le\\; ${f2(dlim, 4)}`, 'Distorsión inelástica máxima de entrepiso (E.030 Art. 51, Tabla N° 14)', dmax / dlim); }
+    if (dlim > 0) { const dmax = Math.max(...drift); h += chkLine(ctx, dmax <= dlim, `\\left(\\Delta/h\\right)_{max} = ${f2(dmax, 3)} \\;\\le\\; ${f2(dlim, 4)}`, 'Distorsión inelástica máxima de entrepiso (E.030 Art. 51, Tabla N° 14)', dmax / dlim); }
     if (Vest > 0) h += `<div class="txt">Cortante basal dinámico ${K('V_{din} = ' + f2(nf(r.Vb), 2) + '\\,\\mathrm{' + lblF() + '}')}; mínimo ${K(f2(pmin, 2) + '\\,V_{est} = ' + f2(nf(pmin * Vest), 2) + '\\,\\mathrm{' + lblF() + '}')} → factor de escala de fuerzas ${K('f_{esc} = ' + f2(fesc, 3))} (los desplazamientos no se escalan, Art. 44.2).</div>`;
     return h;
   },
@@ -296,8 +296,8 @@ registerBlock('modal', {
 registerBlock('storyforces', {
   name: 'Fuerzas sísmicas por nivel (E.030 Art. 35)', icon: 'quake', group: 'Sismo',
   fields: [
-    F('P', 'Pesos sísmicos por nivel (1 → n)', 'Pi'),
-    F('hi', 'Altura de cada nivel desde la base (1 → n) [m]', 'hi'),
+    F('P', 'Pesos sísmicos por nivel (1 → n)', 'P_i'),
+    F('hi', 'Altura de cada nivel desde la base (1 → n) [m]', 'h_i'),
     F('V', 'Fuerza cortante en la base', 'V'),
     F('k', 'Exponente k (vacío = calcular con T)', ''),
     F('T', 'Periodo fundamental T (para k, Art. 35.2)', 'T'),
@@ -305,7 +305,7 @@ registerBlock('storyforces', {
     F('sufijo', 'Sufijo de las variables exportadas', ''),
     F('titulo', 'Título', ''),
   ],
-  def: { P: 'Pi', hi: 'hi', V: 'V', T: 'T', B: '' },
+  def: { P: 'P_i', hi: 'h_i', V: 'V', T: 'T', B: '' },
   hint: 'Calcula αi = Pi·hi^k/ΣPj·hj^k, Fi = αi·V, cortantes, momentos de volteo y momentos torsores accidentales Mti = Fi·0.05·B. Dibuja elevación con fuerzas, diagrama de cortantes y de momentos de volteo. Exporta <code>alpha_e, Fi_e, Vi_e, Mi_e, Mt_e, Mvol</code>.',
   render(b, ctx) {
     const S = ctx.scope, sf = sfx(b);
@@ -362,11 +362,11 @@ registerBlock('storyforces', {
       g += fr.g;
       const pts = [[0, Hm]]; for (let i = n - 1; i >= 0; i--) pts.push([nm(Mi[i]), i ? hi[i - 1] : 0]);
       g += `<path d="M${fr.X(0)},${fr.Y(Hm)} ${pts.map(p => 'L' + fr.X(p[0]).toFixed(1) + ',' + fr.Y(p[1]).toFixed(1)).join(' ')} L${fr.X(0)},${fr.Y(0)} Z" fill="${C.greenF}" stroke="${C.green}" stroke-width="1.6"/>`;
-      g += T(fr.X(nm(Mb)) - 4, fr.Y(0) - 14, 'M0 = ' + f2(nm(Mb), 1), { fs: 9, a: 'end', c: C.green, b: 1 });
+      g += T(fr.X(0) + 5, fr.Y(0) - 6, 'Base: ' + f2(nm(Mb), 1), { fs: 9, a: 'start', c: C.green, b: 1 });
     }
     let h = `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || `Distribución de la fuerza sísmica en altura (k = ${f2(k, 3)}), cortantes y momentos de volteo`)}</div>`;
     const rows = [];
-    for (let i = n - 1; i >= 0; i--) rows.push([String(i + 1), f2(hi[i], 2), f2(nf(P[i]), 2), f2(nf(w[i]), 1), f2(al[i], 4), f2(nf(Fi[i]), 2), f2(nf(Vi[i]), 2), f2(nm(Mi[i]), 2), ...(B > 0 ? [f2(nm(Mt[i]), 2)] : [])]);
+    for (let i = n - 1; i >= 0; i--) rows.push([String(i + 1), f2(hi[i], 2), f2(nf(P[i]), 2), f2(nf(w[i]), 1), f2(al[i], 3), f2(nf(Fi[i]), 2), f2(nf(Vi[i]), 2), f2(nm(Mi[i]), 2), ...(B > 0 ? [f2(nm(Mt[i]), 2)] : [])]);
     const heads = ['Nivel', kx('h_i') + ' [m]', kx('P_i') + ` [${lblF()}]`, kx('P_i h_i^k'), kx('\\alpha_i'), kx('F_i') + ` [${lblF()}]`, kx('V_i') + ` [${lblF()}]`, kx('M_{v,i}') + ` [${lblM()}]`, ...(B > 0 ? [kx('M_{t,i}=0.05B\\,F_i') + ` [${lblM()}]`] : [])];
     h += tableHtml(ctx, 'Fuerzas sísmicas por nivel (E.030 Art. 35 y 37)', heads, rows, ['Σ', '', f2(nf(sum(P)), 2), f2(nf(sw), 1), f2(sum(al), 3), f2(nf(V), 2), '', '', ...(B > 0 ? [''] : [])]);
     return h;
@@ -376,7 +376,6 @@ registerBlock('storyforces', {
 // =====================================================================
 //  3) IRREGULARIDADES ESTRUCTURALES E.030 (Tablas N° 11, 12 y 13)
 // =====================================================================
-const CAT_OPTS = [['A1', 'A1 — Salud 2.º y 3.er nivel'], ['A2', 'A2 — Esencial'], ['B', 'B — Importante'], ['C', 'C — Común']];
 registerBlock('irregE030', {
   name: 'Irregularidades E.030 (Tablas 11, 12 y 13)', icon: 'table', group: 'Sismo',
   fields: [
@@ -392,8 +391,8 @@ registerBlock('irregE030', {
     F('esq', 'Esquinas entrantes (>20 % en ambas direcciones)', '', 'check'),
     F('diaf', 'Discontinuidad del diafragma', '', 'check'),
     F('nopar', 'Sistemas no paralelos', '', 'check'),
-    F('cat', 'Categoría de la edificación', '', 'select', CAT_OPTS),
-    F('zona', 'Zona sísmica', '', 'select', [['4', 'Zona 4'], ['3', 'Zona 3'], ['2', 'Zona 2'], ['1', 'Zona 1']]),
+    F('cat', 'Categoría: A1, A2, B, C (o expresión con el factor U: 1.5 → A2, 1.3 → B, 1.0 → C)', 'C'),
+    F('zona', 'Zona sísmica 1–4 (número o variable)', 'zona'),
     F('npisos', 'N.º de pisos y altura (para la excepción de la Tabla 13, zona 2)', ''),
     F('sufijo', 'Sufijo de las variables exportadas', ''),
   ],
@@ -448,7 +447,10 @@ registerBlock('irregE030', {
     h += `<div class="txt muted">† Evaluación por configuración (dato del proyectista). (T13) Irregularidad extrema sujeta a la Tabla N° 13.</div>`;
     h += `<div class="txt">Factores resultantes (menor valor de cada tabla, Art. 24): ${K('I_a = ' + f2(Ia, 2))}, ${K('I_p = ' + f2(Ip, 2))} → estructura <b>${anyIrr ? 'irregular' : 'regular'}</b>.</div>`;
     // ---- Tabla 13 ----
-    const cat = String(b.cat || 'C').toUpperCase(), zona = parseInt(b.zona) || 4;
+    let cat = String(b.cat || 'C').trim().toUpperCase();
+    if (!['A1', 'A2', 'B', 'C'].includes(cat)) { const u = scal(b.cat, S, 1); cat = u >= 1.45 ? 'A2' : u >= 1.25 ? 'B' : 'C'; }
+    const zona = Math.round(scal(b.zona, S, 4));
+    if (!(zona >= 1 && zona <= 4)) throw new Error('Irregularidades: la zona sísmica debe ser 1, 2, 3 o 4');
     const np = String(b.npisos || '').trim() ? evalAny(b.npisos, S) : null;
     let allowIrr = true, allowExt = true, txt = 'Sin restricciones';
     if (cat === 'A1' || cat === 'A2') { if (zona >= 2) { allowIrr = false; allowExt = false; txt = 'No se permiten irregularidades'; } else { allowExt = false; txt = 'No se permiten irregularidades extremas'; } }
@@ -528,8 +530,8 @@ registerBlock('lrb', {
       const ymx = Math.max(...Ds.map(d => d[1])) * 1.1;
       const fr = frame(430, top, 270, ph, [0, Tmax], [0, nl(ymx)], { title: 'Espectro de desplazamientos SMC (5 %) y DM', xl: 'T [s]', xf: (t) => f2(t, 1), yf: (t) => f2(t, 0) });
       g += fr.g + `<path d="${Ds.map((d, i) => (i ? 'L' : 'M') + fr.X(d[0]).toFixed(1) + ',' + fr.Y(nl(d[1])).toFixed(1)).join(' ')}" fill="none" stroke="${C.ink}" stroke-width="1.6"/>`;
-      ['inf', 'nom', 'sup'].forEach((k, ci) => { const r = res[k], col = [C.blue, C.green, C.red][ci]; g += `<circle cx="${fr.X(r.Tm).toFixed(1)}" cy="${fr.Y(nl(r.D)).toFixed(1)}" r="4" fill="${col}" stroke="#fff"/>` + `<circle cx="${fr.X(0) + 12}" cy="${top + 30 + ci * 13}" r="3.5" fill="${col}"/>` + T(fr.X(0) + 20, top + 33 + ci * 13, `${{ inf: 'Inferior', nom: 'Nominal', sup: 'Superior' }[k]}: TM = ${f2(r.Tm, 2)} s, DM = ${f2(nl(r.D), 1)} ${lblL()}`, { fs: 9, a: 'start', c: col }); });
-      g += T(fr.X(0) + 8, top + 14, 'Curva: Sd = SaM·T²/4π² (5 %); puntos: DM = Sd/BM', { fs: 9, a: 'start', c: C.axis });
+      ['inf', 'nom', 'sup'].forEach((k, ci) => { const r = res[k], col = [C.blue, C.green, C.red][ci]; g += `<circle cx="${fr.X(r.Tm).toFixed(1)}" cy="${fr.Y(nl(r.D)).toFixed(1)}" r="4" fill="${col}" stroke="#fff"/>` + `<circle cx="${fr.X(Tmax * 0.36)}" cy="${top + ph - 52 + ci * 13}" r="3.5" fill="${col}"/>` + T(fr.X(Tmax * 0.36) + 8, top + ph - 49 + ci * 13, `${{ inf: 'Inferior', nom: 'Nominal', sup: 'Superior' }[k]}: TM = ${f2(r.Tm, 2)} s, DM = ${f2(nl(r.D), 1)} ${lblL()}`, { fs: 9, a: 'start', c: col }); });
+      g += T(fr.X(Tmax * 0.36) - 4, top + ph - 66, 'Sd = SaM·T²/4π² (5 %) · DM = Sd/BM', { fs: 9, a: 'start', c: C.axis });
     }
     let h = `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Sistema de aislamiento: lazos histeréticos y desplazamiento traslacional DM')}</div>`;
     const rows = ['inf', 'nom', 'sup'].map(k => { const r = res[k]; return [{ inf: 'Inferior', nom: 'Nominal', sup: 'Superior' }[k], f2(r.lq, 2) + ' / ' + f2(r.lk, 2), f2(nf(r.Q), 2), f2(r.kk / math.unit(1, prefK()).toNumber('N/m'), 1), f2(nl(r.D), 2), f2(r.ke / math.unit(1, prefK()).toNumber('N/m'), 1), f2(r.be * 100, 2), f2(r.Tm, 3), f2(r.Bm, 3), f2(r.Sa / G, 3), f2(nf(r.Vb), 1), String(r.hist.length)]; });
@@ -645,7 +647,7 @@ registerBlock('junta', {
     const h1 = evalParam(b.h1, S, 'm', 15), h2 = evalParam(b.h2, S, 'm', 9), d1 = evalParam(b.d1, S, 'm', 0.05), d2 = evalParam(b.d2, S, 'm', 0.03), s = evalParam(b.s, S, 'm', 0.1);
     const W = 720, H = 300, yb = 260, hm = Math.max(h1, h2), sc = 210 / hm, wb = 170, gap = 60;
     const xa = 360 - gap / 2 - wb, xb = 360 + gap / 2;
-    const amp = 40 / Math.max(d1, d2, 1e-6);
+    const amp = 0.38 * gap / Math.max(d1, d2, 1e-6);
     let g = arrowDefs + `<rect x="80" y="${yb}" width="560" height="10" fill="url(#hatch)"/>` + Lne(80, yb, 640, yb, C.ink, 1.4);
     g += `<rect x="${xa}" y="${yb - h1 * sc}" width="${wb}" height="${h1 * sc}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.8"/>`;
     g += `<rect x="${xb}" y="${yb - h2 * sc}" width="${wb}" height="${h2 * sc}" fill="#f6f1e7" stroke="${C.ink}" stroke-width="1.8"/>`;

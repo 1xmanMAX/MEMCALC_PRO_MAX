@@ -455,3 +455,59 @@ registerBlock('bridgesec', {
   def: { tipo: 'T', B: '8.4', ts: '0.20', nv: '4', S: '2.10', hv: '1.20', bw: '0.40', barrera: '0.40', hbarrera: '0.85', tasf: '0.05' },
   render: renderSec,
 });
+
+// =====================================================================
+//  estribo — elevación del estribo en voladizo con empujes y cargas
+// =====================================================================
+function renderAbut(b, ctx) {
+  const S = ctx.scope;
+  const H = evalParam(b.H, S, 'm', 7), B = evalParam(b.B, S, 'm', 5), hz = evalParam(b.hz, S, 'm', 0.8);
+  const p = evalParam(b.punta, S, 'm', 1.2), t2 = evalParam(b.t2, S, 'm', 0.9), t1 = evalParam(b.t1, S, 'm', 0.3);
+  const hb = evalParam(b.hb, S, 'm', 1.5), Df = evalParam(b.Df, S, 'm', 1.5);
+  const Ka = evalParam(b.Ka, S, '', 0.33), gs = evalParam(b.gs, S, 'tonf/m^3', 1.9), heq = evalParam(b.heq, S, 'm', 0.6);
+  pos({ H, B, hz, t2, t1, hb }); if (p + t2 >= B) throw new Error('La punta más la pantalla exceden el ancho de la zapata');
+  if (hz + hb >= H) throw new Error('El parapeto y la zapata exceden la altura del estribo');
+  const W = 680, Hh = 440, sc = Math.min(340 / (H + 0.6), 360 / (B + 2.4)), ox = 90, oy = 40;
+  const X = (x) => ox + x * sc, Y = (y) => oy + (H - y) * sc;
+  const bc = t2 - t1, ys = H - hb;
+  let g = arrowDefs;
+  // relleno posterior y suelo delantero
+  g += `<path d="M${X(p + t2)},${Y(hz)} L${X(p + t2)},${Y(H)} L${X(B + 0.8)},${Y(H)} L${X(B + 0.8)},${Y(0)} L${X(B)},${Y(0)} L${X(B)},${Y(hz)} Z" fill="url(#soilp)" opacity=".85"/>`;
+  g += `<path d="M${X(-0.8)},${Y(0)} L${X(-0.8)},${Y(Df)} L${X(p)},${Y(Df)} L${X(p)},${Y(hz)} L${X(0)},${Y(hz)} L${X(0)},${Y(0)} Z" fill="url(#soilp)" opacity=".6"/>`;
+  g += Lne(X(-0.8), Y(0), X(B + 0.8), Y(0), C.soil, 1.2, '6 3');
+  // concreto
+  g += `<path d="M${X(0)},${Y(0)} H${X(B)} V${Y(hz)} H${X(p + t2)} V${Y(H)} H${X(p + bc)} V${Y(ys)} H${X(p)} V${Y(hz)} H${X(0)} Z" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.5"/>`;
+  // viga del puente y apoyo
+  const gx0 = X(p - 1.6), gx1 = X(p + bc - 0.05), hg = hb - 0.15 - 0.2;
+  g += `<rect x="${(X(p + 0.12)).toFixed(1)}" y="${(Y(ys + 0.08)).toFixed(1)}" width="${(0.36 * sc).toFixed(1)}" height="${(0.08 * sc).toFixed(1)}" fill="#333"/>`;
+  g += `<path d="M${gx0},${Y(ys + 0.08)} H${gx1} V${Y(ys + 0.08 + hg)} H${gx0}" fill="#dfe5ec" stroke="${C.ink}" stroke-width="1"/>`;
+  g += `<path d="M${gx0},${Y(H - 0.2)} H${gx1} V${Y(H)} H${gx0}" fill="#dfe5ec" stroke="${C.ink}" stroke-width="1"/>`;
+  g += T(X(p - 0.9), Y(ys + 0.08 + hg / 2) + 4, 'viga', { fs: 9, c: C.axis });
+  // reacción y frenado
+  const xr = X(p + bc / 2);
+  g += `<line x1="${xr}" y1="${Y(ys) - 70}" x2="${xr}" y2="${Y(ys + 0.1) - 2}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + T(xr + 4, Y(ys) - 72, 'R DC, DW, LL', { fs: 9, c: C.red, a: 'start' });
+  g += `<line x1="${X(p - 1.5)}" y1="${Y(H + 0.0) - 14}" x2="${X(p - 0.2)}" y2="${Y(H) - 14}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + T(X(p - 1.5), Y(H) - 20, 'BR (1.80 m sobre rasante)', { fs: 9, c: C.red, a: 'start' });
+  // empujes
+  const pa = Ka * gs * H, ps = Ka * gs * heq, ph = 80 / Math.max(pa + ps, 1e-6), xb = X(B + 0.8) + 14;
+  g += `<path d="M${xb},${Y(H)} L${xb + ps * ph},${Y(H)} L${xb + ps * ph},${Y(0)} L${xb},${Y(0)} Z" fill="rgba(212,115,12,.18)" stroke="${C.orange}"/>`;
+  g += `<path d="M${xb + ps * ph},${Y(H)} L${xb + (ps + pa) * ph},${Y(0)} L${xb + ps * ph},${Y(0)} Z" fill="${C.redF}" stroke="${C.red}"/>`;
+  for (let i = 1; i <= 6; i++) { const y = H * (1 - i / 6.5); const w = ps + Ka * gs * (H - y); g += Lne(xb + w * ph, Y(y), xb + 3, Y(y), C.red, 0.8).replace('/>', ' marker-end="url(#ar)"/>'); }
+  g += T(xb + (ps + pa) * ph + 4, Y(0) - 4, 'EH: Ka·γ·H = ' + f2(pa) + ' t/m²', { fs: 9, a: 'start', c: C.red });
+  g += T(xb + ps * ph + 4, Y(H) - 4, 'LS: Ka·γ·heq = ' + f2(ps) + ' t/m²', { fs: 9, a: 'start', c: C.orange });
+  // cotas
+  g += dimH(X(0), X(B), Y(0) + 22, 'B = ' + f2(B) + ' m') + dimH(X(0), X(p), Y(0) + 42, 'punta ' + f2(p)) + dimH(X(p), X(p + t2), Y(0) + 42, f2(t2)) + dimH(X(p + t2), X(B), Y(0) + 42, 'talón ' + f2(B - p - t2));
+  g += dimV(X(-0.8) - 22, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimV(X(0) - 8, Y(hz), Y(0), f2(hz), C.ink, -1);
+  g += dimV(X(p + t2) + 10, Y(H), Y(ys), 'hb ' + f2(hb), C.ink, 1);
+  g += T(X(p + bc / 2), Y(ys) + 12, 'cajuela ' + f2(bc), { fs: 9, c: C.axis });
+  g += T(X(p + t2 - t1 / 2), Y(H) - 4, 't1 = ' + f2(t1), { fs: 9 });
+  return `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || 'Estribo en voladizo: geometría y empujes')}</div>`;
+}
+registerBlock('estribo', {
+  name: 'Estribo (dibujo)', icon: 'wall', group: 'Puentes',
+  fields: [F('H', 'Altura total H', '7 m'), F('B', 'Ancho de zapata B', '5 m'), F('hz', 'Espesor de zapata', '0.8 m'), F('punta', 'Punta', '1.4 m'),
+    F('t2', 'Espesor de pantalla', '0.9 m'), F('t1', 'Espesor del parapeto', '0.3 m'), F('hb', 'Altura del parapeto', '1.6 m'), F('Df', 'Relleno delante', '1.5 m'),
+    F('Ka', 'Ka', '0.333'), F('gs', 'γ relleno', '1.9 tonf/m^3'), F('heq', 'heq sobrecarga', '0.6 m'), F('titulo', 'Título', '')],
+  hint: 'Elevación del estribo en voladizo con cajuela, parapeto, viga apoyada y diagramas de empuje EH y LS.',
+  def: { H: '7 m', B: '5 m', hz: '0.8 m', punta: '1.4 m', t2: '0.9 m', t1: '0.3 m', hb: '1.6 m', Df: '1.5 m', Ka: '0.333', gs: '1.9 tonf/m^3', heq: '0.6 m' },
+  render: renderAbut,
+});

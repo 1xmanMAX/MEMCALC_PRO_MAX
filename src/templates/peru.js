@@ -120,7 +120,7 @@ Fv = 2/3*Z*U*S // Fracción del peso para la fuerza sísmica vertical (Art. 38.1
 Dprom = Delta_e // Desplazamiento relativo promedio de los extremos (del modelo con excentricidad accidental)
 rt = [1.12, 1.14, 1.15, 1.16, 1.18] // Relación Δmax/Δprom por entrepiso (del modelo 3D)
 Dmax = rt .* Dprom // Desplazamiento relativo máximo en el extremo del edificio`),
-  { type: 'irregE030', K: 'Ki', P: 'P_i', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva', dlim: 'dlim', disc: '0', esq: false, diaf: false, nopar: false, cat: 'C', zona: '4' },
+  { type: 'irregE030', K: 'Ki', P: 'P_i', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva', dlim: 'dlim', disc: '0', esq: false, diaf: false, nopar: false, cat: 'U', zona: 'zona' },
   calc(`check Ia <= Ia_ev // El factor Ia supuesto no excede el evaluado (Art. 24.1)
 check Ip <= Ip_ev // El factor Ip supuesto no excede el evaluado (Art. 24.2)`),
   { type: 'spectrum', Z: 'Z', U: 'U', S: 'S', Tp: 'Tp', Tl: 'Tl', R: 'R', T: 'T', titulo: 'Espectro de diseño ZUCS/R (E.030-2026 Art. 18 y 41) y periodo fundamental' },
@@ -245,7 +245,7 @@ Dmax = rt .* Dprom // Desplazamiento relativo elástico máximo en el extremo
 deriva = fd*Dmax ./ hei // Distorsión inelástica máxima de entrepiso
 @modo completo
 dlim = dlimE030(1) // Límite para concreto armado (Tabla N° 14)`),
-  { type: 'irregE030', K: 'Ki', Vr: 'Vr', P: 'P_i', D: 'Dx', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva', dlim: 'dlim', disc: 'discont', esq: 'esquina', diaf: 'diafrag', nopar: 'noparal', cat: 'C', zona: '4' },
+  { type: 'irregE030', K: 'Ki', Vr: 'Vr', P: 'P_i', D: 'Dx', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva', dlim: 'dlim', disc: 'discont', esq: 'esquina', diaf: 'diafrag', nopar: 'noparal', cat: 'U', zona: 'zona' },
   calc(`# Coeficiente de reducción y consecuencias
 Ia = Ia_ev // Factor de irregularidad en altura: menor valor de la Tabla N° 11 (Art. 24.1)
 Ip = Ip_ev // Factor de irregularidad en planta: menor valor de la Tabla N° 12 (Art. 24.2)
@@ -312,11 +312,12 @@ fCV = [pCV, pCV, pCV, 0.25] // Azotea: 25 % de la carga viva (E.030 Art. 31 d)
 @modo corto
 P_i = CM + fCV .* CV // Peso sísmico por nivel
 @modo completo
-CMt = sum(CM) // Carga muerta total
-CVt = sum(CV) // Carga viva total
+CM_t = sum(CM) // Carga muerta total
+CV_t = sum(CV) // Carga viva total
 P = sum(P_i) // Peso sísmico total (E.030 Art. 31)
 q = P/(n*A) -> tonf/m^2 // Peso sísmico por m² de área techada
-check q <= 1.2 tonf/m^2 // Orden de magnitud usual de edificaciones de C°A° (0.8–1.2 tonf/m²): control del metrado`),
+qmax = 1.2 tonf/m^2 // Valor usual máximo del peso por m² de edificaciones de C°A° aporticadas
+check q <= qmax // Control del orden de magnitud del metrado (usual 0.8–1.2 tonf/m²)`),
   { type: 'stackbar', etiquetas: 'Piso 1; Piso 2; Piso 3; Azotea', series: 'Losa = [1,1,1,1]*wlosa*A\nAcabados = [1,1,1,1]*wa*A\nTabiquería = [1,1,1,0]*wteq*A\nVigas = [1,1,1,1]*Dvig\nColumnas = [Dcol, Dcol, Dcol, Dcol/2]\nParapeto = [0,0,0,1]*Dpar\nCarga viva = CV', unidad: 'tonf', titulo: 'Metrado de cargas por nivel: carga muerta por componente y carga viva' },
   { type: 'table', columnas: 'Nivel = ["Piso 1", "Piso 2", "Piso 3", "Azotea"]\nCM [tonf] = CM\nCV [tonf] = CV\nFracción CV = fCV\nPeso sísmico $P_i$ [tonf] = P_i', total: true, dec: '2', titulo: 'Resumen del metrado por nivel' },
   calc(`# Cargas sobre una columna interior
@@ -467,12 +468,12 @@ w_c = 0.5*Z*U*S*gce*ece -> kgf/m^2 // F = 0.5·Z·U·S·Pe por unidad de área (
 h1 = sum(hei) // Altura del edificio desde el terreno natural
 d1 = 6.84 cm // Desplazamiento inelástico máximo del edificio en la azotea (Art. 50)
 h2 = 8.4 m // Altura del edificio vecino existente (3 pisos)
-smin = sJuntaE030(Z, S, h2) // s = 0.02·Z·S·h ≥ 0.03 m evaluado a la altura del edificio vecino (Art. 52.2)
+smin = sJuntaE030(Z, S, h2) -> cm // s = 0.02·Z·S·h ≥ 0.03 m evaluado a la altura del edificio vecino (Art. 52.2)
 "El edificio vecino existente **no** cuenta con junta sísmica reglamentaria; su desplazamiento se desconoce, por lo que se usa el criterio del Art. 52.4: separación igual a $s/2$ del proyecto más $s/2$ que le corresponde a la estructura vecina.
-s_2 = sJuntaE030(Z, S, h2)/2 // s/2 correspondiente a la estructura vecina (Art. 52.4)
+s_2 = sJuntaE030(Z, S, h2)/2 -> cm // s/2 correspondiente a la estructura vecina (Art. 52.4)
 d1h = d1*h2/h1 // Desplazamiento del proyecto a la altura del vecino (perfil lineal)
-r1 = max(2/3*d1h, smin/2) // Retiro del proyecto: ≥ 2/3 del desplazamiento y ≥ s/2 (Art. 52.3)
-s_req = r1 + s_2 // Separación total requerida respecto del edificio existente (Art. 52.4)
+r1 = max(2/3*d1h, smin/2) -> cm // Retiro del proyecto: ≥ 2/3 del desplazamiento y ≥ s/2 (Art. 52.3)
+s_req = r1 + s_2 -> cm // Separación total requerida respecto del edificio existente (Art. 52.4)
 s = 10 cm // Junta proyectada
 check s >= s_req // Junta sísmica proyectada suficiente (Art. 52)`),
   { type: 'junta', h1: 'h1', h2: 'h2', d1: 'd1', d2: 'd1*h2/h1', s: 's', titulo: 'Junta sísmica con el edificio colindante (deformadas exageradas)' },

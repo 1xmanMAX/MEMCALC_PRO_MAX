@@ -486,19 +486,59 @@ registerBlock('stmbeam', {
     const yt = wt / 2, ytop = h - ws / 2;
     const band = (x1, y1, x2, y2, w, col) => { const L2 = Math.hypot(x2 - x1, y2 - y1), nx = -(y2 - y1) / L2 * w / 2, ny = (x2 - x1) / L2 * w / 2; return `<path d="M${X(x1 + nx)},${Y(y1 + ny)} L${X(x2 + nx)},${Y(y2 + ny)} L${X(x2 - nx)},${Y(y2 - ny)} L${X(x1 - nx)},${Y(y1 - ny)} Z" fill="${col}" stroke="none"/>`; };
     const th = Math.atan2(ytop - yt, a), wd = lb * Math.sin(th) + wt * Math.cos(th);
-    g += band(0, yt, a, ytop, wd, 'rgba(31,111,235,.18)') + band(L, yt, L - a, ytop, wd, 'rgba(31,111,235,.18)');
+    const cid = 'stmclip' + String(ctx.blockId || '').replace(/\W/g, '');
+    g += `<clipPath id="${cid}"><rect x="${X(-ext)}" y="${Y(h)}" width="${Ltot * sc}" height="${h * sc}"/></clipPath><g clip-path="url(#${cid})">` + band(0, yt, a, ytop, wd, 'rgba(31,111,235,.18)') + band(L, yt, L - a, ytop, wd, 'rgba(31,111,235,.18)') + '</g>';
     g += `<rect x="${X(a)}" y="${Y(h)}" width="${(L - 2 * a) * sc}" height="${ws * sc}" fill="rgba(31,111,235,.18)"/>`;
     g += `<rect x="${X(-ext / 2)}" y="${Y(wt)}" width="${(L + ext) * sc}" height="${wt * sc}" fill="rgba(209,36,47,.12)"/>`;
     g += Lne(X(0), Y(yt), X(a), Y(ytop), C.blue, 2.2, '7 4') + Lne(X(L), Y(yt), X(L - a), Y(ytop), C.blue, 2.2, '7 4') + Lne(X(a), Y(ytop), X(L - a), Y(ytop), C.blue, 2.2, '7 4');
     g += Lne(X(0), Y(yt), X(L), Y(yt), C.red, 3);
-    [[0, yt, 'CCT'], [L, yt, 'CCT'], [a, ytop, 'CCC'], [L - a, ytop, 'CCC']].forEach(([x, y, t]) => { g += `<circle cx="${X(x)}" cy="${Y(y)}" r="5" fill="#fff" stroke="${C.ink}" stroke-width="1.5"/>` + T(X(x), Y(y) + (y < h / 2 ? 20 : -10), t, { fs: 9, c: C.axis }); });
+    [[0, yt, 'CCT'], [L, yt, 'CCT'], [a, ytop, 'CCC'], [L - a, ytop, 'CCC']].forEach(([x, y, t]) => { g += `<circle cx="${X(x)}" cy="${Y(y)}" r="5" fill="#fff" stroke="${C.ink}" stroke-width="1.5"/>` + T(X(x) + (x < L / 2 ? 22 : -22), Y(y) + (y < h / 2 ? -8 : 18), t, { fs: 9, c: C.axis }); });
     [0, L].forEach(x => { g += `<rect x="${X(x - lb / 2)}" y="${Y(0)}" width="${lb * sc}" height="5" fill="${C.steel}"/>` + `<path d="M${X(x)},${Y(0) + 5} l-10,15 h20 z" fill="#fff" stroke="${C.ink}"/>`; });
     [a, L - a].forEach(x => { g += `<rect x="${X(x - lp / 2)}" y="${Y(h) - 5}" width="${lp * sc}" height="5" fill="${C.steel}"/>` + `<line x1="${X(x)}" y1="${Y(h) - 50}" x2="${X(x)}" y2="${Y(h) - 7}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + (Pu ? T(X(x) + 5, Y(h) - 40, 'Pu = ' + f2(Pu) + ' kN', { fs: 10, c: C.red, a: 'start' }) : ''); });
     if (Fd) g += T(X(a / 2) - 8, Y((yt + ytop) / 2), 'C = ' + f2(Fd) + ' kN', { fs: 10, c: C.blue, a: 'end', b: 1 });
-    if (Ft) g += T(X(L / 2), Y(yt) + 18, 'T = ' + f2(Ft) + ' kN', { fs: 10, c: C.red, b: 1 });
+    if (Ft) g += T(X(L / 2), Y(wt) - 8, 'T = ' + f2(Ft) + ' kN', { fs: 10, c: C.red, b: 1 });
     g += T(X(L / 2), Y(ytop) + 16, 'θ = ' + f2(th * 180 / Math.PI, 1) + '°', { fs: 10, c: C.blue });
     g += dimH(X(0), X(a), Y(0) + 36, 'a = ' + f2(a) + ' m') + dimH(X(0), X(L), Y(0) + 56, 'L = ' + f2(L) + ' m') + dimV(X(-ext) - 14, Y(h), Y(0), 'h = ' + f2(h) + ' m');
     setVar(ctx, 'thetaSTM', math.unit(th, 'rad'));
     return `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Modelo puntal–tensor: puntales (azul), tensor (rojo) y nudos')}</div>`;
+  },
+});
+
+// ---------------------------------------------------------------------
+//  Bloque mensula — elevación de ménsula (braquete) con cargas y refuerzo
+// ---------------------------------------------------------------------
+registerBlock('mensula', {
+  name: 'Ménsula (braquete)', icon: 'column', group: 'Concreto',
+  fields: [F('bc', 'Ancho de columna (elevación)', 'bc'), F('lc', 'Proyección de la ménsula', 'lc'), F('h', 'Peralte en la cara', 'h'), F('hext', 'Peralte en el borde exterior', 'hext'), F('av', 'Brazo de la carga av', 'av'), F('d', 'Peralte efectivo', 'd'), F('Vu', 'Vu', 'Vu'), F('Nuc', 'Nuc', 'Nuc'), F('asc', 'Texto refuerzo principal', '3 #5'), F('ah', 'Texto estribos', '2 estribos #3'), F('titulo', 'Título', '')],
+  hint: 'Dibuja la elevación de una ménsula con la carga vertical Vu, la tracción horizontal Nuc, el refuerzo principal Asc anclado a una barra transversal soldada y los estribos Ah en 2/3 d.',
+  def: { bc: '40 cm', lc: '30 cm', h: '45 cm', hext: '25 cm', av: '15 cm', d: '40 cm', Vu: '30 tonf', Nuc: '6 tonf' },
+  render(b, ctx) {
+    const S = ctx.scope, g0 = (k, u, dv) => evalParam(b[k], S, u, dv);
+    const bc = g0('bc', 'cm'), lc = g0('lc', 'cm'), h = g0('h', 'cm'), he = g0('hext', 'cm'), av = g0('av', 'cm'), d = g0('d', 'cm');
+    pos({ bc, lc, h, he, av, d }); if (he > h) throw new Error('El peralte exterior no puede exceder el peralte en la cara');
+    const Vu = g0('Vu', 'tonf', 0), Nuc = g0('Nuc', 'tonf', 0);
+    const W = 620, Hc = h * 3.2, sc = Math.min(280 / (bc + lc), 330 / Hc), H = Hc * sc + 70;
+    const ox = 90, top = 40 + (Hc - h) / 2 * sc;
+    const X = (x) => ox + x * sc, Y = (y) => top + y * sc; // y hacia abajo desde la cara superior de la ménsula
+    let g = arrowDefs;
+    g += `<rect x="${X(0)}" y="20" width="${bc * sc}" height="${H - 40}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.4"/>`;
+    g += `<path d="M${X(bc)},${Y(0)} L${X(bc + lc)},${Y(0)} L${X(bc + lc)},${Y(he)} L${X(bc)},${Y(h)} Z" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.4"/>`;
+    g += `<rect x="${X(bc) - 1}" y="${Y(0) + 1}" width="3" height="${h * sc - 2}" fill="${C.conc}"/>`;
+    const yc = h - d; // refuerzo principal
+    g += Lne(X(bc * 0.25), Y(yc), X(bc + lc - 3), Y(yc), C.steel, 2.6) + Lne(X(bc * 0.25), Y(yc), X(bc * 0.25), Y(yc + 30), C.steel, 2.6);
+    g += `<circle cx="${X(bc + lc - 3)}" cy="${Y(yc)}" r="4" fill="${C.steel}"/>`;
+    for (let i = 1; i <= 2; i++) { const y = yc + (2 / 3 * d) * i / 2.5; g += Lne(X(bc * 0.25), Y(y), X(bc + lc * 0.75 - (y / h) * lc * 0.35), Y(y), C.blue, 1.6); }
+    const xl = X(bc + lc - av - 0.0001);
+    const xa = X(bc + av);
+    g += `<rect x="${xa - 18}" y="${Y(0) - 5}" width="36" height="5" fill="${C.steel}"/>` + `<line x1="${xa}" y1="${Y(0) - 55}" x2="${xa}" y2="${Y(0) - 7}" stroke="${C.red}" stroke-width="2.2" marker-end="url(#arr)"/>` + T(xa + 6, Y(0) - 44, 'Vu = ' + f2(Vu) + ' t', { fs: 10.5, c: C.red, a: 'start', b: 1 });
+    if (Nuc) g += `<line x1="${xa}" y1="${Y(0) - 12}" x2="${xa + 55}" y2="${Y(0) - 12}" stroke="${C.red}" stroke-width="1.8" marker-end="url(#arr)"/>` + T(xa + 58, Y(0) - 9, 'Nuc = ' + f2(Nuc) + ' t', { fs: 10, c: C.red, a: 'start' });
+    void xl;
+    g += dimH(X(bc), xa, Y(h) + 22, 'av = ' + f2(av) + ' cm') + dimH(X(bc), X(bc + lc), Y(h) + 44, 'ℓ = ' + f2(lc) + ' cm');
+    g += dimV(X(bc + lc) + 18, Y(0), Y(he), f2(he) + ' cm', C.ink, 1);
+    g += dimV(X(0) - 22, Y(0), Y(h), 'h = ' + f2(h) + ' cm') + dimV(X(0) - 50, Y(yc), Y(h), 'd = ' + f2(d) + ' cm');
+    g += T(X(bc + lc) + 30, Y(yc) + 4, 'Asc: ' + interp(b.asc || '', S) + ' + barra transversal soldada', { fs: 10, a: 'start', b: 1 });
+    g += T(X(bc + lc) + 30, Y(yc + d / 3) + 4, 'Ah: ' + interp(b.ah || '', S) + ' en 2/3 d', { fs: 10, a: 'start', c: C.blue });
+    g += T(X(bc / 2), 34, 'Columna', { fs: 10, c: C.axis });
+    return `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Ménsula: geometría, cargas y refuerzo (E.060 11.9)')}</div>`;
   },
 });

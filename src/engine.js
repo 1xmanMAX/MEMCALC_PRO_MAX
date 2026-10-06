@@ -463,7 +463,9 @@ export function tex(n, o) {
     }
     case 'AccessorNode': {
       if (o.mode === 'sub') { try { return valTex(n.compile().evaluate(new Map(S)), o.dec); } catch (e) { /* */ } }
-      return tex(n.object, { ...o, mode: 'sym' }) + '_{[' + n.index.dimensions.map(d => tex(d, { ...o, mode: 'sym' })).join(',') + ']}';
+      const ob = tex(n.object, { ...o, mode: 'sym' }), ix = n.index.dimensions.map(d => tex(d, { ...o, mode: 'sym' })).join(',');
+      const sm = /_\{([^{}]*)\}$/.exec(ob);
+      return sm ? ob.slice(0, sm.index) + '_{' + sm[1] + ',' + ix + '}' : (/^[A-Za-z]$|^\\[A-Za-z]+$/.test(ob) ? ob : '{' + ob + '}') + '_{' + ix + '}';
     }
     case 'RelationalNode': {
       let s = tex(n.params[0], o);

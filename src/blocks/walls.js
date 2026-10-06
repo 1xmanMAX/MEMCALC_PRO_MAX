@@ -213,6 +213,7 @@ function renderRetwall(b, ctx) {
   if (bk > 0 && hk > 0) wp += `L${X(xk)},${Y(0)} L${X(xk)},${Y(-hk)} L${X(xk + bk)},${Y(-hk)} L${X(xk + bk)},${Y(0)} `;
   wp += `L${X(B)},${Y(0)} L${X(B)},${Y(hz)} L${X(xbb)},${Y(hz)} L${X(xbt)},${Y(H)} L${X(p + ie)},${Y(H)} L${X(p)},${Y(hz)} L${X(0)},${Y(hz)} Z`;
   g += `<path d="${wp}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.6"/>`;
+  if (bool(b.contrafuerte, false)) g += `<path d="M${X(xbt)},${Y(H)} L${X(B)},${Y(hz)} L${X(xbb)},${Y(hz)} Z" fill="rgba(150,160,170,.18)" stroke="${C.ink}" stroke-dasharray="6 3"/>` + T(X((xbb + B) / 2) + 10, Y(hz + 0.35 * hp), 'contrafuerte', { fs: 10, c: C.ink, r: -atan(hp / (B - xbt)) / D2R });
   // centroides
   for (const r of parts) g += `<circle cx="${X(r.x)}" cy="${Y(r.y)}" r="2.6" fill="${r.grp === 'm' ? C.ink : '#7a5a2a'}"/>` + T(X(r.x) + 4, Y(r.y) - 4, 'W' + r.id, { fs: 9, a: 'start', c: r.grp === 'm' ? C.ink : '#7a5a2a' });
   // sobrecarga
@@ -220,7 +221,7 @@ function renderRetwall(b, ctx) {
   // plano de empuje y diagrama
   const xb0 = X(xR + 0.3) + 8;
   if (metodo === 'rankine') g += Lne(X(B), Y(0), X(B), Y(Hv), C.red, 1, '5 3') + T(X(B) - 4, Y(Hv * 0.75), 'plano virtual', { fs: 9, a: 'end', c: C.red, r: -90 });
-  else g += Lne(X(B), Y(0), X(xbt), Y(H), C.red, 1, '5 3') + T(X((B + xbt) / 2) + 4, Y(H / 2), 'plano de Coulomb', { fs: 9, a: 'start', c: C.red, r: -90 + theta / D2R });
+  else g += Lne(X(B), Y(0), X(xbt), Y(H), C.red, 1, '5 3') + T(X(B - Lb * 0.12) + 6, Y(H * 0.12), 'plano de Coulomb', { fs: 9, a: 'start', c: C.red, r: -90 + theta / D2R });
   const pa = Ka * gs * Hv, pq = Ka * q * Kth, pd = seis ? 2 * DPae / Hv : 0; // ΔEae como triángulo invertido (≈0.67H) — se dibuja con su resultante real
   const pmax = max(pa + pq, 1e-6) + (seis ? pd : 0), ph = (pressW - 20) / pmax, yH = Y(Hv), y0 = Y(0);
   if (pq > 0) g += `<path d="M${xb0},${yH} L${xb0 + pq * ph},${yH} L${xb0 + pq * ph},${y0} L${xb0},${y0} Z" fill="rgba(212,115,12,.18)" stroke="${C.orange}"/>`;
@@ -255,12 +256,12 @@ function renderRetwall(b, ctx) {
     // cotas inferiores
     const yd = yb + 45 + 24;
     g += dimH(X(0), X(B), yd + 16, 'B = ' + f2(B) + ' m') + dimH(X(0), X(p), yd, 'punta ' + f2(p)) + dimH(X(xbb), X(B), yd, (tipo === 'gravedad' ? 'talón ' : 'talón ') + f2(Lt));
-    if (t2 > 0) g += dimH(X(p), X(xbb), yd, f2(t2));
+    if (t2 * sc > 40) g += dimH(X(p), X(xbb), yd, f2(t2));
   }
   g += dimV(xL0 - 66, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimV(xL0 - 14, Y(hz), Y(0), 'hz = ' + f2(hz), C.ink, -1);
   if (Df > hz + 1e-6) g += dimV(xL0 - 40, Y(Df), Y(0), 'Df = ' + f2(Df), C.ink, -1);
   g += T(X(p + ie) - 4, Y(H) + 12, 't1 = ' + f2(t1), { fs: 10, a: 'end' });
-  if (bk > 0 && hk > 0) g += T(X(xk + bk / 2), Y(-hk) + 12, 'dentellón ' + f2(bk) + '×' + f2(hk), { fs: 9 });
+  if (bk > 0 && hk > 0) g += T(X(xk) - 4, Y(-hk / 2) + 3, 'dentellón ' + f2(bk) + '×' + f2(hk), { fs: 9, a: 'end' });
   if (beta > 0) g += T(xs - 4, Y(yAt(xR + 0.3)) - 4, 'β = ' + f2(beta / D2R, 1) + '°', { fs: 10, a: 'end', c: '#7a5a2a' });
   const ttl = b.titulo || (tipo === 'gravedad' ? 'Muro de gravedad: geometría, fuerzas, empujes y presiones en la base' : 'Muro en voladizo: geometría, fuerzas, empujes y presiones en la base');
   ctx.tab = (ctx.tab || 0) + 1; const ta = ctx.tab; ctx.tab++; const tb2 = ctx.tab; ctx.tab++; const tc = ctx.tab;
@@ -284,7 +285,7 @@ registerBlock('retwall', {
     F('kh', 'kh (0 = sin sismo)', '0'), F('kv', 'kv', '0'), F('ysis', 'Altura de ΔEae (×H)', '0.6'), F('qsis', 'Fracción de q en sismo', '0.5'),
     F('qa', 'Presión admisible qa', '2.5 kgf/cm^2'), F('qas', 'qa sísmica (def. 1.2qa)', ''),
     F('fsv', 'FS volteo mín.', '1.5'), F('fsd', 'FS deslizamiento mín.', '1.5'), F('fsvs', 'FS volteo sismo', '1.25'), F('fsds', 'FS desliz. sismo', '1.25'),
-    F('qest', 'Sobrecarga estabiliza', false, 'check'), F('si', 'Tablas en kN', false, 'check'), F('sufijo', 'Sufijo de variables', ''), F('titulo', 'Título', ''),
+    F('qest', 'Sobrecarga estabiliza', false, 'check'), F('contrafuerte', 'Dibujar contrafuerte', false, 'check'), F('si', 'Tablas en kN', false, 'check'), F('sufijo', 'Sufijo de variables', ''), F('titulo', 'Título', ''),
   ],
   hint: 'Estabilidad externa (volteo, deslizamiento, excentricidad y presiones) de muros en voladizo o de gravedad, con dentellón, talud del relleno, sobrecarga y sismo (Mononobe–Okabe + inercia). Exporta <code>FSv, FSd, e, qmax, qmin, Ka, Pa</code> y, con sismo, <code>Kae, Pae, FSvs, FSds, es, qmaxs</code>.',
   def: { tipo: 'voladizo', metodo: 'rankine', H: '5 m', B: '3.2 m', hz: '0.5 m', punta: '0.8 m', t1: '0.25 m', t2: '0.45 m', q: '1 tonf/m^2', gs: '1.8 tonf/m^3', phi: '30 deg', qa: '2.5 kgf/cm^2', fsv: '2', fsd: '1.5' },
@@ -382,4 +383,161 @@ registerBlock('wallrebar', {
   hint: 'Momento último a lo largo de la pantalla (empuje + sobrecarga, y con sismo M-O + inercia), capacidad φMn del refuerzo colocado y altura de corte de las barras alternas (E.060 12.10.3: prolongar max(d, 12db)). Exporta <code>Mub, Vub, phiMnb, Asv, hcorte</code>.',
   def: { hp: '4.5 m', t1: '0.25 m', t2: '0.45 m', Ka: '0.33', gs: '1.8 tonf/m^3', q: '1 tonf/m^2', barra: '5', s: '20 cm', corte: '0.5' },
   render: renderWallRebar,
+});
+
+// ---------- utilidades para vectores (listas o matrices de math.js) ----------
+function evalVec(str, S, unit) {
+  if (str === undefined || str === null || String(str).trim() === '') return [];
+  const v = math.evaluate(String(str), new Map(S));
+  const arr = math.isMatrix(v) ? v.toArray().flat() : Array.isArray(v) ? v.flat() : [v];
+  return arr.map(x => (math.isUnit(x) ? (unit ? x.toNumber(unit) : x.value) : Number(x)));
+}
+
+// =====================================================================
+//  gabionwall — dibujo de muro de gaviones escalonado
+// =====================================================================
+registerBlock('gabionwall', {
+  name: 'Muro de gaviones (dibujo)', icon: 'wall', group: 'Muros',
+  fields: [F('anchos', 'Anchos de las hiladas, de abajo hacia arriba', '[3, 2.5, 2, 1.5] m'), F('h', 'Altura de hilada', '1 m'), F('frente', 'Retiro frontal por hilada', '0 m'),
+    F('Ka', 'Ka', 'Ka'), F('gs', 'γ relleno', '1.8 tonf/m^3'), F('q', 'Sobrecarga', '0'), F('qmax', 'q máx en la base', ''), F('qmin', 'q mín en la base', ''), F('e', 'Excentricidad', ''), F('titulo', 'Título', '')],
+  hint: 'Dibuja el muro de gaviones con hiladas escalonadas (escalones hacia el relleno o retiros frontales), el empuje sobre el plano vertical del talón y las presiones en la base.',
+  def: { anchos: '[3, 2.5, 2, 1.5] m', h: '1 m', Ka: '0.333', gs: '1.8 tonf/m^3' },
+  render(b, ctx) {
+    const S = ctx.scope;
+    const bw = evalVec(b.anchos, S, 'm'), h = evalParam(b.h, S, 'm', 1), fr = evalParam(b.frente, S, 'm', 0);
+    if (!bw.length || bw.some(x => !(x > 0))) throw new Error('Anchos de hiladas no válidos');
+    const Ka = evalParam(b.Ka, S, '', 0.33), gs = evalParam(b.gs, S, 'tonf/m^3', 1.8), q = evalParam(b.q, S, 'tonf/m^2', 0);
+    const qmax = evalParam(b.qmax, S, 'tonf/m^2', 0), qmin = evalParam(b.qmin, S, 'tonf/m^2', 0), e = evalParam(b.e, S, 'm', 0);
+    const n = bw.length, H = n * h, B = bw[0];
+    const W = 720, Hh = 430, sc = min(380 / (B + 2.2), 300 / (H + 0.6)), ox = 110, oy = 40 + (H + 0.4) * sc;
+    const X = (x) => ox + x * sc, Y = (y) => oy - y * sc;
+    let g = arrowDefs;
+    g += `<path d="M${X(0)},${Y(H)} ${bw.map((w, i) => `L${X(fr * i + w)},${Y(H - (n - 1 - i) * h)}`).join(' ')}" fill="none"/>`;
+    g += `<rect x="${X(-0.8)}" y="${Y(0)}" width="${X(B + 1.6) - X(-0.8)}" height="14" fill="url(#soilp)" opacity=".5"/>`;
+    // relleno detrás (hasta el plano del talón y más allá)
+    let path = `M${X(B + 1.6)},${Y(H)} L${X(fr * (n - 1) + bw[n - 1])},${Y(H)}`;
+    for (let i = n - 1; i >= 0; i--) { const xr = fr * i + bw[i]; path += ` L${X(xr)},${Y(i * h + h)} L${X(xr)},${Y(i * h)}`; }
+    path += ` L${X(B + 1.6)},${Y(0)} Z`;
+    g += `<path d="${path}" fill="url(#soilp)" opacity=".75"/>` + Lne(X(fr * (n - 1) + bw[n - 1]), Y(H), X(B + 1.6), Y(H), C.soil, 2);
+    // hiladas con celdas de 1 m
+    bw.forEach((w, i) => {
+      const x0 = fr * i, y0 = i * h;
+      g += `<rect x="${X(x0)}" y="${Y(y0 + h)}" width="${w * sc}" height="${h * sc}" fill="#d9dde3" stroke="${C.ink}" stroke-width="1.3"/>`;
+      for (let c = 1; c < Math.round(w); c++) g += Lne(X(x0 + c), Y(y0), X(x0 + c), Y(y0 + h), C.ink, 0.6);
+      for (let k = 0; k < Math.round(w * 3); k++) { const cx = X(x0 + (k + 0.5) * w / Math.round(w * 3)), cy = Y(y0 + h / 2) + ((k % 2) ? 4 : -4); g += `<circle cx="${cx}" cy="${cy}" r="${Math.max(2, sc * 0.07)}" fill="#9aa5b1" opacity=".8"/>`; }
+      g += `<pattern id="mesh${i}" width="6" height="6" patternUnits="userSpaceOnUse"></pattern>`;
+      g += T(X(x0 + w) - 4, Y(y0 + h) + 12, 'b' + (i + 1) + ' = ' + f2(w) + ' m', { fs: 9, a: 'end', c: C.ink });
+    });
+    g += Lne(X(B), Y(0), X(B), Y(H), C.red, 1, '5 3');
+    // empuje
+    const pa = Ka * gs * H, pq = Ka * q, ph = 100 / max(pa + pq, 1e-6), xb = X(B + 1.6) + 10;
+    if (pq > 0) g += `<path d="M${xb},${Y(H)} L${xb + pq * ph},${Y(H)} L${xb + pq * ph},${Y(0)} L${xb},${Y(0)} Z" fill="rgba(212,115,12,.18)" stroke="${C.orange}"/>`;
+    g += `<path d="M${xb + pq * ph},${Y(H)} L${xb + (pq + pa) * ph},${Y(0)} L${xb + pq * ph},${Y(0)} Z" fill="${C.redF}" stroke="${C.red}"/>`;
+    g += T(xb + (pq + pa) * ph, Y(0) + 13, f2(pa + pq) + ' t/m²', { fs: 9, c: C.red });
+    if (q > 0) { for (let i = 0; i <= 8; i++) { const x = bw[n - 1] + fr * (n - 1) + (B + 1.6 - bw[n - 1] - fr * (n - 1)) * i / 8; g += Lne(X(x), Y(H) - 20, X(x), Y(H) - 3, C.orange, 0.9).replace('/>', ' marker-end="url(#arr)"/>'); } g += T(X(B + 1.6), Y(H) - 24, 'q = ' + f2(q) + ' t/m²', { fs: 10, a: 'end', c: C.orange }); }
+    g += Lne(X(B) + 50, Y(H / 3), X(B) + 2, Y(H / 3), C.red, 1.6).replace('/>', ' marker-end="url(#arr)"/>') + T(X(B) + 52, Y(H / 3) - 3, 'Ea', { fs: 10, a: 'start', c: C.red, b: 1 });
+    // presiones
+    if (qmax > 0) {
+      const pb = 45 / qmax, yb = Y(0) + 22, Lc = abs(e) <= B / 6 ? B : 3 * (B / 2 - abs(e));
+      const qT = e >= 0 ? qmax : qmin, qH = e >= 0 ? qmin : qmax;
+      g += Lc < B ? `<path d="M${X(0)},${yb} L${X(0)},${yb + qmax * pb} L${X(Lc)},${yb} Z" fill="${C.blueF}" stroke="${C.blue}"/>` : `<path d="M${X(0)},${yb} L${X(0)},${yb + qT * pb} L${X(B)},${yb + qH * pb} L${X(B)},${yb} Z" fill="${C.blueF}" stroke="${C.blue}"/>`;
+      g += T(X(0) - 4, yb + qT * pb, f2(qT) + ' t/m²', { fs: 9, a: 'end', c: C.blue }) + T(X(B) + 4, yb + max(qH * pb, 4), f2(qH) + ' t/m²', { fs: 9, a: 'start', c: C.blue });
+    }
+    g += dimV(ox - 40, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimH(X(0), X(B), Y(0) + 85, 'B = ' + f2(B) + ' m');
+    return `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || 'Muro de gaviones: hiladas, empuje de Rankine en el plano del talón y presiones en la base')}</div>`;
+  },
+});
+
+// =====================================================================
+//  msewall — dibujo de muro de suelo reforzado (MSE)
+// =====================================================================
+registerBlock('msewall', {
+  name: 'Muro de suelo reforzado (dibujo)', icon: 'wall', group: 'Muros',
+  fields: [F('H', 'Altura H', '6 m'), F('L', 'Longitud del refuerzo L', '4.5 m'), F('z', 'Profundidades de los refuerzos (vector)', 'zr'), F('phi', 'φ del relleno reforzado', '34 deg'),
+    F('tipo', 'Refuerzo', 'extensible', 'select', ['extensible', 'inextensible']), F('q', 'Sobrecarga', '0'), F('dc', 'D/C por capa (vector, opcional)', ''), F('titulo', 'Título', '')],
+  hint: 'Dibuja el macizo reforzado, las capas de refuerzo, la superficie de falla interna (Rankine para refuerzos extensibles, bilineal 0.3H para inextensibles, AASHTO Fig. 11.10.6.3.1-1) y la relación D/C de cada capa.',
+  def: { H: '6 m', L: '4.5 m', z: '[0.3, 0.9, 1.5, 2.1, 2.7, 3.3, 3.9, 4.5, 5.1, 5.7] m', phi: '34 deg', tipo: 'extensible' },
+  render(b, ctx) {
+    const S = ctx.scope;
+    const H = evalParam(b.H, S, 'm', 6), L = evalParam(b.L, S, 'm', 4.5), phi = angP(b.phi, S, 34 * D2R), q = evalParam(b.q, S, 'tonf/m^2', 0);
+    const zs = evalVec(b.z, S, 'm'), dc = evalVec(b.dc, S, '');
+    const inext = /inext/i.test(b.tipo || '');
+    const W = 720, Hh = 420, sc = min(420 / (L + 3.2), 330 / (H + 0.8)), ox = 90, oy = 40 + (H + 0.5) * sc;
+    const X = (x) => ox + x * sc, Y = (y) => oy - y * sc;
+    let g = arrowDefs;
+    g += `<rect x="${X(-0.8)}" y="${Y(0)}" width="${(L + 3.6) * sc}" height="14" fill="url(#soilp)" opacity=".5"/>`;
+    g += `<rect x="${X(0)}" y="${Y(H)}" width="${L * sc}" height="${H * sc}" fill="#efe3c6" stroke="${C.soil}"/>`;
+    g += `<rect x="${X(L)}" y="${Y(H)}" width="${2.6 * sc}" height="${H * sc}" fill="url(#soilp)" opacity=".75"/>`;
+    g += `<rect x="${X(-0.18)}" y="${Y(H)}" width="${0.18 * sc}" height="${H * sc}" fill="${C.conc}" stroke="${C.ink}"/>`;
+    for (let k = 1; k < Math.ceil(H / 1.5); k++) g += Lne(X(-0.18), Y(k * 1.5), X(0), Y(k * 1.5), C.ink, 0.6);
+    zs.forEach((z, i) => {
+      const r = dc[i]; const col = r === undefined ? C.green : r <= 1 ? C.green : C.red;
+      g += Lne(X(0), Y(H - z), X(L), Y(H - z), col, 2);
+      if (r !== undefined) g += T(X(L) + 4, Y(H - z) + 3, r.toFixed(2), { fs: 9, a: 'start', c: col });
+    });
+    // superficie de falla interna
+    if (inext) g += `<path d="M${X(0)},${Y(0)} L${X(0.3 * H)},${Y(H / 2)} L${X(0.3 * H)},${Y(H)}" fill="none" stroke="${C.red}" stroke-width="1.4" stroke-dasharray="6 3"/>`;
+    else g += Lne(X(0), Y(0), X(H * tan(PI / 4 - phi / 2)), Y(H), C.red, 1.4, '6 3');
+    g += T(X(inext ? 0.3 * H : H * tan(PI / 4 - phi / 2) / 2) + 6, Y(inext ? H * 0.75 : H / 2), inext ? 'superficie bilineal (0.3H)' : 'Rankine 45° + φ/2', { fs: 10, a: 'start', c: C.red });
+    if (q > 0) for (let i = 0; i <= 10; i++) { const x = (L + 2.4) * i / 10; g += Lne(X(x), Y(H) - 20, X(x), Y(H) - 3, C.orange, 0.9).replace('/>', ' marker-end="url(#arr)"/>'); }
+    if (q > 0) g += T(X(0), Y(H) - 24, 'q = ' + f2(q) + ' t/m²', { fs: 10, a: 'start', c: C.orange });
+    g += Lne(X(L) + 60, Y(H / 3), X(L) + 2, Y(H / 3), C.red, 1.6).replace('/>', ' marker-end="url(#arr)"/>') + T(X(L) + 62, Y(H / 3) - 3, 'F1 (relleno retenido)', { fs: 10, a: 'start', c: C.red });
+    g += dimV(ox - 40, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimH(X(0), X(L), Y(0) + 30, 'L = ' + f2(L) + ' m');
+    if (zs.length > 1) g += T(X(L / 2), Y(0) + 50, `${zs.length} capas de refuerzo, Sv = ${f2(zs[1] - zs[0])} m${dc.length ? ' (número: D/C máx. de rotura o arranque)' : ''}`, { fs: 10, c: C.axis });
+    return `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || 'Muro de suelo reforzado: refuerzos, superficie de falla interna y empuje del relleno retenido')}</div>`;
+  },
+});
+
+// =====================================================================
+//  sheetpile — tablestaca en voladizo (Blum) o anclada (apoyo libre)
+// =====================================================================
+registerBlock('sheetpile', {
+  name: 'Tablestaca: presiones y momentos', icon: 'wall', group: 'Muros',
+  fields: [F('H', 'Altura libre (excavación) H', '4 m'), F('D', 'Empotramiento de cálculo (D0 en voladizo)', 'D0'), F('Dt', 'Empotramiento total colocado', ''), F('a', 'Profundidad del anclaje (vacío = voladizo)', ''),
+    F('gs', 'γ suelo', '1.8 tonf/m^3'), F('Ka', 'Ka', 'Ka'), F('Kp', 'Kp de diseño', 'Kpd'), F('q', 'Sobrecarga', '0'), F('sufijo', 'Sufijo', ''), F('titulo', 'Título', '')],
+  hint: 'Integra numéricamente las presiones netas (activa detrás y pasiva delante bajo el fondo) y obtiene cortantes y momentos. En voladizo (Blum) la contrafuerza R se concentra en la punta de D0; anclada (apoyo libre) calcula la fuerza T del anclaje. Exporta <code>Mmaxn, Tn, Rn</code>.',
+  def: { H: '4 m', D: '3 m', gs: '1.8 tonf/m^3', Ka: '0.307', Kp: '2.17', q: '1 tonf/m^2' },
+  render(b, ctx) {
+    const S = ctx.scope;
+    const H = evalParam(b.H, S, 'm', 4), D = evalParam(b.D, S, 'm', 3), Dt = evalParam(b.Dt, S, 'm', D), anch = b.a !== undefined && String(b.a).trim() !== '';
+    const a = anch ? evalParam(b.a, S, 'm', 1) : 0, gs = evalParam(b.gs, S, 'tonf/m^3', 1.8), Ka = evalParam(b.Ka, S, '', 0.33), Kp = evalParam(b.Kp, S, '', 3), q = evalParam(b.q, S, 'tonf/m^2', 0);
+    const sfx = String(b.sufijo || '').trim();
+    if (!(H > 0 && D > 0)) throw new Error('H y D deben ser mayores que cero');
+    const L = H + D, N = 800, dz = L / N;
+    const pa = (z) => Ka * (gs * z + q), pp = (z) => (z > H ? Kp * gs * (z - H) : 0), net = (z) => pa(z) - pp(z);
+    // fuerza total y momento respecto a la punta / anclaje
+    let F = 0, Mtop = 0; for (let i = 0; i < N; i++) { const z = (i + 0.5) * dz, p = net(z) * dz; F += p; Mtop += p * (z - a); }
+    const Tan = anch ? F : 0, R = anch ? 0 : -F; // voladizo: contrafuerza en la punta
+    const zz = [], V = [], M = []; let cum = 0;
+    for (let i = 0; i <= N; i++) {
+      const z = i * dz; if (i > 0) cum += net(z - dz / 2) * dz;
+      const v = cum - (anch && z > a ? Tan : 0);
+      zz.push(z); V.push(v); M.push(i ? M[i - 1] + (V[i - 1] + v) / 2 * dz : 0);
+    }
+    let Mmax = 0, zM = 0; M.forEach((mm, i) => { if (abs(mm) > abs(Mmax)) { Mmax = mm; zM = zz[i]; } });
+    setVar(ctx, 'Mmaxn' + sfx, U(abs(Mmax), 'tonf*m/m')); setVar(ctx, 'zMn' + sfx, U(zM, 'm'));
+    if (anch) setVar(ctx, 'Tn' + sfx, U(Tan, 'tonf/m')); else setVar(ctx, 'Rn' + sfx, U(R, 'tonf/m'));
+    // dibujo
+    const W = 720, Hh = 440, top = 50, sc = (Hh - top - 40) / (H + Dt), cx = 230;
+    const Y = (z) => top + z * sc;
+    let g = arrowDefs;
+    g += `<rect x="${cx}" y="${Y(0)}" width="140" height="${(H + Dt) * sc}" fill="url(#soilp)" opacity=".75"/>` + Lne(cx, Y(0), cx + 140, Y(0), C.soil, 2);
+    g += `<rect x="${cx - 140}" y="${Y(H)}" width="140" height="${Dt * sc}" fill="url(#soilp)" opacity=".6"/>` + Lne(cx - 140, Y(H), cx, Y(H), C.soil, 2);
+    g += `<rect x="${cx - 3}" y="${Y(0) - 8}" width="6" height="${(H + Dt) * sc + 8}" fill="${C.steel}"/>`;
+    if (anch) g += Lne(cx, Y(a), cx + 130, Y(a) + 18, C.ink, 1.6) + `<rect x="${cx + 126}" y="${Y(a) + 8}" width="12" height="22" fill="${C.conc}" stroke="${C.ink}"/>` + T(cx + 70, Y(a) - 6, 'T = ' + f2(Tan) + ' t/m', { fs: 10, b: 1 });
+    const pmax = max(pa(L), Kp * gs * D), ps = 110 / pmax;
+    g += `<path d="M${cx + 3},${Y(0)} L${cx + 3 + pa(0) * ps},${Y(0)} L${cx + 3 + pa(L) * ps},${Y(L)} L${cx + 3},${Y(L)} Z" fill="${C.redF}" stroke="${C.red}"/>`;
+    g += `<path d="M${cx - 3},${Y(H)} L${cx - 3 - Kp * gs * D * ps},${Y(L)} L${cx - 3},${Y(L)} Z" fill="${C.greenF}" stroke="${C.green}"/>`;
+    if (!anch) g += Lne(cx + 60, Y(L), cx + 6, Y(L), C.blue, 2).replace('/>', ' marker-end="url(#ar)"/>') + T(cx + 62, Y(L) - 6, 'R = ' + f2(R) + ' t/m', { fs: 10, a: 'start', c: C.blue });
+    g += T(cx + 3 + pa(L) * ps, Y(L) + 14, 'activo ' + f2(pa(L)), { fs: 9, c: C.red }) + T(cx - 3 - Kp * gs * D * ps, Y(L) + 14, 'pasivo ' + f2(Kp * gs * D), { fs: 9, c: C.green });
+    if (Dt > 1.03 * D) g += Lne(cx - 20, Y(L), cx + 20, Y(L), C.blue, 1, '3 2') + T(cx - 24, Y(L) - 5, anch ? 'D cálculo' : 'O (D0)', { fs: 9, a: 'end', c: C.blue, b: 1 });
+    g += dimV(40, Y(0), Y(H), 'H = ' + f2(H) + ' m') + dimV(40, Y(H), Y(H + Dt), 'D = ' + f2(Dt) + ' m');
+    // diagrama de momentos
+    const mx0 = 480, mW = 150, Mm = max(...M.map(abs), 1e-6);
+    niceTicks(0, Mm, 4).forEach(t => { g += Lne(mx0 + t / Mm * mW, Y(0), mx0 + t / Mm * mW, Y(L), C.grid, 0.7) + T(mx0 + t / Mm * mW, Y(L) + 14, f2(t, 1), { fs: 9, c: C.axis }); });
+    g += `<path d="M${mx0},${Y(0)} ${zz.map((z, i) => 'L' + (mx0 + abs(M[i]) / Mm * mW).toFixed(1) + ',' + Y(z).toFixed(1)).join(' ')} L${mx0},${Y(L)} Z" fill="${C.blueF}" stroke="${C.blue}" stroke-width="1.6"/>`;
+    g += Lne(mx0, Y(0), mx0, Y(L), C.ink) + Lne(mx0 - 10, Y(H), mx0 + mW, Y(H), C.axis, 0.8, '4 3');
+    g += T(mx0 + abs(Mmax) / Mm * mW - 4, Y(zM) + 16, 'Mmáx = ' + f2(abs(Mmax)) + ' t·m/m (z = ' + f2(zM) + ' m)', { fs: 10, a: 'end', c: C.blue, b: 1 }) + T(mx0 + mW / 2, top - 18, 'Momento flector |M| [t·m/m]', { fs: 10 });
+    return `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || (anch ? 'Tablestaca anclada (apoyo libre): presiones, anclaje y momentos' : 'Tablestaca en voladizo (Blum): presiones, contrafuerza y momentos'))}</div>`;
+  },
 });

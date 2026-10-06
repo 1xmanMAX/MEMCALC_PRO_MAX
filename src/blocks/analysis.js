@@ -489,16 +489,19 @@ function makeView(nodes, W, o = {}) {
 const P = (v, n) => [v.X(n.x), v.Y(n.y)];
 // orientación del apoyo: opuesta a las barras que llegan al nudo
 function supDir(md, n, v) {
-  let sx = 0, sy = 0;
+  const y0 = md.nodes[n].y, x0 = md.nodes[n].x, tol = 1e-6 * (v.span || 1);
+  let below = false, above = false, left = false, right = false;
   for (const m of md.mems) {
     const o = m.i === n ? m.j : m.j === n ? m.i : -1; if (o < 0) continue;
-    const a = P(v, md.nodes[n]), b = P(v, md.nodes[o]), L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-    sx += (b[0] - a[0]) / L; sy += (b[1] - a[1]) / L;
+    const q = md.nodes[o];
+    if (q.y < y0 - tol) below = true; if (q.y > y0 + tol) above = true;
+    if (q.x < x0 - tol) left = true; if (q.x > x0 + tol) right = true;
   }
-  const ax = -sx, ay = -sy;
-  if (Math.hypot(ax, ay) < 0.3) return 0;
-  if (Math.abs(ay) >= Math.abs(ax) * 0.9) return ay >= 0 ? 0 : 180;
-  return ax > 0 ? -90 : 90;
+  if (!below) return 0;
+  if (!above) return 180;
+  if (!left) return 90;
+  if (!right) return -90;
+  return 0;
 }
 function supportGlyph(md, n, v, col = C.ink) {
   const s = md.sup[n]; if (!s.any) return '';
@@ -524,6 +527,7 @@ function supportGlyph(md, n, v, col = C.ink) {
 }
 function hingeGlyphs(md, v) {
   let g = '';
+  if (md.truss) return md.nodes.map(n => `<circle cx="${v.X(n.x).toFixed(1)}" cy="${v.Y(n.y).toFixed(1)}" r="3.4" fill="#fff" stroke="${C.ink}" stroke-width="1.2"/>`).join('');
   for (const m of md.mems) {
     const a = P(v, md.nodes[m.i]), b = P(v, md.nodes[m.j]), L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
     const ex = (b[0] - a[0]) / L, ey = (b[1] - a[1]) / L, off = Math.min(7, L / 4);
@@ -534,12 +538,13 @@ function hingeGlyphs(md, v) {
 }
 function membersLine(md, v, col = '#9aa5b1', w = 1.6) { return md.mems.map(m => { const a = P(v, md.nodes[m.i]), b = P(v, md.nodes[m.j]); return Lne(a[0], a[1], b[0], b[1], col, w); }).join(''); }
 // colocador de etiquetas sin superposición
-function labeler() {
+function labeler(Wb) {
   const boxes = [];
+  const inside = (x, w) => !Wb || (x - w / 2 >= 2 && x + w / 2 <= Wb - 2);
   const hit = (x, y, w, h) => boxes.some(b => Math.abs(b.x - x) < (b.w + w) / 2 + 1 && Math.abs(b.y - y) < (b.h + h) / 2);
   return {
     add(x, y, w, h) { boxes.push({ x, y, w, h }); },
-    place(cands, w, h) { for (const [x, y] of cands) if (!hit(x, y, w, h)) { boxes.push({ x, y, w, h }); return [x, y]; } return null; },
+    place(cands, w, h) { for (const [x, y] of cands) if (inside(x, w) && !hit(x, y, w, h)) { boxes.push({ x, y, w, h }); return [x, y]; } return null; },
   };
 }
 function dims(md, v) {
@@ -571,7 +576,7 @@ function drawModel(md, W) {
   g += hingeGlyphs(md, v);
   md.nodes.forEach((n, k) => { g += supportGlyph(md, k, v); });
   const lb = labeler();
-  md.nodes.forEach((n) => { const [x, y] = P(v, n); g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="${C.ink}"/>`; lb.add(x, y, 6, 6); });
+  md.nodes.forEach((n) => { const [x, y] = P(v, n); if (!md.truss) g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="${C.ink}"/>`; lb.add(x, y, 8, 8); });
   // numeración de barras
   for (const m of md.mems) {
     const a = P(v, md.nodes[m.i]), b = P(v, md.nodes[m.j]); const x = (a[0] + b[0]) / 2, y = (a[1] + b[1]) / 2;
@@ -595,50 +600,54 @@ function drawLoads(md, ci, W, maxH) {
   md.nodes.forEach((n, k) => { g += supportGlyph(md, k, v, '#5b6b7b'); });
   const c = md.cases[ci];
   const lu = md.U.lab;
-  const dl = c.loads.filter(l => l.t === 'D' && l.m !== undefined);
+  const dl = c.loads.filter(l => l.t === 'D' && l.m !== undefined && !l.pp);
+  const hasPP = c.loads.some(l => l.pp);
   const maxW = Math.max(1e-12, ...dl.map(l => Math.max(Math.abs(l.w1), Math.abs(l.w2))));
   const stack = {};
-  const lb = labeler();
-  // agrupar peso propio en una sola etiqueta
+  const lb = labeler(W);
+  const ttl = c.name + (md.cdesc[c.name] ? ' — ' + md.cdesc[c.name] : '');
+  lb.add(10 + ttl.length * 3.4, 14, ttl.length * 6.8, 18);
+  if (hasPP) lb.add(10 + 70, 30, 140, 12);
   for (const l of dl) {
     const m = md.mems[l.m], n1 = md.nodes[m.i], n2 = md.nodes[m.j];
     const a = (l.a.pct !== undefined ? l.a.pct * m.L : l.a.v), b = (l.b.pct !== undefined ? l.b.pct * m.L : l.b.v);
-    // dirección de la carga en pantalla (unitaria)
+    // dirección positiva de la carga en pantalla (unitaria)
     let dx = 0, dy = 1;
     if (l.dir === 'horiz' || l.dir === 'hproy') { dx = 1; dy = 0; }
     else if (l.dir === 'perp') { dx = -m.s; dy = -m.c; }
     else if (l.dir === 'axial') { dx = m.c; dy = -m.s; }
-    const sgn = (l.w1 + l.w2) >= 0 ? 1 : -1;
-    const key = l.m + ':' + (dx * -m.s + dy * -m.c > 0 ? 1 : -1) * sgn;
+    // lado del diagrama: arriba de la barra (o a la izquierda si es vertical)
+    let nx = -m.s, ny = -m.c; if (ny > 0) { nx = -nx; ny = -ny; } if (Math.abs(m.c) < 0.2) { nx = -1; ny = 0; }
+    const key = l.m;
     const off = stack[key] || 0;
-    const hmax = 30, h1 = 8 + hmax * Math.abs(l.w1) / maxW, h2 = 8 + hmax * Math.abs(l.w2) / maxW;
-    stack[key] = off + Math.max(h1, h2) + 5;
-    const pt = (x) => [v.X(n1.x + (n2.x - n1.x) * x / m.L), v.Y(n1.y + (n2.y - n1.y) * x / m.L)];
-    const sw1 = l.w1 >= 0 ? 1 : -1, sw2 = l.w2 >= 0 ? 1 : -1;
-    const base = (x) => { const p = pt(x); return [p[0] - dx * off * sgn, p[1] - dy * off * sgn]; };
-    const tail = (x) => { const t = (x - a) / (b - a), w = l.w1 + (l.w2 - l.w1) * t, h = 8 + hmax * Math.abs(w) / maxW, p = base(x), sw = w >= 0 ? 1 : -1; return [p[0] - dx * h * sw, p[1] - dy * h * sw]; };
+    const hmax = 28, hh = (w) => 7 + hmax * Math.abs(w) / maxW;
+    stack[key] = off + Math.max(hh(l.w1), hh(l.w2)) + 4;
+    const pt = (x) => { const p = [v.X(n1.x + (n2.x - n1.x) * x / m.L), v.Y(n1.y + (n2.y - n1.y) * x / m.L)]; return [p[0] + nx * off, p[1] + ny * off]; };
+    const wAt = (x) => l.w1 + (l.w2 - l.w1) * (x - a) / (b - a);
+    // flecha de la fuerza: F = w·d ; si apunta hacia la barra desde el lado del diagrama, la punta toca la barra
+    const arr = (x) => {
+      const w = wAt(x), fxs = dx * Math.sign(w || 1), fys = dy * Math.sign(w || 1), h = hh(w), p = pt(x);
+      const into = fxs * nx + fys * ny <= 1e-9;
+      if (into) return { t: [p[0] - fxs * h, p[1] - fys * h], h: p, top: [p[0] - fxs * h, p[1] - fys * h] };
+      return { t: p, h: [p[0] + fxs * h, p[1] + fys * h], top: [p[0] + fxs * h, p[1] + fys * h] };
+    };
     const pa = pt(a), pb = pt(b), slen = Math.hypot(pb[0] - pa[0], pb[1] - pa[1]);
     const na = Math.max(3, Math.round(slen / 15));
-    const col = l.pp ? '#5b6b7b' : C.blue, mk = l.pp ? 'anK' : 'anB';
-    let poly = `M${base(a).map(q => q.toFixed(1)).join(',')} `;
-    for (let k = 0; k <= na; k++) { const x = a + (b - a) * k / na; poly += 'L' + tail(x).map(q => q.toFixed(1)).join(',') + ' '; }
-    poly += 'L' + base(b).map(q => q.toFixed(1)).join(',') + ' Z';
-    g += `<path d="${poly}" fill="${l.pp ? 'rgba(91,107,123,.10)' : C.blueF}" stroke="none"/>`;
-    let env = '';
-    for (let k = 0; k <= na; k++) {
-      const x = a + (b - a) * k / na, t0 = tail(x), b0 = base(x);
-      env += (k ? 'L' : 'M') + t0[0].toFixed(1) + ',' + t0[1].toFixed(1) + ' ';
-      const L0 = Math.hypot(b0[0] - t0[0], b0[1] - t0[1]);
-      if (L0 > 4) g += arrow(t0[0], t0[1], b0[0] - (b0[0] - t0[0]) / L0 * 1.5, b0[1] - (b0[1] - t0[1]) / L0 * 1.5, col, mk, 0.8);
-    }
-    g += `<path d="${env}" fill="none" stroke="${col}" stroke-width="1.1"/>`;
-    void sw1; void sw2;
-    const lab = (Math.abs(l.w1 - l.w2) < 1e-9 ? fx(l.w1) : fx(l.w1) + '→' + fx(l.w2)) + ' ' + lu + '/m' + (l.dir === 'proy' || l.dir === 'hproy' ? ' (proy.)' : '') + (l.pp ? ' (p.p.)' : '');
-    const tm = tail((a + b) / 2), bm = base((a + b) / 2), ux = tm[0] - bm[0], uy = tm[1] - bm[1], ul = Math.hypot(ux, uy) || 1;
-    const w = lab.length * 5.4;
-    const pp = lb.place([[tm[0] + ux / ul * 10, tm[1] + uy / ul * 10 + 3], [tm[0] + ux / ul * 22, tm[1] + uy / ul * 22 + 3], [tm[0] + ux / ul * 10 + 30, tm[1] + uy / ul * 10 + 3], [tm[0] + ux / ul * 10 - 30, tm[1] + uy / ul * 10 + 3], [tm[0] + ux / ul * 34, tm[1] + uy / ul * 34 + 3]], w, 11);
+    const col = C.blue, mk = 'anB';
+    const tops = []; for (let k = 0; k <= na; k++) tops.push(arr(a + (b - a) * k / na));
+    const poly = `M${pa[0].toFixed(1)},${pa[1].toFixed(1)} ` + tops.map(q => 'L' + q.top[0].toFixed(1) + ',' + q.top[1].toFixed(1)).join(' ') + ` L${pb[0].toFixed(1)},${pb[1].toFixed(1)} Z`;
+    g += `<path d="${poly}" fill="${C.blueF}" stroke="none"/>`;
+    g += `<path d="${tops.map((q, k) => (k ? 'L' : 'M') + q.top[0].toFixed(1) + ',' + q.top[1].toFixed(1)).join(' ')}" fill="none" stroke="${col}" stroke-width="1.1"/>`;
+    for (const q of tops) { const L0 = Math.hypot(q.h[0] - q.t[0], q.h[1] - q.t[1]); if (L0 > 4) g += arrow(q.t[0], q.t[1], q.h[0] - (q.h[0] - q.t[0]) / L0 * 1.2, q.h[1] - (q.h[1] - q.t[1]) / L0 * 1.2, col, mk, 0.8); }
+    const lab = (Math.abs(l.w1 - l.w2) < 1e-9 ? fx(l.w1) : fx(l.w1) + '→' + fx(l.w2)) + ' ' + lu + '/m' + (l.dir === 'proy' || l.dir === 'hproy' ? ' (proy.)' : '');
+    const tm = tops[Math.floor(tops.length / 2)].top, base = pt((a + b) / 2), ux = tm[0] - base[0], uy = tm[1] - base[1], ul = Math.hypot(ux, uy) || 1;
+    const w = lab.length * 5.4 + 4;
+    const cands = []; for (const d0 of [10, 22, 34]) for (const sh of [0, 34, -34, 60, -60]) cands.push([tm[0] + ux / ul * d0 + (Math.abs(nx) > 0.9 ? 0 : sh), tm[1] + uy / ul * d0 + 3 + (Math.abs(nx) > 0.9 ? sh * 0.6 : 0)]);
+    for (const sh of [0, 20, -20, 40, -40]) cands.push([base[0] - ux / ul * (12 + (Math.abs(nx) > 0.9 ? w / 2 : 0)), base[1] - uy / ul * 12 + 3 + sh]);
+    const pp = lb.place(cands, w, 11);
     if (pp) g += TH(pp[0], pp[1], lab, { fs: 9.5, c: col });
   }
+  if (hasPP) { const pc = c.loads.find(l => l.pp); void pc; g += T(10, 32, '+ peso propio de las barras (γ·A)', { fs: 9.5, c: '#5b6b7b', a: 'start' }); }
   // puntuales y momentos en barras
   for (const l of c.loads.filter(q => (q.t === 'P' || q.t === 'C') && q.m !== undefined)) {
     const m = md.mems[l.m], n1 = md.nodes[m.i], n2 = md.nodes[m.j];
@@ -666,8 +675,7 @@ function drawLoads(md, ci, W, maxH) {
     const [x, y] = P(v, md.nodes[l.n]);
     g += TH(x + 16, y + 26, 'Δ = (' + l.vals.slice(0, 2).map(q => fx(q * 1000, 1)).join('; ') + ') mm', { fs: 9, c: '#8250df', a: 'start', b: 1 });
   }
-  const t = c.name + (md.cdesc[c.name] ? ' — ' + md.cdesc[c.name] : '');
-  g += T(10, 16, t, { fs: 11.5, b: 1, a: 'start' });
+  g += T(10, 16, ttl, { fs: 11.5, b: 1, a: 'start' });
   return { svg: g, H: v.H };
 }
 // diagramas N, V o M sobre la geometría
@@ -679,7 +687,8 @@ function drawDiagram(md, sets, key, W, opts = {}) {
   const ord = Math.max(24, Math.min(46, 0.1 * v.span * v.sc));
   const k = ord / amax;
   const col = COL[key], fill = FILL[key];
-  const lb = labeler();
+  const lb = labeler(W);
+  lb.add(W / 2, 14, W, 20);
   md.nodes.forEach(n => { const [x, y] = P(v, n); lb.add(x, y, 8, 8); });
   g += membersLine(md, v, '#c3ccd5', 1.4);
   md.nodes.forEach((n, i) => { g += supportGlyph(md, i, v, '#9aa5b1'); });
@@ -715,7 +724,7 @@ function drawDiagram(md, sets, key, W, opts = {}) {
   for (const L of labels) {
     const s = fx(L.val), w = s.length * 5.6 + 4, h = 11;
     // valor duplicado en el mismo lugar (nudo compartido)
-    if (done.some(d => Math.abs(d.x - L.x) < 22 && Math.abs(d.y - L.y) < 22 && Math.abs(Math.abs(d.val) - Math.abs(L.val)) < 1e-6 * amax + 1e-9)) continue;
+    if (done.some(d => Math.abs(d.x - L.x) < 22 && Math.abs(d.y - L.y) < 22 && Math.abs(d.val - L.val) < 1e-6 * amax + 1e-9)) continue;
     const el = Math.hypot(L.ex, L.ey) || 1, ux = L.ex / el, uy = L.ey / el;
     const cands = [];
     for (const dd of [9, 17, 27]) for (const sh of [0, 14, -14, 26, -26]) {
@@ -739,7 +748,7 @@ function drawTruss(md, sets, W, opts = {}) {
   const nc = md.mems.map((m, mi) => Math.min(0, ...sets.map(s => Math.min(...s.mf[mi].N))));
   const amax = Math.max(1e-12, ...nt, ...nc.map(Math.abs));
   md.nodes.forEach((n, i) => { g += supportGlyph(md, i, v, '#7a8794'); });
-  const lb = labeler();
+  const lb = labeler(W);
   md.nodes.forEach(n => { const [x, y] = P(v, n); lb.add(x, y, 10, 10); });
   md.mems.forEach((m, mi) => {
     const a = P(v, md.nodes[m.i]), b = P(v, md.nodes[m.j]);
@@ -781,7 +790,7 @@ function drawDeformed(md, set, W) {
     g += `<path d="${d.map((p, k) => (k ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="${C.orange}" stroke-width="2" stroke-linejoin="round"/>`;
   });
   // rótulos de desplazamientos máximos
-  const lb = labeler();
+  const lb = labeler(W);
   let ix = -1, iy = -1;
   md.nodes.forEach((n, i) => { if (ix < 0 || Math.abs(set.u[3 * i]) > Math.abs(set.u[3 * ix])) ix = i; if (iy < 0 || Math.abs(set.u[3 * i + 1]) > Math.abs(set.u[3 * iy + 1])) iy = i; });
   const mark = (i, txt) => { const n = md.nodes[i], x = v.X(n.x + amp * set.u[3 * i]), y = v.Y(n.y + amp * set.u[3 * i + 1]); g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${C.orange}"/>`; const w = txt.length * 5.5; const p = lb.place([[x + w / 2 + 8, y - 8], [x - w / 2 - 8, y - 8], [x + w / 2 + 8, y + 14], [x - w / 2 - 8, y + 14], [x, y - 16], [x, y + 20]], w, 11); if (p) g += TH(p[0], p[1], txt, { fs: 9.5, c: '#8a4b00', b: 1 }); };
@@ -996,7 +1005,7 @@ function renderFrame(b, ctx) {
     return [mx, mn];
   };
   if (md.truss) {
-    if (want('N') || want('M')) html += `<div class="figure">${drawTruss(md, envSets, W, { sub })}${caption(ctx, 'Fuerzas axiales en las barras de la armadura' + (envSets.length > 1 ? ' (envolvente: tracción máx. / compresión máx.)' : ''))}</div>`;
+    if (want('N') || want('M')) html += `<div class="figure">${drawTruss(md, envSets, W, { sub: sub.replace(' (máx. continuo, mín. trazos)', '') })}${caption(ctx, 'Fuerzas axiales en las barras de la armadura' + (envSets.length > 1 ? ' (envolvente: tracción máx. / compresión máx.)' : ''))}</div>`;
   } else {
     if (want('M')) html += `<div class="figure">${drawDiagram(md, envDraw('M'), 'M', W, { sub })}${caption(ctx, 'Diagrama de momento flector')}</div>`;
     if (want('V')) html += `<div class="figure">${drawDiagram(md, envDraw('V'), 'V', W, { sub })}${caption(ctx, 'Diagrama de fuerza cortante')}</div>`;
@@ -1111,7 +1120,8 @@ function renderBeamCase(b, ctx) {
   const { r } = beamCaseSolve(sp, ld, L, w, P, M0, a, EI);
   const sfx = b.sufijo ? '_' + safeId(b.sufijo) : '';
   const RA = r.reac[0].V, RB = r.reac[1].V, MA = r.reac[0].M, MB = r.reac[1].M;
-  const Mpos = Math.max(0, ...r.sM), Mneg = Math.min(0, ...r.sM), Mmax = Math.max(Mpos, -Mneg), Vmax = Math.max(...r.sV.map(Math.abs)), dmax = Math.max(...r.sD.map(Math.abs));
+  const mref = Math.max(...r.sM.map(Math.abs)) * 1e-9;
+  const Mpos = Math.max(0, ...r.sM.map(v => (v > mref ? v : 0))), Mneg = Math.min(0, ...r.sM.map(v => (v < -mref ? v : 0))), Mmax = Math.max(Mpos, -Mneg), Vmax = Math.max(...r.sV.map(Math.abs)), dmax = Math.max(...r.sD.map(Math.abs));
   const mm = (v) => math.unit(v, 'tonf*m');
   setVar(ctx, 'RA' + sfx, math.unit(RA, 'tonf')); setVar(ctx, 'RB' + sfx, math.unit(sp === 'V' ? 0 : RB, 'tonf'));
   setVar(ctx, 'MA' + sfx, mm(sp === 'SA' ? 0 : -MA)); setVar(ctx, 'MB' + sfx, mm(sp === 'EE' ? MB : 0));
@@ -1126,6 +1136,7 @@ function renderBeamCase(b, ctx) {
   const cargas = ld === 'U' ? `U 1 ${w}` : ld === 'T' ? `T 1 0 ${w}` : ld === 'Ti' ? `T 1 ${w} 0` : ld === 'P' ? `P ${a} ${P}` : `M ${a} ${M0}`;
   const html = blockBeam({ tramos: String(L), apoyos: SUPS[sp].s.replace(' ', ', '), E: String(E), I: String(I), cargas, titulo: b.titulo || (SUPS[sp].t + ' — ' + LOADS[ld]) }, tmp);
   ctx.fig = tmp.fig;
+  const htmlB = html.replace(/<div class="kv">[\s\S]*?<\/div>(?=<div class="cap">)/, '');
   // verificación de deflexión
   const dl = evalParam(b.deflim, S, '', 0);
   let chk = '';
@@ -1136,7 +1147,7 @@ function renderBeamCase(b, ctx) {
   }
   const head = `<div class="txt"><b>${esc(SUPS[sp].t)}</b> — ${esc(LOADS[ld])}. ${K('L = ' + f2(L) + '\\,\\mathrm{m}')}, ${K('EI = ' + f2(EI, 1) + '\\,\\mathrm{t\\cdot m^2}')}${ld === 'P' || ld === 'M' ? ', ' + K('a = ' + f2(a) + '\\,\\mathrm{m},\\ b = L - a = ' + f2(L - a) + '\\,\\mathrm{m}') : ''}.</div>`;
   const kv = `<div class="kv">${[['RA' + sfx, math.unit(RA, 'tonf')], ...(sp !== 'V' ? [['RB' + sfx, math.unit(RB, 'tonf')]] : []), ['Mpos' + sfx, mm(Mpos)], ['Mneg' + sfx, mm(Mneg)], ['Vmax' + sfx, math.unit(Vmax, 'tonf')], ['deltamax' + sfx, math.unit(dmax * 1000, 'mm')]].map(([n, v]) => K(symTex(n) + '=' + valTex(v))).join(' ')}</div>`;
-  return head + (rows ? `<div class="dt">Fórmulas cerradas (AISC Tabla 3-23 / Roark)</div>${rows}` : '') + html + kv + chk;
+  return head + (rows ? `<div class="dt">Fórmulas cerradas (AISC Tabla 3-23 / Roark)</div>${rows}` : '') + htmlB + kv + chk;
 }
 
 // ---------------------------------------------------------------------
@@ -1146,7 +1157,7 @@ export function influenceLine(X, sup, efecto, loc, lado = 'der', npts = 240) {
   const Ltot = X[X.length - 1];
   const xs = new Set(); for (let k = 0; k <= npts; k++) xs.add(+(Ltot * k / npts).toFixed(9));
   X.forEach(x => xs.add(+x.toFixed(9)));
-  if (efecto !== 'R') { xs.add(+Math.max(0, loc - 1e-6).toFixed(9)); xs.add(+Math.min(Ltot, loc + 1e-6).toFixed(9)); }
+  if (efecto !== 'R') { const e = 2e-4 * Ltot; if (efecto === 'M') xs.add(+loc.toFixed(9)); else { xs.add(+Math.max(0, loc - e).toFixed(9)); xs.add(+Math.min(Ltot, loc + e).toFixed(9)); } }
   const pos = [...xs].sort((p, q) => p - q);
   const eta = [];
   for (const p of pos) {
@@ -1310,11 +1321,11 @@ export function hardyCross(Ls, EIs, sup, spanLoads, opt = {}) {
     }
     D.forEach((d, i) => { M[i][0] += d[0]; M[i][1] += d[1]; });
     const Tr = Ls.map(() => [0, 0]);
+    const ref = Math.max(1e-9, ...fem.flat().map(Math.abs));
+    if (mx < tol * ref || c === maxC - 1) { steps.push({ D, Tr }); break; }
     D.forEach((d, i) => { Tr[i][1] += d[0] * carry(i, 0); Tr[i][0] += d[1] * carry(i, 1); });
     Tr.forEach((t, i) => { M[i][0] += t[0]; M[i][1] += t[1]; });
     steps.push({ D, Tr });
-    const ref = Math.max(1e-9, ...fem.flat().map(Math.abs));
-    if (mx < tol * ref && Tr.every(t => Math.abs(t[0]) < tol * ref && Math.abs(t[1]) < tol * ref)) break;
   }
   return { Kr, fem, fem2, M, joints, steps, cant };
 }

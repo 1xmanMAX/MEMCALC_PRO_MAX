@@ -294,13 +294,14 @@ export function plateFD(a, b, edges, qf, nu = 0.2, nx = 24, ny = 24) {
   const Mx = (i, j) => -(wxx(i, j) + nu * wyy(i, j)), My = (i, j) => -(wyy(i, j) + nu * wxx(i, j));
   return { w, Mx, My, nx, ny, hx, hy };
 }
-// Análisis de pared de tanque rectangular: carga trapezoidal q = qs + (qb − qs)(1 − y/b)
+// Análisis de pared de tanque rectangular: carga trapezoidal q = qs + (qb − qs)(1 − y/hq) ≥ qs
 const _plCache = new Map();
-export function tankWall(a, b, edges, qb, qs = 0, nu = 0.2, ndiv = 20) {
-  const key = [a, b, edges.bot, edges.top, edges.left, edges.right, qb, qs, nu, ndiv].join('|');
+export function tankWall(a, b, edges, qb, qs = 0, nu = 0.2, ndiv = 20, hq = b) {
+  const key = [a, b, edges.bot, edges.top, edges.left, edges.right, qb, qs, nu, ndiv, hq].join('|');
   if (_plCache.has(key)) return _plCache.get(key);
   const nx = Math.max(8, Math.min(40, 2 * Math.round(ndiv * Math.sqrt(a / b) / 2))), ny = Math.max(8, Math.min(40, 2 * Math.round(ndiv * Math.sqrt(b / a) / 2)));
-  const r = plateFD(a, b, edges, (x, y) => qs + (qb - qs) * (1 - y / b), nu, nx, ny);
+  // q(y) = qs + (qb − qs)·⟨1 − y/hq⟩  (hq = altura de la carga triangular, p. ej. nivel del agua)
+  const r = plateFD(a, b, edges, (x, y) => qs + (qb - qs) * Math.max(0, 1 - y / hq), nu, nx, ny);
   let MxN = 0, MxP = 0, MyN = 0, MyP = 0, iMyP = 0, jMyP = 0, jMxN = 0, jMxP = 0;
   for (let j = 0; j <= r.ny; j++) for (let i = 0; i <= r.nx; i++) {
     const mx = r.Mx(i, j), my = r.My(i, j);

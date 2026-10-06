@@ -40,4 +40,7 @@ defineFns({
   // ---------- momentos máximos ----------
   MSAu: { fn: (w, L) => div(mul(w, pw(L, 2)), 8), tex: 'M_{max}', desc: 'Momento máx. simplemente apoyada uniforme wL²/8', args: 'w, L' },
   MSAp: { fn: (P, a, L) => div(mul(P, a, L_(L, a)), L), tex: 'M_{max}', desc: 'Momento máx. simplemente apoyada puntual Pab/L', args: 'P, a, L' },
+  // ---------- utilidades de análisis matricial ----------
+  bloque: { fn: (K, i, j, n) => { const m = n === undefined ? 3 : toNum(n); const a = math.isMatrix(K) ? K.toArray() : K; const r0 = (toNum(i) - 1) * m, c0 = (toNum(j) - 1) * m; if (!a[r0 + m - 1] || a[0].length < c0 + m) throw new Error('bloque: índice fuera de la matriz'); return math.matrix(a.slice(r0, r0 + m).map(r => r.slice(c0, c0 + m))); }, tex: '\\mathrm{bloque}', desc: 'Submatriz (i, j) de tamaño n×n (n = 3 por defecto) de una matriz de rigidez', args: 'K, i, j, n' },
+  comp: { fn: (v, i, j) => { const a = math.isMatrix(v) ? v.toArray() : v; const r = a[toNum(i) - 1]; if (r === undefined) throw new Error('comp: índice fuera del vector'); return Array.isArray(r) ? r[j === undefined ? 0 : toNum(j) - 1] : r; }, tex: '\\mathrm{comp}', desc: 'Componente i de un vector (o elemento i, j de una matriz)', args: 'v, i, j' },
 }, 'Análisis estructural');

@@ -19,6 +19,7 @@ const evalVec = (str, S, unit) => {
   const v = math.evaluate(String(str), new Map(S));
   return toArr(v).map(x => (math.isUnit(x) ? (unit ? x.toNumber(unit) : x.value) : +x));
 };
+const tryNum = (s, S, unit) => { if (s === undefined) return null; try { const v = evalParam(s, S, unit); return typeof v === 'number' && isFinite(v) ? v : null; } catch (e) { return null; } };
 const lab = (x, y, s, o = {}) => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${o.fs || 10}"${o.b ? ' font-weight="600"' : ''} fill="${o.c || C.ink}" text-anchor="${o.a || 'middle'}" font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(s)}</text>`;
 const kv = (pairs) => `<div class="kv">${pairs.map(([n, v]) => K(symTex(n) + '=' + valTex(v))).join(' ')}</div>`;
 
@@ -37,8 +38,9 @@ function xDiagram(W, padL, padR, px, xs, ys, o) {
   g += Lne(padL, py(0), W - padR, py(0), C.ink, 1);
   (o.ref || []).forEach((r, i) => { g += Lne(padL, py(r), W - padR, py(r), C.red, 1.2, '6 4') + lab(W - padR - 4, py(r) - 4, (o.refLab || [])[i] || '', { a: 'end', c: C.red }); });
   // extremos
-  const placed = [];
+  const placed = [], done = new Set();
   const mark = (k) => {
+    if (done.has(k) || [...done].some(j => Math.abs(xs[j] - xs[k]) < 1e-9 && Math.abs(ys[j] - ys[k]) < 1e-9)) return; done.add(k);
     const v = ys[k]; if (!isFinite(v) || Math.abs(v) < 1e-9 * Math.max(Math.abs(ymax), Math.abs(ymin))) return;
     const x = px(xs[k]), y = py(v), up = o.invert ? v < 0 : v > 0;
     let ty = y + (up ? -6 : 13), tx = x;
@@ -235,7 +237,7 @@ registerBlock('winkler', {
     g += `<rect x="${px(0)}" y="${yb}" width="${L * sc}" height="${hb}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.4"/>`;
     const maxP = Math.max(1e-9, ...loads.pts.map(p => Math.abs(p.P)));
     loads.pts.forEach(p => { const x = px(p.x), h = 28 + 34 * Math.abs(p.P) / maxP; g += `<rect x="${x - 7}" y="${yb - 26}" width="14" height="26" fill="#9aa5b1" stroke="${C.ink}" stroke-width="0.8"/>`; g += `<line x1="${x}" y1="${yb - 26 - h + 26}" x2="${x}" y2="${yb - 2}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + lab(x + 5, yb - h + 2, f2(p.P) + ' t', { a: 'start', c: C.red, b: 1 }); });
-    loads.mom.forEach(m => { const x = px(m.x); g += `<path d="M${x - 13},${yb - 30} A13,13 0 1,1 ${x + 13},${yb - 30}" fill="none" stroke="${C.orange}" stroke-width="1.5" marker-end="url(#arr)"/>` + lab(x + 16, yb - 46, f2(m.M) + ' t·m', { a: 'start', c: C.orange }); });
+    loads.mom.forEach(m => { const x = px(m.x); g += `<path d="M${x - 13},${yb - 30} A13,13 0 1,1 ${x + 13},${yb - 30}" fill="none" stroke="${C.orange}" stroke-width="1.5" marker-end="url(#arr)"/>` + lab(x - 16, yb - 40, f2(m.M) + ' t·m', { a: 'end', c: C.orange }); });
     loads.dist.forEach(d => { const x1 = px(Math.max(0, d.x1)), x2 = px(Math.min(L, d.x2)); g += `<rect x="${x1}" y="${yb - 14}" width="${x2 - x1}" height="12" fill="${C.blueF}" stroke="${C.blue}" stroke-width="0.8"/>` + lab((x1 + x2) / 2, yb - 18, f2(d.w) + ' t/m', { c: C.blue }); });
     g += dimH(px(0), px(L), yb + hb + (rig ? 40 : 58), 'L = ' + f2(L) + ' m');
     vl.forEach(x => { g += T(px(x), yb + hb + (rig ? 52 : 70) + 2, 'x = ' + f2(x), { fs: 9, c: C.axis }); });
@@ -247,8 +249,9 @@ registerBlock('winkler', {
     out += '<div class="dt">Fuerza cortante V [t]</div>';
     out += xDiagram(W, padL, padR, px, st.xs, st.V, { color: C.green, fill: C.greenF, title: 'V [t]', vlines: vl });
     out += '<div class="dt">Momento flector M [t·m] — positivo hacia abajo (tracción en fibra inferior)</div>';
-    out += xDiagram(W, padL, padR, px, st.xs, st.M, { color: C.blue, fill: C.blueF, title: 'M [t·m]', invert: true, vlines: vl });
-    const res = `<div class="kv">${info}</div>` + kv([['qmax' + sfx, U(qmax, 'tonf/m^2')], ['qmin' + sfx, U(qmin, 'tonf/m^2')], ['wmax' + sfx, U(wmax * 1000, 'mm')], ['Mpos' + sfx, U(Mpos, 'tonf*m')], ['Mneg' + sfx, U(Mneg, 'tonf*m')], ['Vmax' + sfx, U(Vmax, 'tonf')]]) + `<div class="kv">${K('\\Sigma\\,\\text{reacción del suelo} = ' + f2(sumR) + '\\,\\mathrm{t}')}</div>`;
+    const atCols = vl.map(x => { let k = 0; st.xs.forEach((xx, i) => { if (Math.abs(xx - x) <= Math.abs(st.xs[k] - x) + 1e-12) k = i; }); return k; });
+    out += xDiagram(W, padL, padR, px, st.xs, st.M, { color: C.blue, fill: C.blueF, title: 'M [t·m]', invert: true, vlines: vl, extra: atCols });
+    const res = `<div class="kv">${info}</div>` + kv([['qmax' + sfx, U(qmax, 'tonf/m^2')], ['qmin' + sfx, U(qmin, 'tonf/m^2')], ...(rig && !(ks > 0) ? [] : [['wmax' + sfx, U(wmax * 1000, 'mm')]]), ['Mpos' + sfx, U(Mpos, 'tonf*m')], ['Mneg' + sfx, U(Mneg, 'tonf*m')], ['Vmax' + sfx, U(Vmax, 'tonf')]]) + `<div class="kv">${K('\\Sigma\\,\\text{reacción del suelo} = ' + f2(sumR) + '\\,\\mathrm{t}')}</div>`;
     return `<div class="figure">${out}${res}${caption(ctx, b.titulo || (rig ? 'Viga de cimentación — método rígido convencional' : 'Viga de cimentación sobre lecho elástico de Winkler (elementos finitos)'))}</div>`;
   },
 });
@@ -293,7 +296,7 @@ registerBlock('soilprofile', {
     const layers = lines(b.estratos).map(l => {
       const t = l.split(/\s+/);
       const h = evalParam(t[0], S, 'm'), g = evalParam(t[2], S, 'tonf/m^3');
-      let gs = g, k = 3; if (t[3] !== undefined && /^[\d.]+$/.test(t[3])) { gs = evalParam(t[3], S, 'tonf/m^3'); k = 4; }
+      let gs = g, k = 3; const g3 = tryNum(t[3], S, 'tonf/m^3'); if (g3 !== null) { gs = g3; k = 4; }
       pos({ espesor: h, gamma: g });
       return { h, sucs: t[1] || '', g, gs, desc: t.slice(k).join(' ') };
     });
@@ -425,8 +428,8 @@ export function slopeCircle(m, xc, yc, R, n = 30) {
     let Q = 0; for (const s of surch) if (x >= s.x1 && x <= s.x2) Q += s.q * b;
     const sa = dir * (xc - x) / R, ca = Math.sqrt(Math.max(0, 1 - sa * sa)), L = b / Math.max(ca, 1e-6);
     const lb = layerAt(lay, yb);
-    const u = ywt === null ? 0 : gw * Math.max(0, ywt - yb);
-    if (ywt !== null && ywt > ys) Q += gw * (ywt - ys) * b; // agua libre sobre la dovela (talud sumergido)
+    // nivel freático horizontal recortado por la superficie del terreno (sin agua libre sobre el talud)
+    const u = ywt === null ? 0 : gw * Math.max(0, Math.min(ywt, ys) - yb);
     sl.push({ x, b, h, W: Wt + Q, Wsoil: Wt, yg, ys, yb, sa, ca, L, c: lb.c, tf: Math.tan(lb.phi), u, lay: lb });
   }
   if (!sl.length || hmx < hmin) return null;
@@ -465,7 +468,7 @@ registerBlock('slope', {
     const pts = lines(b.superficie).map(l => toks(l).map(s => evalParam(s, S, 'm'))).filter(p => p.length >= 2);
     if (pts.length < 2) throw new Error('Defina al menos dos puntos de la superficie del terreno');
     for (let i = 1; i < pts.length; i++) if (pts[i][0] < pts[i - 1][0]) throw new Error('Las abscisas de la superficie deben ser crecientes');
-    let lay = lines(b.estratos).map(l => { const t = toks(l); const g = evalParam(t[3], S, uG); let gs = g, k = 4; if (t[4] !== undefined && /^[\d.]+$/.test(t[4])) { gs = evalParam(t[4], S, uG); k = 5; } return { top: evalParam(t[0], S, 'm'), c: evalParam(t[1], S, uS), phi: evalParam(t[2], S, 'deg') * Math.PI / 180, g, gs, name: t.slice(k).join(' ') }; });
+    let lay = lines(b.estratos).map(l => { const t = toks(l); const g = evalParam(t[3], S, uG); let gs = g, k = 4; const g4 = tryNum(t[4], S, uG); if (g4 !== null) { gs = g4; k = 5; } return { top: evalParam(t[0], S, 'm'), c: evalParam(t[1], S, uS), phi: evalParam(t[2], S, 'deg') * Math.PI / 180, g, gs, name: t.slice(k).join(' ') }; });
     if (!lay.length) throw new Error('Defina al menos un estrato');
     lay.sort((a, c) => c.top - a.top);
     const ymaxS = Math.max(...pts.map(p => p[1])), ybase = evalParam(b.ybase, S, 'm', Math.min(...pts.map(p => p[1])) - 5);
@@ -556,6 +559,7 @@ registerBlock('slope', {
     // leyenda de estratos
     lay.forEach((l, i) => { const yy = pt + 6 + i * 13; g += `<rect x="${W - pr - 214}" y="${yy - 8}" width="12" height="10" fill="${cols[i % cols.length]}" stroke="#7a6a50" stroke-width=".6"/>` + T(W - pr - 198, yy, `${l.name || 'Estrato ' + (i + 1)}: c=${f2(l.c)} ${uStr}, φ=${f2(l.phi * 180 / Math.PI, 1)}°, γ=${f2(l.g)}`, { fs: 8.5, a: 'start' }); });
     let out = svgWrap(W, Hh, g);
+    if (grid.length) out += '<div class="legend"><span><i style="background:hsl(0,70%,45%)"></i>Centros con FS mínimo</span><span><i style="background:hsl(60,70%,45%)"></i>FS intermedio</span><span><i style="background:hsl(120,70%,45%)"></i>FS máximo de la malla</span><span><i style="background:#c62828"></i>Círculo crítico</span></div>';
     out += kv([['FSb' + sfx, crit.FSb], ['FSf' + sfx, crit.FSf], ['xc' + sfx, U(crit.xc, 'm')], ['yc' + sfx, U(crit.yc, 'm')], ['Rc' + sfx, U(crit.R, 'm')]]);
     out += `<div class="kv">${K('FS_{req} = ' + f2(FSreq))} ${K('k_h = ' + f2(kh, 3))} ${K('\\Sigma M_{mot}/R = ' + f2(crit.drive) + '\\,\\mathrm{' + uW.replace('/', '/') + '}')}</div>`;
     if (b.tabla) {
