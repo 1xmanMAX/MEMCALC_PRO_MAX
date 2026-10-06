@@ -124,7 +124,8 @@ Pu_c = Nc_COL // Máxima compresión última en columnas (envolvente)
 Ag = bc*hc // Área bruta de la columna
 phiPn = 0.7*0.8*(0.85*fc*(Ag - 0.01*Ag) + fy*0.01*Ag) -> tonf // Resistencia axial máxima con ρ = 1 % (E.060 10.3.6.2)
 check Pu_c <= phiPn // Compresión axial máxima en columnas
-check Pu_c <= 0.1*fc*Ag + 0.9*phiPn // Columna con carga axial moderada: diseñar con el diagrama P-M`),
+nu_c = Pu_c/(fc*Ag) // Carga axial normalizada (si > 0.1 el elemento se diseña como columna en flexocompresión, E.060 21.6.1)
+"Las columnas deben diseñarse en flexocompresión con el diagrama de interacción P-M usando las combinaciones exportadas ($M$ y $N$ de cada barra) y verificarse por capacidad (columna fuerte – viga débil, E.060 21.6.2).`),
       summary(),
     ],
   },
@@ -227,7 +228,7 @@ check dmax <= Lt/360 // Deflexión admisible de la armadura`),
     titulo: 'Análisis de pórtico a dos aguas de nave industrial',
     blocks: [
       text(`# Generalidades
-Se analiza el pórtico principal de una nave industrial de acero: columnas de 6.0 m, luz de 20 m y cumbrera a 8.0 m (pendiente 20 %), con pórticos cada 6.0 m y bases empotradas. Las cargas de viento se determinan con la **NTE E.020, Art. 12** ($p_h = 0.005\\,C\\,V_h^2$) para el viento transversal de izquierda a derecha, actuando perpendicular a cada superficie. El análisis es elástico de primer orden por el método de rigidez; las combinaciones siguen la NTE E.090.
+Se analiza el pórtico principal de una nave industrial de acero: columnas de 6.0 m, luz de 20 m y cumbrera a 8.0 m (pendiente 20 %), con pórticos cada 6.0 m y bases empotradas. Las cargas de viento se determinan con la **NTE E.020, Art. 12** ($p_h = 0.005\\,C\\,V_h^2$) para el viento transversal de izquierda a derecha, actuando perpendicular a cada superficie. Las combinaciones de la NTE E.090 se resuelven con un **análisis elástico de segundo orden** (efectos P-Δ y P-δ con la matriz geométrica, iterativo), como exige AISC 360-16 C1 para usar el método de la longitud efectiva (Anexo 7).
 
 ## Normas y referencias
 - NTE E.020 Cargas (Art. 7 techos, Art. 12 viento) · NTE E.090 Estructuras metálicas (1.4) · AISC 360-16 (cap. H).
@@ -275,7 +276,7 @@ qw4 = 0.6*ph*sp -> tonf/m // Techo a sotavento, C = −0.6 (succión)`),
         combinaciones: 'U1 = 1.4 CM\nU2 = 1.2 CM + 1.6 CV\nU3 = 1.2 CM + 0.5 CV + 1.3 W\nU4 = 0.9 CM + 1.3 W',
         grupos: 'COL 1,4\nVIG 2,3',
         servicio: 'CM + CV', graficos: 'C M V N D',
-        deriva_caso: 'W', deriva_f: '1', deriva_lim: '1/100',
+        deriva_caso: 'W', deriva_f: '1', deriva_lim: '1/100', pdelta: true,
         titulo: 'Pórtico a dos aguas de la nave',
       },
       calc(`# Verificación de columnas (AISC 360-16, cap. H)
