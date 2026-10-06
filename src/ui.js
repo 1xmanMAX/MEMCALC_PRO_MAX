@@ -3,7 +3,7 @@
 // =====================================================================
 import { runDoc } from './docrun.js';
 import { TEMPLATES, CATEGORIES } from './templates.js';
-import { K, esc, math, valText, FN_DOCS, CUSTOM_FN } from './engine.js';
+import { K, esc, math, valText, symTex, FN_DOCS, CUSTOM_FN } from './engine.js';
 import { BLOCKS } from './blockreg.js';
 
 const VERSION = '1.0.0';
@@ -57,6 +57,19 @@ const I = {
   undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></svg>',
   redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 000 10h3"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  fn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h-1a3 3 0 00-3 3v11a3 3 0 01-3 3H6M7 10h7"/><path d="M15 13l5 6M20 13l-5 6"/></svg>',
+  vars: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5l6 8M10 5l-6 8"/><path d="M13 8h7M13 12h7"/><path d="M4 19h16"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  cmd: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6a3 3 0 10-3 3h12a3 3 0 10-3-3v12a3 3 0 103-3H6a3 3 0 103 3z"/></svg>',
+  key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h0M10 10h0M14 10h0M18 10h0M7 14h10"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
+  cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a5 5 0 01-.5-10A6 6 0 0118 9a4.5 4.5 0 01-.5 9z"/><path d="M9.5 13l2 2 3.5-4"/></svg>',
+  minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
+  word: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6M8 13l1.5 5 2.5-4 2.5 4 1.5-5"/></svg>',
 };
 
 // ---------------- Tipos de bloque ----------------
@@ -135,6 +148,53 @@ const TYPES = {
 for (const [k, v] of Object.entries(BLOCKS)) TYPES[k] = { name: v.name || k, icon: v.icon || 'calc', iconSvg: v.iconSvg, fields: v.fields || [], hint: v.hint, def: v.def, group: v.group };
 const icon = (T) => (T && T.iconSvg) || I[T && T.icon] || I.calc;
 const BASE_ADD = ['calc', 'text', 'image', 'beam', 'section', 'pm', 'footing', 'wall', 'spectrum', 'plot', 'table', 'summary', 'pagebreak'];
+// Agrupación del menú «Agregar bloque»
+const ADD_GROUPS = [
+  ['Básicos', ['calc', 'text', 'image', 'table', 'summary', 'pagebreak']],
+  ['Gráficos', ['plot', 'section', 'footing', 'wall']],
+  ['Análisis', ['beam', 'pm', 'spectrum']],
+];
+const TYPE_DESC = {
+  calc: 'Fórmulas con unidades, sustitución y verificaciones', text: 'Párrafos, listas, tablas y LaTeX', image: 'Figura con leyenda (pegar, arrastrar o elegir)',
+  table: 'Tabla a partir de vectores o expresiones', summary: 'Tabla automática de verificaciones D/C', pagebreak: 'Inicia una nueva página al imprimir',
+  plot: 'Gráfico de funciones y(x)', section: 'Sección de concreto armado acotada', footing: 'Planta y elevación de zapata', wall: 'Muro en voladizo con empujes',
+  beam: 'Análisis matricial, V–M–δ y envolventes', pm: 'Interacción P–M de columnas', spectrum: 'Espectro de pseudoaceleraciones E.030',
+};
+function addGroups() {
+  const groups = ADD_GROUPS.map(([g, ts]) => [g, ts.filter(t => TYPES[t])]);
+  for (const [k, v] of Object.entries(BLOCKS)) {
+    const g = v.group || 'Análisis';
+    let e = groups.find(x => x[0] === g); if (!e) { e = [g, []]; groups.push(e); }
+    if (!e[1].includes(k)) e[1].push(k);
+  }
+  return groups.filter(g => g[1].length);
+}
+const fold = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const terms = (q) => fold(q).split(/\s+/).filter(Boolean);
+const matchAll = (hay, ts) => { const f = fold(hay); return ts.every(t => f.includes(t)); };
+// resalta términos (insensible a acentos) en un texto plano -> HTML escapado
+function hl(text, ts) {
+  text = String(text || ''); if (!ts || !ts.length) return esc(text);
+  const f = [...text].map(c => (c.normalize('NFD')[0] || c).toLowerCase()).join('');
+  const marks = new Array(text.length).fill(false);
+  for (const t of ts) { let i = f.indexOf(t); while (i >= 0 && t) { for (let k = i; k < i + t.length; k++) marks[k] = true; i = f.indexOf(t, i + t.length); } }
+  let out = '', on = false;
+  [...text].forEach((c, i) => { if (marks[i] && !on) { out += '<mark>'; on = true; } else if (!marks[i] && on) { out += '</mark>'; on = false; } out += esc(c); });
+  return out + (on ? '</mark>' : '');
+}
+// País de la plantilla (campo opcional `pais`; si falta se infiere de la norma)
+const PAISES = { PE: 'Perú', CL: 'Chile', JP: 'Japón', US: 'EE. UU.', EU: 'Europa', INT: 'Internacional' };
+function paisOf(t) {
+  if (t.pais && PAISES[t.pais]) return t.pais;
+  if (t.cat === 'General') return 'INT';
+  const n = (t.normas || '') + ' ' + (t.cat || '') + ' ' + (t.name || '');
+  if (/NCh|DS ?61|Chile/i.test(n)) return 'CL';
+  if (/BSL|Jap[oó]n|japonesa|AIJ/i.test(n)) return 'JP';
+  if (/E\.0\d\d|RNE|NTE|Per[uú]/i.test(n)) return 'PE';
+  if (/ACI|ASCE|AISC|AASHTO|IBC/i.test(n)) return 'US';
+  if (/EN 19|Euroc[oó]d/i.test(n)) return 'EU';
+  return 'INT';
+}
 
 // ---------------- Estado ----------------
 let doc = null;
@@ -178,7 +238,13 @@ const dbPut = (d) => dbOp('readwrite', s => s.put(d)).catch(() => { });
 const dbGet = (id) => dbOp('readonly', s => s.get(id)).catch(() => null);
 const dbAll = () => dbOp('readonly', s => s.getAll()).catch(() => []);
 const dbDel = (id) => dbOp('readwrite', s => s.delete(id)).catch(() => { });
-const autosave = debounce(() => { doc.updated = Date.now(); dbPut(JSON.parse(JSON.stringify(doc))); try { localStorage.setItem('mc_last', doc.id); } catch (e) { /* */ } }, 600);
+const autosave0 = debounce(() => { doc.updated = Date.now(); dbPut(JSON.parse(JSON.stringify(doc))).then(() => saveState('ok')); try { localStorage.setItem('mc_last', doc.id); } catch (e) { /* */ } }, 600);
+const autosave = Object.assign((...a) => { saveState('busy'); autosave0(...a); }, { flush: autosave0.flush });
+function saveState(s) {
+  const el = document.getElementById('sbsave'); if (!el) return;
+  el.classList.toggle('busy', s === 'busy');
+  el.querySelector('span').textContent = s === 'busy' ? 'Guardando…' : 'Guardado ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+}
 
 // ---------------- Cálculo y vista previa ----------------
 function compute() {
@@ -202,6 +268,8 @@ function compute() {
   updateStatus();
   updateInputs();
   updateBlockErrors();
+  if (tab === 'vars') renderVars();
+  if (ied) iedSync();
   $('#perf').textContent = Math.round(performance.now() - t0) + ' ms';
   if (follow && !isMobile()) {
     const f = follow; follow = null;
@@ -240,6 +308,12 @@ function updatePrintStyle() {
 function updateStatus() {
   const c = lastRes.ctx.checks, ok = c.filter(x => x.ok).length, bad = c.filter(x => !x.ok && !x.nv).length, err = lastRes.ctx.errors.length;
   $('#chips').innerHTML = (c.length ? `<span class="chip ok" data-go="ok" title="Verificaciones que cumplen">✔ ${ok}</span>` : '') + (bad ? `<span class="chip bad" data-go="bad" title="Verificaciones que no cumplen">✘ ${bad}</span>` : '') + (err ? `<span class="chip err" data-go="err" title="Errores">⚠ ${err}</span>` : '');
+  const maxr = Math.max(0, ...c.map(x => (x.ratio != null && isFinite(x.ratio) ? x.ratio : 0)));
+  const sb = $('#sbchk');
+  if (sb) sb.innerHTML = !c.length && !err ? '<span class="mut">Sin verificaciones</span>' : `<span class="dot ${bad ? 'bad' : err ? 'warn' : 'ok'}"></span>${bad ? bad + ' de ' + c.length + ' no cumplen' : c.length + ' verificaciones cumplen'}${c.length ? ` · D/C máx. <b>${maxr.toFixed(2)}</b>` : ''}${err ? ` · <span class="sb-err" data-go="err">⚠ ${err} error${err > 1 ? 'es' : ''}</span>` : ''}`;
+  const nv = [...lastRes.ctx.scope.values()].filter(v => typeof v !== 'function').length;
+  const si = $('#sbinfo'); if (si) si.textContent = `${doc.blocks.length} bloques · ${lastRes.ctx.inputs.length} datos · ${nv} variables`;
+  const su = $('#sbunits'); if (su) su.textContent = { tec: 'Unidades: técnico (t, m)', si: 'Unidades: SI (kN, m)', us: 'Unidades: inglés (kip, ft)' }[doc.settings.sys] || '';
 }
 function updateBlockErrors() {
   document.querySelectorAll('.bk').forEach(el => {
@@ -279,6 +353,7 @@ function updateInputs() {
   }).join('')}</div>`).join('');
   renderCheckStrip();
 }
+const prettyVal = (t) => { const m = /^(-?[\d.,]+(?:e[-+]?\d+)?)\s+([A-Za-z].*)$/i.exec(String(t)); return m ? m[1] + ' ' + prettyU(m[2].replace(/\s*\/\s*/g, '/').replace(/\s+/g, '·')) : String(t); };
 const prettyU = (u) => String(u || '').replace(/\^2/g, '²').replace(/\^3/g, '³').replace(/\^4/g, '⁴').replace(/\*/g, '·');
 function renderCheckStrip() {
   const pane = $('#p-datos');
@@ -350,7 +425,8 @@ function renderBlocks() {
   const pane = $('#p-bloques');
   pane.innerHTML = '';
   doc.blocks.forEach((b, i) => { pane.appendChild(blockEl(b, i)); pane.appendChild(h(`<div class="ins"><button data-ins="${i + 1}">+ insertar aquí</button></div>`)); });
-  pane.appendChild(h(`<div class="add"><button class="btn pri addt" data-addtoggle>${I.plus}Agregar bloque</button>${[...BASE_ADD, ...Object.keys(BLOCKS)].map(t => `<button class="btn" data-add="${t}">${icon(TYPES[t])}${TYPES[t].name}</button>`).join('')}</div>`));
+  if (!doc.blocks.length) pane.appendChild(h(`<div class="empty big">${I.blank}<b>La memoria está vacía</b><span>Agregue un bloque de cálculo o de texto, o empiece desde una plantilla.</span><div class="erow2"><button class="btn pri" data-add="calc">${I.calc}Cálculo</button><button class="btn" data-add="text">${I.text}Texto</button><button class="btn" data-do="tpl">${I.grid}Plantillas</button></div></div>`));
+  pane.appendChild(h(`<div class="add"><button class="btn" data-add="calc" title="Agregar bloque de cálculo">${I.calc}Cálculo</button><button class="btn" data-add="text" title="Agregar bloque de texto">${I.text}Texto</button><button class="btn pri" data-addpick>${I.plus}Agregar bloque…</button></div>`));
   pane.querySelectorAll('textarea.code').forEach(paintHL);
   pane.querySelectorAll('textarea.auto').forEach(autosize);
 }
@@ -383,6 +459,38 @@ function blockEl(b, i) {
   }
   return el;
 }
+function showBlockPicker(anchor, at) {
+  const had = document.querySelector('.bpick'); document.querySelectorAll('.menu').forEach(m => m.remove()); if (had && had._anchor === anchor) return;
+  const groups = addGroups();
+  const m = h(`<div class="menu bpick" role="dialog" aria-label="Agregar bloque"><div class="sbox sm">${I.search}<input placeholder="Buscar bloque…" autocomplete="off" spellcheck="false"></div><div class="bpl"></div><div class="bpf">${at !== undefined ? 'Se insertará en la posición ' + (at + 1) : 'Se insertará tras el bloque seleccionado'} </div></div>`);
+  m._anchor = anchor;
+  const list = m.querySelector('.bpl'), q = m.querySelector('input');
+  let sel = 0;
+  const draw = () => {
+    const ts = terms(q.value);
+    list.innerHTML = groups.map(([g, ks]) => { const it = ks.filter(k => matchAll(TYPES[k].name + ' ' + (TYPE_DESC[k] || '') + ' ' + g + ' ' + k, ts)); return it.length ? `<div class="bpg">${esc(g)}</div>` + it.map(k => `<button data-addat="${k}"><span class="bpi">${icon(TYPES[k])}</span><span><b>${hl(TYPES[k].name, ts)}</b><small>${hl(TYPE_DESC[k] || String(TYPES[k].hint || '').replace(/<[^>]+>/g, '').slice(0, 70), ts)}</small></span></button>`).join('') : ''; }).join('') || '<div class="empty">Sin resultados</div>';
+    sel = 0; mark();
+  };
+  const items = () => [...list.querySelectorAll('[data-addat]')];
+  const mark = () => items().forEach((b, i) => b.classList.toggle('on', i === sel));
+  draw();
+  q.addEventListener('input', draw);
+  q.addEventListener('keydown', e => {
+    const its = items();
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : -1) + its.length) % its.length; mark(); its[sel]?.scrollIntoView({ block: 'nearest' }); }
+    else if (e.key === 'Enter') { e.preventDefault(); its[sel]?.click(); }
+    else if (e.key === 'Escape') m.remove();
+  });
+  m.addEventListener('click', e => { const b = e.target.closest('[data-addat]'); if (b) { m.remove(); insertBlock(b.dataset.addat, at); } });
+  document.body.appendChild(m);
+  if (!isMobile()) {
+    const r = anchor.getBoundingClientRect(), H = Math.min(520, window.innerHeight - 24), W = 340;
+    m.style.maxHeight = H + 'px';
+    const top = r.bottom + 6 + H > window.innerHeight ? Math.max(12, r.top - 6 - Math.min(H, m.offsetHeight)) : r.bottom + 6;
+    m.style.top = top + 'px'; m.style.left = Math.max(8, Math.min(r.left + r.width / 2 - W / 2, window.innerWidth - W - 8)) + 'px';
+    setTimeout(() => q.focus(), 20);
+  }
+}
 function insertBlock(type, at) {
   const T = TYPES[type];
   if (at === undefined) {
@@ -410,7 +518,7 @@ function toast(msg, action, fn) {
   document.body.appendChild(t); setTimeout(() => t.remove(), action ? 6000 : (isMobile() ? 1700 : 2600));
 }
 function modal(title, content, wide = true) {
-  const ov = h(`<div class="ov"><div class="md-box" style="${wide ? '' : 'width:min(560px,100%)'}"><div class="md-h"><h3>${title}</h3><button class="btn ghost ic" data-x>${I.x}</button></div><div class="md-c"></div></div></div>`);
+  const ov = h(`<div class="ov"><div class="md-box${typeof wide === 'string' ? ' md-' + wide : ''}" style="${wide ? '' : 'width:min(560px,100%)'}"><div class="md-h"><h3>${title}</h3><button class="btn ghost ic" data-x>${I.x}</button></div><div class="md-c"></div></div></div>`);
   const c = ov.querySelector('.md-c'); if (typeof content === 'string') c.innerHTML = content; else c.appendChild(content);
   const close = () => { ov.remove(); document.removeEventListener('keydown', esc_); };
   const esc_ = (e) => { if (e.key === 'Escape') close(); };
@@ -418,25 +526,62 @@ function modal(title, content, wide = true) {
   document.addEventListener('keydown', esc_);
   document.body.appendChild(ov); return { ov, c, close };
 }
+function loadTemplate(t) {
+  doc = newDoc(t); selId = null; inputsKey = ''; loadUI(); changed();
+  setTab('datos'); if (isMobile()) setView('edit');
+  try { const r = JSON.parse(localStorage.getItem('mc_rtpl') || '[]').filter(x => x !== t.id); r.unshift(t.id); localStorage.setItem('mc_rtpl', JSON.stringify(r.slice(0, 6))); } catch (e) { /* */ }
+  toast('Plantilla «' + esc(t.name) + '» cargada');
+}
 function showTemplates(first) {
   const cats = [...CATEGORIES.filter(c => TEMPLATES.some(t => t.cat === c)), ...new Set(TEMPLATES.map(t => t.cat).filter(c => !CATEGORIES.includes(c)))];
-  const m = modal(first ? 'Bienvenido a MemoriaCalc — elija una plantilla' : 'Nueva memoria desde plantilla',
-    `<p style="margin:0 0 14px;color:var(--mut);font-size:13px">Cada plantilla es una memoria completa y editable: solo cambie los datos en la pestaña <b>Datos</b> y todo se recalcula al instante.</p>` +
-    `<input id="tplq" class="tplq" placeholder="Buscar plantilla (p. ej. zapata, sismo, puente)…" autocomplete="off">` +
-    cats.map(c => `<div class="sec" style="margin-top:6px">${c}</div><div class="tg">${TEMPLATES.filter(t => t.cat === c).map(t => `<button class="tc" data-t="${t.id}"><div class="ti">${I[t.icon] || I.calc}</div><div><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></div></button>`).join('')}</div>`).join(''));
-  const q = m.c.querySelector('#tplq');
-  q.addEventListener('input', () => {
-    const v = q.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    m.c.querySelectorAll('.tc').forEach(c => { c.hidden = v && !c.textContent.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(v); });
-    m.c.querySelectorAll('.tg').forEach(g => { const any = [...g.children].some(c => !c.hidden); g.hidden = !any; g.previousElementSibling.hidden = !any; });
+  let recent = []; try { recent = JSON.parse(localStorage.getItem('mc_rtpl') || '[]').filter(id => TEMPLATES.some(t => t.id === id)); } catch (e) { /* */ }
+  const st = { cat: '', pais: '', q: '' };
+  const paises = Object.keys(PAISES).filter(p => TEMPLATES.some(t => paisOf(t) === p));
+  const m = modal(first ? 'Bienvenido a MemoriaCalc' : 'Nueva memoria desde plantilla',
+    `<div class="gal">
+      <div class="gal-top">
+        <div class="sbox">${I.search}<input id="tplq" placeholder="Buscar entre ${TEMPLATES.length} plantillas: zapata, sismo, NCh433, puente…" autocomplete="off" spellcheck="false"><kbd>Esc</kbd></div>
+        <div class="pchips" role="group" aria-label="País o norma"><button class="pchip on" data-pais="">Todos</button>${paises.map(p => `<button class="pchip" data-pais="${p}"><span class="flag f-${p}">${p}</span>${PAISES[p]}</button>`).join('')}</div>
+      </div>
+      <div class="gal-body">
+        <nav class="gal-side"></nav>
+        <div class="gal-main"></div>
+      </div>
+      ${first ? '<div class="gal-foot">Cada plantilla es una memoria completa y editable: cambie los datos en la pestaña <b>Datos</b> o haga clic en un dato de la vista previa, y todo se recalcula al instante.</div>' : ''}
+    </div>`, 'gallery');
+  const q = m.c.querySelector('#tplq'), side = m.c.querySelector('.gal-side'), main = m.c.querySelector('.gal-main');
+  const card = (t, ts) => `<button class="tc" data-t="${t.id}"><div class="ti">${I[t.icon] || I.calc}</div><div class="tb2"><b>${hl(t.name, ts)}</b><span class="tn">${hl(t.normas || '', ts)}</span><span class="td">${hl(t.desc || '', ts)}</span></div><span class="flag f-${paisOf(t)}" title="${PAISES[paisOf(t)]}">${paisOf(t)}</span></button>`;
+  const draw = () => {
+    const ts = terms(st.q);
+    const base = TEMPLATES.filter(t => (!st.pais || paisOf(t) === st.pais) && (!ts.length || matchAll([t.name, t.desc, t.normas, t.cat, t.id, PAISES[paisOf(t)]].join(' '), ts)));
+    const cnt = (c) => base.filter(t => t.cat === c).length;
+    side.innerHTML = `<button class="gs${st.cat === '' ? ' on' : ''}" data-cat="">${I.layers}<span>Todas</span><em>${base.length}</em></button>` +
+      (recent.length && !ts.length ? `<button class="gs${st.cat === '*r' ? ' on' : ''}" data-cat="*r">${I.clock}<span>Recientes</span><em>${recent.length}</em></button>` : '') +
+      '<div class="gsep">Categorías</div>' + cats.map(c => { const n = cnt(c); return `<button class="gs${st.cat === c ? ' on' : ''}${n ? '' : ' zero'}" data-cat="${esc(c)}"><span>${esc(c)}</span><em>${n}</em></button>`; }).join('');
+    let list = st.cat === '*r' ? recent.map(id => TEMPLATES.find(t => t.id === id)).filter(Boolean) : base.filter(t => !st.cat || t.cat === st.cat);
+    if (!list.length) { main.innerHTML = `<div class="empty big">${I.search}<b>Sin resultados</b><span>No hay plantillas para «${esc(st.q)}»${st.pais ? ' en ' + PAISES[st.pais] : ''}. Pruebe otra palabra o quite filtros.</span></div>`; return; }
+    if (st.cat || ts.length) main.innerHTML = `<div class="gh">${st.cat === '*r' ? 'Recientes' : esc(st.cat || 'Resultados')} <em>${list.length}</em></div><div class="tg">${list.map(t => card(t, ts)).join('')}</div>`;
+    else main.innerHTML = cats.filter(c => cnt(c)).map(c => `<div class="gh">${esc(c)} <em>${cnt(c)}</em></div><div class="tg">${list.filter(t => t.cat === c).map(t => card(t, ts)).join('')}</div>`).join('');
+  };
+  draw();
+  q.addEventListener('input', () => { st.q = q.value; if (st.cat === '*r') st.cat = ''; draw(); main.scrollTop = 0; });
+  q.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { const f = main.querySelector('[data-t]'); if (f) f.click(); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); main.querySelector('[data-t]')?.focus(); }
   });
+  main.addEventListener('keydown', e => {
+    const all = [...main.querySelectorAll('[data-t]')], i = all.indexOf(document.activeElement); if (i < 0) return;
+    const cols = Math.max(1, Math.round(main.querySelector('.tg').clientWidth / all[0].offsetWidth));
+    const d = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[e.key];
+    if (d) { e.preventDefault(); if (i + d < 0) q.focus(); else all[Math.min(all.length - 1, i + d)]?.focus(); }
+  });
+  side.addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (!b) return; st.cat = b.dataset.cat; draw(); main.scrollTop = 0; });
+  m.c.querySelector('.pchips').addEventListener('click', e => { const b = e.target.closest('[data-pais]'); if (!b) return; st.pais = b.dataset.pais; m.c.querySelectorAll('.pchip').forEach(x => x.classList.toggle('on', x === b)); draw(); });
   if (!isMobile()) setTimeout(() => q.focus(), 50);
-  m.c.addEventListener('click', e => {
+  main.addEventListener('click', e => {
     const b = e.target.closest('[data-t]'); if (!b) return;
     const t = TEMPLATES.find(x => x.id === b.dataset.t);
-    doc = newDoc(t); selId = null; inputsKey = ''; m.close(); loadUI(); changed();
-    setTab('datos'); if (isMobile()) setView('edit');
-    toast('Plantilla «' + t.name + '» cargada');
+    m.close(); loadTemplate(t);
   });
 }
 async function showLibrary() {
@@ -499,6 +644,69 @@ async function exportWord() {
 }
 function doPrint() { compute(); setTimeout(() => window.print(), 60); }
 
+// ---------------- Biblioteca de funciones ----------------
+const BUILTIN_FNS = [
+  ['sqrt', 'x', 'Raíz cuadrada', 'Matemáticas'], ['abs', 'x', 'Valor absoluto', 'Matemáticas'], ['min', 'a, b, …', 'Mínimo', 'Matemáticas'], ['max', 'a, b, …', 'Máximo', 'Matemáticas'],
+  ['ceil', 'x', 'Redondeo hacia arriba', 'Matemáticas'], ['floor', 'x', 'Redondeo hacia abajo', 'Matemáticas'], ['round', 'x, n', 'Redondeo a n decimales', 'Matemáticas'],
+  ['roundup', 'x, paso', 'Redondea hacia arriba a un múltiplo (p. ej. 5 cm)', 'Matemáticas'], ['rounddown', 'x, paso', 'Redondea hacia abajo a un múltiplo', 'Matemáticas'],
+  ['exp', 'x', 'Exponencial eˣ', 'Matemáticas'], ['log', 'x', 'Logaritmo natural', 'Matemáticas'], ['log10', 'x', 'Logaritmo decimal', 'Matemáticas'], ['nthRoot', 'x, n', 'Raíz n-ésima', 'Matemáticas'],
+  ['sin', 'θ', 'Seno', 'Trigonometría'], ['cos', 'θ', 'Coseno', 'Trigonometría'], ['tan', 'θ', 'Tangente', 'Trigonometría'], ['cot', 'θ', 'Cotangente', 'Trigonometría'], ['asin', 'x', 'Arcoseno', 'Trigonometría'], ['acos', 'x', 'Arcocoseno', 'Trigonometría'], ['atan', 'x', 'Arcotangente', 'Trigonometría'],
+  ['si', 'condición, a, b', 'Condicional: a si se cumple, b si no (se muestra como llave de casos)', 'Lógica'],
+  ['sum', 'v', 'Suma de los elementos de un vector', 'Vectores'], ['cumsum', 'v', 'Suma acumulada', 'Vectores'], ['mean', 'v', 'Promedio', 'Vectores'], ['sort', 'v', 'Ordena un vector', 'Vectores'], ['size', 'v', 'Dimensiones', 'Vectores'],
+  ['sqrtfc', 'fc', "√f'c en kgf/cm² (fórmulas empíricas E.060 / ACI en kgf-cm)", 'Concreto armado'], ['sqrtMPa', 'fc', "√f'c en MPa", 'Concreto armado'],
+  ['Ab', 'n', 'Área de la varilla #n (ASTM)', 'Concreto armado'], ['db', 'n', 'Diámetro de la varilla #n (ASTM)', 'Concreto armado'], ['Abmm', 'φ', 'Área de varilla métrica (mm)', 'Concreto armado'], ['lambdasACI', 'd', 'Factor de efecto de tamaño λs (ACI 318-19)', 'Concreto armado'],
+  ['SE030', 'zona, Vs30', 'Factor de suelo S (E.030-2026)', 'Sismo — Perú'], ['TpE030', 'Vs30', 'Periodo TP (E.030-2026)', 'Sismo — Perú'], ['TlE030', 'Vs30', 'Periodo TL (E.030-2026)', 'Sismo — Perú'], ['CE030', 'T, TP, TL', 'Factor de amplificación sísmica C', 'Sismo — Perú'], ['CE030d', 'T, TP, TL', 'Factor C con rama corta (análisis dinámico)', 'Sismo — Perú'],
+  ['SaASCE7', 'T, SDS, SD1, TL', 'Aceleración espectral ASCE 7-22', 'Sismo — Internacional'], ['CuASCE7', 'SD1', 'Coeficiente Cu ASCE 7-22', 'Sismo — Internacional'], ['SdEC8', 'T, ag, S, TB, TC, TD, q', 'Espectro de diseño EN 1998-1 tipo 1', 'Sismo — Internacional'],
+  ['RtBSL', 'T, Tc', 'Coeficiente Rt (norma japonesa)', 'Sismo — Japón'], ['AiBSL', 'α, T', 'Distribución Ai (norma japonesa)', 'Sismo — Japón'], ['FsBSL', 'Rs', 'Factor de rigidez Fs', 'Sismo — Japón'], ['FeBSL', 'Re', 'Factor de excentricidad Fe', 'Sismo — Japón'],
+  ['MtruckHL93', 'L', 'Momento máximo del camión HL-93 (simplemente apoyado)', 'Puentes'], ['MtandemHL93', 'L', 'Momento máximo del tándem HL-93', 'Puentes'], ['MlaneHL93', 'L', 'Momento de la carga de carril HL-93', 'Puentes'],
+  ['VtruckHL93', 'L', 'Cortante máximo del camión HL-93', 'Puentes'], ['VtandemHL93', 'L', 'Cortante máximo del tándem HL-93', 'Puentes'], ['VlaneHL93', 'L', 'Cortante de la carga de carril HL-93', 'Puentes'],
+];
+function allFns() {
+  const out = BUILTIN_FNS.map(([name, args, desc, cat]) => ({ name, args, desc, cat, base: !FN_DOCS.some(f => f.name === name) }));
+  for (const f of FN_DOCS) { const k = out.findIndex(x => x.name === f.name); const o = { name: f.name, args: f.args || '', desc: f.desc || '', cat: f.cat || 'Funciones normativas' }; if (k >= 0) out[k] = o; else out.push(o); }
+  return out;
+}
+let lastTA = null;
+function insertFn(f) {
+  let ta = lastTA && document.body.contains(lastTA) ? lastTA : null;
+  if (!ta) {
+    const sel = doc.blocks.find(b => b.id === selId && b.type === 'calc') || [...doc.blocks].reverse().find(b => b.type === 'calc');
+    if (!sel) { insertBlock('calc'); }
+    else { selId = sel.id; collapsed.delete(sel.id); }
+    setTab('bloques'); if (isMobile()) setView('edit');
+    if (sel) renderBlocks();
+    ta = document.querySelector(`.bk[data-id="${selId}"] textarea.code`);
+    if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); if (ta.value && !ta.value.endsWith('\n')) document.execCommand('insertText', false, '\n'); document.execCommand('insertText', false, 'r = '); }
+  } else { setTab('bloques'); if (isMobile()) setView('edit'); }
+  if (!ta) return;
+  ta.focus();
+  const s0 = ta.selectionStart; const args = (f.args || '').replace(/…/g, '').trim();
+  document.execCommand('insertText', false, f.name + '(' + args + ')');
+  if (args) ta.setSelectionRange(s0 + f.name.length + 1, s0 + f.name.length + 1 + args.length);
+  toast('Insertada <b>' + esc(f.name) + '</b>' + (args ? ' — reemplace los argumentos' : ''));
+}
+function showFunctions(initial = '') {
+  const fns = allFns();
+  const cats = [...new Set(fns.map(f => f.cat))];
+  const st = { cat: '', q: initial };
+  const m = modal(`${I.fn}Biblioteca de funciones`, `<div class="gal fnl"><div class="gal-top"><div class="sbox">${I.search}<input id="fnq" placeholder="Buscar entre ${fns.length} funciones: nombre, norma o descripción…" autocomplete="off" spellcheck="false" value="${esc(initial)}"></div></div><div class="gal-body"><nav class="gal-side"></nav><div class="gal-main"></div></div><div class="gal-foot">Clic en <b>Insertar</b> para escribir la función en el bloque de cálculo activo (los argumentos quedan seleccionados para reemplazarlos). También disponibles en el autocompletado del editor.</div></div>`, 'gallery');
+  const q = m.c.querySelector('#fnq'), side = m.c.querySelector('.gal-side'), main = m.c.querySelector('.gal-main');
+  const draw = () => {
+    const ts = terms(st.q);
+    const base = fns.filter(f => !ts.length || matchAll(f.name + ' ' + f.desc + ' ' + f.cat + ' ' + f.args, ts));
+    side.innerHTML = `<button class="gs${st.cat === '' ? ' on' : ''}" data-cat="">${I.layers}<span>Todas</span><em>${base.length}</em></button><div class="gsep">Categorías</div>` + cats.map(c => { const n = base.filter(f => f.cat === c).length; return `<button class="gs${st.cat === c ? ' on' : ''}${n ? '' : ' zero'}" data-cat="${esc(c)}"><span>${esc(c)}</span><em>${n}</em></button>`; }).join('');
+    const list = base.filter(f => !st.cat || f.cat === st.cat);
+    const row = (f) => `<div class="fnr"><code class="fsig"><b>${hl(f.name, ts)}</b>(<i>${hl(f.args, ts)}</i>)</code><span class="fd">${hl(f.desc, ts)}</span><button class="btn sm" data-ins-fn="${esc(f.name)}">${I.plus}Insertar</button></div>`;
+    main.innerHTML = list.length ? (st.cat ? [st.cat] : cats).map(c => { const l = list.filter(f => f.cat === c); return l.length ? `<div class="gh">${esc(c)} <em>${l.length}</em></div><div class="fnt">${l.map(row).join('')}</div>` : ''; }).join('') : `<div class="empty big">${I.search}<b>Sin resultados</b><span>No hay funciones para «${esc(st.q)}».</span></div>`;
+  };
+  draw();
+  q.addEventListener('input', () => { st.q = q.value; draw(); });
+  q.addEventListener('keydown', e => { if (e.key === 'Enter') main.querySelector('[data-ins-fn]')?.click(); });
+  side.addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (!b) return; st.cat = b.dataset.cat; draw(); main.scrollTop = 0; });
+  main.addEventListener('click', e => { const b = e.target.closest('[data-ins-fn]'); if (!b) return; m.close(); insertFn(fns.find(f => f.name === b.dataset.insFn)); });
+  if (!isMobile()) setTimeout(() => { q.focus(); q.select(); }, 50);
+}
+
 function showNormas() {
   const rows = [
     ['Perú (RNE)', 'NTE E.020 Cargas', '2006', 'Metrado, sobrecargas', 'Viga continua, aligerado, escalera'],
@@ -515,10 +723,22 @@ function showNormas() {
     ['Europa', 'EN 1998-1 Eurocódigo 8', '2004', 'Espectro de diseño tipo 1 con q', 'Comparativo de espectros'],
     ['Japón', 'Building Standard Law (Orden de Aplicación Art. 88)', 'vigente', 'Ci = Z·Rt·Ai·Co, Qun = Ds·Fes·Qud, deriva 1/200', 'Sismo norma japonesa, comparativo'],
   ];
-  modal('Normas implementadas', `<div class="helpc"><p>Resumen de las normas usadas por las plantillas y funciones de MemoriaCalc. Verifique siempre la versión vigente aplicable a su proyecto.</p>
+  // listado generado: plantillas agrupadas por país / norma y funciones normativas registradas
+  const byP = {};
+  for (const t of TEMPLATES) (byP[paisOf(t)] = byP[paisOf(t)] || []).push(t);
+  const tplHtml = Object.keys(PAISES).filter(p => byP[p]).map(p => `<tr><td><span class="flag f-${p}">${p}</span> ${PAISES[p]}</td><td>${byP[p].map(t => `<a href="#" data-tpl-go="${t.id}">${esc(t.name)}</a> <span class="mut">— ${esc(t.normas || '')}</span>`).join('<br>')}</td></tr>`).join('');
+  const fns = allFns().filter(f => !['Matemáticas', 'Trigonometría', 'Lógica', 'Vectores'].includes(f.cat));
+  const fcats = [...new Set(fns.map(f => f.cat))];
+  const m = modal('Normas implementadas', `<div class="helpc"><p>Resumen de las normas usadas por las plantillas y funciones de MemoriaCalc (${TEMPLATES.length} plantillas, ${fns.length} funciones normativas). Verifique siempre la versión vigente aplicable a su proyecto.</p>
   <table><tr><th>País</th><th>Norma</th><th>Versión</th><th>Qué se implementa</th><th>Dónde</th></tr>${rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table>
+  <h4>Plantillas por país</h4><table><tr><th style="width:130px">País</th><th>Plantillas (norma)</th></tr>${tplHtml}</table>
   <h4>Funciones normativas disponibles en el editor</h4>
-  <p><code>SE030(zona, Vs30)</code> · <code>TpE030(Vs30)</code> · <code>TlE030(Vs30)</code> · <code>CE030(T, TP, TL)</code> · <code>CE030d(T, TP, TL)</code> (dinámico) · <code>SaASCE7(T, SDS, SD1, TL)</code> · <code>CuASCE7(SD1)</code> · <code>SdEC8(T, ag, S, TB, TC, TD, q)</code> · <code>RtBSL(T, Tc)</code> · <code>AiBSL(α, T)</code> · <code>FsBSL(Rs)</code> · <code>FeBSL(Re)</code> · <code>lambdasACI(d)</code> · <code>MtruckHL93(L)</code>…</p></div>`);
+  <table><tr><th style="width:170px">Categoría</th><th>Funciones</th></tr>${fcats.map(c => `<tr><td>${esc(c)}</td><td>${fns.filter(f => f.cat === c).map(f => `<code title="${esc(f.desc)}">${esc(f.name)}(${esc(f.args)})</code>`).join(' ')}</td></tr>`).join('')}</table>
+  <p><button class="btn" data-fnlib>${I.fn}Abrir la biblioteca de funciones</button></p></div>`);
+  m.c.addEventListener('click', e => {
+    const a = e.target.closest('[data-tpl-go]'); if (a) { e.preventDefault(); const t = TEMPLATES.find(x => x.id === a.dataset.tplGo); m.close(); loadTemplate(t); return; }
+    if (e.target.closest('[data-fnlib]')) { m.close(); showFunctions(); }
+  });
 }
 function showHelp() {
   modal('Ayuda — sintaxis y funciones', `<div class="helpc">
@@ -573,6 +793,192 @@ function renderProject() {
   </div>`;
 }
 
+// ---------------- Inspector de variables ----------------
+const vst = { q: '', f: '' };
+const kCache = new Map();
+const Kc = (t) => { let r = kCache.get(t); if (r === undefined) { r = K(t); if (kCache.size > 2000) kCache.clear(); kCache.set(t, r); } return r; };
+function defOf(name) {
+  const inp = lastRes.ctx.inputs.find(i => i.name === name); if (inp) return { b: inp.block, l: inp.line };
+  const re = new RegExp('^\\s*' + name.replace(/[$]/g, '\\$') + '\\s*(\\([^)]*\\))?\\s*=(?!=)');
+  let found = null;
+  for (const b of doc.blocks) if (b.type === 'calc') (b.src || '').split('\n').forEach((l, i) => { if (re.test(l)) found = { b: b.id, l: i }; });
+  if (found) return found;
+  return null;
+}
+function renderVars() {
+  const pane = $('#p-vars'); if (!pane || !lastRes) return;
+  if (!pane.querySelector('.vtop')) {
+    pane.innerHTML = `<div class="vtop"><div class="sbox sm">${I.search}<input id="vq" placeholder="Filtrar variables…" autocomplete="off" spellcheck="false"></div><div class="seg"><button data-vf="" class="on">Todas</button><button data-vf="in">Datos</button><button data-vf="calc">Calculadas</button></div></div><div class="varlist"></div>`;
+    pane.querySelector('#vq').addEventListener('input', e => { vst.q = e.target.value; renderVars(); });
+    pane.addEventListener('click', e => {
+      const f = e.target.closest('[data-vf]'); if (f) { vst.f = f.dataset.vf; pane.querySelectorAll('[data-vf]').forEach(x => x.classList.toggle('on', x === f)); renderVars(); return; }
+      const r = e.target.closest('[data-var]'); if (!r) return;
+      const d = defOf(r.dataset.var); if (d) goToLine(d.b, d.l); else toast('Variable exportada por un bloque gráfico');
+    });
+  }
+  const ins = new Set(lastRes.ctx.inputs.map(i => i.name));
+  const ts = terms(vst.q);
+  const rows = [];
+  for (const [k, v] of lastRes.ctx.scope) {
+    if (typeof v === 'function') continue;
+    const isIn = ins.has(k);
+    if (vst.f === 'in' && !isIn) continue; if (vst.f === 'calc' && isIn) continue;
+    let val = ''; try { val = prettyVal(valText(v)); } catch (e) { val = String(v); }
+    if (ts.length && !matchAll(k + ' ' + val, ts)) continue;
+    rows.push({ k, val, isIn });
+  }
+  const list = pane.querySelector('.varlist');
+  if (!rows.length) { list.innerHTML = `<div class="empty big">${I.vars}<b>${lastRes.ctx.scope.size ? 'Sin coincidencias' : 'Aún no hay variables'}</b><span>${lastRes.ctx.scope.size ? 'Cambie el filtro de búsqueda.' : 'Las variables definidas en los bloques de cálculo aparecerán aquí con su valor y unidad.'}</span></div>`; return; }
+  list.innerHTML = `<div class="vhead"><span>Símbolo</span><span>Nombre</span><span>Valor</span></div>` + rows.map(r => {
+    let sym = ''; try { sym = Kc(symTex(r.k)); } catch (e) { sym = esc(r.k); }
+    const val = r.val.length > 80 ? r.val.slice(0, 78) + '…' : r.val;
+    return `<div class="vr${r.isIn ? ' vin' : ''}" data-var="${esc(r.k)}" title="Ir a la definición"><span class="vs">${sym}</span><code class="vn">${hl(r.k, ts)}</code><span class="vv">${hl(val, ts)}</span>${r.isIn ? '<span class="vb">dato</span>' : ''}</div>`;
+  }).join('');
+}
+
+// ---------------- Edición en el lugar (vista previa estilo Mathcad) ----------------
+let ied = null;
+function iedFind() { return ied && document.querySelector(`#paper .ln[data-b="${ied.b}"][data-l="${ied.l}"]`); }
+function iedPlace() {
+  const ln = iedFind(); if (!ln || !ied) return;
+  ln.classList.add('editing');
+  const r = ln.getBoundingClientRect(), box = ied.el, W = box.offsetWidth, H = box.offsetHeight;
+  const rb = $('#right').getBoundingClientRect();
+  if (!isMobile() && (r.bottom < rb.top || r.top > rb.bottom)) { box.style.visibility = 'hidden'; return; }
+  box.style.visibility = '';
+  let top = r.bottom + 6; if (top + H > window.innerHeight - 8) top = Math.max(8, r.top - H - 6);
+  box.style.top = top + 'px'; box.style.left = Math.max(8, Math.min(r.left, window.innerWidth - W - 8)) + 'px';
+}
+function iedSync() { if (!ied) return; const ln = iedFind(); if (!ln) return closeIed(); iedPlace(); }
+function closeIed(revert) {
+  if (!ied) return;
+  const o = ied; ied = null;
+  if (revert) { const b = doc.blocks.find(x => x.id === o.b); if (b) { const lines = b.src.split('\n'); if (lines[o.l] !== o.orig) { setInputLine(o.b, o.l, () => o.orig); follow = null; } } }
+  o.el.remove();
+  document.querySelectorAll('#paper .ln.editing').forEach(x => x.classList.remove('editing'));
+}
+function openIed(ln) {
+  closeIed();
+  const b = ln.dataset.b, l = +ln.dataset.l;
+  const inp = lastRes.ctx.inputs.find(i => i.block === b && i.line === l);
+  const blk = doc.blocks.find(x => x.id === b);
+  if (!inp || !blk) { goToLine(b, l); return; }
+  const lab = inp.label ? inp.label.replace(/\$[^$]*\$/g, '').replace(/[*_`]/g, '').replace(/\[[^\]]*\|[^\]]*\]/, '').trim() : '';
+  let field;
+  if (inp.options) {
+    const cur = norm(inp.num + ' ' + inp.unit);
+    field = `<select class="ied-in">${inp.options.map((o, oi) => `<option value="${esc(norm(o))}"${norm(o) === cur ? ' selected' : ''}>${esc(prettyU(o))}${inp.optLabels && inp.optLabels[oi] ? ' — ' + esc(inp.optLabels[oi]) : ''}</option>`).join('')}${inp.options.map(norm).includes(cur) ? '' : `<option value="${esc(cur)}" selected>${esc(cur)}</option>`}</select>`;
+  } else field = `<input class="ied-in" value="${esc(inp.num)}" inputmode="decimal" autocomplete="off" spellcheck="false"><span class="iu">${esc(prettyU(inp.unit))}</span>`;
+  const el = h(`<div class="ied" role="dialog" aria-label="Editar dato"><div class="ied-h"><span class="ied-s">${Kc(inp.tex)}</span><span class="ied-l">${esc(lab || inp.name)}</span></div><div class="ied-r">${field}<button class="btn pri ic sm" data-ok title="Aceptar (Enter)">${I.check}</button></div><div class="ied-m" hidden></div><div class="ied-f"><span><kbd>Enter</kbd> aceptar <kbd>Tab</kbd> siguiente <kbd>Esc</kbd> deshacer</span><a href="#" data-code>Ver código</a></div></div>`);
+  ied = { b, l, el, orig: blk.src.split('\n')[l], inp };
+  document.body.appendChild(el);
+  iedPlace();
+  const f = el.querySelector('.ied-in');
+  setTimeout(() => { f.focus(); if (f.select) f.select(); }, 10);
+  const msg = el.querySelector('.ied-m');
+  const apply = () => {
+    if (f.tagName === 'SELECT') { const val = f.value; setInputLine(b, l, x => { const ci = x.indexOf('//'); const cm = ci >= 0 ? ' ' + x.slice(ci) : ''; const eq = x.indexOf('='); return x.slice(0, eq + 1) + ' ' + val + cm; }); follow = null; return; }
+    const v = f.value.trim().replace(',', '.');
+    const ok = /^-?\d*\.?\d+(e[-+]?\d+)?$/i.test(v);
+    f.classList.toggle('bad', !ok);
+    let m = ok ? '' : 'Ingrese solo un número.';
+    if (ok) { const rg = RANGES[inp.name], x = parseFloat(v); if (rg && (!rg.u || rg.u === inp.unit.replace(/\s/g, '')) && (x < rg.min || x > rg.max)) m = '⚠ Valor poco usual: ' + rg.txt; }
+    msg.textContent = m; msg.hidden = !m;
+    if (ok) { setInputLine(b, l, x => x.replace(/^(\s*[^=]+=\s*)(-?\d*\.?\d+(?:[eE][-+]?\d+)?)/, (q, a) => a + v)); follow = null; }
+    iedPlace();
+  };
+  f.addEventListener(f.tagName === 'SELECT' ? 'change' : 'input', apply);
+  const step = (dir) => {
+    recompute.flush?.();
+    const all = [...document.querySelectorAll('#paper .ln.in[data-b]')];
+    const i = all.findIndex(x => x.dataset.b === b && +x.dataset.l === l);
+    closeIed(); const nx = all[i + dir]; if (nx) { nx.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); setTimeout(() => openIed(nx), 120); }
+  };
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeIed(true); }
+    else if (e.key === 'Enter') { e.preventDefault(); recompute.flush?.(); closeIed(); }
+    else if (e.key === 'Tab') { e.preventDefault(); step(e.shiftKey ? -1 : 1); }
+    else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && f.tagName === 'INPUT') {
+      const v = parseFloat(f.value); if (isNaN(v)) return; const dec = (f.value.split('.')[1] || '').length; const st = dec ? 10 ** -dec : 1;
+      f.value = (v + (e.key === 'ArrowUp' ? st : -st)).toFixed(dec); apply(); e.preventDefault();
+    }
+  });
+  el.addEventListener('click', e => {
+    if (e.target.closest('[data-ok]')) { recompute.flush?.(); closeIed(); }
+    if (e.target.closest('[data-code]')) { e.preventDefault(); closeIed(); goToLine(b, l); }
+  });
+}
+
+// ---------------- Zoom de la vista previa ----------------
+const ZOOMS = [0.6, 0.75, 0.85, 1, 1.15, 1.3, 1.5];
+let zoom = 1;
+function setZoom(d) {
+  const i = ZOOMS.indexOf(zoom);
+  zoom = d === 0 ? 1 : ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? 3 : i) + d))];
+  applyZoom(); try { localStorage.setItem('mc_zoom', String(zoom)); } catch (e) { /* */ }
+}
+function applyZoom() { const p = $('#paper'); if (p) p.style.zoom = zoom === 1 ? '' : String(zoom); const z = $('#zoomv'); if (z) z.textContent = Math.round(zoom * 100) + ' %'; if (ied) iedPlace(); }
+
+// ---------------- Atajos y barra de comandos ----------------
+const KEYS = [
+  ['Ctrl K', 'Buscar plantillas, acciones, funciones, secciones y variables'], ['Ctrl S', 'Guardar archivo .mcalc'], ['Ctrl O', 'Abrir archivo'], ['Ctrl P', 'Imprimir / PDF'],
+  ['Ctrl Z · Ctrl Y', 'Deshacer · Rehacer (fuera de un campo de texto)'], ['Ctrl Shift F', 'Biblioteca de funciones'], ['Alt 1 … 4', 'Pestañas Datos · Editor · Variables · Proyecto'],
+  ['F1', 'Ayuda y sintaxis'], ['Tab', 'Completar en el editor · siguiente dato en la edición en el lugar'], ['↑ ↓', 'Incrementar / reducir un dato numérico'], ['Clic en un dato de la vista', 'Editarlo en el lugar (Enter aceptar, Esc cancelar)'], ['Clic en una fórmula', 'Ir a su línea en el editor'],
+];
+function showKeys() { modal(`${I.key}Atajos de teclado`, `<div class="keys">${KEYS.map(k => `<div><span>${k[0].split(' · ').map(x => x.split(' ').map(y => y === '…' ? '…' : `<kbd>${esc(y)}</kbd>`).join(' ')).join(' · ')}</span><em>${esc(k[1])}</em></div>`).join('')}</div>`, false); }
+function runAction(a) { const b = document.createElement('button'); b.dataset.do = a; b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); }
+function showCmdK() {
+  document.querySelector('.cmdk-ov')?.remove();
+  document.querySelectorAll('.menu').forEach(m => m.remove());
+  const A = (t, ic, k, run, sub = '') => ({ g: 'Acciones', t, ic, k, run, sub });
+  const acts = [
+    A('Nueva memoria desde plantilla', I.grid, '', () => showTemplates()), A('Documento en blanco', I.blank, '', () => runAction('new')), A('Mis memorias', I.folder, '', () => showLibrary()),
+    A('Abrir archivo .mcalc', I.open, 'Ctrl O', () => openFile()), A('Guardar archivo .mcalc', I.save, 'Ctrl S', () => saveFile()), A('Duplicar memoria', I.dup, '', () => runAction('dupdoc')),
+    ...(EMBED ? [] : [A('Imprimir / Guardar PDF', I.pdf, 'Ctrl P', () => doPrint())]), A('Exportar Word (.docx)', I.word, '', () => exportWord()), A('Exportar HTML', I.html, '', () => exportHTML()),
+    A('Deshacer', I.undo, 'Ctrl Z', () => undoRedo(-1)), A('Rehacer', I.redo, 'Ctrl Y', () => undoRedo(1)), A('Biblioteca de funciones', I.fn, 'Ctrl ⇧ F', () => showFunctions()),
+    A('Ir a Datos', I.data, 'Alt 1', () => { setView('edit'); setTab('datos'); }), A('Ir al Editor', I.edit, 'Alt 2', () => { setView('edit'); setTab('bloques'); }), A('Ir a Variables', I.vars, 'Alt 3', () => { setView('edit'); setTab('vars'); }), A('Ir a Proyecto', I.gear, 'Alt 4', () => { setView('edit'); setTab('proyecto'); }),
+    A('Cambiar tema (claro / oscuro / automático)', I.moon, '', () => runAction('theme')), A('Normas implementadas', I.book, '', () => showNormas()), A('Ayuda y sintaxis', I.help, 'F1', () => showHelp()), A('Atajos de teclado', I.key, '', () => showKeys()),
+  ];
+  const secs = lastRes.ctx.toc.map(t => ({ g: 'Secciones', t: (t.num ? t.num + ' ' : '') + t.text.replace(/\$[^$]*\$/g, '').replace(/[*_`]/g, ''), ic: I.book, run: () => { if (isMobile()) setView('prev'); document.getElementById(t.id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }); } }));
+  const blks = addGroups().flatMap(([g, ks]) => ks.map(k => ({ g: 'Agregar bloque', t: 'Agregar: ' + TYPES[k].name, sub: g, ic: icon(TYPES[k]), run: () => { setView('edit'); setTab('bloques'); insertBlock(k); } })));
+  const tpls = TEMPLATES.map(t => ({ g: 'Plantillas', t: t.name, sub: t.normas || t.cat, ic: I[t.icon] || I.calc, k: paisOf(t), run: () => loadTemplate(t) }));
+  const fns = allFns().map(f => ({ g: 'Funciones', t: f.name + '(' + f.args + ')', sub: f.desc, ic: I.fn, run: () => insertFn(f), key: f.name }));
+  const vars = [...lastRes.ctx.scope].filter(([, v]) => typeof v !== 'function').map(([k, v]) => { let val = ''; try { val = valText(v); } catch (e) { /* */ } return { g: 'Variables', t: k + ' = ' + (val.length > 50 ? val.slice(0, 48) + '…' : val), ic: I.vars, run: () => { const d = defOf(k); if (d) goToLine(d.b, d.l); }, key: k }; });
+  const ALL = [...acts, ...secs, ...tpls, ...fns, ...blks, ...vars];
+  const ov = h(`<div class="cmdk-ov"><div class="cmdk" role="dialog" aria-label="Barra de comandos"><div class="sbox lg">${I.search}<input placeholder="Buscar plantillas, acciones, funciones, secciones, variables…" autocomplete="off" spellcheck="false"><kbd>Esc</kbd></div><div class="cl"></div><div class="cf"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> ejecutar</span><span><kbd>Esc</kbd> cerrar</span></div></div></div>`);
+  const q = ov.querySelector('input'), list = ov.querySelector('.cl');
+  let shown = [], sel = 0;
+  const draw = () => {
+    const ts = terms(q.value);
+    let res;
+    if (!ts.length) res = [...acts.slice(0, 9), ...secs.slice(0, 8), ...tpls.slice(0, 6)];
+    else {
+      const sc = (it) => { const f = fold(it.key || it.t); return ts.every(t => f.startsWith(t)) ? 0 : ts.every(t => f.includes(t)) ? 1 : 2; };
+      const m = ALL.filter(it => matchAll(it.t + ' ' + (it.sub || '') + ' ' + it.g, ts));
+      const groups = [...new Set(m.map(x => x.g))];
+      res = groups.flatMap(g => m.filter(x => x.g === g).sort((a, b) => sc(a) - sc(b)).slice(0, g === 'Plantillas' || g === 'Funciones' ? 8 : 6));
+      const order = (g) => Math.min(...m.filter(x => x.g === g).map(sc));
+      res.sort((a, b) => order(a.g) - order(b.g) || groups.indexOf(a.g) - groups.indexOf(b.g));
+    }
+    shown = res; sel = 0;
+    let lastG = '';
+    list.innerHTML = res.length ? res.map((it, i) => { const gh = it.g !== lastG ? `<div class="cg">${esc(it.g)}</div>` : ''; lastG = it.g; return gh + `<div class="ci${i === sel ? ' on' : ''}" data-i="${i}"><span class="cic">${it.ic || ''}</span><span class="ct"><b>${hl(it.t, ts)}</b>${it.sub ? `<small>${hl(it.sub, ts)}</small>` : ''}</span>${it.k ? `<kbd>${esc(it.k)}</kbd>` : ''}</div>`; }).join('') : `<div class="empty">Sin resultados para «${esc(q.value)}»</div>`;
+  };
+  const mark = () => { list.querySelectorAll('.ci').forEach((c, i) => c.classList.toggle('on', i === sel)); list.querySelector('.ci.on')?.scrollIntoView({ block: 'nearest' }); };
+  const close = () => ov.remove();
+  const go = (i) => { const it = shown[i]; if (!it) return; close(); it.run(); };
+  q.addEventListener('input', draw);
+  q.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!shown.length) return; sel = (sel + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length; mark(); }
+    else if (e.key === 'Enter') { e.preventDefault(); go(sel); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+  list.addEventListener('mousemove', e => { const c = e.target.closest('.ci'); if (c && +c.dataset.i !== sel) { sel = +c.dataset.i; mark(); } });
+  list.addEventListener('click', e => { const c = e.target.closest('.ci'); if (c) go(+c.dataset.i); });
+  ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+  draw(); document.body.appendChild(ov); q.focus();
+}
+
 // ---------------- Navegación ----------------
 const isMobile = () => window.matchMedia('(max-width:900px)').matches;
 function setTab(t) {
@@ -580,6 +986,7 @@ function setTab(t) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + t));
   document.querySelectorAll('.bnav button').forEach(b => b.classList.toggle('on', isMobile() ? (mview === 'prev' ? b.dataset.v === 'prev' : b.dataset.v === t) : false));
+  if (t === 'vars' && lastRes) renderVars();
   if (t === 'bloques') document.querySelectorAll('#p-bloques textarea').forEach(ta => ta.classList.contains('code') ? paintHL(ta) : autosize(ta));
 }
 function setView(v) { mview = v; $('.main').dataset.v = v; setTab(tab); }
@@ -601,6 +1008,7 @@ function goToLine(bid, line) {
 }
 
 function loadUI() {
+  closeIed(); lastTA = null;
   if (!hist.lock) resetHistory();
   $('#dtitle').value = doc.meta.titulo || '';
   renderBlocks(); renderProject(); setTab(tab);
@@ -611,35 +1019,55 @@ export function start() {
   document.body.innerHTML = `<div id="app">
   <header class="top">
     <div class="brand">${I.logo}<div><span>MemoriaCalc</span><small>Memorias de cálculo estructural</small></div></div>
-    <input id="dtitle" class="dtitle" placeholder="Título de la memoria" spellcheck="false">
+    <span class="tsep hide-m"></span>
+    <input id="dtitle" class="dtitle" placeholder="Título de la memoria" spellcheck="false" aria-label="Título de la memoria">
+    <button class="cmdbtn hide-m" data-do="cmdk" title="Buscar plantillas, acciones, funciones y secciones (Ctrl+K)">${I.search}<span>Buscar o ejecutar…</span><kbd>Ctrl K</kbd></button>
     <div class="chips" id="chips"></div>
     <div class="tb">
+      <div class="bgrp hide-m"><button class="btn ghost ic" data-do="undo" title="Deshacer (Ctrl+Z)">${I.undo}</button><button class="btn ghost ic" data-do="redo" title="Rehacer (Ctrl+Y)">${I.redo}</button></div>
+      <span class="tsep hide-m"></span>
       <button class="btn hide-m" data-do="tpl" title="Nueva desde plantilla">${I.grid}<span>Plantillas</span></button>
+      <button class="btn ghost ic hide-m" data-do="fns" title="Biblioteca de funciones (Ctrl+Shift+F)">${I.fn}</button>
       <button class="btn ghost ic hide-m" data-do="lib" title="Mis memorias">${I.folder}</button>
       <button class="btn ghost ic hide-m" data-do="save" title="Guardar archivo (Ctrl+S)">${I.save}</button>
-      <button class="btn pri" data-do="pdf" title="Imprimir / PDF (Ctrl+P)">${I.pdf}<span class="hide-m">PDF</span></button>
+      <div class="split-btn"><button class="btn pri" data-do="pdf" title="Imprimir / PDF (Ctrl+P)">${I.pdf}<span class="hide-m">PDF</span></button><button class="btn pri chev" data-expmenu title="Más formatos de exportación">${I.chev}</button></div>
       <button class="btn ghost ic" data-do="menu" title="Más">${I.more}</button>
     </div>
   </header>
   <div class="main" data-v="edit">
     <aside class="left">
-      <nav class="tabs"><button class="tab" data-tab="datos">${I.data}Datos</button><button class="tab" data-tab="bloques">${I.edit}Editor</button><button class="tab" data-tab="proyecto">${I.gear}Proyecto</button><span style="flex:1"></span><span id="perf" style="font-size:11px;color:var(--mut);align-self:center;padding-right:6px"></span></nav>
+      <nav class="tabs"><button class="tab" data-tab="datos" title="Datos de entrada (Alt+1)">${I.data}Datos</button><button class="tab" data-tab="bloques" title="Editor de bloques (Alt+2)">${I.edit}Editor</button><button class="tab" data-tab="vars" title="Inspector de variables (Alt+3)">${I.vars}Variables</button><button class="tab" data-tab="proyecto" title="Proyecto y presentación (Alt+4)">${I.gear}Proyecto</button></nav>
       <div class="pane" id="p-datos"></div>
       <div class="pane" id="p-bloques"></div>
+      <div class="pane" id="p-vars"></div>
       <div class="pane" id="p-proyecto"></div>
     </aside>
-    <div class="split" id="split"></div>
+    <div class="split" id="split" title="Arrastre para redimensionar"></div>
     <section class="right" id="right"><div class="paper" id="paper"></div></section>
   </div>
-  <nav class="bnav"><button data-v="datos">${I.data}Datos</button><button data-v="bloques">${I.edit}Editor</button><button data-v="prev">${I.eye}Vista</button><button data-v="proyecto">${I.gear}Proyecto</button></nav>
+  <footer class="sbar">
+    <span class="sb-save" id="sbsave">${I.cloud}<span>Guardado en este dispositivo</span></span>
+    <span class="sb-sep"></span><span id="sbchk"></span>
+    <span class="sb-sep"></span><span id="sbinfo"></span>
+    <span style="flex:1"></span>
+    <span id="sbunits" class="sb-btn" title="Sistema de unidades preferido (Proyecto)"></span>
+    <span class="sb-sep"></span><span id="perf" title="Tiempo de cálculo"></span>
+    <span class="sb-sep"></span>
+    <span class="zoom"><button data-zoom="-1" title="Alejar vista previa">${I.minus}</button><button data-zoom="0" id="zoomv" title="Restablecer zoom">100 %</button><button data-zoom="1" title="Acercar vista previa">${I.plus}</button></span>
+    <button class="sb-btn" data-do="keys" title="Atajos de teclado">${I.key}</button>
+  </footer>
+  <nav class="bnav"><button data-v="datos">${I.data}Datos</button><button data-v="bloques">${I.edit}Editor</button><button data-v="prev">${I.eye}Vista</button><button data-v="vars">${I.vars}Variables</button><button data-v="proyecto">${I.gear}Proyecto</button></nav>
   </div>`;
 
   // --- eventos globales ---
   document.addEventListener('click', e => {
+    const xm = e.target.closest('[data-expmenu]'); if (xm) { showExportMenu(xm); return; }
+    const zb = e.target.closest('[data-zoom]'); if (zb) { setZoom(+zb.dataset.zoom); return; }
+    if (e.target.closest('#sbunits')) { setTab('proyecto'); setTimeout(() => document.querySelector('[data-s="sys"]')?.focus(), 50); return; }
     const d = e.target.closest('[data-do]');
     if (d) {
       const a = d.dataset.do;
-      if (a === 'tpl') showTemplates(); else if (a === 'lib') showLibrary(); else if (a === 'save') saveFile(); else if (a === 'open') openFile();
+      if (a === 'tpl') showTemplates(); else if (a === 'lib') showLibrary(); else if (a === 'fns') showFunctions(); else if (a === 'cmdk') { showCmdK(); return; } else if (a === 'keys') showKeys(); else if (a === 'save') saveFile(); else if (a === 'open') openFile();
       else if (a === 'pdf') doPrint(); else if (a === 'html') exportHTML(); else if (a === 'word') exportWord(); else if (a === 'help') showHelp(); else if (a === 'normas') showNormas();
       else if (a === 'menu') { showMenu(d); return; }
       else if (a === 'theme') { const cur = document.documentElement.dataset.theme; const nx = cur === 'dark' ? 'light' : cur === 'light' ? '' : 'dark'; if (nx) document.documentElement.dataset.theme = nx; else delete document.documentElement.dataset.theme; try { localStorage.setItem('mc_theme', nx); } catch (er) { /* */ } toast('Tema: ' + (nx === 'dark' ? 'oscuro' : nx === 'light' ? 'claro' : 'automático')); }
@@ -649,7 +1077,7 @@ export function start() {
       document.querySelectorAll('.menu').forEach(m => m.remove());
       return;
     }
-    if (!e.target.closest('.menu')) document.querySelectorAll('.menu').forEach(m => m.remove());
+    if (!e.target.closest('.menu,[data-addpick],[data-ins],[data-expmenu]')) document.querySelectorAll('.menu').forEach(m => m.remove());
     const tb = e.target.closest('.tab'); if (tb) { setTab(tb.dataset.tab); return; }
     const bn = e.target.closest('.bnav button'); if (bn) { if (bn.dataset.v === 'prev') setView('prev'); else { mview = 'edit'; $('.main').dataset.v = 'edit'; setTab(bn.dataset.v); } window.scrollTo(0, 0); return; }
     const ch = e.target.closest('[data-go]');
@@ -660,7 +1088,7 @@ export function start() {
       return;
     }
     const ln = e.target.closest('#paper .ln[data-b]');
-    if (ln && !window.getSelection().toString()) { goToLine(ln.dataset.b, +ln.dataset.l); return; }
+    if (ln && !window.getSelection().toString()) { if (ln.classList.contains('in') && !e.altKey) openIed(ln); else goToLine(ln.dataset.b, +ln.dataset.l); return; }
     const sec = e.target.closest('#paper .blk[data-b]');
     if (sec && e.target.closest('.figure') && !window.getSelection().toString()) { goToLine(sec.dataset.b); }
   });
@@ -670,11 +1098,24 @@ export function start() {
     if (had) return;
     const r = btn.getBoundingClientRect();
     const m = h(`<div class="menu main-menu" style="top:${r.bottom + 6}px;right:${Math.max(8, window.innerWidth - r.right)}px">
-      <button data-do="undo">${I.undo}Deshacer (Ctrl+Z)</button><button data-do="redo">${I.redo}Rehacer (Ctrl+Y)</button><hr><button data-do="tpl">${I.grid}Nueva desde plantilla</button><button data-do="new">${I.blank}Documento en blanco</button><button data-do="lib">${I.folder}Mis memorias</button><hr>
-      <button data-do="open">${I.open}Abrir archivo .mcalc</button><button data-do="save">${I.save}Guardar archivo .mcalc</button><button data-do="dupdoc">${I.dup}Duplicar memoria</button><hr>
-      <button data-do="pdf">${I.pdf}Imprimir / Guardar PDF</button><button data-do="html">${I.html}Exportar HTML</button><button data-do="word">${I.text}Exportar Word (.docx)</button><hr>
-      <button data-do="theme">${I.moon}Cambiar tema</button><button data-do="normas">${I.book}Normas implementadas</button><button data-do="help">${I.help}Ayuda y sintaxis</button></div>`);
+      <button data-do="undo">${I.undo}Deshacer<kbd>Ctrl Z</kbd></button><button data-do="redo">${I.redo}Rehacer<kbd>Ctrl Y</kbd></button><hr><button data-do="tpl">${I.grid}Nueva desde plantilla</button><button data-do="new">${I.blank}Documento en blanco</button><button data-do="lib">${I.folder}Mis memorias</button><hr>
+      <button data-do="open">${I.open}Abrir archivo .mcalc<kbd>Ctrl O</kbd></button><button data-do="save">${I.save}Guardar archivo .mcalc<kbd>Ctrl S</kbd></button><button data-do="dupdoc">${I.dup}Duplicar memoria</button><hr>
+      <button data-do="pdf">${I.pdf}Imprimir / Guardar PDF<kbd>Ctrl P</kbd></button><button data-do="html">${I.html}Exportar HTML</button><button data-do="word">${I.word}Exportar Word (.docx)</button><hr>
+      <button data-do="cmdk">${I.search}Buscar o ejecutar…<kbd>Ctrl K</kbd></button><button data-do="fns">${I.fn}Biblioteca de funciones</button><hr>
+      <button data-do="theme">${I.moon}Cambiar tema</button><button data-do="normas">${I.book}Normas implementadas</button><button data-do="help">${I.help}Ayuda y sintaxis</button><button data-do="keys">${I.key}Atajos de teclado</button></div>`);
     if (EMBED) m.querySelectorAll('[data-do="pdf"]').forEach(b => b.hidden = true);
+    document.body.appendChild(m);
+  }
+  function showExportMenu(btn) {
+    const had = document.querySelector('.menu.exp-menu');
+    document.querySelectorAll('.menu').forEach(m => m.remove());
+    if (had) return;
+    const r = btn.getBoundingClientRect();
+    const m = h(`<div class="menu exp-menu" style="top:${r.bottom + 6}px;right:${Math.max(8, window.innerWidth - r.right)}px"><div class="mh">Exportar memoria</div>
+      ${EMBED ? '' : `<button data-do="pdf">${I.pdf}<span>PDF / Imprimir<small>A4 con encabezado y numeración</small></span><kbd>Ctrl P</kbd></button>`}
+      <button data-do="word">${I.word}<span>Word (.docx)<small>Ecuaciones editables, figuras e índice</small></span></button>
+      <button data-do="html">${I.html}<span>HTML<small>Página autónoma para compartir</small></span></button><hr>
+      <button data-do="save">${I.save}<span>Archivo .mcalc<small>Para volver a editar</small></span><kbd>Ctrl S</kbd></button></div>`);
     document.body.appendChild(m);
   }
   $('#dtitle').addEventListener('input', e => { doc.meta.titulo = e.target.value; const pi = document.querySelector('[data-m="titulo"]'); if (pi) pi.value = e.target.value; changed(); });
@@ -722,6 +1163,7 @@ export function start() {
     changed();
   });
   pb.addEventListener('change', e => { if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT') e.target.dispatchEvent(new Event('input', { bubbles: true })); });
+  pb.addEventListener('focusin', e => { if (e.target.matches('textarea.code') && e.target.closest('.bk')?.querySelector('.snip')) lastTA = e.target; });
   pb.addEventListener('focusin', e => { const el = e.target.closest('.bk'); if (el && selId !== el.dataset.id) { selId = el.dataset.id; document.querySelectorAll('.bk').forEach(x => x.classList.toggle('sel', x === el)); } });
   pb.addEventListener('scroll', () => { }, { passive: true });
   pb.addEventListener('keydown', e => {
@@ -740,9 +1182,9 @@ export function start() {
   });
   pb.addEventListener('focusout', () => setTimeout(() => { if (!document.activeElement?.classList.contains('code')) closeAC(); }, 150));
   pb.addEventListener('click', e => {
-    if (e.target.closest('[data-addtoggle]')) { e.target.closest('.add').classList.toggle('open'); return; }
+    const pk = e.target.closest('[data-addpick]'); if (pk) { showBlockPicker(pk); return; }
     const add = e.target.closest('[data-add]'); if (add) { insertBlock(add.dataset.add); return; }
-    const ins = e.target.closest('[data-ins]'); if (ins) { showAddMenu(ins, +ins.dataset.ins); return; }
+    const ins = e.target.closest('[data-ins]'); if (ins) { showBlockPicker(ins, +ins.dataset.ins); return; }
     const sn = e.target.closest('[data-snip]');
     if (sn) { const ta = sn.closest('.bk').querySelector('textarea'); ta.focus(); const s = SNIPS[+sn.dataset.snip][1]; const atStart = ta.selectionStart === 0 || ta.value[ta.selectionStart - 1] === '\n'; document.execCommand('insertText', false, (s.startsWith(' ') || atStart ? '' : '\n') + s); return; }
     const act = e.target.closest('[data-act]'); if (!act) { const dz = e.target.closest('.imgdrop'); if (dz) dz.closest('.bkb').querySelector('input[type=file]').click(); return; }
@@ -777,14 +1219,6 @@ export function start() {
       renderBlocks(); changed(); toast('Imagen insertada');
     });
   });
-  function showAddMenu(btn, at) {
-    document.querySelectorAll('.menu').forEach(m => m.remove());
-    const r = btn.getBoundingClientRect();
-    const m = h(`<div class="menu" style="top:${Math.min(r.bottom + 4, window.innerHeight - 440)}px;left:${Math.max(8, r.left - 60)}px">${Object.keys(TYPES).map(t => `<button data-addat="${t}">${I[TYPES[t].icon]}${TYPES[t].name}</button>`).join('')}</div>`);
-    m.addEventListener('click', e => { const b = e.target.closest('[data-addat]'); if (b) { m.remove(); insertBlock(b.dataset.addat, at); } });
-    document.body.appendChild(m);
-  }
-
   // proyecto
   const pp = $('#p-proyecto');
   pp.addEventListener('input', e => {
@@ -798,9 +1232,16 @@ export function start() {
   });
 
   // atajos
+  document.addEventListener('mousedown', e => { if (ied && !e.target.closest('.ied') && !e.target.closest('#paper .ln.in')) { recompute.flush?.(); closeIed(); } });
+  $('#right').addEventListener('scroll', () => { if (ied) iedPlace(); }, { passive: true });
+  window.addEventListener('resize', () => { if (ied) iedPlace(); });
   document.addEventListener('keydown', e => {
+    if (e.key === 'F1') { e.preventDefault(); showHelp(); return; }
+    if (e.altKey && !e.ctrlKey && !e.metaKey && /^[1-4]$/.test(e.key)) { e.preventDefault(); if (isMobile()) setView('edit'); setTab(['datos', 'bloques', 'vars', 'proyecto'][+e.key - 1]); return; }
     if (!(e.ctrlKey || e.metaKey)) return;
     const k = e.key.toLowerCase();
+    if (k === 'k' && !e.shiftKey && !e.altKey) { e.preventDefault(); if (document.querySelector('.cmdk-ov')) document.querySelector('.cmdk-ov').remove(); else showCmdK(); return; }
+    if (k === 'f' && e.shiftKey) { e.preventDefault(); showFunctions(); return; }
     const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
     if ((k === 'z' || k === 'y') && !inField) { e.preventDefault(); undoRedo(k === 'y' || e.shiftKey ? 1 : -1); return; }
     if (k === 's') { e.preventDefault(); saveFile(); } else if (k === 'o') { e.preventDefault(); openFile(); } else if (k === 'p') { e.preventDefault(); doPrint(); }
@@ -815,7 +1256,8 @@ export function start() {
     const up = () => { sp.removeEventListener('pointermove', mv); sp.removeEventListener('pointerup', up); try { localStorage.setItem('mc_w', left.style.width); } catch (er) { /* */ } };
     sp.addEventListener('pointermove', mv); sp.addEventListener('pointerup', up);
   });
-  try { const w = localStorage.getItem('mc_w'); if (w) $('.left').style.width = w; const th = localStorage.getItem('mc_theme'); if (th) document.documentElement.dataset.theme = th; } catch (e) { /* */ }
+  try { const w = localStorage.getItem('mc_w'); if (w) $('.left').style.width = w; const th = localStorage.getItem('mc_theme'); if (th) document.documentElement.dataset.theme = th; const z = parseFloat(localStorage.getItem('mc_zoom')); if (ZOOMS.includes(z)) zoom = z; } catch (e) { /* */ }
+  applyZoom();
   window.addEventListener('resize', debounce(() => setTab(tab), 150));
 
   if (EMBED) {
