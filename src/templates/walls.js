@@ -87,7 +87,9 @@ Se consideran todas las fuerzas por metro de muro respecto a la arista exterior 
 "La pantalla trabaja como un voladizo empotrado en la zapata. Combinaciones: $U_1 = 1.7\\,(CE + CV_{sc})$ (E.060 9.2.5) y, con sismo, $U_2 = 1.7\\,CE + 1.0\\,CS$ con el 50 % de la sobrecarga. La E.060 no da una combinación explícita de empuje y sismo: se conserva el factor 1.7 del empuje estático (E.060 9.2.5) y el sismo, que la E.030 da a nivel de resistencia, va con 1.0 (como ACI 318-19 5.3.8 y ASCE 7-16 2.3.6: $1.6H + 1.0E$; AASHTO Evento Extremo I: $1.5EH + 1.0EQ$). $CS$ incluye el incremento de Mononobe–Okabe a $0.6\\,h_p$ y la inercia de la pantalla.
 ## Flexión en la base de la pantalla
 Mus = 1.7*(Ka*gammas*hp^3/6 + Ka*ws*hp^2/2) -> tonf*m/m // U = 1.7 CE (E.060 9.2.5)
-Mue = 1.7*(Ka*gammas*hp^3/6 + Ka*0.5*ws*hp^2/2) + 1.0*(DKae*gammas*hp^2/2*0.6*hp + kh*gammac*(t1 + t2)/2*hp^2/2) -> tonf*m/m // U = 1.7 CE + 1.0 CS (ΔEae a 0.6 hp; inercia de la pantalla)
+MeE = Ka*gammas*hp^3/6 + Ka*0.5*ws*hp^2/2 -> tonf*m/m // Momento estático: empuje activo + 50 % de la sobrecarga
+MeS = DKae*gammas*hp^2/2*0.6*hp + kh*gammac*(t1 + t2)/2*hp^2/2 -> tonf*m/m // Momento sísmico: ΔEae a 0.6 hp + inercia de la pantalla
+Mue = 1.7*MeE + 1.0*MeS -> tonf*m/m // U = 1.7 CE + 1.0 CS
 Mu = max(Mus, Mue) // Momento último de diseño
 bar = 6 // Varilla vertical interior [5 : 5/8"|6 : 3/4"|8 : 1"]
 d = t2 - rec - db(bar)/2 // Peralte efectivo
@@ -103,7 +105,9 @@ check rho <= 0.75*rhob // Cuantía máxima (E.060 10.3.4)
 ## Cortante a una distancia d de la base (E.060 11.1.3)
 zv = hp - d // Profundidad de la sección crítica desde la corona
 Vus = 1.7*(Ka*gammas*zv^2/2 + Ka*ws*zv) -> tonf/m
-Vue = 1.7*(Ka*gammas*zv^2/2 + Ka*0.5*ws*zv) + 1.0*(DKae*gammas*zv^2/2 + kh*gammac*(t1 + t2)/2*zv) -> tonf/m
+VeE = Ka*gammas*zv^2/2 + Ka*0.5*ws*zv -> tonf/m // Cortante estático a la distancia d
+VeS = DKae*gammas*zv^2/2 + kh*gammac*(t1 + t2)/2*zv -> tonf/m // Cortante sísmico a la distancia d
+Vue = 1.7*VeE + 1.0*VeS -> tonf/m
 Vu = max(Vus, Vue)
 phiVc = 0.85*0.53*sqrtfc(fc)*d -> tonf/m // φVc = 0.85·0.53√f'c·b·d (E.060 11.3.1.1, φ = 0.85)
 check Vu <= phiVc // Cortante en la pantalla (sin estribos)`),
@@ -355,7 +359,10 @@ check sv <= min(3*tp, 40 cm) // Espaciamiento máximo
 "Momento vertical positivo $M_v/4$: se cubre con el refuerzo mínimo vertical de la cara exterior.
 # Contrafuerte (viga T en voladizo)
 alpha = atan(hp/Lt) -> deg // Inclinación del borde posterior (acero de tracción)
-Muc = max(1.7*Sc*(Ka*gammas*hp^3/6 + Ka*ws*hp^2/2), Sc*(1.7*(Ka*gammas*hp^3/6 + Ka*0.5*ws*hp^2/2) + DKae*gammas*hp^2/2*0.6*hp + kh*gammac*tp*hp^2/2)) -> tonf*m // Momento último en la base
+Mce = Ka*gammas*hp^3/6 -> tonf*m/m // Momento del empuje activo en la base, por metro
+Mcw = Ka*ws*hp^2/2 -> tonf*m/m // Momento del empuje de la sobrecarga, por metro
+Mcs = DKae*gammas*hp^2/2*0.6*hp + kh*gammac*tp*hp^2/2 -> tonf*m/m // Momento sísmico: incremento ΔKae a 0.6 hp + inercia de la pantalla
+Muc = max(1.7*Sc*(Mce + Mcw), Sc*(1.7*(Mce + 0.5*Mcw) + Mcs)) -> tonf*m // Momento último en la base: máx. (U = 1.7 CE; U = 1.7 CE + 1.0 CS con 50 % de sobrecarga)
 dh = tp + Lt - 10 cm // Brazo horizontal desde la cara exterior de la pantalla (compresión) al acero
 bf = min(Sc, tc + 16*tp) // Ancho efectivo del ala (E.060 8.10.2)
 Asc1 = Muc/(0.9*fy*sin(alpha)*0.95*dh) -> cm^2 // Primera aproximación
@@ -366,7 +373,10 @@ Asminc = 0.7*sqrtfc(fc)/fy*tc*dh*sin(alpha) -> cm^2 // Mínimo (E.060 10.5.2)
 Asdis = max(Asc, min(Asminc, 1.33*Asc)) // Acero de diseño: el mínimo puede sustituirse por 1.33 As requerido (E.060 10.5.3)
 nc = ceil(Asdis/Ab(8)) // Número de varillas de 1"
 check nc*Ab(8) >= Asdis // Acero colocado
-Vuc = max(1.7*Sc*(Ka*gammas*hp^2/2 + Ka*ws*hp), Sc*(1.7*(Ka*gammas*hp^2/2 + Ka*0.5*ws*hp) + DKae*gammas*hp^2/2 + kh*gammac*tp*hp)) -> tonf // Cortante en la base
+Vce = Ka*gammas*hp^2/2 -> tonf/m // Empuje activo total por metro
+Vcw = Ka*ws*hp -> tonf/m // Empuje de la sobrecarga por metro
+Vcs = DKae*gammas*hp^2/2 + kh*gammac*tp*hp -> tonf/m // Incremento sísmico + inercia de la pantalla
+Vuc = max(1.7*Sc*(Vce + Vcw), Sc*(1.7*(Vce + 0.5*Vcw) + Vcs)) -> tonf // Cortante en la base
 Vnet = Vuc - Muc/(dh - a/2)*cos(alpha)/sin(alpha) -> tonf // Descontando la componente horizontal de la tracción inclinada (Bowles §12)
 phiVcc = 0.85*0.53*sqrtfc(fc)*tc*dh*sin(alpha) -> tonf // Alma del contrafuerte, peralte perpendicular al acero
 check Vnet <= phiVcc // Cortante en el contrafuerte
@@ -673,8 +683,8 @@ ebb = Mb/Vb -> m
 sigv = Vb/max(L - 2*ebb, 0.01*L) -> tonf/m^2 // Presión uniforme de Meyerhof (11.6.3.2)
 qR = 0.65*qn // φb = 0.65 (Tabla 11.5.7-1)
 check sigv <= qR // Capacidad portante
-## Sismo (Evento Extremo I, 11.10.7.1)
 ${SISMO}
+## Sismo (Evento Extremo I, 11.10.7.1)
 PIR = 0.5*kh*gammar*H^2 -> tonf/m // Inercia del macizo de ancho 0.5H (11.10.7.1)
 PAE = 0.375*kh*gammaf*H^2 -> tonf/m // Incremento dinámico del relleno retenido (Seed–Whitman)
 Pdrve = F1 + 0.5*F2 + max(PIR + 0.5*PAE, 0.5*PIR + PAE) -> tonf/m // Envolvente de PIR + 50 % PAE (11.10.7.1) y PAE + 50 % PIR (11.6.5.1); γEQ = 0.5 para LS

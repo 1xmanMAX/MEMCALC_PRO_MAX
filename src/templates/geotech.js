@@ -199,11 +199,13 @@ quav = (Pu1 + Pu2)/(Bz*Lz) -> tonf/m^2 // Presión última media
 bo1 = 2*(t1 + d) + 2*(b1 + d) // Perímetro crítico de la columna 1 (a d/2; a1 − t1/2 ≥ d/2)
 check a1 - t1/2 >= d/2 // El perímetro crítico de la columna 1 cabe en la zapata
 Vu1 = Pu1 - quav*(t1 + d)*(b1 + d) -> tonf // Cortante de punzonamiento columna 1
-phiVc1 = 0.85*min(0.53*(1 + 2/(max(t1, b1)/min(t1, b1)))*sqrtfc(fc)*bo1*d, 0.27*(40*d/bo1 + 2)*sqrtfc(fc)*bo1*d, 1.06*sqrtfc(fc)*bo1*d) -> tonf // φVc (Art. 11.12.2.1)
+betac1 = max(t1, b1)/min(t1, b1) // Relación lado largo / lado corto de la columna 1
+phiVc1 = 0.85*min(0.53*(1 + 2/betac1), 0.27*(40*d/bo1 + 2), 1.06)*sqrtfc(fc)*bo1*d -> tonf // φVc (Art. 11.12.2.1)
 check Vu1 <= phiVc1 // Punzonamiento columna 1
 bo2 = 2*(t2 + d) + 2*(b2 + d) // Perímetro crítico de la columna 2
 Vu2 = Pu2 - quav*(t2 + d)*(b2 + d) -> tonf
-phiVc2 = 0.85*min(0.53*(1 + 2/(max(t2, b2)/min(t2, b2)))*sqrtfc(fc)*bo2*d, 0.27*(40*d/bo2 + 2)*sqrtfc(fc)*bo2*d, 1.06*sqrtfc(fc)*bo2*d) -> tonf
+betac2 = max(t2, b2)/min(t2, b2) // Relación lado largo / lado corto de la columna 2
+phiVc2 = 0.85*min(0.53*(1 + 2/betac2), 0.27*(40*d/bo2 + 2), 1.06)*sqrtfc(fc)*bo2*d -> tonf // φVc (Art. 11.12.2.1)
 check Vu2 <= phiVc2 // Punzonamiento columna 2
 ## Cortante por flexión (a d de la cara, E.060 Art. 11.3)
 Vud = Vmax_u - qmin_u*Bz*(min(t1, t2)/2 + d) -> tonf // Cortante máximo reducido a d de la cara (conservador)
@@ -926,7 +928,7 @@ PLmax = max(PLs) // Probabilidad máxima de licuación
 check FSLmin >= FSreq // FS_L ≥ mínimo de la Tabla 13A (E.050 Art. 38.5.8)
 check PLmax <= 0.10 // P_L ≤ 10 %: potencial de licuación bajo, se permite cimentar (Art. 38.6.2, Tabla 13)
 "Clasificación del potencial de licuación (Tabla 13): $P_L$ máx = {100*PLmax} % → {si(PLmax > 0.5, 4, si(PLmax > 0.1, 3, si(PLmax > 0.05, 2, 1)))} (1 = muy baja, 2 = baja, 3 = moderada, 4 = alta).`),
-      { type: 'table', columnas: 'z [m] = z\n(N1)60 = N1\nFC [%] = FC\n(N1)60cs = Ncs\nrd = rd\nCSR = CSR\nCRR7.5 = CRR\nKσ = Ks\nCRR_M = CRRM\nFS_L = FSL\nP_L = PL\nEstado = liqEstado(FSL, FSreq, z, Dw, Ncs)', dec: '3', titulo: 'Evaluación de licuación por ensayo SPT (FS_L = 3 indica no licuable o sobre el NF)' },
+      { type: 'table', columnas: 'z [m] = z\n$(N_1)_{60}$ = N1\nFC [%] = FC\n$(N_1)_{60cs}$ = Ncs\n$r_d$ = rd\nCSR = CSR\n$CRR_{7.5}$ = CRR\n$K_\\sigma$ = Ks\n$CRR_M$ = CRRM\n$FS_L$ = FSL\n$P_L$ = PL\nEstado = liqEstado(FSL, FSreq, z, Dw, Ncs)', dec: '3', titulo: 'Evaluación de licuación por ensayo SPT ($CRR_{7.5}$ = 2 y $FS_L$ = 3 son valores convencionales: estrato no licuable o sobre el NF)' },
       { type: 'liqchart', z: 'z', CSR: 'CSR', CRR: 'CRRM', FS: 'FSL', FSmin: 'FSreq', nf: 'Dw', titulo: 'CSR, CRR_M y factor de seguridad frente a licuación con la profundidad' },
       summary(),
     ],
@@ -1017,7 +1019,7 @@ qn25 = qaSPT(N60a, Bz, Df, 25 mm) -> kgf/cm^2 // Presión neta para Se = 25 mm
 "Para una arcilla con $N_{60}$ = 8 la resistencia no drenada sería $c_u$ ≈ {cuSPT(8, 5 kPa) -> tonf/m^2} (Stroud 1974) o {cuHara(8) -> tonf/m^2} (Hara et al. 1974).
 check phid >= 28 deg // Arena de compacidad media o mayor (φ' ≥ 28°) para apoyar la cimentación
 check Dr >= 0.35 // Compacidad: no se cimenta en arena suelta (Dr ≥ 35 %)`),
-      { type: 'table', columnas: 'z [m] = zSPT\nN = NSPT\nN60 = N60v\n(N1)60 = N160v\nφ Peck [deg] = phiPeck(N60v)\nφ H-U [deg] = phiHatanaka(N160v)\nφ K-M [deg] = phiKulhawy(N60v, svpSPT)\nDr = DrSPT(N160v)\nEs [kgf/cm^2] = EsSPT(N60v, 10)', dec: '1', titulo: 'Correlaciones por ensayo SPT (válidas para suelos granulares)' },
+      { type: 'table', columnas: 'z [m] = zSPT\nN = NSPT\n$N_{60}$ = N60v\n$(N_1)_{60}$ = N160v\nφ Peck [deg] = phiPeck(N60v)\nφ H-U [deg] = phiHatanaka(N160v)\nφ K-M [deg] = phiKulhawy(N60v, svpSPT)\nDr = DrSPT(N160v)\nEs [kgf/cm^2] = EsSPT(N60v, 10)', dec: '1', titulo: 'Correlaciones por ensayo SPT (válidas para suelos granulares)' },
       summary(),
     ],
   },

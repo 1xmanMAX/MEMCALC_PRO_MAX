@@ -317,5 +317,17 @@ section('Plantillas del módulo');
     truthy(`${id} con datos extremos: sin errores ni NaN y con NO CUMPLE`, r.ctx.errors.length === 0 && r.ctx.checks.some(c => !c.ok) && !/NaN/.test(html), r.ctx.errors.map(e => JSON.stringify(e)).join(' ') + ` (${ms.toFixed(0)} ms)`);
   }
 }
+section('QA de plantillas: validación, rangos usuales y texto (docs/referencias/qa-dynamics.md)');
+{
+  const tpls = TEMPLATES.filter(t => t.cat === 'Dinámica estructural');
+  for (const t of tpls) {
+    truthy(`${t.id}: tiene «validacion» con fuente y valores`, !!(t.validacion && t.validacion.fuente && t.validacion.valores.length));
+    const r = runTemplate(t.id).res, ins = r.ctx.inputs.filter(i => i.range);
+    const fuera = ins.filter(i => { const x = parseFloat(i.num); return !(x >= i.range.min && x <= i.range.max); });
+    truthy(`${t.id}: ${ins.length} datos con rango usual y valores por defecto dentro del rango`, ins.length >= 3 && fuera.length === 0, fuera.map(i => i.name + ' = ' + i.num).join(', '));
+    const html = r.html.replace(/<annotation[^>]*>[\s\S]*?<\/annotation>/g, '');
+    truthy(`${t.id}: sin NaN, undefined, «ε_» ni «;\\mathrm» crudos en la memoria`, !/NaN|undefined|ε_|;\\mathrm|Sa_sint|V_y1\/W/.test(html));
+  }
+}
 void math;
 done();

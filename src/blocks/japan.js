@@ -27,6 +27,8 @@ const RtF = (T, Tc) => (T < Tc ? 1 : T < 2 * Tc ? 1 - 0.2 * (T / Tc - 1) ** 2 : 
 // ---------------------------------------------------------------------
 //  1) Distribución Ai (Notif. 1793 Art. 3; Order Art. 88)
 // ---------------------------------------------------------------------
+// leyenda numerada de tabla (mismo formato que el bloque «table»)
+const tcap = (ctx, t) => { ctx.tab = (ctx.tab || 0) + 1; return `<div class="cap">Tabla ${ctx.tab}: ${t}</div>`; };
 registerBlock('aidist', {
   name: 'Distribución Ai (Japón BSL)', icon: 'quake', group: 'Sismo',
   fields: [
@@ -107,7 +109,7 @@ registerBlock('aidist', {
     let tb = '<table class="tbl"><thead><tr><th>Piso</th><th>w<sub>i</sub> [kN]</th><th>ΣW<sub>i</sub> [kN]</th><th>α<sub>i</sub></th><th>A<sub>i</sub></th><th>C<sub>i</sub></th><th>Q<sub>i</sub> [kN]</th><th>P<sub>i</sub> [kN]</th></tr></thead><tbody>';
     for (let i = n - 1; i >= 0; i--) tb += `<tr><td>${i + 1}</td><td>${f2(w[i], 1)}</td><td>${f2(Wsup[i], 1)}</td><td>${f2(al[i], 3)}</td><td>${f2(Ai[i], 3)}</td><td>${f2(Ci[i], 3)}</td><td>${f2(Qi[i], 1)}</td><td>${f2(Pi[i], 1)}</td></tr>`;
     tb += '</tbody></table>';
-    return `<div class="figure">${svgWrap(W, Hh, defs + g)}${caption(ctx, b.titulo || 'Distribución en altura del coeficiente Aᵢ, del coeficiente de corte Cᵢ y del cortante de entrepiso Qᵢ (BSL)')}</div><div class="figure">${tb}</div>`;
+    return `<div class="figure">${svgWrap(W, Hh, defs + g)}${caption(ctx, b.titulo || 'Distribución en altura del coeficiente Aᵢ, del coeficiente de corte Cᵢ y del cortante de entrepiso Qᵢ (BSL)')}</div><div class="figure">${tcap(ctx, 'Valores por entrepiso del coeficiente Aᵢ, del coeficiente de corte Cᵢ y del cortante Qᵢ')}${tb}</div>`;
   },
 });
 
@@ -230,7 +232,7 @@ registerBlock('kaberyo', {
     let tb = '<table class="tbl"><thead><tr><th>Franja (1/4)</th><th>Área [m²]</th><th>Requerida [m]</th><th>Efectiva [m]</th><th>Suficiencia</th></tr></thead><tbody>';
     [['X — inferior', eX1, rX1], ['X — superior', eX2, rX2], ['Y — izquierda', eY1, rY1], ['Y — derecha', eY2, rY2]].forEach(([nm, e, rr]) => { tb += `<tr><td>${esc(nm)}</td><td>${f2(Lx * Ly / 4, 2)}</td><td>${f2(reqS, 2)}</td><td>${f2(e, 2)}</td><td>${f2(rr, 2)}</td></tr>`; });
     tb += '</tbody></table>';
-    return `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Planta con muros resistentes (grosor ∝ multiplicador) y franjas laterales de 1/4 (yonbun-wari)')}</div><div class="figure">${tb}</div>`;
+    return `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Planta con muros resistentes (grosor ∝ multiplicador) y franjas laterales de 1/4 (yonbun-wari)')}</div><div class="figure">${tcap(ctx, 'Longitudes de muro requerida y efectiva en las franjas de 1/4 (yonbun-wari) y relación de suficiencia')}${tb}</div>`;
   },
 });
 

@@ -1038,7 +1038,9 @@ function drawDiagram(md, sets, key, W, opts = {}) {
   const col = COL[key], fill = FILL[key];
   const lb = labeler(W);
   lb.add(W / 2, 14, W, 20);
-  md.nodes.forEach(n => { const [x, y] = P(v, n); lb.add(x, y, 8, 8); });
+  md.nodes.forEach(n => { const [x, y] = P(v, n); lb.add(x, y, 10, 10); });
+  // los ejes de las barras son obstáculos para los rótulos (no escribir valores encima de una barra)
+  md.mems.forEach(m => { const a = P(v, md.nodes[m.i]), b = P(v, md.nodes[m.j]); const n = Math.max(2, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 8)); for (let t = 1; t < n; t++) lb.add(a[0] + (b[0] - a[0]) * t / n, a[1] + (b[1] - a[1]) * t / n, 4, 4); });
   g += membersLine(md, v, '#c3ccd5', 1.4);
   md.nodes.forEach((n, i) => { g += supportGlyph(md, i, v, '#9aa5b1'); });
   const labels = [], dense = md.mems.length * sets.length > 36;
@@ -1080,17 +1082,21 @@ function drawDiagram(md, sets, key, W, opts = {}) {
   labels.sort((p, q) => Math.abs(q.val) - Math.abs(p.val));
   const done = [];
   for (const L of labels) {
-    const s = fx(L.val), w = s.length * 5.6 + 4, h = 11;
-    // valor duplicado en el mismo lugar (nudo compartido)
-    if (done.some(d => Math.abs(d.x - L.x) < 22 && Math.abs(d.y - L.y) < 22 && Math.abs(d.val - L.val) < 1e-6 * amax + 1e-9)) continue;
+    const s = fx(L.val), w = s.length * 6.1 + 6, h = 13;
+    // valor repetido o casi igual (±3 % del máximo) en el mismo lugar (nudo compartido, envolvente máx./mín.)
+    if (done.some(d => Math.abs(d.x - L.x) < 26 && Math.abs(d.y - L.y) < 26 && Math.abs(d.val - L.val) < 0.03 * amax)) continue;
+    // extremos de barra secundarios (< 25 % del máximo) junto a un nudo que ya tiene dos rótulos
+    if (L.end && Math.abs(L.val) < 0.25 * amax && done.filter(d => Math.hypot(d.x - L.x, d.y - L.y) < 30).length >= 2) continue;
     const el = Math.hypot(L.ex, L.ey) || 1, ux = L.ex / el, uy = L.ey / el;
     const cands = [];
-    for (const dd of [9, 17, 27]) for (const sh of [0, 14, -14, 26, -26]) {
+    for (const dd of [9, 17, 27, 38]) for (const sh of [0, 14, -14, 26, -26, 40]) {
       const sx = L.end ? (L.tx < 0.5 ? 1 : -1) * Math.abs(sh) : sh;
       cands.push([L.x + L.nx * (dd + w * 0.3 * Math.abs(L.nx)) + ux * sx, L.y + L.ny * dd + uy * sx + 3.5 + (L.ny > 0.5 ? 2 : 0)]);
     }
-    const p = lb.place(cands, w, h);
-    if (!p) continue;
+    // la caja del texto se centra en su altura visual (la línea base queda ~3.5 px bajo el centro)
+    const pc = lb.place(cands.map(q => [q[0], q[1] - 3.5]), w, h);
+    if (!pc) continue;
+    const p = [pc[0], pc[1] + 3.5];
     done.push(L);
     g += `<circle cx="${L.x.toFixed(1)}" cy="${L.y.toFixed(1)}" r="1.9" fill="${col}"/>` + TH(p[0], p[1], s, { fs: 9.5, c: col, b: 1 });
   }

@@ -10,7 +10,7 @@ export const C = { ink: '#1b2733', grid: '#e3e8ef', axis: '#8a96a3', blue: '#1f6
 export const f2 = (x, d = 2) => {
   if (typeof x === 'number' && isFinite(x) && x !== 0 && Math.abs(x) < 1e-4) {
     if (Math.abs(x) < 1e-10) return '0';
-    return fmtPlain(Number(x.toPrecision(Math.max(1, d + 1))), d).includes('e') ? trimZ(x.toFixed(Math.min(12, d + 1 - Math.floor(Math.log10(Math.abs(x)))))) : fmtPlain(x, d);
+    return fmtPlain(Number(x.toPrecision(Math.max(1, d + 1))), d).includes('e') ? trimZ(x.toFixed(Math.min(12, Math.min(3, Math.max(1, d)) - 1 - Math.floor(Math.log10(Math.abs(x)))))) : fmtPlain(x, d);
   }
   return fmtPlain(x, d);
 };
@@ -637,7 +637,7 @@ export function blockPlot(b, ctx) {
 //  8) TABLA DE RESULTADOS (columnas = expresiones vectoriales)
 // =====================================================================
 // unidad legible en encabezados: «tonf*m» → «tonf·m», «m^2» → «m²»
-const prettyU = (u) => String(u).replace(/\s*\*\s*/g, '·').replace(/\^2\b/g, '²').replace(/\^3\b/g, '³').replace(/\^4\b/g, '⁴').replace(/\^-1\b/g, '⁻¹');
+const prettyU = (u) => String(u).replace(/\s*\*\s*/g, '·').replace(/\^2\b/g, '²').replace(/\^3\b/g, '³').replace(/\^4\b/g, '⁴').replace(/\^-1\b/g, '⁻¹').replace(/^deg$/, '°');
 export function blockTable(b, ctx) {
   const S = ctx.scope;
   const cols = [];

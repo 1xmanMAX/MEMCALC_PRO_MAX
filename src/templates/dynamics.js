@@ -120,9 +120,10 @@ fesc_max = 4 // Factor de escala máximo razonable para un registro (práctica: 
       { type: 'respspec', registro: 'elcentro', zetas: '0.02, 0.05, 0.10', Tmax: '4 s', nT: '120', Sa: 'Z*U*CE030d(T, Tp, Tl)*S', Tref: 'T1', escala: '1', titulo: 'Espectros de respuesta de El Centro 1940 NS (ζ = 2, 5 y 10 %) y espectro elástico E.030-2026' },
       calc(`# Evaluación
 Sa_E = Z*U*CE030d(T1, Tp, Tl)*S // Espectro elástico E.030 en T1 (R = 1, Art. 41.1)
-rT1 = SaT/Sa_E // Razón espectral registro/norma en T1 (ζ = 5 %)
+Sa_T = SaT // Ordenada espectral del registro en T1 (ζ = 5 %, bloque anterior)
+rT1 = Sa_T/Sa_E // Razón espectral registro/norma en T1 (ζ = 5 %)
 Sa_EC = SaElCentro(T1, 0.05) // Verificación con la función del editor (Nigam-Jennings)
-check abs(Sa_EC - SaT)/SaT <= 0.01 // Consistencia entre el bloque y la función SaElCentro
+check abs(Sa_EC - Sa_T)/Sa_T <= 0.01 // Consistencia entre el bloque y la función SaElCentro
 check abs(SaElCentro(0.02 s, 0.05) - PGA)/PGA <= 0.05 // Sa(T → 0) ≈ PGA (prueba de consistencia del espectro)
 check fesc <= fesc_max // Factor de escala para que el espectro del registro cubra al de diseño en 0.2T1–1.5T1
 PGA_esc = fesc*PGA // PGA del registro escalado (g)
@@ -182,8 +183,8 @@ check abs(rV - 1) <= 0.15 // CQC estima el cortante basal con error < 15 % (modo
 ## Amortiguamiento de Rayleigh equivalente (modos 1 y 3)
 a0 = rayleighA0(T1, T3, zeta) // Coeficiente proporcional a la masa (Chopra Ec. 11.4.9)
 a1 = rayleighA1(T1, T3, zeta) // Coeficiente proporcional a la rigidez
-z2 = zetaRayleigh(T2, a0, a1) // Amortiguamiento resultante en el modo 2
-z5 = zetaRayleigh(T5, a0, a1) // Amortiguamiento resultante en el modo 5
+zeta_2 = zetaRayleigh(T2, a0, a1) // Amortiguamiento resultante en el modo 2
+zeta_5 = zetaRayleigh(T5, a0, a1) // Amortiguamiento resultante en el modo 5
 rho12 = rhoCQC(T1, T2, zeta) // Correlación CQC entre los modos 1 y 2`),
       summary(),
     ],
@@ -219,7 +220,7 @@ W_i = [100, 100, 100, 100, 100] kip // Peso sísmico por nivel (1 → n)
 k_i = [31.54, 31.54, 31.54, 31.54, 31.54] kip/in // Rigidez lateral inicial de entrepiso
 h_i = [12, 12, 12, 12, 12] ft // Altura de entrepiso
 Wt = 500 kip // Peso total [50..10000]
-Cy = 0.20 // Coeficiente de fluencia del primer entrepiso V_y1/W [0.05..1]
+Cy = 0.20 // Coeficiente de fluencia del primer entrepiso Vy1/W [0.05..1]
 Vy_i = Cy*Wt*[15, 14, 12, 9, 5]/15 // Resistencia de entrepiso con distribución triangular
 alpha = 0.03 // Rigidez post-fluencia α = k2/k [0..0.20]
 zeta = 0.05 // Amortiguamiento de Rayleigh (modos 1 y 3) [0.01..0.10]
@@ -291,10 +292,10 @@ resid = 0.20 // Resistencia residual / Vy (ASCE 41-17 Tabla 10-8, c = 0.2) [0..0
 Te = Tpo1 // Periodo elástico fundamental
 "Desplazamiento objetivo del techo (N2): $u_t$ = {dN2}; ATC-40: {dATC}; FEMA 440: {dFEMA}; ASCE 41: {dC}.
 mu // Ductilidad global μ = ut/(Γ·dy*)
-derivamax // Deriva máxima de entrepiso en el punto de desempeño
-check derivamax <= 0.020 // Seguridad de vida: δ/h ≤ 2 % (FEMA 356 Tabla C1-3, pórticos de concreto)
+deriva_max = derivamax // Deriva máxima de entrepiso en el punto de desempeño
+check deriva_max <= 0.020 // Seguridad de vida: δ/h ≤ 2 % (FEMA 356 Tabla C1-3, pórticos de concreto)
 check mu <= 4 // Demanda de ductilidad global compatible con pórticos de concreto (R0 = 8 → ductilidad moderada)
-rN2C = dN2/dC // Razón N2 / método de coeficientes
+r_N2C = dN2/dC // Razón N2 / método de coeficientes
 "Los cuatro métodos dan desplazamientos objetivo del mismo orden; el N2 es el de mayor demanda para este periodo corto (T* < TC), donde la regla de igual desplazamiento no aplica.`),
       summary(),
     ],
@@ -334,7 +335,7 @@ fc = 28 MPa // Resistencia del concreto f'c [17..55]
 fy = 420 MPa // Fluencia del acero longitudinal (ASTM A615 Gr. 60) [280..550]
 fyh = 420 MPa // Fluencia del acero transversal [280..550]
 Es = 200000 MPa // Módulo del acero [190000..210000]
-esu = 0.09 // Deformación última del acero (ε en fsu) [0.05..0.15]
+epsilon_su = 0.09 // Deformación última del acero (ε en fsu) [0.05..0.15]
 # Sección y refuerzo
 b = 40 cm // Ancho (perpendicular a la flexión) [25..150]
 h = 60 cm // Peralte en la dirección de flexión [25..150]
@@ -345,16 +346,17 @@ L = 1.5 m // Longitud de cortante (columna en doble curvatura, hn = 3.0 m) [0.5.
 Ag = b*h // Área bruta
 nu = P/(Ag*fc) // Carga axial normalizada
 check nu <= 0.35 // Carga axial moderada para comportamiento dúctil (Priestley 2007)
-muD_req = 4 // Ductilidad de desplazamiento requerida (pórtico dúctil, R0 = 8) [1..8]`),
-      { type: 'momcurv', b: 'b', h: 'h', rec: 'rec', fc: 'fc', fy: 'fy', Es: 'Es', capas: '4 8 6.7 cm\n2 8 30 cm\n4 8 53.3 cm', estribo: '3', s: 's', nlb: '3', nlh: '2', fyh: 'fyh', confin: 'triaxial', P: 'P', concreto: 'mander', k3: '0.85', acero: 'park', bsh: '0.01', esh: '0.008', esu: 'esu', rsu: '1.35', traccion: true, L: 'L', mureq: '10', titulo: 'Diagrama M–φ de la columna 40 × 60 cm (10 Ø 1", estribos Ø 3/8" @ 10 cm), núcleo confinado de Mander' },
+mu_D_req = 4 // Ductilidad de desplazamiento requerida (pórtico dúctil, R0 = 8) [1..8]`),
+      { type: 'momcurv', b: 'b', h: 'h', rec: 'rec', fc: 'fc', fy: 'fy', Es: 'Es', capas: '4 8 6.7 cm\n2 8 30 cm\n4 8 53.3 cm', estribo: '3', s: 's', nlb: '3', nlh: '2', fyh: 'fyh', confin: 'triaxial', P: 'P', concreto: 'mander', k3: '0.85', acero: 'park', bsh: '0.01', esh: '0.008', esu: 'epsilon_su', rsu: '1.35', traccion: true, L: 'L', mureq: '10', titulo: 'Diagrama M–φ de la columna 40 × 60 cm (10 Ø 1", estribos Ø 3/8" @ 10 cm), núcleo confinado de Mander' },
       calc(`# Resultados
 Mn -> kN*m // Momento nominal (εc = 0.004 o εs = 0.015)
 Mu -> kN*m // Momento último
-muphi // Ductilidad de curvatura μφ = φu/φy
+mu_curv = muphi // Ductilidad de curvatura μφ = φu/φy
 fcc -> MPa // Resistencia del concreto confinado
 Lp -> cm // Longitud de rótula plástica
 thetap // Rotación plástica disponible (rad)
-check muD >= muD_req // Ductilidad de desplazamiento del voladizo equivalente ≥ requerida
+mu_D = muD // Ductilidad de desplazamiento del voladizo equivalente μΔ
+check mu_D >= mu_D_req // Ductilidad de desplazamiento del voladizo equivalente ≥ requerida
 check Mu >= 0.8*Mn // Sin pérdida excesiva de resistencia en la última (≤ 20 %)
 check thetap >= 0.02 // Capacidad de rotación plástica ≥ 0.02 rad (ASCE 41-17 Tabla 10-8, columna condición i, LS)
 "La sobrerresistencia de la rótula es $M_{max}/M_n$ = {Mmax/Mn}; para diseño por capacidad se usa $\\phi_o = 1.25$ (E.060 21.6.5).`),
@@ -371,9 +373,9 @@ check thetap >= 0.02 // Capacidad de rotación plástica ≥ 0.02 rad (ASCE 41-1
     titulo: 'Comparación de la respuesta sísmica con base fija y con aislamiento en la base',
     validacion: {
       fuente: 'Valores de control de la implementación (acelerograma sintético SIMQKE con semilla fija; NTE E.031 Art. 14)',
-      nota: 'Los datos por defecto NO son de un ejemplo publicado. PGAm = 1.5·0.45·1.075 y T1A = 3.0·√0.10 se comprueban a mano; los demás son valores de control de la respuesta al registro sintético (semilla 20260), que cambian si se modifica el generador.',
+      nota: 'Los datos por defecto NO son de un ejemplo publicado. El PGA del sismo máximo (1.5·0.45·1.075) y T1A = 3.0·√0.10 se comprueban a mano; los demás son valores de control de la respuesta al registro sintético (semilla 20260), que cambian si se modifica el generador.',
       valores: [
-        { var: 'PGAm', esperado: 0.725625, tol: 0.001, desc: 'Control: PGA del sismo máximo 1.5·Z·S (g)' },
+        { var: 'PGA_M', esperado: 0.725625, tol: 0.001, desc: 'Control: PGA del sismo máximo 1.5·Z·S (g)' },
         { var: 'T1A', unidad: 's', esperado: 0.94868, tol: 0.001, desc: 'Control: T1 = T2·√α' },
         { var: 'umax_F', unidad: 'cm', esperado: 7.053, tol: 0.01, desc: 'Control: desplazamiento con base fija' },
         { var: 'umax_A', unidad: 'cm', esperado: 28.22, tol: 0.01, desc: 'Control: desplazamiento del aislador' },
@@ -385,21 +387,21 @@ check thetap >= 0.02 // Capacidad de rotación plástica ≥ 0.02 rad (ASCE 41-1
 Se compara la respuesta de una edificación rígida de baja altura **con base fija** y **con aislamiento sísmico** (aisladores elastoméricos con núcleo de plomo, LRB), representadas como sistemas de 1 GDL. La excitación es un **acelerograma sintético** compatible con el espectro del **sismo máximo considerado** de la NTE E.031 ($S_{aM} = 1.5\\,Z\\,C\\,S$), generado con el método SIMQKE (Gasparini y Vanmarcke 1976). El sistema aislado se modela con un lazo **bilineal** (rigidez elástica $k_1$, post-fluencia $k_2 = \\alpha k_1$ y fuerza característica $Q_d$).`),
       calc(SITIO_E030),
       calc(`# Acelerograma sintético (sismo máximo E.031)
-PGAm = 1.5*Z*S // PGA de referencia del sismo máximo (g)`),
-      { type: 'simqke', Sa: 'SaME031(T, Z, S, Tp, Tl)', dur: '25 s', dt: '0.01 s', t1: '2 s', t2: '14 s', cdec: '0.25', seed: '20260', nf: '300', iters: '12', Tmin: '0.03 s', Tmax: '4 s', pgaref: 'PGAm', rmin: '0.90', nombre: 'mce', titulo: 'Acelerograma sintético compatible con SaM (E.031 Art. 14.4)' },
+PGA_M = 1.5*Z*S // PGA de referencia del sismo máximo (g)`),
+      { type: 'simqke', Sa: 'SaME031(T, Z, S, Tp, Tl)', dur: '25 s', dt: '0.01 s', t1: '2 s', t2: '14 s', cdec: '0.25', seed: '20260', nf: '300', iters: '12', Tmin: '0.03 s', Tmax: '4 s', pgaref: 'PGA_M', rmin: '0.90', nombre: 'mce', titulo: 'Acelerograma sintético compatible con SaM (E.031 Art. 14.4)' },
       calc(`# Estructura con base fija
 Tf = 0.40 s // Periodo de la superestructura con base fija [0.05..1.5]
-zf = 0.05 // Amortiguamiento de la superestructura [0.02..0.10]
+zeta_f = 0.05 // Amortiguamiento de la superestructura [0.02..0.10]
 Wt = 1500 tonf // Peso sísmico total [100..100000]`),
-      { type: 'thsdof', registro: 'simqke', nombre: 'mce', T: 'Tf', zeta: 'zf', masa: 'Wt', modelo: 'lineal', metodo: 'nj', sufijo: 'F', escala: '1', titulo: 'Base fija (Tn = 0.40 s, ζ = 5 %) ante el sismo máximo sintético' },
+      { type: 'thsdof', registro: 'simqke', nombre: 'mce', T: 'Tf', zeta: 'zeta_f', masa: 'Wt', modelo: 'lineal', metodo: 'nj', sufijo: 'F', escala: '1', titulo: 'Base fija (Tn = 0.40 s, ζ = 5 %) ante el sismo máximo sintético' },
       calc(`# Estructura aislada (sistema bilineal)
 T2 = 3.0 s // Periodo post-fluencia del sistema de aislamiento (k2) [2..5]
 alphaA = 0.10 // Razón k2/k1 de los aisladores LRB [0.03..0.20]
 T1A = T2*sqrt(alphaA) // Periodo elástico inicial (k1)
 CyA = 0.08 // Resistencia de fluencia del sistema fy/W [0.03..0.15]
-za = 0.02 // Amortiguamiento viscoso inherente (el resto es histerético) [0..0.05]
+zeta_a = 0.02 // Amortiguamiento viscoso inherente (el resto es histerético) [0..0.05]
 Dcap = 45 cm // Capacidad de desplazamiento del aislador (ensayo de prototipo, E.031 Art. 29) [20..100]`),
-      { type: 'thsdof', registro: 'simqke', nombre: 'mce', T: 'T1A', zeta: 'za', masa: 'Wt', modelo: 'bilineal', metodo: 'avg', Cy: 'CyA', alpha: 'alphaA', sufijo: 'A', escala: '1', titulo: 'Base aislada bilineal (T2 = 3.0 s, Qd ≈ 0.072 W) ante el sismo máximo sintético' },
+      { type: 'thsdof', registro: 'simqke', nombre: 'mce', T: 'T1A', zeta: 'zeta_a', masa: 'Wt', modelo: 'bilineal', metodo: 'avg', Cy: 'CyA', alpha: 'alphaA', sufijo: 'A', escala: '1', titulo: 'Base aislada bilineal (T2 = 3.0 s, Qd ≈ 0.072 W) ante el sismo máximo sintético' },
       calc(`# Comparación
 check umax_A <= Dcap // Desplazamiento máximo del aislador ≤ capacidad
 rV = Vbmax_A/Vbmax_F // Razón de cortante basal aislado / fijo

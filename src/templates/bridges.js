@@ -486,7 +486,8 @@ check 1.00*Mn >= min(Mcr, 1.33*Mu) // Refuerzo mínimo
 de = dp // Peralte efectivo (solo torones)
 dv = max(de - a/2, 0.9*de, 0.72*hc) // Peralte efectivo de corte (5.7.2.8)
 Vux = 1.25*(wg + ws + wb)*(L/2 - xv) + 1.50*ww*(L/2 - xv) + 1.75*gV/gM*VLLx1 -> kip // VLL distribuido con gV
-Mux = max(1.25*(wg + ws + wb)*xv*(L - xv)/2 + 1.50*ww*xv*(L - xv)/2 + 1.75*MLLx1, Vux*dv) -> kip*ft // |Mu| ≥ |Vu|dv
+MDx = (1.25*(wg + ws + wb) + 1.50*ww)*xv*(L - xv)/2 -> kip*ft // Momento factorizado de cargas permanentes (DC, DW) en xv
+Mux = max(MDx + 1.75*MLLx1, Vux*dv) -> kip*ft // |Mu| ≥ |Vu|dv
 xh = 0.40*L // Punto de desvío (harping point) de los torones desviados
 Vp = Pe*(ybse - ybsm)/xh -> kip // Componente vertical del presfuerzo efectivo: Pe·tanψ del centroide (x ≤ xh) (5.7.3.3)
 fpo = 0.7*fpu // Parámetro fpo (5.7.3.4.2)
@@ -571,7 +572,10 @@ check (bc*tc^3/12)/(bt*tt^3/12) >= 0.1 and (bc*tc^3/12)/(bt*tt^3/12) <= 10 // 0.
 As = bc*tc + D*tw + bt*tt // Área de acero
 ys = (bt*tt^2/2 + D*tw*(tt + D/2) + bc*tc*(tt + D + tc/2))/As // Centroide de la viga de acero
 hs = tt + D + tc // Peralte de la viga de acero
-Is = bt*tt^3/12 + bt*tt*(ys - tt/2)^2 + tw*D^3/12 + D*tw*(tt + D/2 - ys)^2 + bc*tc^3/12 + bc*tc*(tt + D + tc/2 - ys)^2 -> in^4
+IsT = bt*tt^3/12 + bt*tt*(ys - tt/2)^2 -> in^4 // Ala inferior (Steiner)
+IsW = tw*D^3/12 + D*tw*(tt + D/2 - ys)^2 -> in^4 // Alma
+IsC = bc*tc^3/12 + bc*tc*(tt + D + tc/2 - ys)^2 -> in^4 // Ala superior
+Is = IsT + IsW + IsC -> in^4
 Sbs = Is/ys // Módulo inferior (acero solo)
 Sts = Is/(hs - ys) // Módulo superior (acero solo)
 beff = S // Ancho efectivo de la losa (4.6.2.6.1)
@@ -611,13 +615,19 @@ Pw = Fy*D*tw -> kip // Alma
 Pt = Fy*bt*tt -> kip // Ala inferior
 ## Caso PNA en la losa (Pc + Pw + Pt ≤ Ps)
 Y1 = ts*(Pc + Pw + Pt)/Ps // Profundidad del PNA desde la cara superior de la losa
-Mp1 = (Y1^2*Ps/(2*ts) + Pc*(ts + th + tc/2 - Y1) + Pw*(ts + th + tc + D/2 - Y1) + Pt*(ts + th + tc + D + tt/2 - Y1)) -> kip*ft
+Mp1a = Y1^2*Ps/(2*ts) + Pc*(ts + th + tc/2 - Y1) -> kip*ft // Losa y ala superior
+Mp1b = Pw*(ts + th + tc + D/2 - Y1) + Pt*(ts + th + tc + D + tt/2 - Y1) -> kip*ft // Alma y ala inferior
+Mp1 = Mp1a + Mp1b -> kip*ft
 ## Caso PNA en el ala superior (Pt + Pw < Pc + Ps ≤ …)
 Y2 = tc/2*((Pw + Pt - Ps)/Pc + 1) // Desde la cara superior del ala
-Mp2 = (Pc/(2*tc)*(Y2^2 + (tc - Y2)^2) + Ps*(Y2 + th + ts/2) + Pw*(tc - Y2 + D/2) + Pt*(tc - Y2 + D + tt/2)) -> kip*ft
+Mp2a = Pc/(2*tc)*(Y2^2 + (tc - Y2)^2) + Ps*(Y2 + th + ts/2) -> kip*ft // Ala superior y losa
+Mp2b = Pw*(tc - Y2 + D/2) + Pt*(tc - Y2 + D + tt/2) -> kip*ft // Alma y ala inferior
+Mp2 = Mp2a + Mp2b -> kip*ft
 ## Caso PNA en el alma (Pt + Pw ≥ Pc + Ps)
 Y3 = D/2*((Pt - Pc - Ps)/Pw + 1) // Desde el borde superior del alma
-Mp3 = (Pw/(2*D)*(Y3^2 + (D - Y3)^2) + Ps*(Y3 + tc + th + ts/2) + Pc*(Y3 + tc/2) + Pt*(D - Y3 + tt/2)) -> kip*ft
+Mp3a = Pw/(2*D)*(Y3^2 + (D - Y3)^2) + Ps*(Y3 + tc + th + ts/2) -> kip*ft // Alma y losa
+Mp3b = Pc*(Y3 + tc/2) + Pt*(D - Y3 + tt/2) -> kip*ft // Alas superior e inferior
+Mp3 = Mp3a + Mp3b -> kip*ft
 caso = si(Pc + Pw + Pt <= Ps, 1, si(Pt + Pw < Pc + Ps, 2, 3)) // 1: losa, 2: ala superior, 3: alma
 Mp = si(caso == 1, Mp1, si(caso == 2, Mp2, Mp3)) // Momento plástico
 Dp = si(caso == 1, Y1, si(caso == 2, ts + th + Y2, ts + th + tc + Y3)) -> in // Profundidad del PNA desde la cara superior de la losa
@@ -820,8 +830,15 @@ phiv = 0.90 // Cortante
 hs = hp // Altura de la pantalla
 EHs = 0.5*Ka*gammas*hs^2*1 m // Empuje sobre la pantalla
 LSs = Ka*gammas*heq*hs*1 m
-Mus = max(1.50*EHs*hs/3 + 1.75*LSs*hs/2 + 1.75*PBR*(hs + 1.80 m), EHs*hs/3 + 0.5*Ka*gammas*hs^2*(KAE/Ka - 1)*1 m*0.6*hs + kh*(W2*(hp - hb)/2 + W3*(hp - hb/2)) + EQs*(hp - hb) + gEQ*(LSs*hs/2 + PBR*(hs + 1.80 m))) -> tonf*m // Máx. (Resistencia I; Evento Extremo I)
-Vus = max(1.50*EHs + 1.75*LSs + 1.75*PBR, EHs + 0.5*Ka*gammas*hs^2*(KAE/Ka - 1)*1 m + kh*(W2 + W3) + EQs + gEQ*(LSs + PBR)) -> tonf
+MusR = 1.50*EHs*hs/3 + 1.75*LSs*hs/2 + 1.75*PBR*(hs + 1.80 m) -> tonf*m // Resistencia I
+MsAE = 0.5*Ka*gammas*hs^2*(KAE/Ka - 1)*1 m*0.6*hs -> tonf*m // Incremento sísmico del empuje (aplicado a 0.6 hs)
+MsIn = kh*(W2*(hp - hb)/2 + W3*(hp - hb/2)) + EQs*(hp - hb) -> tonf*m // Inercia de la pantalla y del parapeto + fuerza sísmica de la superestructura
+MusE = EHs*hs/3 + MsAE + MsIn + gEQ*(LSs*hs/2 + PBR*(hs + 1.80 m)) -> tonf*m // Evento Extremo I
+Mus = max(MusR, MusE) -> tonf*m // Máx. (Resistencia I; Evento Extremo I)
+VusR = 1.50*EHs + 1.75*LSs + 1.75*PBR -> tonf // Resistencia I
+VsAE = 0.5*Ka*gammas*hs^2*(KAE/Ka - 1)*1 m -> tonf // Incremento sísmico del empuje
+VusE = EHs + VsAE + kh*(W2 + W3) + EQs + gEQ*(LSs + PBR) -> tonf // Evento Extremo I
+Vus = max(VusR, VusE) -> tonf
 barP = 8 // Varilla vertical de la pantalla (cara del relleno) [6 : 3/4"|8 : 1"|9 : 1 1/8"]
 dps = t2 - 7.5 cm - db(barP)/2 // Peralte efectivo (recubrimiento 75 mm, Tabla 5.10.1-1)
 Asps = 0.85*fc*100 cm/fy*(dps - sqrt(max(dps^2 - 2*Mus/(0.85*phif1*fc*100 cm), 0 cm^2))) // Acero requerido por metro
