@@ -48,7 +48,7 @@ Muro de contención de concreto armado en voladizo (T invertida) que sostiene un
 - RNE **NTE E.020** Cargas (sobrecarga sobre el relleno); **NTE E.030** Diseño Sismorresistente (factor de zona $Z$ y de suelo $S$).
 - RNE **NTE E.050** Suelos y Cimentaciones: Art. 39.13 (muros de contención, FS mínimos 1.50 estático y 1.25 pseudodinámico) y Art. 21 (FS de capacidad portante 3.0 / 2.5).
 - RNE **NTE E.060** Concreto Armado: 9.2.5 (combinación con empuje lateral $U = 1.4CM + 1.7CV + 1.7CE$; $U = 0.9CM + 1.7CE$), 9.2.3 (sismo $U = 1.25(CM+CV) \\pm CS$), 9.3 (factores $\\phi$), 10.5 (acero mínimo), 11.3 (cortante), 12.5 y 12.10 (anclaje y corte de barras), 14.3 (refuerzo de muros).
-- AASHTO LRFD Bridge Design Specifications, Secc. 3.11 y 11.6 (método pseudoestático, $k_h = 0.5\\,k_{h0}$, inercia del muro y del suelo sobre el talón).
+- AASHTO LRFD *Bridge Design Specifications*, Secc. 3.11 y 11.6 (método pseudoestático, $k_h = 0.5\\,k_{h0}$, inercia del muro y del suelo sobre el talón).
 - B. M. Das, *Principios de ingeniería de cimentaciones*, cap. 7 y 8; J. Calavera, *Muros de contención y muros de sótano*; R. Morales, *Diseño en concreto armado*; R. Torres Belandria, *Análisis y diseño de muros de contención de concreto armado*.
 
 ## Metodología
@@ -730,7 +730,7 @@ const mse = {
   },
   blocks: [
     text(`# Generalidades
-Muro de **suelo mecánicamente estabilizado** (MSE) con refuerzo extensible de **geomalla** de HDPE/PET y paramento de bloques prefabricados. Se diseña por **LRFD** según AASHTO LRFD Bridge Design Specifications, art. 11.10 (y FHWA-NHI-10-024):
+Muro de **suelo mecánicamente estabilizado** (MSE) con refuerzo extensible de **geomalla** de HDPE/PET y paramento de bloques prefabricados. Se diseña por **LRFD** según AASHTO LRFD *Bridge Design Specifications*, art. 11.10 (y FHWA-NHI-10-024):
 - **Externa** (11.10.5): el macizo reforzado de ancho $L$ se trata como un muro de gravedad sometido al empuje del relleno retenido: deslizamiento, excentricidad y capacidad portante (presión uniforme de Meyerhof sobre $L-2e$).
 - **Interna** (11.10.6): método simplificado; esfuerzo horizontal $\\sigma_H = K_r\\,\\sigma_v$ con $K_r/K_a = 1$ para geosintéticos; tracción máxima $T_{max} = \\sigma_H S_v$; **rotura** con $T_{al} = T_{ult}/RF$ y **arranque** con $P_r = F^*\\alpha\\,\\sigma_v\\,C\\,L_e$ en la zona resistente, más allá de la superficie de Rankine $45° + \\phi_r/2$.
 - Factores de carga (Tabla 3.4.1-1/2): $\\gamma_{EV} = 1.35$ (máx.) / $1.00$ (mín.), $\\gamma_{EH} = 1.50$, $\\gamma_{LS} = 1.75$; resistencia (Tabla 11.5.7-1): deslizamiento $\\phi_\\tau = 1.0$, capacidad portante $\\phi_b = 0.65$, rotura de geosintético $\\phi = 0.90$, arranque $\\phi = 0.90$.`),
@@ -877,7 +877,7 @@ Mmax = Mact + Msc - Mpas -> tonf*m/m // Momento máximo (servicio)`),
     { type: 'sheetpile', H: 'H', D: 'D0', Dt: 'D', gs: 'gammas', Ka: 'Ka', Kp: 'Kpd', q: 'ws' },
     calc(`# Verificación de la tablestaca
 check abs(Mmaxn - Mmax) <= 0.02*Mmax // Comprobación: integración numérica del bloque = solución cerrada
-sigadm = 0.65*fys // Esfuerzo admisible en flexión (USS Steel Sheet Piling Design Manual)
+sigadm = 0.65*fys // Esfuerzo admisible en flexión (USS *Steel Sheet Piling Design Manual*)
 Sreq = Mmax/sigadm -> cm^3/m // Módulo resistente requerido
 check Sreq <= Sx // Módulo resistente del perfil elegido
 "Longitud total de la tablestaca: {Lt} (empotramiento {D}). Verificar además la hinca (SPT/rechazo), la corrosión (sobreespesor o protección) y la deflexión en la corona.`),

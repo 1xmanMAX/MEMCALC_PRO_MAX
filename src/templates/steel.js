@@ -310,7 +310,9 @@ check Vu <= phiVr // Rotura por cortante de la placa
 Agv = (Lp - lev)*tp // Bloque: área bruta en corte
 Anvb = Agv - (nb - 0.5)*dhc*tp // Bloque: área neta en corte
 Ant = (leh - 0.5*dhc)*tp // Bloque: área neta en tracción
-phiRbs = 0.75*min(0.6*Fup*Anvb + Fup*Ant, 0.6*Fyp*Agv + Fup*Ant) -> tonf // Bloque de cortante, Ubs = 1 (J4-5)
+Rbs_1 = 0.6*Fup*Anvb + Fup*Ant -> tonf // Rotura en corte + rotura en tracción
+Rbs_2 = 0.6*Fyp*Agv + Fup*Ant -> tonf // Fluencia en corte + rotura en tracción (límite)
+phiRbs = 0.75*min(Rbs_1, Rbs_2) -> tonf // Bloque de cortante, Ubs = 1 (J4-5)
 check Vu <= phiRbs // Bloque de cortante en la placa
 ## Flexión de la placa en la línea de soldadura
 Mu = Vu*a -> tonf*m // Momento por excentricidad
@@ -347,7 +349,7 @@ phiRw_lib = 0.75*2*RnFilete(w, Lp, FEXX, 0 deg) -> tonf // Control con la funci�
     },
     blocks: [
       text(`# Generalidades
-Placa base de una columna de acero apoyada sobre un pedestal de concreto armado mediante mortero de nivelación (*grout*), sometida a compresión axial concéntrica y a un cortante horizontal pequeño. El diseño sigue la **AISC Design Guide 1 — Base Connection Design for Steel Structures** (2.ª ed., §3.1 «cargas axiales de compresión concéntricas»), con la resistencia al aplastamiento del concreto de **AISC 360 J8** y el espesor de la placa por el **método unificado de Thornton** (voladizos *m*, *n* y λn').
+Placa base de una columna de acero apoyada sobre un pedestal de concreto armado mediante mortero de nivelación (*grout*), sometida a compresión axial concéntrica y a un cortante horizontal pequeño. El diseño sigue la **AISC** *Design Guide 1 — Base Connection Design for Steel Structures* (2.ª ed., §3.1 «cargas axiales de compresión concéntricas»), con la resistencia al aplastamiento del concreto de **AISC 360 J8** y el espesor de la placa por el **método unificado de Thornton** (voladizos *m*, *n* y λn').
 
 - **Materiales:** columna ASTM A992; placa ASTM A36; pernos de anclaje ASTM F1554 Gr. 36; concreto f'c = 210 kgf/cm² (NTE E.060).
 - **Combinación crítica (E.090 1.4.1):** 1.2D + 1.6L. El cortante se transmite por fricción bajo la carga permanente mínima 0.9D (DG1 §3.5, coeficiente μ = 0.55 para placa sobre grout, ACI 318-19 Tabla 22.9.4.2).`),
@@ -805,7 +807,7 @@ DH = derivamax*hc/(0.75*Rs) -> cm // Desplazamiento lateral elástico del alero 
 Kl = Vsis/DH -> tonf/cm // Rigidez lateral del pórtico (del modelo)
 Trig = 2*pi*sqrt(Psis/(9.81 m/s^2*Kl)) -> s // Período con la rigidez del modelo (control de T = hn/CT)
 Pstory = (1.2*wD + 1.6*wLr)*Lf + 1.2*Pacero -> tonf // Carga vertical total del piso (combinación de gravedad)
-PeL = 0.85*Vsis*hc/DH -> tonf // Carga crítica del piso Pe,story = RM·H·L/ΔH, RM = 0.85 (A-8-7)
+PeL = 0.85*Vsis*hc/DH -> tonf // Carga crítica del piso $P_{e,\\mathrm{story}} = R_M H L/\\Delta_H$ con $R_M = 0.85$ (A-8-7)
 B2 = 1/(1 - Pstory/PeL) // Multiplicador P-Δ (A-8-6, α = 1)
 check B2 <= 1.5 // Δ2.º orden/Δ1.er orden ≤ 1.5: se permite el método de longitud efectiva (App. 7.2.1)
 "Se amplifica conservadoramente el momento total de la envolvente por B2 (Mr = B1·Mnt + B2·Mlt ≤ B2·Mu, con B1 = 1).
@@ -839,7 +841,7 @@ check ratioc <= 1.0 // Columna: flexocompresión (H1-1)
 check Vmax_COL <= phivG2(perfil_c, Fy, E)*VnG2(perfil_c, Fy, E) // Cortante en la columna
 # Desplazamientos laterales
 Dw = max(abs(deltax_2_w), abs(deltax_4_w)) -> cm // Desplazamiento del alero por viento W1 (servicio, 2.º bloque)
-check Dw <= hc/100 // Deriva de servicio por viento h/100 (AISC Design Guide 3)
+check Dw <= hc/100 // Deriva de servicio por viento h/100 (AISC, Guía de Diseño 3)
 "La deriva sísmica inelástica 0.75·R·Δ/h ≤ 0.010 (E.030 Art. 31 y Tabla N° 11) se verifica en el bloque del pórtico. Reacciones para la cimentación y la placa base: R1x, R1y, R5x, R5y (envolvente) y por combinación (R1y_U2, …).`),
       summary(),
     ],
@@ -866,7 +868,7 @@ check Dw <= hc/100 // Deriva de servicio por viento h/100 (AISC Design Guide 3)
     },
     blocks: [
       text(`# Generalidades
-Viga secundaria de entrepiso, simplemente apoyada, de perfil W **no apuntalado** durante el vaciado, que actúa en sección compuesta con una losa de concreto sobre **placa colaborante** (tipo Acero-Deck) con nervios **perpendiculares** a la viga. La conexión de corte se materializa con **conectores tipo perno** (*headed studs*) de ¾" soldados a través de la placa, uno por nervio.
+Viga secundaria de entrepiso, simplemente apoyada, de perfil W **no apuntalado** durante el vaciado, que actúa en sección compuesta con una losa de concreto sobre **placa colaborante** (tipo *Acero-Deck*) con nervios **perpendiculares** a la viga. La conexión de corte se materializa con **conectores tipo perno** (*headed studs*) de ¾" soldados a través de la placa, uno por nervio.
 
 - **Etapa constructiva:** el perfil solo resiste el peso del concreto fresco y una carga de construcción de 50 kgf/m² (ASCE 37), con el ala superior arriostrada por la placa.
 - **Etapa compuesta:** resistencia plástica a flexión (AISC I3.2a) con compuesta parcial ΣQn < AsFy; el concreto por debajo de la cresta de los nervios se desprecia (I3.2c).
@@ -994,7 +996,8 @@ check lambdaw <= 3.76*sqrt(E/Fy) // Alma compacta (caso 15)
 # Flexión — AISC 360-16/22 F2
 Mp = Fy*Zx -> tonf*m // Momento plástico (F2-1)
 Lp = 1.76*ry*sqrt(E/Fy) -> m // F2-5
-Lr = 1.95*rts*E/(0.7*Fy)*sqrt(J/(Sx*ho) + sqrt((J/(Sx*ho))^2 + 6.76*(0.7*Fy/E)^2)) -> m // F2-6
+rJ = J/(Sx*ho) // Relación torsional J·c/(Sx·ho), c = 1 (F2-8a)
+Lr = 1.95*rts*E/(0.7*Fy)*sqrt(rJ + sqrt(rJ^2 + 6.76*(0.7*Fy/E)^2)) -> m // F2-6
 Fcr = Cb*pi^2*E/(Lb/rts)^2*sqrt(1 + 0.078*J/(Sx*ho)*(Lb/rts)^2) // F2-4
 Minel = min(Cb*(Mp - (Mp - 0.7*Fy*Sx)*(Lb - Lp)/(Lr - Lp)), Mp) -> tonf*m // PLT inelástico (F2-2)
 Mel = min(Fcr*Sx, Mp) -> tonf*m // PLT elástico (F2-3)
@@ -1052,7 +1055,7 @@ check dT <= Lv/240 // L/240`),
     },
     blocks: [
       text(`# Generalidades
-Vivienda unifamiliar de **dos pisos** en estructura metálica liviana: columnas de **tubo HSS cuadrado** (ASTM A500 Gr. B), vigas de perfil **W** (ASTM A572 Gr. 50), entrepiso de **losa de concreto sobre placa colaborante** (tipo Acero-Deck AD-600, nervios perpendiculares a las vigas de pórtico) y techo liviano de cobertura metálica sobre correas.
+Vivienda unifamiliar de **dos pisos** en estructura metálica liviana: columnas de **tubo HSS cuadrado** (ASTM A500 Gr. B), vigas de perfil **W** (ASTM A572 Gr. 50), entrepiso de **losa de concreto sobre placa colaborante** (tipo *Acero-Deck* AD-600, nervios perpendiculares a las vigas de pórtico) y techo liviano de cobertura metálica sobre correas.
 
 - **Sistema sismorresistente:** dirección X, **pórticos ordinarios resistentes a momentos (OMF)**; dirección Y, **pórticos ordinarios concéntricamente arriostrados (OCBF)** con arriostres HSS en cruz en las fachadas. E.030-2018, Tabla N° 7: OMF R0 = 4, OCBF R0 = 4; estructura regular (Ia = Ip = 1). Diafragma rígido en el entrepiso (losa colaborante) y techo con arriostres horizontales.
 - **Análisis:** cargas de gravedad y laterales (sismo estático E.030 Art. 28 y viento E.020) sobre el pórtico X más cargado, resuelto por el **método de rigidez** (bloque *Pórtico 2D*); arriostres en Y por equilibrio de entrepiso. Combinaciones LRFD de la NTE E.090 Art. 1.4.1.

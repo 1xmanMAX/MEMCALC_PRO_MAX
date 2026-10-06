@@ -72,8 +72,11 @@ Ta = hn/CT*(1 s/m) // Periodo fundamental aproximado T = hn/CT
 C = si(Ta < Tp, 2.5, 2.5*Tp/Ta) // Factor de amplificación sísmica (E.030 14)
 R = 8 // Coeficiente de reducción, pórticos de C°A° regulares (E.030 Tabla 7) [3..8]
 check C/R >= 0.11 // Valor mínimo de C/R (E.030 28.2.2)
-P1 = (wD1 + 0.25*wL1 + gammac*bv*hv)*(L1 + L2) + 3*gammac*bc*hc*(h1 + h2)/2 -> tonf // Peso sísmico del nivel 1 (CM + 25 % CV)
-P2 = (wD2 + 0.25*wL2 + gammac*bv*hv)*(L1 + L2) + 3*gammac*bc*hc*h2/2 -> tonf // Peso sísmico del nivel 2
+wpv = gammac*bv*hv -> tonf/m // Peso propio de las vigas por metro
+Pc1 = 3*gammac*bc*hc*(h1 + h2)/2 -> tonf // Tres columnas: mitad del piso 1 + mitad del piso 2
+Pc2 = 3*gammac*bc*hc*h2/2 -> tonf // Tres columnas: mitad del piso 2
+P1 = (wD1 + 0.25*wL1 + wpv)*(L1 + L2) + Pc1 -> tonf // Peso sísmico del nivel 1 (CM + 25 % CV)
+P2 = (wD2 + 0.25*wL2 + wpv)*(L1 + L2) + Pc2 -> tonf // Peso sísmico del nivel 2
 V = Z*U*C*S/R*(P1 + P2) // Fuerza cortante en la base
 F1 = V*P1*h1/(P1*h1 + P2*hn) // Fuerza en el nivel 1 (k = 1, T < 0.5 s)
 F2 = V*P2*hn/(P1*h1 + P2*hn) // Fuerza en el nivel 2`),
@@ -266,7 +269,7 @@ Se analiza el pórtico principal de una nave industrial de acero: columnas de 6.
 ## Normas y referencias
 - NTE E.020 Cargas (Art. 7 techos, Art. 12 viento) · NTE E.090 Estructuras metálicas (1.4) · AISC 360-16 (cap. H).
 - A. Kassimali, *Matrix Analysis of Structures*, cap. 6 (pórticos planos, cargas en barras inclinadas).
-- AISC Design Guide 3 *Serviceability Design Considerations* (desplazamiento lateral H/100–H/200 en naves).`),
+- AISC *Design Guide 3: Serviceability Design Considerations* (desplazamiento lateral H/100–H/200 en naves).`),
       calc(`# Datos
 ## Geometría
 Lb = 20 m // Luz de la nave [10..40]

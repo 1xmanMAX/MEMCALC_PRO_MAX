@@ -37,7 +37,7 @@ const vigaT = {
 Puente de un tramo simplemente apoyado de **20.00 m** de luz entre ejes de apoyos, con tablero de concreto armado vaciado in situ sobre **cuatro vigas T** de concreto armado. La calzada de 7.20 m aloja **dos carriles de diseño** y está limitada por barreras de concreto tipo New Jersey (nivel de contención TL-4). Superficie de rodadura de asfalto de 5 cm.
 
 ## Normas y referencias
-- **AASHTO LRFD Bridge Design Specifications**, 9.ª ed. (2020): Secc. 2 (predimensionamiento, deflexiones), 3 (cargas y combinaciones), 4 (análisis y distribución), 5 (concreto), 13 y Apéndice A13 (barreras).
+- **AASHTO LRFD** *Bridge Design Specifications*, 9.ª ed. (2020): Secc. 2 (predimensionamiento, deflexiones), 3 (cargas y combinaciones), 4 (análisis y distribución), 5 (concreto), 13 y Apéndice A13 (barreras).
 - **Manual de Puentes**, MTC – Dirección General de Caminos y Ferrocarriles (Perú, 2018): adopta la carga HL-93, los factores de carga y la metodología AASHTO LRFD.
 - A. Rodríguez Serquén, *Puentes con AASHTO-LRFD* (Lima, 2020), cap. II–IV (ejemplo de puente viga-losa); R. Barker y J. Puckett, *Design of Highway Bridges: An LRFD Approach*, 3.ª ed., cap. 7.
 
@@ -369,8 +369,8 @@ const presf = {
 Viga **interior** de un puente de un tramo simplemente apoyado de 100 ft, con seis vigas pretensadas **AASHTO Tipo IV** separadas 8.0 ft y losa de concreto armado de 8 in vaciada in situ que trabaja en sección compuesta. El presfuerzo consiste en 30 torones de 0.6 in, grado 270, de baja relajación; parte de ellos se desvían (*harped*) para controlar los esfuerzos en los extremos.
 
 ## Normas y referencias
-- AASHTO LRFD Bridge Design Specifications, 9.ª ed. (2020): 3.6 (HL-93), 4.6.2.2 (distribución), 5.4 (materiales), 5.9.2 (límites de esfuerzos), 5.9.3 (pérdidas), 5.6.3 (flexión), 5.7.3 (cortante, método general).
-- PCI Bridge Design Manual, 3.ª ed. (2014), cap. 8 y ejemplos 9.1–9.4; FHWA, *LRFD Design Example for Prestressed Concrete Girder Superstructure Bridge* (2003/2015).
+- AASHTO LRFD *Bridge Design Specifications*, 9.ª ed. (2020): 3.6 (HL-93), 4.6.2.2 (distribución), 5.4 (materiales), 5.9.2 (límites de esfuerzos), 5.9.3 (pérdidas), 5.6.3 (flexión), 5.7.3 (cortante, método general).
+- PCI *Bridge Design Manual*, 3.ª ed. (2014), cap. 8 y ejemplos 9.1–9.4; FHWA, *LRFD Design Example for Prestressed Concrete Girder Superstructure Bridge* (2003/2015).
 - Barker & Puckett, *Design of Highway Bridges*, cap. 7; Rodríguez Serquén, *Puentes con AASHTO-LRFD*, cap. VI.
 
 ## Convenciones
@@ -575,7 +575,7 @@ const acero = {
 Viga **interior** de un puente de un tramo de 100 ft con cinco vigas I armadas de acero ASTM A709 Gr. 50 separadas 9.0 ft, conectores de corte y losa de 8.5 in vaciada in situ. En flexión positiva la sección es **compuesta y compacta**; durante el vaciado la viga de acero sola, arriostrada por diafragmas cada 20 ft, resiste su peso, el del concreto fresco y la carga de construcción.
 
 ## Normas y referencias
-- AASHTO LRFD Bridge Design Specifications, 9.ª ed. (2020): 6.10.1 (secciones compuestas), 6.10.3 (constructibilidad), 6.10.4 (Servicio II), 6.10.6.2.2 y 6.10.7.1 (sección compacta), 6.10.9 (cortante), Apéndice D6.1 (momento plástico) y D6.3 (Dc).
+- AASHTO LRFD *Bridge Design Specifications*, 9.ª ed. (2020): 6.10.1 (secciones compuestas), 6.10.3 (constructibilidad), 6.10.4 (Servicio II), 6.10.6.2.2 y 6.10.7.1 (sección compacta), 6.10.9 (cortante), Apéndice D6.1 (momento plástico) y D6.3 (Dc).
 - FHWA *Steel Bridge Design Handbook* (2015) y *LRFD Design Example for Steel Girder Superstructure Bridge* (FHWA-NHI-04-041); Barker & Puckett, cap. 8.
 - Manual de Puentes MTC (2018), Secc. 2.4 (cargas) y diseño en acero según AASHTO.
 
@@ -1103,7 +1103,7 @@ const neopreno = {
 Apoyo de **neopreno zunchado** (elastómero con láminas de acero vulcanizadas) bajo una viga interior del puente viga-losa de 20 m. El apoyo permite la rotación de la viga y los desplazamientos longitudinales por temperatura, contracción y flujo plástico mediante deformación por corte del elastómero.
 
 ## Normas y referencias
-- AASHTO LRFD Bridge Design Specifications, 9.ª ed., Secc. 14: 14.4.2.1 (rotaciones de diseño, +0.005 rad de tolerancia), 14.7.5 (**Método B**), 14.7.6 (**Método A**), 14.8.3 (anclaje). Especificación de materiales AASHTO M 251.
+- AASHTO LRFD *Bridge Design Specifications*, 9.ª ed., Secc. 14: 14.4.2.1 (rotaciones de diseño, +0.005 rad de tolerancia), 14.7.5 (**Método B**), 14.7.6 (**Método A**), 14.8.3 (anclaje). Especificación de materiales AASHTO M 251.
 - Manual de Puentes MTC (2018) y Rodríguez Serquén, *Puentes con AASHTO-LRFD*, cap. XII (dispositivos de apoyo).
 - NCHRP Report 596, *Rotation Limits for Elastomeric Bearings* (base de las ecuaciones del Método B).
 

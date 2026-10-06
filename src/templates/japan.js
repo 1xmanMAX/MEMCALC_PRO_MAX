@@ -401,7 +401,7 @@ check Qsu >= Qm // Qsu ≥ nm·2Mu/h0: falla por flexión antes que por cortante
     titulo: 'Diseño de viga de acero con perfil H JIS — esfuerzos admisibles AIJ',
     blocks: [
       text(`# Generalidades
-El **AIJ Design Standard for Steel Structures** (*Kokozo sekkei kijun*) y la Notif. MLIT 1024 definen los esfuerzos admisibles de largo plazo a partir del valor de diseño $F$ (Notif. 2464; SN400B: $F = 235$ N/mm²):
+El AIJ *Design Standard for Steel Structures* (*Kokozo sekkei kijun*) y la Notif. MLIT 1024 definen los esfuerzos admisibles de largo plazo a partir del valor de diseño $F$ (Notif. 2464; SN400B: $F = 235$ N/mm²):
 
 - Tracción $f_t = F/1.5$; cortante $f_s = F/(1.5\\sqrt{3})$.
 - Flexión con **pandeo lateral-torsional**: $f_b = \\max\\left\\{\\left[1 - 0.4\\dfrac{(l_b/i)^2}{C\\,\\Lambda^2}\\right] f_t\\ ;\\ \\dfrac{89\\,000}{l_b\\,h/A_f}\\right\\} \\le f_t$, con $\\Lambda = \\sqrt{\\pi^2 E/(0.6F)}$ e $i$ el radio de giro del ala comprimida más 1/6 del alma.

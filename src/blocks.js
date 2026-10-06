@@ -26,7 +26,7 @@ export function dimH(x1, x2, y, label, c = C.ink) {
 }
 export function dimV(x, y1, y2, label, c = C.ink, side = -1) {
   return Lne(x, y1, x, y2, c, 0.8) + Lne(x - 4, y1, x + 4, y1, c, 0.8) + Lne(x - 4, y2, x + 4, y2, c, 0.8) +
-    `<path d="M${x},${y1} l-2.5,6 h5 z M${x},${y2} l-2.5,-6 h5 z" fill="${c}"/>` + T(x + side * 5, (y1 + y2) / 2, label, { fs: 10, c, r: -90 });
+    `<path d="M${x},${y1} l-2.5,6 h5 z M${x},${y2} l-2.5,-6 h5 z" fill="${c}"/>` + T(x + (side > 0 ? 12 : -5), (y1 + y2) / 2, label, { fs: 10, c, r: -90 });
 }
 export function niceTicks(min, max, n = 5) {
   if (!isFinite(min) || !isFinite(max)) return [];
