@@ -38,7 +38,7 @@ function xDiagram(W, padL, padR, px, xs, ys, o) {
   const d = 'M' + px(xs[0]).toFixed(1) + ',' + py(0).toFixed(1) + ' ' + xs.map((x, i) => 'L' + px(x).toFixed(1) + ',' + py(ys[i]).toFixed(1)).join(' ') + ' L' + px(xs[xs.length - 1]).toFixed(1) + ',' + py(0).toFixed(1) + ' Z';
   g += `<path d="${d}" fill="${o.fill}" stroke="${o.color}" stroke-width="1.6" stroke-linejoin="round"/>`;
   g += Lne(padL, py(0), W - padR, py(0), C.ink, 1);
-  (o.ref || []).forEach((r, i) => { g += Lne(padL, py(r), W - padR, py(r), C.red, 1.2, '6 4') + lab(W - padR - 4, py(r) - 4, (o.refLab || [])[i] || '', { a: 'end', c: C.red }); });
+  (o.ref || []).forEach((r, i) => { g += Lne(padL, py(r), W - padR, py(r), C.red, 1.2, '6 4') + lab(padL + 6, py(r) - 4, (o.refLab || [])[i] || '', { a: 'start', c: C.red }); });
   // extremos
   const placed = [], done = new Set();
   const mark = (k) => {

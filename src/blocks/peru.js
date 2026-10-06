@@ -577,7 +577,7 @@ registerBlock('windgable', {
     g += T(45, Y(Ht * 1.05) - 2, 'VIENTO', { fs: 10, b: 1, c: C.axis });
     const arrows = (xa, ya, xb, yb2, nx, ny, p, lbl) => {
       // superficie de (xa,ya) a (xb,yb2) en px; normal exterior (nx, ny); p > 0 presión (hacia la superficie)
-      let s = ''; const L = 14 + 26 * Math.min(1, Math.abs(p) / Math.max(...P.map(Math.abs), 1e-9)); const col = p >= 0 ? C.red : C.blue;
+      let s = ''; const L = 14 + 26 * Math.min(1, Math.abs(p) / Math.max(...P.map(Math.abs), 1e-9)); const col = p >= 0 ? C.blue : C.red;   // misma convención que galponCL (chile): azul presión, rojo succión
       for (let k = 1; k <= 4; k++) {
         const t = k / 5, px = xa + (xb - xa) * t, py = ya + (yb2 - ya) * t;
         const ox = px + nx * (L + 4), oy = py + ny * (L + 4), ix = px + nx * 4, iy = py + ny * 4;
@@ -594,7 +594,7 @@ registerBlock('windgable', {
     g += arrows(X(B), Y(Hh), X(B), Y(0), 1, 0, P[3], 'Sotavento');
     g += T(X(B / 2), yb + 24, `B = ${f2(B, 2)} m   ·   alero ${f2(Hh, 2)} m   ·   cumbrera ${f2(Ht, 2)} m   ·   θ = ${f2(th * 180 / Math.PI, 1)}°`, { fs: 10, c: C.axis });
     if (String(b.pi || '').trim()) g += T(X(B / 2), Y(Hh * 0.45), 'Interior: ' + String(b.pi).replace(/[<>]/g, ''), { fs: 10, c: C.ink });
-    return `<div class="figure">${svgWrap(W, H, g)}<div class="legend"><span><i style="background:${C.red}"></i>Presión (+)</span><span><i style="background:${C.blue}"></i>Succión (−)</span></div>${caption(ctx, b.titulo || 'Presiones exteriores de viento (E.020 Art. 12.4, Tabla 4)')}</div>`;
+    return `<div class="figure">${svgWrap(W, H, g)}<div class="legend"><span><i style="background:${C.blue}"></i>Presión (+)</span><span><i style="background:${C.red}"></i>Succión (−)</span></div>${caption(ctx, b.titulo || 'Presiones exteriores de viento (E.020 Art. 12.4, Tabla 4)')}</div>`;
   },
 });
 
