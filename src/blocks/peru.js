@@ -362,7 +362,7 @@ registerBlock('storyforces', {
       g += fr.g;
       const pts = [[0, Hm]]; for (let i = n - 1; i >= 0; i--) pts.push([nm(Mi[i]), i ? hi[i - 1] : 0]);
       g += `<path d="M${fr.X(0)},${fr.Y(Hm)} ${pts.map(p => 'L' + fr.X(p[0]).toFixed(1) + ',' + fr.Y(p[1]).toFixed(1)).join(' ')} L${fr.X(0)},${fr.Y(0)} Z" fill="${C.greenF}" stroke="${C.green}" stroke-width="1.6"/>`;
-      g += T(fr.X(nm(Mb)) - 3, fr.Y(0) - 6, f2(nm(Mb), 1), { fs: 9, a: 'end', c: C.green, b: 1 });
+      g += T(fr.X(nm(Mb)) - 4, fr.Y(0) - 14, 'M0 = ' + f2(nm(Mb), 1), { fs: 9, a: 'end', c: C.green, b: 1 });
     }
     let h = `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || `Distribución de la fuerza sísmica en altura (k = ${f2(k, 3)}), cortantes y momentos de volteo`)}</div>`;
     const rows = [];
@@ -416,16 +416,17 @@ registerBlock('irregE030', {
     items.push({ t: 'Irregularidad extrema de resistencia', c: 'Vr,i < 0.65 Vr,i+1', ex: fRes === 0.5, f: 0.5, tab: 'a', nv: !Vr, ext: 1 });
     const fMas = P ? IaMas(P) : 1; items.push({ t: 'Masa o peso', c: 'Pi > 1.5 P adyacente (sin azotea)', ex: fMas < 1, f: 0.9, tab: 'a', nv: !P });
     const fGeo = Dd ? IaGeo(Dd) : 1; items.push({ t: 'Geometría vertical', c: 'Di > 1.3 D adyacente (sin azotea)', ex: fGeo < 1, f: 0.9, tab: 'a', nv: !Dd });
-    const disc = parseInt(b.disc) || 0;
+    const flag = (v) => { if (typeof v === 'boolean') return v; const t = String(v ?? '').trim(); if (!t || t === 'false') return false; if (t === 'true') return true; return scal(t, S, 0); };
+    const disc = Math.round(Number(flag(b.disc)) || 0);
     items.push({ t: 'Discontinuidad en sistemas resistentes', c: 'desalineamiento > 25 % (elem. > 10 % V)', ex: disc === 1, f: 0.8, tab: 'a', man: 1 });
     items.push({ t: 'Discontinuidad extrema', c: 'elementos discontinuos > 25 % V', ex: disc === 2, f: 0.6, tab: 'a', man: 1, ext: 1 });
     let fTor = 1; const rt = Dmx && Dpr ? Dmx.map((x, i) => x / Dpr[i]) : null;
     if (rt) fTor = IpTor(Dmx, Dpr, dr, dr ? dlim : null);
     items.push({ t: 'Irregularidad torsional', c: 'Δmax > 1.3 Δprom (si deriva > 0.5 lím.)', ex: fTor === 0.75, f: 0.75, tab: 'p', nv: !rt });
     items.push({ t: 'Irregularidad torsional extrema', c: 'Δmax > 1.5 Δprom (si deriva > 0.5 lím.)', ex: fTor === 0.6, f: 0.6, tab: 'p', nv: !rt, ext: 1 });
-    items.push({ t: 'Esquinas entrantes', c: '> 20 % de la dimensión en ambas direcciones', ex: !!b.esq, f: 0.9, tab: 'p', man: 1 });
-    items.push({ t: 'Discontinuidad del diafragma', c: 'aberturas > 50 % ó sección neta < 50 %', ex: !!b.diaf, f: 0.85, tab: 'p', man: 1 });
-    items.push({ t: 'Sistemas no paralelos', c: 'ejes a ≥ 30° que resisten ≥ 10 % V', ex: !!b.nopar, f: 0.9, tab: 'p', man: 1 });
+    items.push({ t: 'Esquinas entrantes', c: '> 20 % de la dimensión en ambas direcciones', ex: !!flag(b.esq), f: 0.9, tab: 'p', man: 1 });
+    items.push({ t: 'Discontinuidad del diafragma', c: 'aberturas > 50 % ó sección neta < 50 %', ex: !!flag(b.diaf), f: 0.85, tab: 'p', man: 1 });
+    items.push({ t: 'Sistemas no paralelos', c: 'ejes a ≥ 30° que resisten ≥ 10 % V', ex: !!flag(b.nopar), f: 0.9, tab: 'p', man: 1 });
     const Ia = Math.min(1, ...items.filter(x => x.tab === 'a' && x.ex).map(x => x.f));
     const Ip = Math.min(1, ...items.filter(x => x.tab === 'p' && x.ex).map(x => x.f));
     const anyIrr = items.some(x => x.ex), ext = items.some(x => x.ex && x.ext);

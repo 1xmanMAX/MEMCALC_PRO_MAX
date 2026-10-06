@@ -98,7 +98,7 @@ math.import({
   RtBSL: (T, Tc) => { T = num(T, 's'); Tc = num(Tc, 's'); return T < Tc ? 1 : T < 2 * Tc ? 1 - 0.2 * (T / Tc - 1) ** 2 : 1.6 * Tc / T; },
   AiBSL: (a, T) => { const t = num(T, 's'); const f = (x) => 1 + (1 / Math.sqrt(x) - x) * 2 * t / (1 + 3 * t); return math.isMatrix(a) || Array.isArray(a) ? math.map(a, f) : f(num(a)); },
   FsBSL: (Rs) => (num(Rs) >= 0.6 ? 1 : 2 - num(Rs) / 0.6),
-  FeBSL: (Re) => { Re = num(Re); return Re <= 0.15 ? 1 : Re >= 0.45 ? 1.5 : 1 + 0.5 * (Re - 0.15) / 0.3; },
+  FeBSL: (Re) => { Re = num(Re); return Re <= 0.15 ? 1 : Re >= 0.30 ? 1.5 : 1 + 0.5 * (Re - 0.15) / 0.15; }, // Notif. MLIT 1792
   // ---- ASCE 7-22 espectro de diseño (11.4.6), en g ----
   SaASCE7: (T, SDS, SD1, TL) => { T = num(T, 's'); TL = num(TL, 's'); SDS = num(SDS); SD1 = num(SD1); const T0 = 0.2 * SD1 / SDS, TS = SD1 / SDS; return T < T0 ? SDS * (0.4 + 0.6 * T / T0) : T <= TS ? SDS : T <= TL ? SD1 / T : SD1 * TL / (T * T); },
   CuASCE7: (SD1) => { SD1 = num(SD1); const t = [[0.1, 1.7], [0.15, 1.6], [0.2, 1.5], [0.3, 1.4], [0.4, 1.4]]; if (SD1 <= 0.1) return 1.7; if (SD1 >= 0.4) return 1.4; for (let i = 0; i < 4; i++) if (SD1 <= t[i + 1][0]) return t[i][1] + (t[i + 1][1] - t[i][1]) * (SD1 - t[i][0]) / (t[i + 1][0] - t[i][0]); return 1.4; },

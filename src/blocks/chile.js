@@ -186,3 +186,49 @@ registerBlock('muroCL', {
     return `<div class="figure">${svgWrap(W, H, `<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#888" stroke-width="1"/></pattern></defs>` + g)}${tbl}${caption(ctx, b.titulo || 'Sección del muro, profundidad del eje neutro y elementos de borde (DS60 21.9.6)')}</div>`;
   },
 });
+
+// ---------------------------------------------------------------------
+//  Fuerzas sísmicas por nivel y diagrama de corte de entrepiso
+// ---------------------------------------------------------------------
+function vecOf(str, S, unit) {
+  const v = math.evaluate(String(str), new Map(S));
+  const a = (math.isMatrix(v) ? v.toArray() : Array.isArray(v) ? v : [v]).flat(Infinity);
+  return a.map(x => (math.isUnit(x) ? x.toNumber(unit) : Number(x)));
+}
+registerBlock('fuerzasCL', {
+  name: 'Fuerzas sísmicas en altura', icon: 'quake', group: 'Sismo',
+  fields: [F('Z', 'Alturas de nivel Zk (vector)', 'Zk'), F('F', 'Fuerzas por nivel Fk (vector)', 'Fkx'), F('V', 'Cortes de entrepiso Vk (vector, opcional)', 'Vkx'), F('u', 'Unidad de fuerza', 'tonf'), F('titulo', 'Título', '')],
+  hint: 'Dibuja la elevación del edificio con las fuerzas sísmicas Fk aplicadas en cada nivel y el diagrama escalonado de esfuerzos de corte Vk.',
+  def: { Z: '[3, 6, 9]', F: '[10, 20, 30]', V: '', u: 'tonf' },
+  render(b, ctx) {
+    const S = ctx.scope, un = (b.u || 'tonf').trim();
+    const Z = vecOf(b.Z, S, 'm'), Fv = vecOf(b.F, S, un);
+    let V = b.V ? vecOf(b.V, S, un) : null;
+    if (!Z.length || Z.length !== Fv.length) throw new Error('Zk y Fk deben tener el mismo número de niveles');
+    if (V && V.length !== Z.length) throw new Error('Vk debe tener un valor por nivel');
+    if (!V) V = Fv.map((_, i) => Fv.slice(i).reduce((s, x) => s + x, 0));
+    const H = Math.max(...Z), n = Z.length, W = 680, Hh = Math.min(460, 90 + 46 * n), pt = 22, pb = 36;
+    const Y = (z) => Hh - pb - z / H * (Hh - pt - pb);
+    const bx0 = 150, bx1 = 270, Fmax = Math.max(...Fv.map(Math.abs)), ka = 105 / (Fmax || 1);
+    let g = `<defs><marker id="arF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${C.red}"/></marker></defs>`;
+    g += `<rect x="${bx0 - 20}" y="${Y(0)}" width="${bx1 - bx0 + 40}" height="8" fill="url(#hatch)" stroke="${C.ink}" stroke-width=".6"/>`;
+    g += `<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#888" stroke-width="1"/></pattern></defs>`;
+    for (const x of [bx0, (bx0 + bx1) / 2, bx1]) g += Lne(x, Y(0), x, Y(H), C.ink, 1.6);
+    Z.forEach((z, i) => {
+      g += `<rect x="${bx0 - 6}" y="${Y(z) - 3}" width="${bx1 - bx0 + 12}" height="6" fill="${C.conc}" stroke="${C.ink}" stroke-width="1"/>`;
+      const L = Math.abs(Fv[i]) * ka;
+      g += `<line x1="${(bx0 - 10 - L).toFixed(1)}" y1="${Y(z).toFixed(1)}" x2="${bx0 - 10}" y2="${Y(z).toFixed(1)}" stroke="${C.red}" stroke-width="2" marker-end="url(#arF)"/>`;
+      g += T(bx0 - 14 - L, Y(z) - 5, `F${i + 1} = ${f2(Fv[i], 1)}`, { fs: 10, a: 'start', c: C.red });
+      g += T(bx1 + 10, Y(z) + 4, `Z${i + 1} = ${f2(z, 2)} m`, { fs: 9.5, a: 'start', c: C.axis });
+    });
+    // diagrama de corte
+    const vx0 = 420, vw = 230, Vmax = Math.max(...V.map(Math.abs)) || 1, kv = vw / Vmax;
+    let d = `M${vx0},${Y(H)}`;
+    for (let i = n - 1; i >= 0; i--) { const zt = Z[i], zb = i ? Z[i - 1] : 0; d += ` L${(vx0 + V[i] * kv).toFixed(1)},${Y(zt).toFixed(1)} L${(vx0 + V[i] * kv).toFixed(1)},${Y(zb).toFixed(1)}`; }
+    d += ` L${vx0},${Y(0)} Z`;
+    g += `<path d="${d}" fill="${C.blueF}" stroke="${C.blue}" stroke-width="1.6"/>` + Lne(vx0, Y(0), vx0, Y(H), C.ink, 1);
+    V.forEach((v, i) => { const zm = ((i ? Z[i - 1] : 0) + Z[i]) / 2; g += T(vx0 + v * kv + 5, Y(zm) + 4, `V${i + 1} = ${f2(v, 1)}`, { fs: 10, a: 'start', c: C.blue }); });
+    g += T(vx0 + vw / 2, Hh - 8, `Corte de entrepiso [${un}]`, { fs: 11 }) + T(bx0 - 60, Hh - 8, `Fuerzas por nivel [${un}]`, { fs: 11 });
+    return `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || 'Fuerzas sísmicas por nivel y esfuerzo de corte de entrepiso')}</div>`;
+  },
+});

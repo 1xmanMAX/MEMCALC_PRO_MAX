@@ -201,7 +201,7 @@ registerBlock('kaberyo', {
     ctx.checks.push({ ok: okY, label: `Balance yonbun-wari en Y: ${rY1 > 1 && rY2 > 1 ? 'ambas franjas con suficiencia > 1' : 'relación de suficiencia ≥ 0.5'} (Notif. 1352)`, ratio: rY1 > 1 && rY2 > 1 ? 1 / Math.min(rY1, rY2) : (bY > 0 ? 0.5 / bY : null), block: ctx.blockId });
 
     // ---- dibujo de planta ----
-    const W = 720, H = 420, pad = 60, sc = Math.min((W - 2 * pad - 150) / Lx, (H - 2 * pad) / Ly);
+    const W = 720, H = 420, pad = 60, sc = Math.min((W - 2 * pad - 190) / Lx, (H - 2 * pad) / Ly);
     const ox = pad, oy = H - pad;
     const P = (x, y) => [ox + x * sc, oy - y * sc];
     let g = '';
@@ -222,7 +222,7 @@ registerBlock('kaberyo', {
       g += T((p1 + p2) / 2 + (m.dir === 'Y' ? 12 : 0), (q1 + q2) / 2 + (m.dir === 'X' ? -7 : 3), f2(m.k, 1), { fs: 8.5, c: col, a: m.dir === 'Y' ? 'start' : 'middle' });
     }
     g += T((ax + bx2) / 2, by2 + 22, `Lx = ${f2(Lx, 2)} m`, { fs: 10 }) + T(ax - 22, (ay + by2) / 2, `Ly = ${f2(Ly, 2)} m`, { fs: 10, r: -90 });
-    const lx = bx2 + 24; let ly = ay + 6;
+    const lx = bx2 + 46; let ly = ay + 6;
     const row = (s, c, bb) => { g += T(lx, ly, s, { fs: 10, a: 'start', c: c || C.ink, b: bb }); ly += 16; };
     row('Muros en X (azul)', C.blue, 1); row(`Le,X = ${f2(LeX, 2)} m`); row(`Franja inf.: ${f2(rX1, 2)}`); row(`Franja sup.: ${f2(rX2, 2)}`); row(`Balance: ${f2(bX, 2)} ${okX ? '✔' : '✘'}`, okX ? C.green : C.red, 1); ly += 8;
     row('Muros en Y (naranja)', C.orange, 1); row(`Le,Y = ${f2(LeY, 2)} m`); row(`Franja izq.: ${f2(rY1, 2)}`); row(`Franja der.: ${f2(rY2, 2)}`); row(`Balance: ${f2(bY, 2)} ${okY ? '✔' : '✘'}`, okY ? C.green : C.red, 1); ly += 8;
