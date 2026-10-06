@@ -38,7 +38,7 @@ fs.mkdirSync(OUT, { recursive: true });
 if (opts.tiles) fs.mkdirSync(path.join(OUT, 'tiles'), { recursive: true });
 
 // ---- lista de plantillas (id → módulo)
-const MODS = ['peru', 'chile', 'japan', 'concrete', 'geotech', 'walls', 'bridges', 'steel', 'analysis', 'masonry', 'dynamics'];
+const MODS = ['peru', 'chile', 'japan', 'concrete', 'geotech', 'walls', 'bridges', 'steel', 'analysis', 'masonry', 'dynamics', 'extras'].filter((v, i, a) => a.indexOf(v) === i);
 const modOf = new Map();
 // (si un módulo no carga —p. ej. otro desarrollador lo está editando— se extraen los id con una expresión regular)
 const idsOf = (file) => [...fs.readFileSync(file, 'utf8').matchAll(/^\s*id: '([\w-]+)'/gm)].map(m => m[1]);
