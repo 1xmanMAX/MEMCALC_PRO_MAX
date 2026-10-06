@@ -1,0 +1,20 @@
+import * as esbuild from 'esbuild';
+import fs from 'fs';
+const r = await esbuild.build({ entryPoints: ['src/main.js'], bundle: true, minify: true, format: 'iife', target: ['chrome100','edge100','safari15','firefox100'], write: false, legalComments: 'none' });
+let js = r.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
+let kcss = fs.readFileSync('node_modules/katex/dist/katex.min.css', 'utf8');
+kcss = kcss.replace(/src:url\(fonts\/([^)]+?)\.woff2\) format\("woff2"\)(,url\([^)]*\) format\("[^"]*"\))*/g, (m, f) => {
+  const b = fs.readFileSync('node_modules/katex/dist/fonts/' + f + '.woff2').toString('base64');
+  return `src:url(data:font/woff2;base64,${b}) format("woff2")`;
+});
+const paper = fs.readFileSync('src/paper.css', 'utf8').replace(/\s*\n\s*/g, '\n');
+const app = fs.readFileSync('src/style.css', 'utf8').replace(/\s*\n\s*/g, '\n');
+const pwa = process.argv.includes('--pwa');
+const headExtra = `<meta name="theme-color" content="#0b5cad"><meta name="description" content="Memorias de cálculo estructural rápidas: fórmulas, unidades, diagramas y verificaciones.">`;
+const styles = `<style id="katexcss">${kcss}</style><style id="papercss">${paper}</style><style id="appcss">${app}</style><style id="printcss"></style>`;
+const icon = `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="2" y="2" width="28" height="28" rx="7" fill="#0b5cad"/><path d="M8 22h16M10 22V12l6-4 6 4v10" stroke="#fff" stroke-width="2" fill="none"/></svg>')}">`;
+fs.mkdirSync('dist', { recursive: true });
+const full = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>MemoriaCalc</title>${headExtra}${icon}${pwa ? '<link rel="manifest" href="manifest.webmanifest"><script>window.MC_PWA=1</script>' : ''}${styles}</head><body><script>${js}</script></body></html>`;
+fs.writeFileSync(pwa ? 'dist/pwa/index.html' : 'dist/MemoriaCalc.html', full);
+if (!pwa) fs.writeFileSync('dist/artifact.html', `<title>MemoriaCalc Estructural</title>${styles}<script>window.MC_ARTIFACT=1</script><script>${js}</script>`);
+console.log('js', (js.length/1024).toFixed(0)+'KB', 'katex css', (kcss.length/1024).toFixed(0)+'KB', 'total', (full.length/1024).toFixed(0)+'KB');
