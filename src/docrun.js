@@ -50,6 +50,14 @@ export function runDoc(doc) {
       else if (BLOCKS[b.type]) h = BLOCKS[b.type].render(b, ctx);
       else throw new Error('Tipo de bloque desconocido: ' + b.type);
     } catch (e) {
+      // bloque que falla porque usa una variable que falló antes: dependiente, no error nuevo
+      if (ctx.failed && ctx.failed.size && /Undefined symbol|no definida|no está definida|Indique/i.test((e && e.message) || '')) {
+        const root = [...ctx.failed.values()][0];
+        ctx.lastBlockFail = { name: root.name, where: root.where || 'error en la línea ' + root.line };
+        (ctx.depErrors = ctx.depErrors || []).push({ block: b.id, line: 0, msg: 'Bloque no calculado: depende de «' + root.name + '»' });
+        parts.push({ id: b.id, html: `<div class="ln ldep"><span>↳ bloque no calculado: depende de «${esc(root.name)}» (${esc(ctx.lastBlockFail.where)})</span></div>` });
+        continue;
+      }
       ctx.errors.push({ block: b.id, line: 0, msg: errEs(e) });
       h = `<div class="ln lerr"><span>⚠ ${esc(errEs(e))}</span></div>`;
     }

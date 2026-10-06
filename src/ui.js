@@ -389,7 +389,7 @@ const dcRatio = (c) => (c.ratio != null && isFinite(c.ratio) ? c.ratio : null);
 const dcCls = (c) => { const r = dcRatio(c); return !c.ok ? 'bad' : r !== null && r >= 0.9 ? 'warn' : 'ok'; };
 function governing(ch) {
   if (!ch.length) return null;
-  const bad = ch.filter(c => !c.ok);
+  const bad = ch.filter(c => !c.ok && !c.nv);
   const pool = bad.length ? bad : ch;
   return pool.reduce((a, c) => ((dcRatio(c) ?? -1) > (dcRatio(a) ?? -1) ? c : a), pool[0]);
 }
@@ -401,7 +401,7 @@ function renderCheckStrip() {
   const errs = lastRes.ctx.errors;
   if (!ch.length && !errs.length) { strip.hidden = true; strip.innerHTML = ''; return; }
   strip.hidden = false;
-  const bad = ch.filter(c => !c.ok).length;
+  const bad = ch.filter(c => !c.ok && !c.nv).length, nvc = ch.filter(c => c.nv).length;
   const sorted = [...ch].sort((a, b) => (a.ok - b.ok) || ((dcRatio(b) ?? -1) - (dcRatio(a) ?? -1)));
   const suspects = () => { const out = lastRes.ctx.inputs.filter(i => !!rangeMsg(i)); return out.length ? '<br><b>Posible causa:</b> ' + out.map(i => esc((i.label || i.name) + ' = ' + i.num + ' ' + prettyU(i.unit))).join(', ') : ''; };
   const where = (er) => { const inp = lastRes.ctx.inputs.find(i => i.block === er.block && i.line === er.line - 1); if (inp) return (inp.label || inp.name) + ': '; const bi = doc.blocks.findIndex(b => b.id === er.block); const b = doc.blocks[bi]; const ln = b && b.src ? (b.src.split('\n')[er.line - 1] || '').trim() : ''; return ln ? '«' + ln.slice(0, 40) + (ln.length > 40 ? '…' : '') + '» → ' : 'Bloque ' + (bi + 1) + ': '; };
@@ -410,8 +410,8 @@ function renderCheckStrip() {
   const gov = governing(ch);
   const maxr = Math.max(0, ...ch.map(c => dcRatio(c) ?? 0));
   const errHtml = errs.length ? `<div class="csh err" role="alert">⚠ Hay un error de cálculo${errs.length > 1 ? ' (y ' + (errs.length - 1) + ' consecuencia(s))' : ''}</div><div class="csl"><button class="cs no erow" data-gob="${errs[0].block}" data-gol="${Math.max(0, errs[0].line - 1)}" title="Ir a la línea con error"><span class="cl" style="white-space:normal">${esc(where(errs[0]))}${esc(errs[0].msg)}${suspects()}</span></button></div>` : '';
-  const sumHtml = ch.length ? `<div class="csum ${bad ? 'bad' : 'ok'}">
-      <div class="csum-h"><span class="csum-ic" aria-hidden="true">${bad ? I.x : I.check}</span><span class="csum-t"><b>${bad ? bad + ' de ' + ch.length + ' verificaciones no cumplen' : 'Cumplen las ' + ch.length + ' verificaciones'}</b><small>Aprovechamiento máximo D/C = ${maxr.toFixed(2)}</small></span>
+  const sumHtml = ch.length ? `<div class="csum ${bad ? 'bad' : nvc ? 'nv' : 'ok'}">
+      <div class="csum-h"><span class="csum-ic" aria-hidden="true">${bad ? I.x : I.check}</span><span class="csum-t"><b>${bad ? bad + ' de ' + ch.length + ' verificaciones no cumplen' : nvc ? (ch.length - nvc) + ' cumplen · ' + nvc + ' sin verificar (dependen del error)' : 'Cumplen las ' + ch.length + ' verificaciones'}</b><small>Aprovechamiento máximo D/C = ${maxr.toFixed(2)}</small></span>
       <button class="btn ghost sm csum-x" data-csopen aria-expanded="${csOpen}" aria-controls="cslist">${csOpen ? 'Ocultar' : 'Ver todas'}${I.chev}</button></div>
       ${gov ? `<button class="cs gov" data-gob="${gov.block}" data-gol="${gov.line ?? ''}" title="${esc(gov.label)} — ir a la verificación en la memoria"><span class="cl"><em>${bad ? 'No cumple' : 'Gobierna'}</em>${lbl(gov)}</span>${bar(gov)}</button>` : ''}
     </div>

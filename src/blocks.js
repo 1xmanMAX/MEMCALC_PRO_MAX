@@ -408,10 +408,18 @@ export function blockPM(b, ctx) {
       P += l.A * fs; M += l.A * fs * (h / 2 - l.d);
     }
     const et = ecu * (dt - c) / c;
-    const lim = norma === 'ACI' ? ey + 0.003 : 0.005;
-    const phi = et <= ey ? phiC : et >= lim ? 0.9 : phiC + (0.9 - phiC) * (et - ey) / (lim - ey);
+    let phi;
+    if (norma === 'ACI') phi = et <= ey ? phiC : et >= ey + 0.003 ? 0.9 : phiC + (0.9 - phiC) * (et - ey) / 0.003;
+    // E.060 9.3.2.2: φ crece linealmente hasta 0.90 cuando φPn disminuye desde min(0.1 f'c Ag, φPb) hasta cero
+    else phi = P <= 0 ? 0.9 : P >= Plim / phiC ? phiC : 0.9 / (1 + (0.9 - phiC) * P / Plim);
     return { P: P / 1000, M: M / 1e5, phi, c, et };
   };
+  let Plim = Infinity;
+  if (norma !== 'ACI') {
+    const cb = ecu * dt / (ecu + ey); let Pb = 0.85 * fc * Math.min(beta1 * cb, h) * bw;
+    for (const l of layers) { let fs = Math.max(-fy, Math.min(fy, Es * ecu * (cb - l.d) / cb)); if (l.d < Math.min(beta1 * cb, h)) fs -= 0.85 * fc; Pb += l.A * fs; }
+    Plim = Math.max(1e-9, Math.min(0.1 * fc * Ag, Pb > 0 ? phiC * Pb : Infinity));
+  }
   pts.push({ P: P0 / 1000, M: 0, phi: phiC });
   for (let k = 0; k <= 160; k++) { const c = h * 4 * Math.pow(0.004 / 4, k / 160); pts.push(point(Math.max(c, 0.2))); }
   pts.push({ P: -fy * Ast / 1000, M: 0, phi: 0.9 });

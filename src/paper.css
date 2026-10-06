@@ -249,3 +249,5 @@
 .paper.fitm .ln.chk{margin:8px 0;padding-right:6px}
 .paper.fitm .ln .cm{font-size:8.3pt}
 .paper h2.hd .katex,.paper .dt .katex,.paper .toct .katex{text-transform:none;letter-spacing:0}
+.paper .ln.ldep{display:flex;gap:10px;align-items:baseline;font-size:10px;color:#8a6d1f;background:#fffbea;border-left:2px solid #e3c766;padding:2px 8px;margin:1px 0}.paper .ln.ldep code{color:#6b5a2a;font-size:9.5px}
+@media print{.paper .ln.ldep{background:none}}

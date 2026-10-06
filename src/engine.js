@@ -234,7 +234,7 @@ function displayUnit0(u) {
   const names = u.units.map(x => x.prefix.name + x.unit.name);
   const mixedPow = u.units.some(x => x.power < 0) && u.units.some(x => x.power > 0);
   // área por unidad de longitud (acero por metro): cm²/m, mm²/m, in²/ft
-  if (mixedPow && !rest && dims === '0,1,0' && u.units.some(x => x.power === 2) && u.units.some(x => x.power === -1)) {
+  if (mixedPow && !rest && dims === '0,1,0' && u.units.length === 2 && u.units.every(x => x.unit.base.key === 'LENGTH') && u.units.some(x => x.power === 2) && u.units.some(x => x.power === -1)) {
     const t = { tec: 'cm^2/m', si: 'mm^2/m', us: 'in^2/ft' }[settings.sys];
     try { return { v: u.toNumber(t), u: t }; } catch (e) { /* sigue */ }
   }
@@ -610,18 +610,20 @@ const UNIT_OK = new Set(('m cm mm km um in inch ft yd mi s ms min h hr hour day 
   'Pa kPa MPa GPa hPa bar mbar atm psi ksi deg rad grad Hz kHz W kW MW J kJ L l mL ml gal liter litre K degC degF celsius ' +
   'kWh Wh rpm cc cm3 m3 mm3 m2 cm2 mm2 ton').split(' '));
 const _ucache = new Map();
-function checkUnitNames(node, S) {
+function checkUnitNames(node, S, ctx) {
   const params = new Set();
   node.traverse(x => { if (x.type === 'FunctionAssignmentNode') x.params.forEach(p => params.add(p)); });
   node.traverse((x, path, parent) => {
-    if (x.type !== 'SymbolNode' || S.has(x.name) || UNIT_OK.has(x.name) || params.has(x.name)) return;
+    if (x.type !== 'SymbolNode' || S.has(x.name) || params.has(x.name)) return;
+    if (ctx && ctx.failed && ctx.failed.has(x.name)) throw new Error('Undefined symbol ' + x.name);
+    if (UNIT_OK.has(x.name)) return;
     if (parent && parent.type === 'FunctionNode' && parent.fn === x) return;
     if (parent && parent.type === 'AssignmentNode' && parent.object === x) return;
     let isU = _ucache.get(x.name);
     if (isU === undefined) { isU = math.Unit.isValuelessUnit(x.name); _ucache.set(x.name, isU); }
     if (isU) {
       let desc = ''; try { const u = math.unit(x.name).units[0]; desc = (u.prefix && u.prefix.name ? 'prefijo «' + u.prefix.name + '» + ' : '') + 'unidad «' + u.unit.name + '»'; } catch (e) { /* */ }
-      throw new Error('«' + x.name + '» no está definida: defínala antes de usarla (con ese nombre se confundiría con la unidad ' + desc + '). Si es una variable nueva, use otro nombre.');
+      throw new Error('«' + x.name + '» no está definida: defínala antes de usarla (con ese nombre se confundiría con ' + desc + '). Si es una variable nueva, use otro nombre.');
     }
   });
 }
@@ -727,7 +729,7 @@ export function runCalc(src, ctx) {
 
       const pc = parseCached(code);
       const node = pc.node;
-      checkUnitNames(node, S);
+      checkUnitNames(node, S, ctx);
       let value = pc.code.evaluate(S);
       if (target && typeof value === 'number' && /^(deg|grados)$/.test(target)) {
         value = math.unit(value, 'rad').to('deg'); fixedUnits.set(value, 'deg');
@@ -795,6 +797,16 @@ export function runCalc(src, ctx) {
       if (am && !/^(check|verificar|verif|cumple)\b/i.test(line)) S.delete(am[1]);
       const cmx = /^(check|verificar|verif|cumple)\s+(.+)$/i.exec(splitComment(line)[0].trim());
       if (cmx) ctx.checks.push({ ok: false, nv: true, label: (parseOptions(splitComment(line)[1]).label || cmx[2]), ratio: null, block: ctx.blockId, line: li });
+      // errores en cascada: la línea usa una variable que falló antes → se marca como dependiente, no como error nuevo
+      ctx.failed = ctx.failed || new Map();
+      const um = /Undefined symbol (\w+)/.exec((e && e.message) || '');
+      const root = um && (ctx.failed.get(um[1]) || ctx.lastBlockFail);
+      if (am && !/^(check|verificar|verif|cumple)\b/i.test(line)) ctx.failed.set(am[1], root || { name: am[1], line: li + 1, block: ctx.blockId });
+      if (root) {
+        (ctx.depErrors = ctx.depErrors || []).push({ block: ctx.blockId, line: li + 1, msg: 'Depende de «' + root.name + '» (' + (root.where || 'error en la línea ' + root.line) + ')' });
+        out.push(`<div class="ln ldep" data-b="${ctx.blockId}" data-l="${li}"><code>${esc(line)}</code><span>↳ no calculado: depende de «${esc(root.name)}» (${esc(root.where || 'error en la línea ' + root.line)})</span></div>`);
+        continue;
+      }
       ctx.errors.push({ block: ctx.blockId, line: li + 1, msg: errEs(e) });
       out.push(`<div class="ln lerr" data-b="${ctx.blockId}" data-l="${li}"><code>${esc(line)}</code><span>⚠ Línea ${li + 1}: ${esc(errEs(e))}</span></div>`);
     }
