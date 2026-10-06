@@ -263,7 +263,7 @@ registerBlock('secjp', {
     if (!(bw > 0 && D > 0 && dt > 0) || 2 * dt >= Math.min(bw, D)) throw new Error('Dimensiones de la sección no válidas');
     const col = b.tipo === 'columna';
     const top = parseD(b.sup, S, 'Barras superiores'), bot = col ? top : parseD(b.inf, S, 'Barras inferiores');
-    const W = 440, H = 380, sc = Math.min(250 / bw, 290 / D), ox = (W - bw * sc) / 2 - 20, oy = 30;
+    const W = 480, H = 380, sc = Math.min(250 / bw, 290 / D), ox = (W - bw * sc) / 2 - 50, oy = 30;
     const X = (x) => ox + x * sc, Y = (y) => oy + y * sc;
     let g = `<rect x="${X(0)}" y="${Y(0)}" width="${bw * sc}" height="${D * sc}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.4"/>`;
     const r0 = dt - 14;
@@ -273,7 +273,7 @@ registerBlock('secjp', {
     row(top, dt); row(bot, D - dt);
     if (col && top && top.n > 2) for (let i = 1; i < top.n - 1; i++) { const y = dt + (D - 2 * dt) * i / (top.n - 1); g += dot(dt, y, top.d) + dot(bw - dt, y, top.d); }
     const lab = (t, y) => { g += T(X(bw) + 14, Y(y) + 4, t, { a: 'start', fs: 11, b: 1 }) + Lne(X(bw) - 2, Y(y), X(bw) + 12, Y(y), C.axis, 0.7); };
-    if (col) { if (top) lab(`${top.lab} por cara (total ${4 * top.n - 4})`, dt); }
+    if (col) { if (top) { lab(`${top.lab} por cara`, dt); g += T(X(bw) + 14, Y(dt) + 19, `(total ${4 * top.n - 4} barras)`, { a: 'start', fs: 10, c: C.axis }); } }
     else { if (top) lab(top.lab, dt); if (bot) lab(bot.lab, D - dt); }
     g += Lne(X(0), Y(D) + 22, X(bw), Y(D) + 22, C.ink, 0.8) + T(X(bw / 2), Y(D) + 18, `b = ${f2(bw, 0)} mm`, { fs: 10 });
     g += Lne(X(0) - 22, Y(0), X(0) - 22, Y(D), C.ink, 0.8) + T(X(0) - 27, Y(D / 2), `D = ${f2(D, 0)} mm`, { fs: 10, r: -90 });

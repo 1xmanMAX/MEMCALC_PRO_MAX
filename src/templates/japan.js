@@ -527,7 +527,7 @@ Para el **método estático** de una pila de un solo grado de libertad:
 
 - nivel 1 (6.3): $k_h = c_z\\,k_{h0}(T) \\ge 0.1$, que la pila debe resistir con esfuerzos admisibles;
 - nivel 2 (6.4, método de capacidad de carga horizontal): $k_{hc} = c_s\\,c_{z}\\,k_{hc0}(T) \\ge 0.4\\,c_z$, con $c_s = 1/\\sqrt{2\\mu_a - 1}$, y debe cumplirse $P_a \\ge k_{hc}\\,W$.`),
-      calc(`# Suelo de cimentación (JRA V 3.6)
+      calc(`# Suelo de cimentación y tipo de suelo (JRA V)
 Hi = [3.0, 5.0, 4.0] m // Espesor de cada estrato hasta la superficie de diseño sísmico
 Vsi = [130, 190, 260] m/s // Velocidad de onda de corte de cada estrato
 TG = 4*sum(Hi ./ Vsi) -> s // Periodo característico del suelo TG = 4ΣHi/Vsi

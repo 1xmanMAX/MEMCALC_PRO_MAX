@@ -919,10 +919,10 @@ phi1 = 29 deg // Ángulo de fricción efectivo
 g1 = 1.85 tonf/m^3 // Peso unitario natural
 gs1 = 1.95 tonf/m^3 // Peso unitario saturado
 ## Estrato 2: arena densa (SP), desde la cota 2.0 m
-c2 = 0.5 tonf/m^2
-phi2 = 33 deg
-g2 = 1.95 tonf/m^3
-gs2 = 2.05 tonf/m^3
+c2 = 0.5 tonf/m^2 // Cohesión efectiva (estrato 2)
+phi2 = 33 deg // Ángulo de fricción efectivo (estrato 2)
+g2 = 1.95 tonf/m^3 // Peso unitario natural (estrato 2)
+gs2 = 2.05 tonf/m^3 // Peso unitario saturado (estrato 2)
 ## Nivel freático, sobrecarga y sismo
 ynf = 3.0 m // Cota del nivel freático
 qsc = 2.0 tonf/m^2 // Sobrecarga de la edificación en la corona (E.050 Art. 30.2)

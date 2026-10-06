@@ -157,6 +157,14 @@ section('Bloques');
   near('Grupo de pernos: r máx = √((P/n)² + (M·y/Ip)²)', b('Rmax', 'kip'), Math.hypot(rv, rh), 1e-9);
   const b2 = block('boltgroup', { filas: '3', columnas: '2', sy: '3 in', sx: '3 in', P: '30 kip', ang: '0', ex: '0 in', ey: '0 in' });
   near('Grupo concéntrico: r = P/n', b2('Rmax', 'kip'), 5, 1e-9);
+  // Armadura Pratt resuelta por nudos frente a fórmulas de secciones (wL²/8h, (R − P/2)/sen α)
+  settings.sys = 'tec';
+  const tr = block('armadura', { L: '12 m', h: '0.8 m', np: '8', w: '0.36 tonf/m', tipo: 'pratt' });
+  near('Armadura (nudos): cuerda superior = wL²/(8h)', tr('Ncs', 'tonf'), 0.36 * 144 / 8 / 0.8, 1e-9);
+  near('Armadura (nudos): diagonal extrema = (R − P/2)/sen α', tr('Ndt', 'tonf'), (2.16 - 0.27) * Math.hypot(1.5, 0.8) / 0.8, 1e-9);
+  near('Armadura (nudos): reacción = wL/2', tr('Rtr', 'tonf'), 2.16, 1e-9);
+  const th = block('armadura', { L: '12 m', h: '0.8 m', np: '8', w: '0.36 tonf/m', tipo: 'howe' });
+  near('Armadura Howe: diagonal extrema en compresión = (R − P/2)/sen α', th('Ndc', 'tonf'), (2.16 - 0.27) * Math.hypot(1.5, 0.8) / 0.8, 1e-9);
   // Placa base: m, n y λn' de DG1 para W10×49 en placa 35×35 cm
   settings.sys = 'tec';
   const p = block('basepl', { perfil: 'W10X49', N: '35 cm', B: '35 cm', tp: '25 mm', na: '4', da: '19 mm', ed: '5 cm', N2: '50 cm', B2: '50 cm', hef: '30 cm' });
@@ -182,9 +190,9 @@ section('Plantillas contra ejemplos resueltos');
   g = runTemplate('st-shear-tab');
   { const Ip = 2 * (3.75 ** 2 + 11.25 ** 2), M = 18 * 7.5; near('Shear tab: perno crítico (elástico) = √(4.5² + (M·y/Ip)²) t', g('Rmax', 'tonf'), Math.hypot(4.5, M * 11.25 / Ip), 1e-6); }
   g = runTemplate('st-placa-base');
-  { const d = getShape('W10X49').p.d * 2.54, bf = getShape('W10X49').p.bf * 2.54, A1 = 35 * 35, Pp = 0.65 * 0.85 * 210 * A1 * Math.min(Math.sqrt(2500 / A1), 2) / 1000, Pu = 1.2 * 50 + 1.6 * 40;
+  { const d = getShape('W10X49').p.d * 2.54, bf = getShape('W10X49').p.bf * 2.54, A1 = 45 * 35, Pp = 0.65 * 0.85 * 210 * A1 * Math.min(Math.sqrt(3000 / A1), 2) / 1000, Pu = 1.2 * 50 + 1.6 * 40;
     const X = 4 * d * bf / (d + bf) ** 2 * Pu / Pp, lam = Math.min(1, 2 * Math.sqrt(X) / (1 + Math.sqrt(1 - X)));
-    const l = Math.max((35 - 0.95 * d) / 2, (35 - 0.8 * bf) / 2, lam * Math.sqrt(d * bf) / 4);
+    const l = Math.max((45 - 0.95 * d) / 2, (35 - 0.8 * bf) / 2, lam * Math.sqrt(d * bf) / 4);
     near('Placa base DG1: φPp = 0.65·0.85f′c·A1·√(A2/A1)', g('phiPp', 'tonf'), Pp, 1e-6);
     near('Placa base DG1: tp req = ℓ√(2Pu/(0.9FyBN))', g('tpreq', 'cm'), l * Math.sqrt(2 * Pu * 1000 / (0.9 * 2530 * A1)), 1e-6); }
   g = runTemplate('st-correas');

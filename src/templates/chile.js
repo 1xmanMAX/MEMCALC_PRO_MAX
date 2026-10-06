@@ -47,7 +47,7 @@ qDt = 0.75 tonf/m^2 // Carga permanente del nivel de techo
 psc = 0.25 // Fracción de la sobrecarga en la masa sísmica (5.5.1) [0.25 : Sin aglomeración usual de personas|0.50 : Con aglomeración usual de personas]
 Pp = Ap*(qD + psc*qL) // Peso sísmico de un piso tipo
 Pt = Ap*qDt // Peso sísmico del techo (sobrecarga de techo nula, 6.2.3.3)
-Pk = [Pp, Pp, Pp, Pp, Pt] // Peso sísmico por nivel (1 → N)
+Pk = concat(Pp*ones(N - 1), [Pt]) // Peso sísmico por nivel (1 → N; techo en el nivel N)
 Zk = hp*(1:N) // Altura de cada nivel sobre el nivel basal
 P = sum(Pk) // Peso total sobre el nivel basal (6.2.3.3)
 ## Periodos fundamentales
@@ -57,15 +57,16 @@ Ty = 0.26 s // Periodo del modo con mayor masa traslacional en Y, T*y
 Cx = CNCh433(Tx, S, Tp, n, Ao, R) // Coeficiente sísmico en X (ec. 6-2)
 Cy = CNCh433(Ty, S, Tp, n, Ao, R) // Coeficiente sísmico en Y (ec. 6-2)
 Cmin = CminNCh433(S, Ao) // Valor mínimo Ao·S/(6g) (6.2.3.1.1)
-q = 1.0 // Fracción mínima del corte tomada por muros de H.A. en la mitad inferior (6.2.3.1.3)
+q = 1.0 // Menor fracción del corte de piso tomada por muros de H.A. en la mitad inferior del edificio, del modelo (6.2.3.1.3)
 f = fNCh433(q) // Factor de reducción de Cmáx para edificios de muros (ec. 6-3)
 Cmax = f*CmaxNCh433(R, S, Ao) // Valor máximo (Tabla 6.4 × f)
 Cdx = min(max(Cx, Cmin), Cmax) // Coeficiente sísmico de diseño en X
 Cdy = min(max(Cy, Cmin), Cmax) // Coeficiente sísmico de diseño en Y
-check Cdx >= Cmin // C no menor que Ao·S/(6g) (6.2.3.1.1)
+check Cdx >= Cmin // C no menor que Ao·S/(6g) en X (6.2.3.1.1)
+check Cdy >= Cmin // C no menor que Ao·S/(6g) en Y (6.2.3.1.1)
 Qox = Cdx*I*P // Esfuerzo de corte basal en X (ec. 6-1)
 Qoy = Cdy*I*P // Esfuerzo de corte basal en Y (ec. 6-1)
-"Como $C > C_{máx}$ en ambas direcciones, el diseño queda controlado por el coeficiente sísmico máximo, situación usual en edificios chilenos de muros (periodos cortos).
+"Con los datos por defecto $C > C_{máx}$ en ambas direcciones: el diseño queda controlado por el coeficiente sísmico máximo (Tabla 6.4 × f), situación usual en edificios chilenos de muros de periodo corto. El factor $f$ de 6.2.3.1.3 solo es aplicable si el edificio está estructurado con muros de H.A. (o muros de H.A. con pórticos y albañilería confinada) y $q$ es el menor cociente entre el corte tomado por los muros de H.A. y el corte total en los pisos de la mitad inferior; si no se justifica $q$, use $q = 0{,}5$ ($f = 1$).
 # Distribución de las fuerzas en altura
 Ak = AkNCh433(Zk) // Factores Ak (ec. 6-5)
 Fkx = Ak .* Pk / sum(Ak .* Pk) * Qox // Fuerza horizontal en cada nivel, sismo X (ec. 6-4)
@@ -79,7 +80,7 @@ ekx = 0.10*bky*Zk/H // Excentricidad accidental para el sismo según X (6.2.8)
 eky = 0.10*bkx*Zk/H // Excentricidad accidental para el sismo según Y (6.2.8)
 Mtx = Fkx .* ekx // Momento de torsión accidental por nivel, sismo X (mismo signo en todos los niveles)
 Mty = Fky .* eky // Momento de torsión accidental por nivel, sismo Y`),
-      { type: 'table', columnas: 'Nivel = 1:5\n$Z_k$ [m] = Zk\n$P_k$ [tonf] = Pk\n$A_k$ = Ak\n$F_{kx}$ [tonf] = Fkx\n$V_{kx}$ [tonf] = Vkx\n$M_{tx}$ [tonf·m] = Mtx\n$F_{ky}$ [tonf] = Fky\n$V_{ky}$ [tonf] = Vky', dec: '3', total: false, titulo: 'Distribución de las fuerzas sísmicas en altura y torsión accidental (NCh433 6.2.5 y 6.2.8)' },
+      { type: 'table', columnas: 'Nivel = 1:N\n$Z_k$ [m] = Zk\n$P_k$ [tonf] = Pk\n$A_k$ = Ak\n$F_{kx}$ [tonf] = Fkx\n$V_{kx}$ [tonf] = Vkx\n$M_{tx}$ [tonf·m] = Mtx\n$F_{ky}$ [tonf] = Fky\n$V_{ky}$ [tonf] = Vky', dec: '3', total: false, titulo: 'Distribución de las fuerzas sísmicas en altura y torsión accidental (NCh433 6.2.5 y 6.2.8)' },
       { type: 'fuerzasCL', Z: 'Zk', F: 'Fkx', V: 'Vkx', u: 'tonf', titulo: 'Fuerzas sísmicas estáticas y corte de entrepiso, sismo según X' },
       { type: 'plot', expr: 'CNCh433(x s, S, Tp, n, Ao, R); Cmax + 0*x; Cmin + 0*x; min(max(CNCh433(x s, S, Tp, n, Ao, R), Cmin), Cmax)', var: 'x', desde: '0.2', hasta: '2', puntos: '300', xlabel: 'Periodo T* [s]', ylabel: 'C', leyenda: true, nombres: "C = 2.75·S·Ao/(gR)·(T'/T*)^n; Cmáx (Tabla 6.4 × f); Cmín = Ao·S/(6g); C de diseño", titulo: 'Coeficiente sísmico en función del periodo (NCh433 6.2.3.1)' },
       calc(`# Deformaciones sísmicas (5.9)
@@ -94,7 +95,7 @@ check max(derx) <= 0.002 // Deriva en el CM, sismo X (5.9.2)
 check max(dery) <= 0.002 // Deriva en el CM, sismo Y (5.9.2)
 check max((dpx - dcmx)/hp) <= 0.001 // Exceso de deriva en cualquier punto respecto del CM, sismo X (5.9.3)
 check max((dpy - dcmy)/hp) <= 0.001 // Exceso de deriva en cualquier punto respecto del CM, sismo Y (5.9.3)`),
-      { type: 'table', columnas: 'Piso = 1:5\n$\\delta_{CM,x}$ [cm] = dcmx\nDeriva CM X = derx\n$(\\delta_{máx}-\\delta_{CM})/h$ X = (dpx - dcmx)/hp\n$\\delta_{CM,y}$ [cm] = dcmy\nDeriva CM Y = dery\n$(\\delta_{máx}-\\delta_{CM})/h$ Y = (dpy - dcmy)/hp', dec: '5', titulo: 'Control de deformaciones de entrepiso (NCh433 5.9.2 y 5.9.3)' },
+      { type: 'table', columnas: 'Piso = 1:N\n$\\delta_{CM,x}$ [cm] = dcmx\nDeriva CM X = derx\n$(\\delta_{máx}-\\delta_{CM})/h$ X = (dpx - dcmx)/hp\n$\\delta_{CM,y}$ [cm] = dcmy\nDeriva CM Y = dery\n$(\\delta_{máx}-\\delta_{CM})/h$ Y = (dpy - dcmy)/hp', dec: '5', titulo: 'Control de deformaciones de entrepiso (NCh433 5.9.2 y 5.9.3)' },
       text(`> **Notas.** (1) Los elementos se diseñan con las combinaciones de NCh3171 usando $1{,}4E$ (DS60 9.1.4). (2) Si la torsión accidental produce variaciones de desplazamientos ≤ 20 % puede despreciarse en el diseño (6.1.2). (3) Para edificios de H.A. el desplazamiento de diseño en el techo para muros (DS60) es $\\delta_u = 1{,}3\\,S_{de}(T_{ag})$ (5.9.5), ver la plantilla de muros.`),
       summary(),
     ],
@@ -142,7 +143,7 @@ Qo = V[1] // Esfuerzo de corte basal del análisis modal
 # Limitaciones del esfuerzo de corte basal (6.3.7)
 Qmin = I*S*Ao*P/6 // Corte basal mínimo I·S·Ao·P/(6g) (6.3.7.1)
 Cmax = CmaxNCh433(R, S, Ao) // Cmáx (Tabla 6.4)
-Qmax = I*Cmax*P // Corte basal que no es necesario exceder (6.3.7.2)
+Qmax = I*Cmax*P // Corte basal que no es necesario exceder (6.3.7.2); sin el factor f de 6.2.3.1.3 (edificio mixto muros-marcos, criterio conservador)
 fs = si(Qo < Qmin, Qmin/Qo, 1) // Factor de amplificación de esfuerzos y desplazamientos (6.3.7.1)
 fr = si(Qo > Qmax, Qmax/Qo, 1) // Factor de reducción opcional de esfuerzos, no de desplazamientos (6.3.7.2)
 Vd = fs*fr*V // Cortes de entrepiso de diseño
@@ -152,7 +153,8 @@ check fs*fr*Qo <= Qmax // Corte basal de diseño ≤ I·Cmáx·P (6.3.7.2)
 Um = UmodalCL(Pk, kx, Sa) // Desplazamientos modales (niveles × modos)
 dm = cqcNCh433(entrepisoCL(Um), Tn) // Desplazamiento relativo de entrepiso, CQC
 d = fs*dm // Desplazamiento de diseño (incluye el factor por corte mínimo; 6.3.7.2 no reduce desplazamientos)
-check max(d)/hp <= 0.002 // Deriva en el centro de masas (5.9.2)`),
+check max(d)/hp <= 0.002 // Deriva en el centro de masas (5.9.2)
+"El modelo de cortante plano entrega desplazamientos en el centro de masas. La verificación de 5.9.3 (exceso de deriva ≤ 0,001 h en cualquier punto de la planta) y el análisis con los centros de masas desplazados ±0,05 b (6.3.4 a) deben hacerse con el modelo tridimensional.`),
       { type: 'spectrumCL', norma: 'NCh433', zona: 'zona', suelo: 'suelo', I: 'I', R: 'Ro', T: 'Ts', tmax: '3', comparar: true, elastico: false, titulo: 'Espectro de diseño NCh433 + DS61 (suelo del proyecto en azul; otros suelos con el mismo R* en trazos)' },
       { type: 'table', columnas: 'Modo = 1:6\n$T_n$ [s] = Tn\n$M_n^*/M$ = Mn\n$\\alpha$ = alfa\n$S_a/g$ = Sa', dec: '4', titulo: 'Periodos, masas equivalentes y pseudo-aceleraciones de diseño' },
       { type: 'table', columnas: 'Piso = 1:6\n$P_k$ [tonf] = Pk\n$V$ CQC [tonf] = V\n$V$ diseño [tonf] = Vd\n$\\Delta$ [cm] = d\nDeriva = d/hp', dec: '4', titulo: 'Cortes de entrepiso (CQC) y deformaciones de diseño' },
@@ -207,7 +209,8 @@ Cmin = CminNCh2369(Ao) // Valor mínimo 0.25·Ao/g (5.3.3.2)
 Cd = min(max(C, Cmin), Cmax) // Coeficiente sísmico de diseño
 check Cd >= Cmin // C ≥ 0.25 Ao/g (5.3.3.2)
 Qo = Cd*I*P // Esfuerzo de corte basal (ec. 5-1)
-Qcol = Qo/11 // Corte por marco (11 marcos transversales a 6 m, con arriostramiento continuo de techo)
+sm = 6 m // Separación entre marcos transversales
+Qmarco = Qo*sm/L // Corte en un marco interior, área tributaria s/L (11 marcos a 6 m; el arriostramiento continuo de techo reparte según rigidez, aquí iguales)
 "La acción sísmica vertical se considera con un coeficiente $A_o/g$ solo en los casos de 5.1.1 a) y b) (voladizos, estructuras sensibles); no aplica a esta nave.
 # Deformaciones sísmicas (6.1 y 6.3)
 dd = Qo/K // Desplazamiento lateral con las solicitaciones reducidas por R
@@ -216,9 +219,24 @@ R1 = si(Qo/Qmin <= 1, R*max(Qo/Qmin, 0.5), R) // Factor R1 (6.1)
 d = R1*dd // Deformación sísmica d = d0 + R1·dd con d0 = 0 (ec. 6-1)
 check d <= 0.015*H // Deformación máxima, otras estructuras (6.3 d)
 "Como $d \\le 0{,}015\\,h$ no es necesario considerar el efecto P-Delta (6.4).
-sep = max(R1*dd, 0.002*H, 30 mm) // Separación mínima a una estructura vecina rígida (6.2.1)`),
+hv = 6 m // Altura de la estructura vecina (bodega existente de albañilería, rígida: d0 y R1·dd despreciables)
+sep = max(R1*dd, 0.002*(H + hv), 30 mm) // Separación mínima S = máx(√((R1·dd)ᵢ² + (R1·dd)ⱼ²) + d0ᵢ + d0ⱼ; 0,002(hᵢ + hⱼ); 30 mm) (6.2.1)
+sepp = 60 mm // Separación proyectada a la estructura vecina
+check sepp >= sep // Separación entre estructuras (6.2.1)`),
       { type: 'spectrumCL', norma: 'NCh2369', zona: 'zona', suelo: 'suelo', I: 'I', R: 'R', xi: 'xi', T: 'Ts', tmax: '2.5', elastico: false, titulo: 'Espectro de diseño NCh2369.Of2003 con amortiguamiento ξ y límite I·Cmáx (ec. 5-5)' },
-      { type: 'plot', expr: 'SaNCh2369(x s, Tp, n, Ao, I, R, xi); SaNCh2369v23(x s, 2, Ao, I, R, xi)', var: 'x', desde: '0.02', hasta: '2.5', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Sa / g', leyenda: true, nombres: 'NCh2369.Of2003, suelo II; NCh2369:2023/2025, suelo B (mismos R, ξ, I)', titulo: 'Comparación referencial de espectros de diseño NCh2369 2003 vs. 2023 (en la versión 2023, R y ξ deben tomarse de su Tabla 6)' },
+      calc(`# Comparación con NCh2369:2023 (oficial como NCh2369:2025)
+"La versión 2023 clasifica el suelo por $V_{s30}$ (Tabla 4, A–E) y define el coeficiente sísmico del análisis estático como la ordenada del espectro de diseño en $T^*$ (5.5.1). Para esta nave la **Tabla 6, ítem 5.5** (edificio industrial de un piso con arriostramiento continuo de techo y anclajes dúctiles, uniones empernadas) da los mismos $R = 5$ y $\\xi = 0{,}03$.
+suelo23 = 2 // Suelo según NCh2369:2023 Tabla 4 (grava densa, Vs30 ≥ 500 m/s) [1 : A|2 : B|3 : C|4 : D — exige espectro de sitio salvo R = 1]
+S23 = SNCh433(suelo23) // Parámetro S (Tabla 5)
+cat23 = 2 // Categoría de ocupación (Tabla 1) [1 : I|2 : II|3 : III|4 : IV]
+I23 = INCh2369v23(cat23) // Coeficiente de importancia (4.3.2)
+R23 = 5 // Factor R (Tabla 6, ítem 5.5)
+xi23 = 0.03 // Amortiguamiento ξ (Tabla 6, ítem 5.5, uniones empernadas)
+C23 = SaNCh2369v23(Ts, suelo23, Ao, I23, R23, xi23) // C = Sa(T*)/g, incluye I (ec. 1, 1.1 y 3; 5.5.1)
+Cmin23 = CminNCh2369v23(I23, S23, Ao) // Cmín = 0,25·I·S·Ao/g (5.12.1)
+Q23 = max(C23, Cmin23)*P // Esfuerzo de corte basal Q0 = C·P (ec. 5)
+r23 = Q23/Qo // Razón entre el corte basal 2023 y el de la versión 2003`),
+      { type: 'plot', expr: 'SaNCh2369(x s, Tp, n, Ao, I, R, xi); SaNCh2369v23(x s, suelo23, Ao, I23, R23, xi23); SaVNCh2369v23(x s, suelo23, Ao, I23)', var: 'x', desde: '0.02', hasta: '2.5', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Sa / g', leyenda: true, nombres: 'NCh2369.Of2003 horizontal, suelo II; NCh2369:2023 horizontal, suelo B (Tabla 6 ítem 5.5); NCh2369:2023 vertical (RV = 2, ξV = 0,03)', titulo: 'Comparación de espectros de diseño NCh2369.Of2003 y NCh2369:2023/2025' },
       summary(),
     ],
   },
@@ -272,22 +290,38 @@ sw = 20 cm // Malla del alma: espaciamiento horizontal y vertical`),
       calc(`# Capacidad de curvatura (DS60 21.9.5.4)
 c = c_w // Profundidad del eje neutro para Pu y Mn (compatibilidad, εcu = 0.003)
 check Mu <= phiMn_w // Resistencia a flexocompresión (ACI 318-08 21.9.5.1, 10.2)
-"La razón de aspecto $H_t/l_w$ = {Ht/lw} ≥ 3, por lo que se exige verificar la capacidad de curvatura con la mayor carga axial consistente con $\\delta_u$:
-phiu = 2*deltau/(Ht*lw) -> m^-1 // Demanda de curvatura (ec. 21-7a)
+"La verificación de capacidad de curvatura rige para muros con $H_t/l_w \\ge 3$ (aquí $H_t/l_w$ = {Ht/lw}) y se hace con la mayor carga axial consistente con $\\delta_u$. La demanda de curvatura se evalúa con las dos expresiones de uso habitual (rótula plástica $l_p = l_w/2$) y se adopta la mayor:
+epsy = fy/(200000 MPa) // Deformación de fluencia del acero
+phiy = 2*epsy/lw -> m^-1 // Curvatura de fluencia aproximada φy = 2εy/lw
+deltay = 11/40*phiy*Ht^2 -> cm // Desplazamiento de fluencia en el techo (carga lateral triangular)
+lp = lw/2 // Longitud de la rótula plástica
+phiu1 = 2*deltau/(Ht*lw) -> m^-1 // Demanda de curvatura simplificada (ec. 21-7a)
+phiu2 = phiy + (deltau - deltay)/(lp*(Ht - lp/2)) -> m^-1 // Demanda con curvatura de fluencia (ec. 21-7b)
+phiu = max(phiu1, phiu2) // Demanda de curvatura adoptada
 epsilonc = phiu*c // Deformación unitaria en la fibra más comprimida εc = φu·c
 check epsilonc <= 0.008 // Deformación unitaria máxima del hormigón (DS60 21.9.5.4)
 # Elementos de borde (DS60 21.9.6)
 clim = lw/(600*du) // Profundidad límite del eje neutro (ec. 21-8)
-lconf = max(c - clim, 0 cm) // Longitud a confinar cc = c − lw/(600·δu/hw) (ec. 21-8a)
-ewmin = si(c >= clim, 300 mm, 0 mm) // Espesor mínimo del elemento de borde si se requiere (21.9.6.4 f)
+reqb = si(c >= clim, 1, 0) // 1 = se requiere elemento de borde (21.9.6.2)
+lconf = reqb*max(c - clim, c - 0.1*lw, c/2) // Longitud horizontal a confinar: envolvente de c − lw/(600·δu/hw) (DS60) y de máx(c − 0,1lw; c/2) (ACI 318-08 21.9.6.4 a)
+ewmin = reqb*300 mm // Espesor mínimo del elemento de borde si se requiere (DS60 21.9.6.4 f)
 check lb >= lconf // Largo del elemento de borde ≥ longitud a confinar (21.9.6.4 a)
 check ew >= ewmin // Espesor del elemento de borde (21.9.6.4 f)
 ## Armadura de borde (DS60 21.9.2.4 y 21.9.6.5)
 check dbb <= min(ew, lb)/9 // Diámetro longitudinal ≤ 1/9 de la menor dimensión del borde (21.9.2.4 a)
 check dbt >= dbb/3 // Diámetro transversal ≥ 1/3 del longitudinal (21.9.2.4 b)
 rhob = rho_borde // Cuantía longitudinal del elemento de borde
-smax = si(rhob > 2.8/(fy/(1 MPa)), min(6*dbb, 200 mm), 200 mm) // Espaciamiento máximo en zona crítica (21.9.6.5 a)
+hx = 20 cm // Separación horizontal entre barras amarradas por estribos o trabas en el borde
+so = min(max(100 mm + (350 mm - hx)/3, 100 mm), 150 mm) // so = 100 + (350 − hx)/3, entre 100 y 150 mm (ACI 318-08 21.6.4.3 c)
+smax = si(reqb > 0, min(ew/3, 6*dbb, so), si(rhob > 2.8/(fy/(1 MPa)), min(6*dbb, 200 mm), 200 mm)) // Espaciamiento máximo: con elemento de borde 21.9.6.4 c → 21.6.4.3; sin él 21.9.6.5 a
 check sb <= smax // Espaciamiento de estribos de borde
+hxmax = si(reqb > 0, min(200 mm, ew/2), 350 mm) // hx máximo: 200 mm y e/2 en elementos de borde (DS60 21.9.6.4 c); 350 mm en otro caso (21.6.4.2)
+check hx <= hxmax // Separación horizontal hx entre barras amarradas
+nr = 4 // Ramas de estribos y trabas que cruzan el núcleo, perpendiculares al largo del muro
+bc = ew - 2*2 cm // Dimensión del núcleo confinado medida a los bordes exteriores del estribo
+Ash = nr*pi*dbt^2/4 -> cm^2 // Área de refuerzo transversal provista
+Ashreq = reqb*0.09*sb*bc*fc/fy -> cm^2 // Ash ≥ 0,09·s·bc·f'c/fyt solo si se requiere elemento de borde (ec. 21-5)
+check Ash >= Ashreq // Refuerzo transversal de confinamiento (ACI 318-08 21.9.6.4 c)
 # Diseño a corte (ACI 318-08 21.9.4)
 Acv = lw*ew // Área de corte
 alphac = si(hw/lw <= 1.5, 0.25, si(hw/lw >= 2, 0.17, 0.25 - 0.16*(hw/lw - 1.5))) // Coeficiente αc (21.9.4.1)
@@ -340,7 +374,7 @@ qe = qzNCh432(he, V, expo, Iw, Kzt, Kd) // Presión por velocidad a la altura de
 # Coeficientes de presión externa (viento normal a la cumbrera)
 Cpb = 0.8 // Muro de barlovento
 Cps = CpMuroSotNCh432(B/L) // Muro de sotavento según L/B (L en la dirección del viento)
-Cptb = CpTechoNCh432(theta, h/B, 1) // Techo de barlovento, caso de succión
+Cptb = CpTechoNCh432(theta, h/B, 1) // Techo de barlovento, caso de succión (θ < 10°: valor del borde de barlovento, envolvente)
 Cpts = CpTechoSotNCh432(theta, h/B) // Techo de sotavento
 # Presiones de diseño p = q·G·Cp − qh·(±GCpi)
 pmb = qe*G*Cpb + qh*GCpi -> kgf/m^2 // Muro de barlovento con succión interna
@@ -357,11 +391,13 @@ wtb = ptb*s -> tonf/m // Techo de barlovento (succión, normal al techo)
 wts = pts*s -> tonf/m // Techo de sotavento (succión, normal al techo)
 # Levantamiento en anclajes (NCh3171: 0,9D + 1,6W)
 qDt = 0.045 tonf/m^2 // Peso propio de la cubierta, costaneras y marco
-Rup = -(wtb + wts)*B/4 + (wmb - wms)*he^2/(2*B) -> tonf // Levantamiento en la columna de barlovento: techo (p·B/2 por faldón, mitad a cada columna) + volcamiento por cargas en muros
+r = hc - he // Altura de la cumbrera sobre el alero
+Rup = -(3*wtb + wts)*B/8 + ((wmb - wms)*he^2/2 + (wtb - wts)*r*(he + r/2))/B -> tonf // Levantamiento en la base de barlovento por equilibrio global del marco (momentos respecto de la base de sotavento): componentes verticales del techo + volcamiento de muros y componentes horizontales del techo
 Rd = qDt*s*B/2 -> tonf // Reacción por peso propio por columna
 Tu = 1.6*Rup - 0.9*Rd -> tonf // Tracción mayorada en los pernos de una columna
 phiRn = 4*0.75*0.75*400 MPa*285 mm^2 -> tonf // 4 pernos φ3/4" ASTM F1554 Gr.36: φ·0.75·Fu·Ab (AISC 360 J3.6)
 check Tu <= phiRn // Tracción en pernos de anclaje
+"La resistencia del anclaje en el hormigón (arrancamiento del cono, extracción y desprendimiento lateral, ACI 318 Apéndice D) y el corte basal en los pernos deben verificarse aparte.
 # Comparación con NCh432.Of71
 qof = qNCh432Of71(hc, 2) // Presión básica a la altura de cumbrera, campo abierto (Tabla 1)
 Cof = 1.2*sin(theta) - 0.4 // Factor de forma del techo de barlovento (Of71, Fig. A.9)
@@ -397,7 +433,7 @@ E = 32 tonf // Sismo (NCh433), ± según dirección
 fL = 1.0 // Factor de L en las combinaciones con W y E [1.0 : General|0.5 : L0 ≤ 5 kPa, excepto estacionamientos y lugares de reunión]
 Ltec = max(Lr, S) // Carga de techo dominante (Lr o S)
 # Diseño por resistencia
-U = [1.4*D, 1.2*D + 1.6*L + 0.5*Ltec, 1.2*D + 1.6*Ltec + fL*L, 1.2*D + 1.6*Ltec + 0.8*W, 1.2*D + 1.6*W + fL*L + 0.5*Ltec, 1.2*D - 1.6*W + fL*L + 0.5*Ltec, 1.2*D + 1.4*E + fL*L + 0.2*S, 1.2*D - 1.4*E + fL*L + 0.2*S, 0.9*D + 1.6*W, 0.9*D - 1.6*W, 0.9*D + 1.4*E, 0.9*D - 1.4*E] // Combinaciones mayoradas (NCh3171)
+U = [1.4*D, 1.2*D + 1.6*L + 0.5*Ltec, 1.2*D + 1.6*Ltec + fL*L, 1.2*D + 1.6*Ltec + 0.8*W, 1.2*D + 1.6*Ltec - 0.8*W, 1.2*D + 1.6*W + fL*L + 0.5*Ltec, 1.2*D - 1.6*W + fL*L + 0.5*Ltec, 1.2*D + 1.4*E + fL*L + 0.2*S, 1.2*D - 1.4*E + fL*L + 0.2*S, 0.9*D + 1.6*W, 0.9*D - 1.6*W, 0.9*D + 1.4*E, 0.9*D - 1.4*E] // Combinaciones mayoradas (NCh3171)
 Pumax = max(U) // Compresión máxima mayorada
 Pumin = min(U) // Mínima (tracción si es negativa)
 phiPn = 260 tonf // Resistencia de diseño de la columna a compresión (del diseño del elemento)
@@ -408,7 +444,7 @@ Ua = [D, D + L, D + Ltec, D + 0.75*L + 0.75*Ltec, D + W, D - W, D + E, D - E, D 
 Pamax = max(Ua) // Compresión máxima de servicio
 Pamin = min(Ua) // Mínima de servicio
 check Pamin >= 0 tonf // Sin tracción en servicio (fundación sin anclaje a tracción)`),
-      { type: 'table', columnas: 'N° = 1:12\nCombinación por resistencia = ["1,4D", "1,2D + 1,6L + 0,5(Lr o S)", "1,2D + 1,6(Lr o S) + L", "1,2D + 1,6(Lr o S) + 0,8W", "1,2D + 1,6W + L + 0,5(Lr o S)", "1,2D − 1,6W + L + 0,5(Lr o S)", "1,2D + 1,4E + L + 0,2S", "1,2D − 1,4E + L + 0,2S", "0,9D + 1,6W", "0,9D − 1,6W", "0,9D + 1,4E", "0,9D − 1,4E"]\n$P_u$ [tonf] = U', dec: '2', titulo: 'Combinaciones de carga por resistencia (NCh3171; sismo según DS60 9.1.4)' },
+      { type: 'table', columnas: 'N° = 1:13\nCombinación por resistencia = ["1,4D", "1,2D + 1,6L + 0,5(Lr o S)", "1,2D + 1,6(Lr o S) + L", "1,2D + 1,6(Lr o S) + 0,8W", "1,2D + 1,6(Lr o S) − 0,8W", "1,2D + 1,6W + L + 0,5(Lr o S)", "1,2D − 1,6W + L + 0,5(Lr o S)", "1,2D + 1,4E + L + 0,2S", "1,2D − 1,4E + L + 0,2S", "0,9D + 1,6W", "0,9D − 1,6W", "0,9D + 1,4E", "0,9D − 1,4E"]\n$P_u$ [tonf] = U', dec: '2', titulo: 'Combinaciones de carga por resistencia (NCh3171; sismo según DS60 9.1.4)' },
       { type: 'table', columnas: 'N° = 1:15\nCombinación de servicio = ["D", "D + L", "D + (Lr o S)", "D + 0,75L + 0,75(Lr o S)", "D + W", "D − W", "D + E", "D − E", "D + 0,75W + 0,75L + 0,75(Lr o S)", "D + 0,75E + 0,75L + 0,75S", "D − 0,75E + 0,75L + 0,75S", "0,6D + W", "0,6D − W", "0,6D + E", "0,6D − E"]\n$P$ [tonf] = Ua', dec: '2', titulo: 'Combinaciones de carga por tensiones admisibles (NCh3171)' },
       summary(),
     ],

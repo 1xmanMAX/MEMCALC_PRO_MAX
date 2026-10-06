@@ -283,6 +283,7 @@ registerBlock('modal', {
     for (let i = n - 1; i >= 0; i--) rows2.push([String(i + 1), f2(r.H[i], 2), f2(nf(m[i] * G), 2), f2(nf(r.F[i]), 2), f2(nf(r.V[i]), 2), f2(nm(r.Mo[i]), 2), f2(nl(uin[i]), 3), f2(drift[i], 3), dlim > 0 ? okMark(drift[i] <= dlim) : '—']);
     h += tableHtml(ctx, `Respuesta combinada (${comb}) por nivel; desplazamientos y derivas inelásticos (× ${f2(fd, 3)})`, ['Nivel', kx('h_i') + ' [m]', kx('P_i') + ` [${lblF()}]`, kx('F_i') + ` [${lblF()}]`, kx('V_i') + ` [${lblF()}]`, kx('M_i') + ` [${lblM()}]`, kx('u_i') + ` [${lblL()}]`, kx('\\Delta_i/h_i'), 'Estado'], rows2);
     // ---- verificaciones ----
+    if (nmod < Math.min(3, n)) h += chkLine(ctx, false, `n_{modos} = ${nmod} \\;<\\; ${Math.min(3, n)}`, 'Se deben combinar como mínimo los tres primeros modos predominantes (E.030 Art. 40.2)', null);
     h += chkLine(ctx, r.Mpart >= 0.9 - 1e-9, `\\sum M^*_n/M = ${f2(r.Mpart * 100, 2)}\\,\\% \\;\\ge\\; 90\\,\\%`, `Masa participativa de los ${nmod} modos combinados (E.030 Art. 40.2)`, 0.9 / r.Mpart);
     if (dlim > 0) { const dmax = Math.max(...drift); h += chkLine(ctx, dmax <= dlim, `\\left(\\Delta/h\\right)_{max} = ${f2(dmax, 3)} \\;\\le\\; ${f2(dlim, 4)}`, 'Distorsión inelástica máxima de entrepiso (E.030 Art. 51, Tabla N° 14)', dmax / dlim); }
     if (Vest > 0) h += `<div class="txt">Cortante basal dinámico ${K('V_{din} = ' + f2(nf(r.Vb), 2) + '\\,\\mathrm{' + lblF() + '}')}; mínimo ${K(f2(pmin, 2) + '\\,V_{est} = ' + f2(nf(pmin * Vest), 2) + '\\,\\mathrm{' + lblF() + '}')} → factor de escala de fuerzas ${K('f_{esc} = ' + f2(fesc, 3))} (los desplazamientos no se escalan, Art. 44.2).</div>`;
@@ -391,7 +392,7 @@ registerBlock('irregE030', {
     F('esq', 'Esquinas entrantes (>20 % en ambas direcciones)', '', 'check'),
     F('diaf', 'Discontinuidad del diafragma', '', 'check'),
     F('nopar', 'Sistemas no paralelos', '', 'check'),
-    F('cat', 'Categoría: A1, A2, B, C (o expresión con el factor U: 1.5 → A2, 1.3 → B, 1.0 → C)', 'C'),
+    F('cat', 'Categoría: A1, A2, B, C; código de UE030 (11 A1, 2 A2, 3 B, 4 C) o el factor U (1.5 → A2, 1.3 → B, 1.0 → C)', 'C'),
     F('zona', 'Zona sísmica 1–4 (número o variable)', 'zona'),
     F('npisos', 'N.º de pisos y altura (para la excepción de la Tabla 13, zona 2)', ''),
     F('sufijo', 'Sufijo de las variables exportadas', ''),
@@ -448,7 +449,8 @@ registerBlock('irregE030', {
     h += `<div class="txt">Factores resultantes (menor valor de cada tabla, Art. 24): ${K('I_a = ' + f2(Ia, 2))}, ${K('I_p = ' + f2(Ip, 2))} → estructura <b>${anyIrr ? 'irregular' : 'regular'}</b>.</div>`;
     // ---- Tabla 13 ----
     let cat = String(b.cat || 'C').trim().toUpperCase();
-    if (!['A1', 'A2', 'B', 'C'].includes(cat)) { const u = scal(b.cat, S, 1); cat = u >= 1.45 ? 'A2' : u >= 1.25 ? 'B' : 'C'; }
+    // texto A1/A2/B/C, código de UE030 (2 A2, 3 B, 4 C, 11 A1 sin aislamiento) o valor del factor U (1.5 / 1.3 / 1.0)
+    if (!['A1', 'A2', 'B', 'C'].includes(cat)) { const u = scal(b.cat, S, 1); cat = u === 11 ? 'A1' : u === 2 ? 'A2' : u === 3 ? 'B' : u === 4 ? 'C' : u >= 1.45 ? 'A2' : u >= 1.25 ? 'B' : 'C'; }
     const zona = Math.round(scal(b.zona, S, 4));
     if (!(zona >= 1 && zona <= 4)) throw new Error('Irregularidades: la zona sísmica debe ser 1, 2, 3 o 4');
     const np = String(b.npisos || '').trim() ? evalAny(b.npisos, S) : null;
@@ -490,19 +492,20 @@ registerBlock('lrb', {
     const res = {};
     for (const [key, [lq, lk]] of Object.entries(lam)) {
       const Q = Qd * lq * N, kk = kd * lk * N;           // sistema completo
-      let D = 0.25, hist = [];
+      let D = 0.25, hist = [], conv = false;
       for (let it = 0; it < 200; it++) {
         const Dc = Math.max(D, Dy * 1.0001);
         const ke = Q / Dc + kk, be = Math.max(0, 4 * Q * (Dc - Dy) / (2 * Math.PI * ke * Dc * Dc));
         const Tm = 2 * Math.PI * Math.sqrt(Wt / (ke * G)), Bm = BME031num(be * 100), Sa = SaFn(Tm);
         const Dn = Sa * Tm * Tm / (4 * Math.PI ** 2 * Bm);
         hist.push({ D: Dc, ke, be, Tm, Bm, Sa, Dn });
-        if (Math.abs(Dn - D) < 1e-6) { D = Dn; break; }
+        if (Math.abs(Dn - D) < 1e-6) { D = Dn; conv = true; break; }
         D = 0.5 * D + 0.5 * Dn;
       }
       const Dc = Math.max(D, Dy * 1.0001), ke = Q / Dc + kk, be = Math.max(0, 4 * Q * (Dc - Dy) / (2 * Math.PI * ke * Dc * Dc));
       const Tm = 2 * Math.PI * Math.sqrt(Wt / (ke * G)), Bm = BME031num(be * 100), Sa = SaFn(Tm);
-      res[key] = { Q, kk, D: Dc, ke, be, Tm, Bm, Sa, Vb: ke * Dc, hist, lq, lk };
+      if (!isFinite(Dc) || !isFinite(Tm)) throw new Error('LRB: la iteración de DM no produjo un valor finito (revise el espectro y las propiedades)');
+      res[key] = { Q, kk, D: Dc, ke, be, Tm, Bm, Sa, Vb: ke * Dc, hist, lq, lk, conv };
       setVar(ctx, 'D_M_' + key, uL(Dc)); setVar(ctx, 'kM_' + key, math.unit(ke, 'N/m').to(prefK()));
       setVar(ctx, 'beta_M_' + key, be); setVar(ctx, 'T_M_' + key, math.unit(Tm, 's')); setVar(ctx, 'B_M_' + key, Bm);
       setVar(ctx, 'Sa_M_' + key, Sa / G); setVar(ctx, 'Vb_' + key, uF(ke * Dc)); setVar(ctx, 'Qd_' + key, uF(Q)); setVar(ctx, 'kd_' + key, math.unit(kk, 'N/m').to(prefK()));
@@ -535,6 +538,8 @@ registerBlock('lrb', {
     }
     let h = `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Sistema de aislamiento: lazos histeréticos y desplazamiento traslacional DM')}</div>`;
     const rows = ['inf', 'nom', 'sup'].map(k => { const r = res[k]; return [{ inf: 'Inferior', nom: 'Nominal', sup: 'Superior' }[k], f2(r.lq, 2) + ' / ' + f2(r.lk, 2), f2(nf(r.Q), 2), f2(r.kk / math.unit(1, prefK()).toNumber('N/m'), 1), f2(nl(r.D), 2), f2(r.ke / math.unit(1, prefK()).toNumber('N/m'), 1), f2(r.be * 100, 2), f2(r.Tm, 3), f2(r.Bm, 3), f2(r.Sa / G, 3), f2(nf(r.Vb), 1), String(r.hist.length)]; });
+    const nconv = ['inf', 'nom', 'sup'].filter(k => !res[k].conv);
+    if (nconv.length) h += `<div class="txt" style="color:${C.red}">La iteración de DM no convergió en 200 ciclos para el límite: ${nconv.join(', ')}. Revise los datos.</div>`;
     h += tableHtml(ctx, 'Propiedades del sistema de aislamiento por límite (iteración hasta convergencia de DM)', ['Límite', kx('\\lambda_{Q}/\\lambda_{k}'), kx('\\Sigma Q_d') + ` [${lblF()}]`, kx('\\Sigma k_d') + ` [${prefK().replace('*', '·')}]`, kx('D_M') + ` [${lblL()}]`, kx('k_M') + ` [${prefK().replace('*', '·')}]`, kx('\\beta_M') + ' [%]', kx('T_M') + ' [s]', kx('B_M'), kx('S_{aM}/g'), kx('V_b=k_M D_M') + ` [${lblF()}]`, 'Iter.'], rows);
     return h;
   },

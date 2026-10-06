@@ -17,8 +17,12 @@ Tl = TlE030(Vs30) // Periodo TL de inicio de desplazamiento constante (Tabla N°
 "Perfil de suelo **S{si(Vs30 >= 800 m/s, 0, si(Vs30 >= 550 m/s, 1, si(Vs30 >= 350 m/s, 2, si(Vs30 >= 200 m/s, 3, 4))))}** según la Tabla N° 3 (S0 ≥ 800 m/s; S1 550–800; S2 350–550; S3 200–350; S4 < 200 m/s).`;
 
 const SISTEMA = `# Categoría, sistema estructural y regularidad
-U = 1.0 // Factor de uso (Art. 19, Tabla N° 7) [1.5 : A2 Esencial|1.3 : B Importante|1.0 : C Común]
+cat = 4 // Categoría de la edificación (Art. 19, Tabla N° 7) [2 : A2 Esencial|3 : B Importante|4 : C Común]
+U = UE030(cat) // Factor de uso (Tabla N° 7)
 sistema = 8 // Sistema estructural en la dirección de análisis (Tabla N° 10) [7 : C°A° pórticos|8 : C°A° dual|9 : C°A° muros estructurales|10 : C°A° muros de ductilidad limitada|11 : Albañilería armada o confinada|1 : Acero SMF|4 : Acero SCBF|6 : Acero EBF]
+check sisE030(cat, zona, sistema) == 1 // Sistema estructural permitido para la categoría y la zona (Art. 21, Tabla N° 9)
+Ts = 0.30 s // Periodo predominante del terreno por razón espectral H/V (Art. 15.3; obligatorio en categorías A y B de la zona 4, Art. 14.2)
+check Ts < 0.65*Tp or cat == 4 or zona < 4 // Categorías A y B en zona 4: Ts < 0.65 TP; si no, se toma el perfil siguiente más desfavorable o un estudio de sitio (Art. 14.8)
 R0 = R0E030(sistema) // Coeficiente básico de reducción (Art. 22, Tabla N° 10)
 Ia = 1.0 // Factor de irregularidad en altura supuesto (Art. 24, Tabla N° 11) — se verifica en la sección de irregularidades
 Ip = 1.0 // Factor de irregularidad en planta supuesto (Art. 24, Tabla N° 12)
@@ -77,11 +81,11 @@ const ESTATICO = [
 CT = CTE030(sistema) // Coeficiente para estimar el periodo (Art. 36.1: 35 pórticos, 45 pórticos con muros en cajas, 60 duales/muros/albañilería)
 T = hn/CT*1 s/m -> s // Periodo fundamental aproximado, hn en metros (Art. 36.1)
 C = CE030(T, Tp, Tl) // Factor de amplificación sísmica; C = 2.5 para T ≤ TP en el análisis estático (Art. 18.3 y 34.1)
-check C/R >= 0.11 // Relación mínima C/R (Art. 34.2)
+CR = max(C/R, 0.11) // Relación C/R con el valor mínimo de 0.11 (Art. 34.2)
 k = kE030(T) // Exponente de distribución en altura (Art. 35.2)
 # Fuerza cortante en la base
-check hn <= 30 m // Aplicabilidad del método estático: estructura regular con hn ≤ 30 m (Art. 33.2)
-V = Z*U*C*S/R*P -> tonf // Fuerza cortante en la base (Art. 34.1)
+check hn <= 30 m // Aplicabilidad del método estático: estructura regular con hn ≤ 30 m (Art. 33.2; la regularidad se verifica más adelante)
+V = Z*U*S*CR*P -> tonf // Fuerza cortante en la base V = Z·U·C·S·P/R con C/R ≥ 0.11 (Art. 34.1 y 34.2)
 V/P // Cortante basal como fracción del peso
 ## Distribución de la fuerza sísmica en altura
 @modo corto
@@ -95,19 +99,24 @@ Mti = Fi*ei -> tonf*m // Momento torsor accidental en el centro de masas de cada
 "Las fuerzas $F_i$ y los momentos $\\pm M_{ti}$ se aplican en el centro de masas de cada nivel, con el mismo signo en todos los niveles (Art. 37 b). Para los elementos verticales se combina 100 % de una dirección con 30 % de la perpendicular, sumando valores absolutos (Art. 33.3); la excentricidad se aplica solo en la dirección perpendicular a la del 100 % (Art. 28.3).`),
   { type: 'storyforces', P: 'P_i', hi: 'h_i', V: 'V', T: 'T', B: 'Ly', titulo: 'Fuerzas sísmicas estáticas, cortantes y momentos de volteo (sismo en X)' },
   calc(`# Desplazamientos laterales y distorsiones
-"Rigidez lateral de cada entrepiso $K_i = V_i/\\Delta_i$ obtenida del modelo (diafragma rígido, secciones brutas, traslación pura). Los desplazamientos inelásticos se obtienen multiplicando por $0.75R$ (regular) o $0.85R$ (irregular) los del análisis lineal con fuerzas reducidas, sin considerar el mínimo $C/R$ (Art. 50).
+"Rigidez lateral de cada entrepiso $K_i = V_i/\\Delta_i$ obtenida del modelo (diafragma rígido, secciones brutas, traslación pura). Los desplazamientos inelásticos se obtienen multiplicando por $0.75R$ (regular) o $0.85R$ (irregular) los del análisis lineal con fuerzas reducidas, **sin** considerar el mínimo $C/R$ (Art. 50.3). La distorsión que se compara con la Tabla N° 14 es la **máxima** del entrepiso, en el extremo del edificio, incluyendo la excentricidad accidental: se obtiene con la relación $\\Delta_{max}/\\Delta_{CM}$ del modelo tridimensional.
 Ki = [72000, 61000, 56000, 50000, 41000] tonf/m // Rigidez lateral de entrepiso en X (del modelo)
 irr = 0 // Condición de regularidad para el factor de desplazamientos [0 : Regular (0.75R)|1 : Irregular (0.85R)]
 fd = fdespE030(irr)*R // Factor de amplificación de desplazamientos (Art. 50.1 y 50.2)
-Delta_e = Vi ./ Ki -> cm // Desplazamiento relativo elástico de entrepiso
-Delta_i = fd*Delta_e // Desplazamiento relativo inelástico
-deriva = Delta_i ./ hei // Distorsión de entrepiso Δi/hei
+De = Vi ./ Ki -> cm // Desplazamiento relativo elástico de entrepiso bajo las fuerzas Fi
+fCR = (C/R)/CR // Corrección por el mínimo C/R, que no se aplica a los desplazamientos (Art. 50.3)
+Delta_e = fCR*De // Desplazamiento relativo elástico para el control de derivas
+Delta_i = fd*Delta_e // Desplazamiento relativo inelástico en el centro de masas
+deriva = Delta_i ./ hei // Distorsión de entrepiso en el centro de masas Δi/hei
+rt = [1.12, 1.14, 1.15, 1.16, 1.18] // Relación Δmax/Δprom ≈ Δextremo/ΔCM por entrepiso (del modelo 3D con excentricidad accidental)
+deriva_max = rt .* deriva // Distorsión máxima de entrepiso en el extremo del edificio
 mat = 1 // Material predominante (Tabla N° 14) [1 : Concreto armado 0.007|2 : Acero 0.010|3 : Albañilería 0.005|4 : Madera 0.010|5 : Muros de ductilidad limitada 0.004]
 dlim = dlimE030(mat) // Distorsión máxima permitida (Art. 51, Tabla N° 14)
-check max(deriva) <= dlim // Distorsión máxima de entrepiso (Art. 51)
-u_i = cumsum(Delta_i) // Desplazamiento lateral inelástico de cada nivel
+check max(deriva_max) <= dlim // Distorsión máxima de entrepiso, en el extremo del edificio (Art. 51)
+u_i = cumsum(Delta_i) // Desplazamiento lateral inelástico de cada nivel (centro de masas)
+umax = max(rt .* u_i) -> cm // Desplazamiento inelástico máximo de la azotea en el extremo (para la junta sísmica, Art. 52)
 ## Verificación del periodo con la fórmula de Rayleigh
-di = cumsum(Delta_e) // Desplazamiento elástico de cada nivel bajo Fi (traslación pura)
+di = cumsum(De) // Desplazamiento elástico de cada nivel bajo Fi (traslación pura)
 g0 = 9.81 m/s^2 // Aceleración de la gravedad
 TR = 2*pi*sqrt(sum(P_i .* di.^2)/(g0*sum(Fi .* di))) -> s // Periodo por Rayleigh (Art. 36.2)
 TR85 = 0.85*TR // Reducción por rigidez de elementos no estructurales no aislados (Art. 36.3)
@@ -115,14 +124,14 @@ CR_ = CE030(TR85, Tp, Tl) // Factor C con el periodo de Rayleigh
 check CR_ <= C // El periodo aproximado hn/CT no subestima la demanda (C de Rayleigh ≤ C adoptado)
 # Fuerzas sísmicas verticales
 Fv = 2/3*Z*U*S // Fracción del peso para la fuerza sísmica vertical (Art. 38.1), en voladizos, elementos de gran luz y pre/postensados (Art. 28.4)`),
-  { type: 'table', columnas: 'Nivel = 1:5\n$h_i$ [m] = h_i\n$P_i$ [tonf] = P_i\n$\\alpha_i$ = alpha_i\n$F_i$ [tonf] = Fi\n$V_i$ [tonf] = Vi\n$K_i$ [tonf/m] = Ki\n$\\Delta_i$ inelástico [cm] = Delta_i\n$\\Delta_i/h_{ei}$ = deriva', dec: '3', titulo: 'Resumen del análisis estático en la dirección X' },
+  { type: 'table', columnas: 'Nivel = 1:5\n$h_i$ [m] = h_i\n$P_i$ [tonf] = P_i\n$\\alpha_i$ = alpha_i\n$F_i$ [tonf] = Fi\n$V_i$ [tonf] = Vi\n$K_i$ [tonf/m] = Ki\n$\\Delta_i$ inelástico CM [cm] = Delta_i\n$\\Delta_i/h_{ei}$ CM = deriva\n$\\Delta_{max}/h_{ei}$ extremo = deriva_max', dec: '4', titulo: 'Resumen del análisis estático en la dirección X' },
   calc(`# Verificación de la regularidad estructural
-Dprom = Delta_e // Desplazamiento relativo promedio de los extremos (del modelo con excentricidad accidental)
-rt = [1.12, 1.14, 1.15, 1.16, 1.18] // Relación Δmax/Δprom por entrepiso (del modelo 3D)
+Dprom = Delta_e // Desplazamiento relativo promedio de los extremos (≈ centro de masas, del modelo con excentricidad accidental)
 Dmax = rt .* Dprom // Desplazamiento relativo máximo en el extremo del edificio`),
-  { type: 'irregE030', K: 'Ki', P: 'P_i', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva', dlim: 'dlim', disc: '0', esq: false, diaf: false, nopar: false, cat: 'U', zona: 'zona' },
+  { type: 'irregE030', K: 'Ki', P: 'P_i', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva_max', dlim: 'dlim', disc: '0', esq: false, diaf: false, nopar: false, cat: 'cat', zona: 'zona' },
   calc(`check Ia <= Ia_ev // El factor Ia supuesto no excede el evaluado (Art. 24.1)
-check Ip <= Ip_ev // El factor Ip supuesto no excede el evaluado (Art. 24.2)`),
+check Ip <= Ip_ev // El factor Ip supuesto no excede el evaluado (Art. 24.2)
+check Ia_ev*Ip_ev == 1 or zona == 1 or ((sistema == 9 or sistema == 10 or sistema == 11) and hn <= 15 m) // Análisis estático permitido: estructura regular, zona 1, o muros portantes de C°A°/albañilería de hasta 15 m (Art. 33.2)`),
   { type: 'spectrum', Z: 'Z', U: 'U', S: 'S', Tp: 'Tp', Tl: 'Tl', R: 'R', T: 'T', titulo: 'Espectro de diseño ZUCS/R (E.030-2026 Art. 18 y 41) y periodo fundamental' },
   text(`> **Notas.** (1) El análisis se repite en la dirección Y con $e_i = 0.05\\,L_x$. (2) Si la estructura resultara irregular, el método estático solo se permite en la zona 1 o para muros portantes de C°A° y albañilería de hasta 15 m (Art. 33.2); en otro caso use el análisis dinámico modal espectral. (3) Para verificaciones por esfuerzos admisibles las fuerzas sísmicas se multiplican por 0.8 (Art. 29).`),
   summary(),
@@ -159,7 +168,6 @@ dlim = dlimE030(1) // Distorsión máxima para concreto armado (Tabla N° 14)`),
   { type: 'modal', masas: 'P_i', rigideces: 'Ki', alturas: 'hei', Sa: 'Sa(T)', comb: 'CQC', beta: '0.05', modos: '', fdesp: 'fd', dlim: 'dlim', Vest: 'Vest', pmin: 'pmin', titulo: 'Formas modales, cortantes de entrepiso combinados (CQC) y derivas inelásticas' },
   calc(`# Fuerza cortante mínima en la base (Art. 44)
 T1 // Periodo fundamental del modelo
-check C/R >= 0.11 // C/R mínimo del análisis estático de referencia (Art. 34.2)
 Vdin // Cortante basal dinámico (CQC)
 Vmin = pmin*Vest // Cortante mínimo en el primer entrepiso (Art. 44.1)
 fesc = max(1, Vmin/Vdin) // Factor de escala de las fuerzas; no se escalan los desplazamientos (Art. 44.2)
@@ -171,9 +179,12 @@ Fi_dis = fesc*Fi_din // Fuerzas de diseño por nivel (escaladas)
 @modo completo
 # Control de desplazamientos laterales (Art. 50 y 51)
 "Los desplazamientos del análisis con fuerzas reducidas se multiplican por $0.75R$ (regular) o $0.85R$ (irregular), sin el escalamiento del Art. 44 ni el mínimo C/R (Art. 50.3).
-max(deriva_din) // Distorsión inelástica máxima (verificada en el bloque modal, Art. 51)
-umax = max(ui_din) // Desplazamiento inelástico máximo en la azotea (para la junta sísmica, Art. 52)`),
-  { type: 'table', columnas: 'Nivel = 1:5\n$h_i$ [m] = h_i\n$F_i$ diseño [tonf] = Fi_dis\n$V_i$ dinámico [tonf] = Vi_din\n$V_i$ diseño [tonf] = Vi_dis\n$u_i$ inelástico [cm] = ui_din\n$\\Delta_i/h_{ei}$ = deriva_din', dec: '3', titulo: 'Resultados del análisis dinámico por nivel' },
+max(deriva_din) // Distorsión inelástica máxima en el centro de masas (modelo plano, bloque modal)
+rt = [1.12, 1.14, 1.15, 1.16, 1.18] // Relación Δextremo/ΔCM por entrepiso del modelo 3D con excentricidad accidental (Art. 45)
+deriva_max = rt .* deriva_din // Distorsión máxima de entrepiso en el extremo del edificio
+check max(deriva_max) <= dlim // Distorsión máxima de entrepiso incluyendo la torsión accidental (Art. 51, Tabla N° 14)
+umax = max(rt .* ui_din) // Desplazamiento inelástico máximo en la azotea, en el extremo (para la junta sísmica, Art. 52)`),
+  { type: 'table', columnas: 'Nivel = 1:5\n$h_i$ [m] = h_i\n$F_i$ diseño [tonf] = Fi_dis\n$V_i$ dinámico [tonf] = Vi_din\n$V_i$ diseño [tonf] = Vi_dis\n$u_i$ inelástico [cm] = ui_din\n$\\Delta_i/h_{ei}$ CM = deriva_din\n$\\Delta_{max}/h_{ei}$ extremo = deriva_max', dec: '4', titulo: 'Resultados del análisis dinámico por nivel' },
   { type: 'spectrum', Z: 'Z', U: 'U', S: 'S', Tp: 'Tp', Tl: 'Tl', R: 'R', T: 'T1', corto: true, titulo: 'Espectro de diseño y periodo fundamental del modelo dinámico' },
   text(`> **Notas.** (1) Para estructuras con diafragma rígido se usa en el modelo 3D una excentricidad accidental de 0.05 veces la dimensión perpendicular, con el signo más desfavorable (Art. 45). (2) La respuesta por sismo simultáneo se obtiene como la raíz cuadrada de la suma de los cuadrados de los efectos de 100 % en una dirección y 30 % en la perpendicular (Art. 43). (3) Los resultados de fuerzas se escalan con $f_{esc}$; los desplazamientos no (Art. 44.2).`),
   summary(),
@@ -188,8 +199,10 @@ const IRREG = [
 **Datos del modelo:** rigideces laterales de entrepiso $K_i = V_i/\\Delta_i$ en el centro de masas (traslación pura), resistencias de entrepiso y desplazamientos relativos en los extremos con excentricidad accidental, obtenidos del modelo tridimensional con secciones brutas (Art. 30).`),
   calc(`# Datos generales
 zona = 4 // Zona sísmica [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
-U = 1.0 // Factor de uso (Tabla N° 7) [1.5 : A2 Esencial|1.3 : B Importante|1.0 : C Común]
+cat = 4 // Categoría de la edificación (Tabla N° 7) [2 : A2 Esencial|3 : B Importante|4 : C Común]
+U = UE030(cat) // Factor de uso (Tabla N° 7)
 sistema = 8 // Sistema estructural (Tabla N° 10) [7 : C°A° pórticos|8 : C°A° dual|9 : C°A° muros estructurales|11 : Albañilería confinada]
+check sisE030(cat, zona, sistema) == 1 // Sistema estructural permitido para la categoría y la zona (Art. 21, Tabla N° 9)
 R0 = R0E030(sistema) // Coeficiente básico de reducción (Tabla N° 10)
 Lx = 24 m // Dimensión total en planta en X
 Ly = 16 m // Dimensión total en planta en Y
@@ -236,8 +249,9 @@ diafrag = (Aab/(Lx*Ly) > 0.50) or (bnet/Ly < 0.50) // Discontinuidad del diafrag
 noparal = 0 // Elementos resistentes no paralelos con ángulo ≥ 30° y ≥ 10 % del cortante [0 : No|1 : Sí]
 ## Torsión
 "Se evalúa con $\\Delta_{max}/\\Delta_{prom}$ calculado incluyendo la excentricidad accidental; solo aplica con diafragma rígido y si la deriva máxima supera el 50 % de la permitida (Tabla N° 12).
-Ia1 = min(Ia_K, Ia_V, Ia_M) // Factor Ia preliminar (para estimar los desplazamientos inelásticos)
+Ia1 = min(Ia_K, Ia_V, Ia_M) // Factor Ia preliminar con el que se corrió el modelo (Ip = 1, conservador para las derivas)
 fd = 0.85*R0*Ia1 // Desplazamientos de estructura irregular: 0.85 R (Art. 50.2)
+"Los desplazamientos elásticos siguientes provienen del análisis con las fuerzas reducidas con $R = R_0 I_{a1}$ (el producto $0.85R\\cdot\\Delta_e$ es independiente de $R$ solo si ambos corresponden al mismo análisis).
 Dprom = [0.40, 0.33, 0.31, 0.28, 0.23, 0.17] cm // Desplazamiento relativo elástico promedio de los extremos
 rt = [1.18, 1.20, 1.22, 1.24, 1.26, 1.27] // Δmax/Δprom por entrepiso (del modelo)
 @modo corto
@@ -245,13 +259,14 @@ Dmax = rt .* Dprom // Desplazamiento relativo elástico máximo en el extremo
 deriva = fd*Dmax ./ hei // Distorsión inelástica máxima de entrepiso
 @modo completo
 dlim = dlimE030(1) // Límite para concreto armado (Tabla N° 14)`),
-  { type: 'irregE030', K: 'Ki', Vr: 'Vr', P: 'P_i', D: 'Dx', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva', dlim: 'dlim', disc: 'discont', esq: 'esquina', diaf: 'diafrag', nopar: 'noparal', cat: 'U', zona: 'zona' },
+  { type: 'irregE030', K: 'Ki', Vr: 'Vr', P: 'P_i', D: 'Dx', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva', dlim: 'dlim', disc: 'discont', esq: 'esquina', diaf: 'diafrag', nopar: 'noparal', cat: 'cat', zona: 'zona', npisos: '[n, hn]' },
   calc(`# Coeficiente de reducción y consecuencias
 Ia = Ia_ev // Factor de irregularidad en altura: menor valor de la Tabla N° 11 (Art. 24.1)
 Ip = Ip_ev // Factor de irregularidad en planta: menor valor de la Tabla N° 12 (Art. 24.2)
 R = R0*Ia*Ip // Coeficiente de reducción de las fuerzas sísmicas (Art. 26)
-check irrext == 0 // Sin irregularidades extremas: requisito de la Tabla N° 13 para categoría C en zonas 4 y 3
 check max(deriva) <= dlim // Distorsión máxima con 0.85 R (Art. 50.2 y 51)
+pmin = si(Ia*Ip < 1, 0.90, 0.80) // Cortante dinámico mínimo respecto del estático (Art. 44.1)
+metodo = si(Ia*Ip == 1 or zona == 1 or ((sistema == 9 or sistema == 11) and hn <= 15 m), 1, 2) // Procedimiento admisible (Art. 33.2): 1 = estático o dinámico; 2 = solo dinámico modal espectral
 "Producto $I_a I_p$ = {Ia*Ip}. Si $I_a I_p < 1$ la estructura es **irregular**: fuera de la zona 1 el análisis estático solo se permite para muros portantes de C°A° o albañilería de hasta 15 m (Art. 33.2); en los demás casos se emplea el análisis dinámico modal espectral con un cortante mínimo del 90 % del estático (Art. 44.1) y desplazamientos calculados con $0.85R$ (Art. 50.2).`),
   text(`> **Recomendación.** La irregularidad de rigidez del primer piso puede corregirse prolongando hasta la cimentación los muros de los pisos superiores o aumentando la rigidez del primer entrepiso, de modo que $K_1 \\ge 0.70\\,K_2$ y $K_1 \\ge 0.80\\,\\bar K_{2,3,4}$. En zonas 4, 3 y 2 no se permiten sistemas de transferencia en los que más del 25 % de las cargas sean soportadas por elementos verticales no continuos hasta la cimentación (Art. 25.2).`),
   summary(),
@@ -330,7 +345,7 @@ PD = (n - 1)*pd + pdz // Carga muerta acumulada en la base de la columna
 ## Reducción de carga viva (E.020 Art. 10)
 kLL = 2 // Factor de carga viva sobre el elemento: columnas y muros (Tabla 3)
 Ai = kLL*(n - 1)*At // Área de influencia: suma de los pisos típicos (Art. 10 c)
-check Ai > 40 m^2 // La reducción solo se aplica si Ai > 40 m² (Art. 10 a)
+"La reducción solo se aplica si $A_i > 40$ m² (Art. 10 a); en caso contrario $L_r = L_o$ (la función lo aplica automáticamente). No se reduce en asambleas, depósitos, tiendas ni sobrecargas ≥ 500 kgf/m², salvo 20 % en columnas de dos o más pisos (Art. 10 f).
 Lr = LrE020(Lo, (n - 1)*At, kLL) -> kgf/m^2 // Lr = Lo(0.25 + 4.6/√Ai) (Art. 10)
 check Lr >= 0.5*Lo // Carga viva reducida no menor que 0.5 Lo (Art. 10 b)
 Lrt = LrE020(Lt, At, kLL) -> kgf/m^2 // Carga viva reducida del techo (Art. 10 g: ≥ 0.50 Lo)
@@ -352,7 +367,7 @@ const VIENTO = [
 
 **Objetivo:** determinar las **cargas de viento** según la NTE E.020 *Cargas* (Art. 12): velocidad de diseño en altura, presiones y succiones exteriores con los factores de forma de la Tabla 4, cargas interiores sobre elementos de cierre (Tabla 5), cargas lineales sobre el pórtico típico, desplazamiento lateral admisible (Art. 24) y, cuando corresponda, la carga de nieve (Art. 11).
 
-**Convención:** presión (+) hacia la superficie, succión (−) saliendo de ella; viento perpendicular a la cumbrera, actuando en las dos direcciones ortogonales (Art. 12.1).`),
+**Convención:** presión (+) hacia la superficie, succión (−) saliendo de ella. El viento actúa en las dos direcciones ortogonales (Art. 12.1): aquí se desarrolla el viento perpendicular a la cumbrera; con viento paralelo a la cumbrera los muros laterales y ambas aguas del techo quedan en succión con $C = -0.7$ (Tabla 4, superficies paralelas al viento) y los hastiales con +0.8 / −0.6.`),
   calc(`# Velocidad de diseño (E.020 Art. 12.3)
 V = 80 km/h // Velocidad básica hasta 10 m de altura según el mapa eólico del Anexo 2 (no menor que 75 km/h)
 B = 20 m // Luz de la nave (dirección del viento)
@@ -405,7 +420,7 @@ Lcob = 30 kgf/m^2 // Carga viva mínima de techos con cobertura liviana (Art. 7.
 Lroof = max(Qt, Lcob) -> kgf/m^2 // Carga viva de techo de diseño (la nieve se considera carga viva y no actúa con viento, Art. 11.1)`),
   { type: 'windgable', B: 'B', H: 'Ha', th: 'theta', p1: 'p_mb', p2: 'p_tb', p3: 'p_ts', p4: 'p_ms', pi: '±0.3 · 0.005·Vh² (Tabla 5)', titulo: 'Presiones exteriores de viento sobre el pórtico típico (caso de succión en el techo)' },
   { type: 'table', columnas: 'Superficie = ["Muro barlovento", "Techo barlovento (presión)", "Techo barlovento (succión)", "Techo sotavento", "Muro sotavento", "Muros laterales"]\nFactor C = [C_mb, C_tb1, C_tb2, C_ts, C_ms, C_ml]\nPresión exterior [kgf/m^2] = [p_mb, p_tb1, p_tb, p_ts, p_ms, p_ml]\nCarga en pórtico [kgf/m] = [p_mb, p_tb1, p_tb, p_ts, p_ms, p_ml]*s_p', dec: '1', titulo: 'Factores de forma (E.020 Tabla 4) y presiones de diseño' },
-  text(`> **Combinaciones.** Para diseño por esfuerzos admisibles: D + W, α(D + L + W) con α ≥ 0.75 (E.020 Art. 19). Para diseño por resistencia de acero (E.090) o concreto (E.060 Art. 9.2: 1.25(CM + CV ± CV) y 0.9 CM ± 1.25 CV) se emplean los factores de la norma de cada material. La estabilidad al volteo y al deslizamiento debe tener factores de seguridad de 1.5 y 1.25 con las cargas muertas (Art. 21 y 22).`),
+  text(`> **Combinaciones.** Para diseño por esfuerzos admisibles: D + W, α(D + L + W) con α ≥ 0.75 (E.020 Art. 19). Para diseño por resistencia se emplean los factores de la norma de cada material: concreto armado E.060 Art. 9.2.2, $U = 1.25(CM + CV \\pm CVi)$ y $U = 0.9\\,CM \\pm 1.25\\,CVi$ ($CVi$ = carga de viento); acero E.090 (LRFD). La estabilidad al volteo y al deslizamiento debe tener factores de seguridad de 1.5 y 1.25 con las cargas muertas (Art. 21 y 22).`),
   summary(),
 ];
 
@@ -471,12 +486,11 @@ h2 = 8.4 m // Altura del edificio vecino existente (3 pisos)
 smin = sJuntaE030(Z, S, h2) -> cm // s = 0.02·Z·S·h ≥ 0.03 m evaluado a la altura del edificio vecino (Art. 52.2)
 "El edificio vecino existente **no** cuenta con junta sísmica reglamentaria; su desplazamiento se desconoce, por lo que se usa el criterio del Art. 52.4: separación igual a $s/2$ del proyecto más $s/2$ que le corresponde a la estructura vecina.
 s_2 = sJuntaE030(Z, S, h2)/2 -> cm // s/2 correspondiente a la estructura vecina (Art. 52.4)
-d1h = d1*h2/h1 // Desplazamiento del proyecto a la altura del vecino (perfil lineal)
-r1 = max(2/3*d1h, smin/2) -> cm // Retiro del proyecto: ≥ 2/3 del desplazamiento y ≥ s/2 (Art. 52.3)
+r1 = max(2/3*d1, smin/2) -> cm // Retiro del proyecto respecto del lindero: ≥ 2/3 del desplazamiento máximo (Art. 52.3) y ≥ s/2 (Art. 52.4)
 s_req = r1 + s_2 -> cm // Separación total requerida respecto del edificio existente (Art. 52.4)
 s = 10 cm // Junta proyectada
 check s >= s_req // Junta sísmica proyectada suficiente (Art. 52)`),
-  { type: 'junta', h1: 'h1', h2: 'h2', d1: 'd1', d2: 'd1*h2/h1', s: 's', titulo: 'Junta sísmica con el edificio colindante (deformadas exageradas)' },
+  { type: 'junta', h1: 'h1', h2: 'h2', d1: 'd1', d2: 'smin/2', s: 's', titulo: 'Junta sísmica con el edificio colindante (deformadas exageradas)' },
   text(`> **Notas.** (1) Para letreros, antenas y torres sobre el edificio la fuerza se determina con las propiedades dinámicas del conjunto y no menos que con $C_1 = 3.0$ (Art. 61). (2) Los equipos soportados por elementos de gran luz o voladizos requieren análisis dinámico con el espectro vertical (Art. 59.2). (3) Los profesionales de cada especialidad son responsables de la resistencia y rigidez sísmica de los elementos no estructurales (Art. 56).`),
   summary(),
 ];
@@ -496,7 +510,8 @@ S = SE030(zona, Vs30) // Factor de suelo (E.030 Tabla N° 4)
 Tp = TpE030(Vs30) // Periodo TP (E.030 Tabla N° 5)
 Tl = TlE030(Vs30) // Periodo TL (E.030 Tabla N° 5)
 Ts = 0.22 s // Periodo predominante del terreno por razón espectral H/V (E.031 Art. 14.2)
-check Ts < 0.30 s // Ts compatible con el perfil S1 (E.031 Tabla N° 4)
+check Ts < 0.30 s // Ts compatible con el perfil S1 (E.031 Art. 14.2, Tabla N° 4)
+check Ts < 0.65*Tp // Categoría A en zona 4: Ts < 0.65 TP de la Tabla N° 5 (E.030-2026 Art. 14.8)
 U = 1.0 // Para estructuras aisladas U = 1 en todos los casos (E.031 Art. 14.4)
 SaM(T) = SaME031(T, Z, S, Tp, Tl) // SaM = 1.5·Z·U·C·S (en g), C de la E.030 Tabla N° 6 (E.031 ec. 5)
 # Estructura sobre la interfaz de aislamiento
@@ -535,7 +550,9 @@ check hn <= 20 m // Altura no mayor que 20 m sobre el nivel de base (17.3)
 check max(beta_M_inf, beta_M_sup) <= 0.30 // Amortiguamiento efectivo βM ≤ 30 % (17.4)
 check T_M_sup > 3*Tf // TM mayor que tres veces el periodo de base fija (17.5)
 k20 = Qd_sup/(0.2*D_M_sup) + kd_sup // Rigidez efectiva al 20 % del desplazamiento máximo
-check kM_sup >= k20/3 // Rigidez efectiva en DM mayor que 1/3 de la rigidez al 20 % de DM (17.7 a)
+check kM_sup >= k20/3 // Rigidez efectiva en DM mayor que 1/3 de la rigidez al 20 % de DM, límite superior (17.7 a)
+k20i = Qd_inf/(0.2*D_M_inf) + kd_inf // Rigidez efectiva al 20 % de DM, límite inferior
+check kM_inf >= k20i/3 // Criterio 17.7 a con las propiedades del límite inferior (Art. 17, ambos límites)
 # Desplazamiento total (E.031 Art. 20.3)
 D_M = max(D_M_inf, D_M_sup) // Desplazamiento traslacional de diseño (límite inferior)
 y = d_p/2 // Distancia del centro de rigidez al aislador de esquina, perpendicular al sismo
@@ -545,20 +562,22 @@ D_TM = DTME031(D_M, y, e, b_p, d_p, P_T) // DTM = DM[1 + (y/PT²)·12e/(b² + d�
 Dcap = 55 cm // Desplazamiento de capacidad del aislador (ensayos de prototipos, Art. 39)
 check D_TM <= Dcap // Capacidad de desplazamiento del aislador ≥ DTM (Art. 17.7 c y 20.3)
 # Fuerzas laterales mínimas (E.031 Art. 21)
-Vb = max(Vb_inf, Vb_sup) // Fuerza en el sistema de aislamiento y la subestructura Vb = kM·DM (ec. 10)
-beta_s = beta_M_sup // Amortiguamiento del límite superior (gobierna las fuerzas)
-Vst = VstE031(Vb, Ps, P, beta_s) // Cortante no reducido sobre el nivel de base Vst = Vb(Ps/P)^(1−2.5βM) (ec. 12)
+Vb = max(Vb_inf, Vb_sup) // Fuerza en el sistema de aislamiento y la subestructura Vb = kM·DM (ec. 10), mayor de ambos límites (Art. 19.3)
+Vst_inf = VstE031(Vb_inf, Ps, P, beta_M_inf) // Cortante no reducido con el límite inferior (ec. 12)
+Vst_sup = VstE031(Vb_sup, Ps, P, beta_M_sup) // Cortante no reducido con el límite superior (ec. 12)
+Vst = max(Vst_inf, Vst_sup) // Cortante no reducido de diseño sobre el nivel de base (Art. 19.3: el más desfavorable)
+beta_s = si(Vst_sup >= Vst_inf, beta_M_sup, beta_M_inf) // Amortiguamiento del límite que gobierna Vst
 Ra = RaE031(R0) // Ra = 3/8·R0 con 1 ≤ Ra ≤ 2 (Art. 21.2)
 Vs1 = Vst/Ra // Cortante de diseño sobre la interfaz (ec. 11)
 ## Límites de Vs (Art. 21.3)
 Ca = CE030(T_M_sup, Tp, Tl) // Factor C de base fija con TM del límite superior
 Va = VE030(Z, 1, Ca, S, R0, Ps) // (a) Cortante E.030 de base fija con Ps, TM y U = 1 (C/R ≥ 0.11)
-Fact = max(N*(1.5*Qd + kd_sup/N*Dy), 1.5*N*(Qd + kd*Dy)) -> tonf // Fuerza para activar el sistema: límite superior o 1.5 × nominal
+Fact = max(Qd_sup + kd_sup*Dy, 1.5*N*(Qd + kd*Dy)) -> tonf // Fuerza de activación (fluencia) del sistema: límite superior o 1.5 × propiedades nominales (Art. 21.3 c)
 Vc = VstE031(Fact, Ps, P, beta_s) // (c) Vst con Vb igual a la fuerza de activación
 Vs = max(Vs1, Va, Vc) // Cortante de diseño de la superestructura
 # Distribución vertical de la fuerza (E.031 Art. 22)
 F1 = (Vb - Vst)/Ra // Fuerza en el nivel de base (ec. 13)
-kv = kE031(beta_s, Tf) // Exponente k = 14·βM·Tf (ec. 15)
+kv = kE031(max(beta_M_inf, beta_M_sup), Tf) // Exponente k = 14·βM·Tf (ec. 15), con el mayor βM (distribución más cargada hacia arriba)
 @modo corto
 Fi = P_i .* h_i.^kv/sum(P_i .* h_i.^kv)*Vs // Fuerzas en los niveles sobre la interfaz (ec. 14)
 Vi = Vs - cumsum(Fi) + Fi // Cortante de entrepiso

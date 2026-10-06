@@ -303,10 +303,10 @@ V_L = 1.0 tonf // Cortante por carga viva
 fc = 210 kgf/cm^2 // Resistencia del concreto del pedestal (E.060) [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2]
 Fyp = 2530 kgf/cm^2 // Fluencia de la placa, ASTM A36
 ## Placa y pedestal
-Np = 35 cm // Longitud de la placa (paralela al peralte d)
+Np = 45 cm // Longitud de la placa (paralela al peralte d)
 Bp = 35 cm // Ancho de la placa (paralelo a bf)
-tp = 25.4 mm // Espesor de la placa [19.05 mm : 3/4"|22.23 mm : 7/8"|25.4 mm : 1"|31.75 mm : 1 1/4"|38.1 mm : 1 1/2"]
-Np2 = 50 cm // Pedestal: dimensión paralela a N
+tp = 31.75 mm // Espesor de la placa [19.05 mm : 3/4"|22.23 mm : 7/8"|25.4 mm : 1"|31.75 mm : 1 1/4"|38.1 mm : 1 1/2"]
+Np2 = 60 cm // Pedestal: dimensión paralela a N
 Bp2 = 50 cm // Pedestal: dimensión paralela a B
 na = 4 // Número de pernos de anclaje [4|6|8]
 da = 19.05 mm // Diámetro de los pernos de anclaje [19.05 mm : 3/4"|22.23 mm : 7/8"|25.4 mm : 1"]
@@ -324,6 +324,7 @@ rA = min(sqrt(A2/A1), 2) // Factor de confinamiento √(A2/A1) ≤ 2 (J8-2)
 fpmax = phic*0.85*fc*rA // Esfuerzo de aplastamiento de diseño (J8-2)
 phiPp = fpmax*A1 -> tonf // Resistencia de diseño al aplastamiento
 check Pu <= phiPp // Aplastamiento del concreto bajo la placa
+check Np/2 - ed >= d/2 + 4 cm // Pernos fuera de las alas con holgura para tuerca y arandela
 # Espesor de la placa (DG1 §3.1.2, método de Thornton)
 Xt = 4*d*bf/(d + bf)^2*Pu/phiPp // Parámetro X (DG1 §3.1.2)
 lam = min(2*sqrt(Xt)/(1 + sqrt(1 - Xt)), 1) // Factor λ (DG1 §3.1.2)
@@ -537,6 +538,11 @@ check lambdaf_d <= 0.45*sqrt(E/Fya) // Ala del ángulo no esbelta (Tabla B4.1a c
 Ieq = 2*A_c*(ht/2)^2 -> cm^4 // Inercia equivalente de las cuerdas
 dv = 1.15*5*(wD + wLr)*st*Lt^4/(384*E*Ieq) -> cm // Incremento de 15 % por deformación de las barras del alma
 check dv <= Lt/240 // Flecha admisible L/240`),
+      { type: 'armadura', L: 'Lt', h: 'ht', np: 'np', w: 'wu', tipo: 'pratt', titulo: 'Fuerzas axiales en la vigueta bajo 1.2D + 1.6Lr — método de los nudos [t]' },
+      calc(`## Comprobación: método de las secciones frente al método de los nudos
+check abs(Ncs - Fcs) <= 0.001*Fcs // Cuerda superior: ambos métodos coinciden
+check abs(Ndt - Fd) <= 0.001*Fd // Diagonal extrema: ambos métodos coinciden
+check abs(Nv - Fv0) <= 0.001*Fv0 // Montante extremo: ambos métodos coinciden`),
       { type: 'plot', expr: 'Mt(x m)/ht/(1 tonf); -Mt(x m)/ht/(1 tonf)', var: 'x', desde: '0', hasta: 'Lt/(1 m)', puntos: '100', xlabel: 'x [m]', ylabel: 'Fuerza en cuerdas [t]', nombres: 'Cuerda inferior (tracción, +); Cuerda superior (compresión, −)', leyenda: true, titulo: 'Fuerza axial en las cuerdas F = M(x)/h bajo 1.2D + 1.6Lr' },
       { type: 'table', titulo: 'Resumen de barras críticas (fuerza última y resistencia de diseño)', columnas: 'Barra = ["Cuerda superior", "Cuerda inferior", "Cuerda inferior (levante)", "Diagonal extrema", "Diagonal (levante)", "Montante extremo"]\nPu [tonf] = [Fcs, Fci, Fciu, Fd, Fdu, Fv0]\nφPn [tonf] = [phiPcs, phiPti, phiPci, min(phiPdy, phiPdr), phiPdc, phiPv]\nD/C = [Fcs/phiPcs, Fci/phiPti, Fciu/phiPci, Fd/min(phiPdy, phiPdr), Fdu/phiPdc, Fv0/phiPv]', dec: '2' },
       summary(),
@@ -669,7 +675,7 @@ Vw = (q1 + q2)*hc/2 -> tonf // Cortante de viento por pórtico (servicio)
 check Vsis <= 1.3*Vw // Resistencia lateral: el cortante sísmico no excede el de viento factorizado (gobierna el viento)
 Dsis = 0.75*Rs*Vsis/Kl -> cm // Desplazamiento inelástico 0.75·R·Δelástico (E.030 Art. 31, regular)
 check Dsis/hc <= 0.010 // Distorsión máxima de entrepiso para acero (E.030 Tabla N.º 11)`),
-      { type: 'plot', expr: '((1.2*wD + 1.6*wLr)*(x m)*(Lf - x m)/2 - Mr2)/(1 tonf*m); ((1.2*wD + 1.6*wLr - 0.8*wr1)*(x m)*(Lf - x m)/2 - Mr3)/(1 tonf*m)', var: 'x', desde: '0', hasta: 'Lf/(1 m)', puntos: '100', xlabel: 'x [m]', ylabel: 'M [t·m]', nombres: '1.2D + 1.6Lr; 1.2D + 1.6Lr + 0.8W (esquina crítica)', leyenda: true, titulo: 'Momento flector en la viga del pórtico (positivo: tracción en el ala inferior)' },
+      { type: 'plot', expr: '((1.2*wD + 1.6*wLr)*(x m)*(Lf - x m)/2 - Mr2)/(1 tonf*m); ((1.2*wD + 1.6*wLr - 0.8*wr1)*(x m)*(Lf - x m)/2 - Mr3)/(1 tonf*m)', var: 'x', desde: '0', hasta: 'Lf/(1 m)', puntos: '100', xlabel: 'x [m]', ylabel: 'M [t·m]', nombres: '1.2D + 1.6Lr; 1.2D + 1.6Lr + 0.8W (momento de esquina crítico en ambos extremos, envolvente)', leyenda: true, titulo: 'Momento flector en la viga del pórtico (positivo: tracción en el ala inferior)' },
       summary(),
     ],
   },

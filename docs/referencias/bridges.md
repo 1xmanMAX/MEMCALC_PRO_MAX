@@ -21,12 +21,14 @@ Archivos: `src/norms/bridges.js` (funciones), `src/blocks/bridges.js` (bloques `
 
 | Función | Expresión | Artículo |
 |---|---|---|
-| `gMi1LRFD(S,L,ts,Kg)` | 0.06 + (S/4300)^0.4 (S/L)^0.3 (Kg/Lts³)^0.1 (mm) | Tabla 4.6.2.2.2b-1 (tipos a, e, k) |
-| `gMi2LRFD(S,L,ts,Kg)` | 0.075 + (S/2900)^0.6 (S/L)^0.2 (Kg/Lts³)^0.1 | idem |
-| `gVi1LRFD(S)`, `gVi2LRFD(S)` | 0.36 + S/7600; 0.2 + S/3600 − (S/10700)² | Tabla 4.6.2.2.3a-1 |
-| `eMLRFD(de)`, `eVLRFD(de)` | 0.77 + de/2800; 0.6 + de/3000 | Tablas 4.6.2.2.2d-1 y 4.6.2.2.3b-1 |
-| `leverLRFD(S,de[,dw])` | regla de la palanca, ruedas a 1.80 m, la primera a dw = 0.60 m de la barrera (sin m) | C4.6.2.2.1 |
-| `skewMLRFD`, `skewVLRFD` | 1 − c1 tan^1.5θ; 1 + 0.2 (Lts³/Kg)^0.3 tanθ | Tablas 4.6.2.2.2e-1 y 4.6.2.2.3c-1 |
+| `gMi1LRFD(S,L,ts,Kg)` | 0.06 + (S/14)^0.4 (S/L)^0.3 (Kg/12Lts³)^0.1 (S, L ft; ts in; Kg in⁴) | Tabla 4.6.2.2.2b-1 (tipos a, e, k) |
+| `gMi2LRFD(S,L,ts,Kg)` | 0.075 + (S/9.5)^0.6 (S/L)^0.2 (Kg/12Lts³)^0.1 | idem |
+| `gVi1LRFD(S)`, `gVi2LRFD(S)` | 0.36 + S/25; 0.2 + S/12 − (S/35)² | Tabla 4.6.2.2.3a-1 |
+| `eMLRFD(de)`, `eVLRFD(de)` | 0.77 + de/9.1; 0.6 + de/10 | Tablas 4.6.2.2.2d-1 y 4.6.2.2.3b-1 |
+| `leverLRFD(S,de[,dw])` | regla de la palanca, ruedas a 6 ft (1.83 m), la primera a dw = 2 ft (0.61 m) de la barrera (sin m) | C4.6.2.2.1 |
+| `skewMLRFD`, `skewVLRFD` | 1 − c1 tan^1.5θ, c1 = 0.25(Kg/12Lts³)^0.25(S/L)^0.5; 1 + 0.2 (12Lts³/Kg)^0.3 tanθ | Tablas 4.6.2.2.2e-1 y 4.6.2.2.3c-1 |
+
+> Las fórmulas de distribución se implementan en la forma de la 9.ª/10.ª ed. (unidades de EE. UU., que es la única edición vigente; desde 2014 no existe versión SI) con conversión exacta de unidades. El Manual MTC 2018 reproduce la versión SI de ediciones anteriores (S/4300, S/2900, S/3600, de/2800…), cuyos resultados difieren en menos de 1.5 %. Con la forma SI el cortante 2+ carriles del ejemplo FHWA daría 0.987 en lugar de 0.973.
 | `mpLRFD(n)`, `NLLRFD(w)` | 1.20 / 1.00 / 0.85 / 0.65; INT(w/3600) | Tabla 3.6.1.1.2-1; 3.6.1.1.1 |
 | `EposLRFD`, `EnegLRFD`, `EvolLRFD` | 660 + 0.55S; 1220 + 0.25S; 1140 + 0.833X | Tabla 4.6.2.1.3-1 |
 | `E1slabLRFD`, `EmslabLRFD` | 250 + 0.42√(L1W1); 2100 + 0.12√(L1W1) ≤ W/NL | 4.6.2.3-1/-2 |

@@ -444,7 +444,7 @@ export function slopeCircle(m, xc, yc, R, n = 30) {
   // Bishop simplificado (iterativo)
   let FS = Math.max(0.3, FSf), it = 0;
   for (; it < 100; it++) {
-    const num = sl.reduce((s, q) => { const ma = Math.max(0.2, q.ca + q.sa * q.tf / FS); const bl = q.L * q.ca; return s + (q.c * bl + Math.max(0, q.W - q.u * bl) * q.tf) / ma; }, 0); // b = l·cosα (longitud exacta del arco)
+    const num = sl.reduce((s, q) => { const ma0 = q.ca + q.sa * q.tf / FS, ma = q.sa < 0 ? Math.max(0.2, ma0) : Math.max(1e-3, ma0); /* mα ≥ 0.2 en el pie (Whitman y Bailey 1967) */ const bl = q.L * q.ca; return s + (q.c * bl + Math.max(0, q.W - q.u * bl) * q.tf) / ma; }, 0); // b = l·cosα (longitud exacta del arco)
     const nF = num / drive; if (Math.abs(nF - FS) < 1e-6) { FS = nF; break; } FS = nF;
   }
   sl.forEach(q => { q.ma = q.ca + q.sa * q.tf / FS; });
@@ -494,7 +494,7 @@ registerBlock('slope', {
       const gm = toks(String(b.malla || '').trim()).map(s => evalParam(s, S, ''));
       const [x1, x2, y1, y2] = gm.length >= 4 ? gm : [pts[0][0], pts[pts.length - 1][0], ymaxS, ymaxS + 2 * H];
       const ng = Math.max(3, Math.min(30, Math.round(gm[4] || 10)));
-      const nq = Math.min(n, 30);
+      const nq = Math.min(n, 40);
       // mejor radio para un centro dado: barrido grueso + refinamiento
       const bestR = (xc, yc) => {
         const rmin = yc - (ymaxS - 0.1), rmax = yc - ybase; if (rmax <= 0.5) return null;
@@ -567,7 +567,7 @@ registerBlock('slope', {
     out += `<div class="kv">${K('FS_{req} = ' + f2(FSreq))} ${K('k_h = ' + f2(kh, 3))} ${K('\\Sigma M_{mot}/R = ' + f2(crit.drive) + '\\,\\mathrm{' + uW.replace('/', '/') + '}')}</div>`;
     if (b.tabla) {
       out += `<table class="tbl"><thead><tr><th>#</th><th>x [m]</th><th>b [m]</th><th>h [m]</th><th>W [${uW}]</th><th>α [°]</th><th>c [${uStr}]</th><th>φ [°]</th><th>u [${uStr}]</th><th>W sinα</th><th>m<sub>α</sub></th><th>[c b + (W−u b)tanφ]/m<sub>α</sub></th></tr></thead><tbody>` +
-        crit.sl.map((q, i) => `<tr><td>${i + 1}</td><td>${f2(q.x)}</td><td>${f2(q.b)}</td><td>${f2(q.h)}</td><td>${f2(q.W)}</td><td>${f2(Math.asin(q.sa) * 180 / Math.PI, 1)}</td><td>${f2(q.c)}</td><td>${f2(q.lay.phi * 180 / Math.PI, 1)}</td><td>${f2(q.u)}</td><td>${f2(q.W * q.sa)}</td><td>${f2(q.ma, 3)}</td><td>${f2((q.c * q.L * q.ca + Math.max(0, q.W - q.u * q.L * q.ca) * q.tf) / Math.max(0.2, q.ma))}</td></tr>`).join('') + '</tbody></table>';
+        crit.sl.map((q, i) => `<tr><td>${i + 1}</td><td>${f2(q.x)}</td><td>${f2(q.b)}</td><td>${f2(q.h)}</td><td>${f2(q.W)}</td><td>${f2(Math.asin(q.sa) * 180 / Math.PI, 1)}</td><td>${f2(q.c)}</td><td>${f2(q.lay.phi * 180 / Math.PI, 1)}</td><td>${f2(q.u)}</td><td>${f2(q.W * q.sa)}</td><td>${f2(q.ma, 3)}</td><td>${f2((q.c * q.L * q.ca + Math.max(0, q.W - q.u * q.L * q.ca) * q.tf) / (q.sa < 0 ? Math.max(0.2, q.ma) : q.ma))}</td></tr>`).join('') + '</tbody></table>';
     }
     return `<div class="figure">${out}${caption(ctx, b.titulo || `Análisis de estabilidad del talud — círculo crítico (${useF ? 'Fellenius' : 'Bishop simplificado'})`)}</div>`;
   },
@@ -613,7 +613,7 @@ registerBlock('pilegroup', {
     const Xe = (x) => ex + 30 + x * sc2, Ye = (z) => gy + z * sc2;
     g += T(ex + Wl / 2, 22, 'ELEVACIÓN', { b: 1 });
     g += `<rect x="${ex}" y="${gy}" width="${Wl}" height="${zTot * sc2}" fill="url(#soilp)" opacity=".55"/>` + Lne(ex, gy, ex + Wl, gy, C.soil, 2);
-    if (b.estratos) { let z = 0; lines(b.estratos).forEach(l => { const t = l.split(/\s+/); z += evalParam(t[0], S, 'm'); if (z < zTot) g += Lne(ex, Ye(z), ex + Wl, Ye(z), '#8a7440', 0.8, '6 3'); g += lab(ex + 4, Math.min(Ye(z), Ye(zTot)) - 4, t.slice(1).join(' '), { fs: 8.5, a: 'start', c: '#5d4e2c' }); }); }
+    if (b.estratos) { let z = 0; lines(b.estratos).forEach(l => { const t = l.split(/\s+/); const z0 = z; z += evalParam(t[0], S, 'm'); if (z < zTot) g += Lne(ex, Ye(z), ex + Wl, Ye(z), '#8a7440', 0.8, '6 3'); if (z0 < zTot) g += lab(ex + Wl - 4, Ye(z0) + 14, t.slice(1).join(' '), { fs: 8.5, a: 'end', c: '#5d4e2c' }); }); }
     for (let i = 0; i < n1; i++) { const x = e + i * s; g += `<rect x="${Xe(x - D / 2)}" y="${Ye(Df)}" width="${D * sc2}" height="${Lp * sc2}" fill="#b8c0c8" stroke="${C.ink}" stroke-width=".8"/>`; }
     g += `<rect x="${Xe(0)}" y="${Ye(Df - hc)}" width="${Lc * sc2}" height="${hc * sc2}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.4"/>`;
     g += `<rect x="${Xe((Lc - c1) / 2)}" y="${gy - 22}" width="${c1 * sc2}" height="${(Df - hc) * sc2 + 22}" fill="#7d8894" stroke="${C.ink}"/>`;

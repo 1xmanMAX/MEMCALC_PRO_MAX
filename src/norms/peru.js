@@ -34,9 +34,28 @@ const R0_TAB = {                                                               /
   7: 8, 8: 7, 9: 6, 10: 3.5,                   // C°A° pórticos, dual, muros, EMDL
   11: 3, 12: 7, 13: 2.5,                       // albañilería, madera (esf. admisibles), péndulo invertido (22.3)
 };
-const CT_TAB = { 1: 35, 2: 45, 3: 45, 4: 45, 5: 45, 6: 45, 7: 35, 8: 60, 9: 60, 10: 60, 11: 60, 12: 35, 13: 35 }; // Art. 36.1 (orientativo)
+// Art. 36.1: CT = 35 pórticos de C°A° sin muros y pórticos de acero resistentes a momentos sin arriostrar
+// (SMF, IMF y OMF); 45 pórticos de acero arriostrados; 60 duales, muros, EMDL y albañilería.
+// Madera (12) y péndulo invertido (13) no figuran en el Art. 36.1: se adopta 35 (periodo mayor, criterio del proyectista).
+const CT_TAB = { 1: 35, 2: 35, 3: 35, 4: 45, 5: 45, 6: 45, 7: 35, 8: 60, 9: 60, 10: 60, 11: 60, 12: 35, 13: 35 };
 const DLIM_TAB = { 1: 0.007, 2: 0.010, 3: 0.005, 4: 0.010, 5: 0.004 };       // Tabla N° 14 (E.030-2026)
 const C1_TAB = { 1: 3.0, 2: 2.0, 3: 3.0, 4: 1.5 };                            // Tabla N° 15
+
+// ---------- Tabla N° 9: sistemas estructurales permitidos según categoría y zona ----------
+// cat: 1 = A1 con aislamiento, 11 = A1 sin aislamiento, 2 = A2, 3 = B, 4 = C (mismos códigos que UE030)
+// sis: códigos de R0E030. Devuelve 1 si el sistema está permitido, 0 si no.
+const SIS_ESENCIAL = [4, 6, 8, 9, 11];                  // SCBF, EBF, dual, muros de C°A°, albañilería
+const SIS_B = [1, 2, 4, 5, 6, 7, 8, 9, 11, 12];         // SMF, IMF, SCBF, OCBF, EBF, pórticos, dual, muros, albañilería, madera
+export function sisPerm(cat, zona, sis) {
+  const c = Math.round(cat), z = Math.round(zona), s = Math.round(sis);
+  if (![1, 11, 2, 3, 4].includes(c)) throw new Error('Categoría: código ' + cat + ' no válido (1 A1 aislada, 11 A1 sin aislamiento, 2 A2, 3 B, 4 C)');
+  if (!(z >= 1 && z <= 4)) throw new Error('Zona sísmica debe ser 1, 2, 3 o 4');
+  if (c === 1) return 1;                                  // A1 con aislamiento: cualquier sistema
+  if (c === 11) return z <= 2 && SIS_ESENCIAL.includes(s) ? 1 : 0; // A1 en zonas 4 y 3 requiere aislamiento
+  if (c === 2) return z === 1 || SIS_ESENCIAL.includes(s) ? 1 : 0;
+  if (c === 3) return z === 1 || SIS_B.includes(s) ? 1 : 0;
+  return 1;
+}
 
 export function kE030(T) { T = n0(T, 's'); return T <= 0.5 ? 1.0 : Math.min(0.75 + 0.5 * T, 2.0); }
 export function CdynE030(T, Tp, Tl) { // Tabla N° 6 (con rama de periodos cortos)
@@ -105,7 +124,8 @@ defineFns({
   ZE030: { fn: (zona) => pick(zona, Z_TAB, 'Zona sísmica'), tex: 'Z', desc: 'Factor de zona Z (E.030 Tabla N° 1): zona 1–4', args: 'zona' },
   UE030: { fn: (cat) => pick(cat, U_TAB, 'Categoría'), tex: 'U', desc: 'Factor de uso U (Tabla N° 7). Códigos: 1 = A1 aislada (U=1), 11 = A1 sin aislamiento en zonas 1–2 (1.5), 2 = A2 (1.5), 3 = B (1.3), 4 = C (1.0)', args: 'cat' },
   R0E030: { fn: (s) => pick(s, R0_TAB, 'Sistema estructural'), tex: 'R_0', desc: 'Coef. básico R0 (Tabla N° 10, E.030-2026). Sistema: 1 SMF, 2 IMF, 3 OMF, 4 SCBF, 5 OCBF, 6 EBF, 7 C°A° pórticos, 8 dual, 9 muros, 10 EMDL, 11 albañilería, 12 madera, 13 péndulo invertido', args: 'sistema' },
-  CTE030: { fn: (s) => pick(s, CT_TAB, 'Sistema estructural'), tex: 'C_T', desc: 'Coeficiente CT del periodo T = hn/CT (Art. 36.1) según el código de sistema de R0E030 (7 → 35; acero arriostrado → 45; dual, muros, EMDL, albañilería → 60)', args: 'sistema' },
+  CTE030: { fn: (s) => pick(s, CT_TAB, 'Sistema estructural'), tex: 'C_T', desc: 'Coeficiente CT del periodo T = hn/CT (Art. 36.1) según el código de sistema de R0E030 (C°A° pórticos y acero SMF/IMF/OMF → 35; acero arriostrado → 45; dual, muros, EMDL, albañilería → 60)', args: 'sistema' },
+  sisE030: { fn: (cat, zona, sis) => sisPerm(n0(cat), n0(zona), n0(sis)), tex: '\\mathrm{Tabla\\,9}', desc: 'Sistema estructural permitido según categoría y zona (Tabla N° 9, Art. 21): 1 permitido, 0 no permitido. cat: 1 A1 aislada, 11 A1 sin aislamiento, 2 A2, 3 B, 4 C; sis: códigos de R0E030', args: 'cat, zona, sistema' },
   dlimE030: { fn: (mat) => pick(mat, DLIM_TAB, 'Material'), tex: '\\left(\\Delta/h\\right)_{lim}', desc: 'Distorsión máxima (Tabla N° 14, E.030-2026): 1 C°A° 0.007, 2 acero 0.010, 3 albañilería 0.005, 4 madera 0.010, 5 EMDL 0.004', args: 'material' },
   kE030: { fn: kE030, tex: 'k', desc: 'Exponente de distribución en altura (Art. 35.2): 1.0 si T ≤ 0.5 s; 0.75 + 0.5T ≤ 2.0', args: 'T' },
   SaE030: { fn: (T, Z, U, S, Tp, Tl, R) => n0(Z) * n0(U) * CdynE030(n0(T, 's'), n0(Tp, 's'), n0(Tl, 's')) * n0(S) / n0(R), tex: 'S_a/g', desc: 'Espectro inelástico ZUCS/R en g (Art. 41.1), con C de la Tabla N° 6 (incluye T < 0.2 TP)', args: 'T, Z, U, S, Tp, Tl, R' },
@@ -148,7 +168,7 @@ defineFns({
     tex: 'Q_t', desc: 'Carga de nieve en techos Qt = Qs (θ ≤ 15°), 0.8 Qs (15°–30°), Cs·0.8 Qs con Cs = 1 − 0.025(θ − 30°) (E.020 Art. 11.3)', args: 'Qs, θ',
   },
   pAligE020: {
-    fn: (hl) => mkUnit(interp1(n0(hl, 'm'), [0.17, 0.20, 0.25, 0.30], [280, 300, 350, 420]), 'kgf/m^2'),
+    fn: (hl) => { const h = n0(hl, 'm'); if (!(h >= 0.17 - 1e-9 && h <= 0.30 + 1e-9)) throw new Error('Aligerado: el Anexo 1 de la E.020 solo tabula h = 0.17–0.30 m (h = ' + h.toFixed(3) + ' m); use el peso real'); return mkUnit(interp1(h, [0.17, 0.20, 0.25, 0.30], [280, 300, 350, 420]), 'kgf/m^2'); },
     tex: 'w_{alig}', desc: 'Peso propio de losa aligerada en una dirección (viguetas 0.10 m @ 0.40 m, losa superior 0.05 m) — E.020 Anexo 1: 0.17 → 280, 0.20 → 300, 0.25 → 350, 0.30 → 420 kgf/m²', args: 'h',
   },
   CVtechoE020: {

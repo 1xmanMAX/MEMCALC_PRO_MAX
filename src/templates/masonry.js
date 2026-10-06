@@ -30,13 +30,15 @@ Y4 Y 10 7.8 7.2 0.23 Pg=50 Pm=58
 Y5 Y 4.4 1 4.0 0.13 Pg=30 Pm=35
 Y6 Y 5.6 10 3.5 0.13 Pg=26 Pm=30`;
 
-const dirCalc = (D) => `## Esfuerzo axial máximo en los muros — dirección ${D} (Art. 19.1.b)
-sigma${D} = Pm${D} ./ (L${D} .* t${D}) // Esfuerzo axial σm = Pm/(L·t) con 100 % de sobrecarga
+const dirAxial = (D) => `## Cargas axiales y esfuerzo axial máximo — dirección ${D} (Art. 19.1.b)
+"Cargas de gravedad acumuladas en el primer piso por área tributaria (Pg con 25 % de sobrecarga para la resistencia al corte, Pm con 100 % para el esfuerzo axial); se ingresan en la planta de muros.
+sigma${D} = Pm${D} ./ (L${D} .* t${D}) // Esfuerzo axial σm = Pm/(L·t)
 Fa${D} = FaE070(fm, hl, t${D}) // Fa = 0.2 f'm [1 − (h/35t)²] ≤ 0.15 f'm (Art. 19.1.b)
 ra${D} = max(sigma${D} ./ Fa${D}) // Relación máxima σm/Fa
-check ra${D} <= 1 // Esfuerzo axial máximo, dirección ${D} (Art. 19.1.b)
-## Fuerzas del sismo moderado en los muros — dirección ${D}
-Ve${D} = r${D}*Ve1 // Cortante por muro: Ve = (k/Σk + torsión)·V (Art. 24.5 y E.030 Art. 29.5)
+check ra${D} <= 1 // Esfuerzo axial máximo, dirección ${D} (Art. 19.1.b)`;
+
+const dirSeis = (D) => `## Fuerzas del sismo moderado y resistencia al corte — dirección ${D}
+Ve${D} = r${D}*Ve1 // Cortante por muro: Ve = (k/Σk + torsión)·V (Art. 24.5 y E.030 Art. 28.5)
 Me${D} = Ve${D}*hM // Momento flector del muro (voladizo): Me = Ve·(M1/V1)
 alpha${D} = alphaE070(Ve${D}, L${D}, Me${D}) // α = Ve·L/Me, 1/3 ≤ α ≤ 1 (Art. 26.3)
 Vm${D} = VmE070(vm, alpha${D}, t${D}, L${D}, Pg${D}, matE070(uni)) // Vm = 0.5 v'm α t L + 0.23 Pg (Art. 26.3)
@@ -48,9 +50,13 @@ f${D} = factE070(Vm${D}, Ve${D}) // Factor de amplificación 2 ≤ Vm1/Ve1 ≤ 3
 Vu${D} = f${D} .* Ve${D} // Cortante último ante sismo severo Vu = Ve·(Vm1/Ve1) (Art. 27)
 Mu${D} = f${D} .* Me${D} // Momento último Mu = Me·(Vm1/Ve1) (Art. 27)`;
 
-const dirTable = (D) => ({
-  type: 'table', dec: '2', titulo: `Verificación de los muros del primer piso — dirección ${D} (NTE E.070)`,
-  columnas: `Muro = id${D}\nL [m] = L${D}\nt [cm] = t${D}\nPg [tonf] = Pg${D}\nPm [tonf] = Pm${D}\n$\\sigma_m$ [kgf/cm^2] = sigma${D}\n$F_a$ [kgf/cm^2] = Fa${D}\n$V_e$ [tonf] = Ve${D}\n$M_e$ [tonf*m] = Me${D}\n$\\alpha$ = alpha${D}\n$V_m$ [tonf] = Vm${D}\n$V_e/0.55V_m$ = Ve${D} ./ (0.55*Vm${D})\n$V_{m}/V_{e}$ = Vm${D} ./ Ve${D}\n$V_u$ [tonf] = Vu${D}`,
+const tabAxial = (D) => ({
+  type: 'table', dec: '2', titulo: `Cargas axiales y esfuerzo axial en los muros del primer piso — dirección ${D}`,
+  columnas: `Muro = id${D}\nL [m] = L${D}\nt [cm] = t${D}\n$P_g$ [tonf] = Pg${D}\n$P_m$ [tonf] = Pm${D}\n$\\sigma_m$ [kgf/cm²] = sigma${D}\n$F_a$ [kgf/cm²] = Fa${D}\n$\\sigma_m/F_a$ = sigma${D} ./ Fa${D}`,
+});
+const tabSeis = (D) => ({
+  type: 'table', dec: '2', titulo: `Sismo moderado, fisuración y fuerzas del sismo severo — dirección ${D}`,
+  columnas: `Muro = id${D}\n$V_e$ [tonf] = Ve${D}\n$M_e$ [tonf·m] = Me${D}\n$\\alpha$ = alpha${D}\n$V_m$ [tonf] = Vm${D}\n$V_e/0.55V_m$ = Ve${D} ./ (0.55*Vm${D})\n$V_m/V_e$ = Vm${D} ./ Ve${D}\n$V_u$ [tonf] = Vu${D}\n$M_u$ [tonf·m] = Mu${D}`,
 });
 
 export default [
@@ -87,10 +93,10 @@ U = 1.0 // Factor de uso — vivienda, categoría C (E.030 Tabla 5) [1.0|1.3|1.5
 S = 1.05 // Factor de suelo (E.030 Tabla 3) ${SUELO}
 Tp = 0.6 s // Periodo TP (E.030 Tabla 4) ${TP}
 Tl = 2.0 s // Periodo TL (E.030 Tabla 4) ${TL}`),
-      { type: 'wallplan', muros: MUROS_EDIF, planta: '0 0 10 15', Ap: '', cm: '', Z: 'Z', U: 'U', S: 'S', N: 'N', h: 'h1', apoyo: 'voladizo', ea: '0.05', titulo: 'Planta típica de muros (muros de soga t = 13 cm y de cabeza t = 23 cm), CM y CR' },
+      { type: 'wallplan', muros: MUROS_EDIF, planta: '0 0 10 15', Ap: '', cm: '', Z: 'Z', U: 'U', S: 'S', N: 'N', h: 'h1', hl: 'hl', apoyo: 'voladizo', ea: '0.05', titulo: 'Planta típica de muros (muros de soga t = 13 cm y de cabeza t = 23 cm), CM y CR' },
       calc(`# Análisis sísmico (E.030 Art. 28 — fuerzas estáticas equivalentes)
 hn = N*h1 // Altura total de la edificación
-CT = 60 m/s // Coeficiente para estimar el periodo, albañilería (E.030 Art. 28.4.1; T en s con hn en m)
+CT = 60 m/s // Coeficiente CT para albañilería (E.030 Art. 28.4.1)
 Te = hn/CT -> s // Periodo fundamental T = hn/CT
 Cs = CE030(Te, Tp, Tl) // Factor de amplificación sísmica (E.030 Art. 14)
 P = N*wp*Ap -> tonf // Peso sísmico de la edificación (E.030 Art. 26)
@@ -102,10 +108,14 @@ Fi = Ve1*hi/sum(hi) // Fuerzas por nivel Fi = αi·V con αi = Pi hi/Σ Pj hj (E
 M1 = sum(Fi .* hi) -> tonf*m // Momento de volteo en la base (sismo moderado)
 hM = M1/Ve1 -> m // Brazo del momento Me/Ve para los muros del primer piso
 "Excentricidad accidental 0.05 B en cada dirección (E.030 Art. 28.5) incluida en el reparto de la planta: los factores $r$ suman {sum(rX)} en X y {sum(rY)} en Y (no se reducen fuerzas por torsión).`),
-      calc(dirCalc('X')),
-      dirTable('X'),
-      calc(dirCalc('Y')),
-      dirTable('Y'),
+      calc(`# Muros de la dirección X\n` + dirAxial('X')),
+      tabAxial('X'),
+      calc(dirSeis('X')),
+      tabSeis('X'),
+      calc(`# Muros de la dirección Y\n` + dirAxial('Y')),
+      tabAxial('Y'),
+      calc(dirSeis('Y')),
+      tabSeis('Y'),
       calc(`# Diseño de los elementos de confinamiento del primer piso (Art. 27.3)
 "Se diseña el muro de fachada **X1** (paño único, dos columnas extremas). Para los demás muros se procede igual con sus valores de la Tabla de la dirección correspondiente.
 iw = 1 // Índice del muro de la dirección X a diseñar (1 = X1)

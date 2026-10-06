@@ -128,7 +128,7 @@ registerBlock('muroCL', {
     F('Pu', 'Carga axial mayorada Pu (compresión +)', 'Pu'), F('Mu', 'Momento mayorado Mu', 'Mu'),
     F('du', 'Desplazamiento de diseño δu (para c límite)', 'du'), F('hw', 'Altura del muro hw', 'hw'), F('titulo', 'Título', ''),
   ],
-  hint: 'Calcula por compatibilidad de deformaciones (εcu = 0.003, bloque de Whitney) la profundidad del eje neutro <b>c</b> para Pu y el momento nominal <b>Mn</b>; dibuja la sección con los elementos de borde y la zona a confinar <b>cc</b> = c − lw/(600·δu/hw) (DS60 21.9.6.4). Exporta c_w, Mn_w, phiMn_w, eps_t, cc_w, As_borde, rho_borde.',
+  hint: 'Calcula por compatibilidad de deformaciones (εcu = 0.003, bloque de Whitney) la profundidad del eje neutro <b>c</b> para Pu y el momento nominal <b>Mn</b>; dibuja la sección con los elementos de borde y, si c ≥ lw/(600·δu/hw) (DS60 21.9.6.2), la zona a confinar <b>cc</b> = máx(c − lw/(600·δu/hw); c − 0.1lw; c/2) (envolvente DS60 / ACI 318-08 21.9.6.4 a). Exporta c_w, Mn_w, phiMn_w, eps_t, cc_w, As_borde, rho_borde.',
   def: { lw: '4 m', e: '30 cm', fc: '30 MPa', fy: '420 MPa', nb: '8', dbb: '22', lb: '60 cm', dbw: '10', sw: '20 cm', rec: '4 cm', Pu: '250 tonf', Mu: '900 tonf*m', du: '8 cm', hw: '30 m' },
   render(b, ctx) {
     const S = ctx.scope;
@@ -152,7 +152,8 @@ registerBlock('muroCL', {
     const dt = lw - rec, et = 0.003 * (dt - c) / c;
     const phi = et >= 0.005 ? 0.9 : et <= ey ? 0.65 : 0.65 + 0.25 * (et - ey) / (0.005 - ey);
     const climit = du > 0 && hw > 0 ? lw / (600 * du / hw) : Infinity;
-    const cc = Math.max(0, c - climit);
+    // longitud a confinar si c ≥ c_lím: envolvente de c − lw/(600δu/hw) (DS60) y máx(c − 0.1lw, c/2) (ACI 318-08 21.9.6.4 a)
+    const cc = c >= climit ? Math.max(c - climit, c - 0.1 * lw, c / 2) : 0;
     const As = nb * AREA(dbb);
     setVar(ctx, 'c_w', math.unit(c / 10, 'cm')); setVar(ctx, 'Mn_w', math.unit(Mn / 9.80665e6, 'tonf*m'));
     setVar(ctx, 'phi_w', phi); setVar(ctx, 'phiMn_w', math.unit(phi * Mn / 9.80665e6, 'tonf*m')); setVar(ctx, 'eps_t', et);

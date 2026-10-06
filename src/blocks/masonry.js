@@ -53,7 +53,7 @@ registerBlock('wallplan', {
     F('Ap', 'Área de la planta típica Ap (vacío = rectángulo de la planta)', ''),
     F('cm', 'Centro de masas «x y» (vacío = centroide de la planta)', ''),
     F('Z', 'Factor de zona Z', 'Z'), F('U', 'Factor de uso U', 'U'), F('S', 'Factor de suelo S', 'S'), F('N', 'Número de pisos N', 'N'),
-    F('h', 'Altura de entrepiso h (rigidez de muros)', 'h'),
+    F('h', 'Altura de entrepiso h (rigidez de muros)', 'h'), F('hl', 'Altura libre del muro (espesor mínimo h/20; vacío = h)', ''),
     F('apoyo', 'Rigidez del muro', 'voladizo', 'select', ['voladizo', 'doble empotramiento']),
     F('ea', 'Excentricidad accidental (fracción de la dimensión transversal)', '0.05'),
     F('titulo', 'Título', ''),
@@ -71,6 +71,7 @@ registerBlock('wallplan', {
     if (b.cm && String(b.cm).trim()) { const c = String(b.cm).trim().split(/[\s,;]+/).map(s => evalParam(s, S, 'm')); if (c.length !== 2) throw new Error('Centro de masas: «x y»'); [xCM, yCM] = c; }
     const Z = evalParam(b.Z, S, '', 0.45), Uf = evalParam(b.U, S, '', 1), Sf = evalParam(b.S, S, '', 1), N = evalParam(b.N, S, '', 1);
     const h = evalParam(b.h, S, 'm', 2.6), ea = evalParam(b.ea, S, '', 0.05); pos({ Ap, h, Z, Uf, Sf, N });
+    const hlib = b.hl && String(b.hl).trim() ? evalParam(b.hl, S, 'm', h) : h; pos({ hlib });
     const empo = /empotr/i.test(b.apoyo || '');
     const dmin = Z * Uf * Sf * N / 56;
     for (const w of W) {
@@ -94,7 +95,8 @@ registerBlock('wallplan', {
     // ---- exportar
     const ex = (k, v, u) => setVar(ctx, k, u ? U(v, u) : v);
     ex('Ap', Ap, 'm^2'); ex('densX', densX); ex('densY', densY); ex('dmin', dmin);
-    ex('xCM', xCM, 'm'); ex('yCM', yCM, 'm'); ex('xCR', xCR, 'm'); ex('yCR', yCR, 'm'); ex('eX', eX, 'm'); ex('eY', eY, 'm');
+    const sn = (v) => (Math.abs(v) < 1e-9 ? 0 : v);
+    ex('xCM', xCM, 'm'); ex('yCM', yCM, 'm'); ex('xCR', sn(xCR), 'm'); ex('yCR', sn(yCR), 'm'); ex('eX', sn(eX), 'm'); ex('eY', sn(eY), 'm');
     for (const [D, A] of [['X', X], ['Y', Y]]) {
       setVar(ctx, 'id' + D, math.matrix(A.map(w => w.id)));
       setVar(ctx, 'L' + D, vec(A.map(w => w.L), 'm')); setVar(ctx, 't' + D, vec(A.map(w => w.t), 'm'));
@@ -104,8 +106,8 @@ registerBlock('wallplan', {
     }
     ctx.checks.push({ ok: densX >= dmin, label: `Densidad de muros dirección X: ΣL·t/Ap = ${f2(densX, 4)} ≥ ZUSN/56 = ${f2(dmin, 4)} (E.070 Art. 19.2.b)`, ratio: dmin / densX, block: ctx.blockId });
     ctx.checks.push({ ok: densY >= dmin, label: `Densidad de muros dirección Y: ΣL·t/Ap = ${f2(densY, 4)} ≥ ZUSN/56 = ${f2(dmin, 4)} (E.070 Art. 19.2.b)`, ratio: dmin / densY, block: ctx.blockId });
-    ctx.checks.push({ ok: tmin >= h / 20 - 1e-9, label: `Espesor efectivo mínimo t = ${f2(tmin * 100, 1)} cm ≥ h/20 = ${f2(h / 20 * 100, 1)} cm (E.070 Art. 19.1.a)`, ratio: h / 20 / tmin, block: ctx.blockId });
-    ctx.checks.push({ ok: Math.max(Bx, By) / Math.min(Bx, By) <= 4, label: `Proporción de la planta ${f2(Math.max(Bx, By) / Math.min(Bx, By))} ≤ 4 (E.070 Art. 15.2.3 / 6.2.3)`, ratio: Math.max(Bx, By) / Math.min(Bx, By) / 4, block: ctx.blockId });
+    ctx.checks.push({ ok: tmin >= hlib / 20 - 1e-9, label: `Espesor efectivo mínimo t = ${f2(tmin * 100, 1)} cm ≥ h/20 = ${f2(hlib / 20 * 100, 1)} cm (E.070 Art. 19.1.a, zonas 2 a 4)`, ratio: hlib / 20 / tmin, block: ctx.blockId });
+    ctx.checks.push({ ok: Math.max(Bx, By) / Math.min(Bx, By) <= 4, label: `Proporción de la planta ${f2(Math.max(Bx, By) / Math.min(Bx, By))} ≤ 4 (E.070 Art. 15.3)`, ratio: Math.max(Bx, By) / Math.min(Bx, By) / 4, block: ctx.blockId });
     // ---- dibujo
     const Wd = 700, Hd = 520, pad = 54;
     const sc = Math.min((Wd - 2 * pad - 150) / Bx, (Hd - 2 * pad) / By);
@@ -141,8 +143,9 @@ registerBlock('wallplan', {
     line('Dens. X = ' + f2(densX, 4) + (densX >= dmin ? ' ✔' : ' ✘'), { c: densX >= dmin ? C.green : C.red });
     line('Dens. Y = ' + f2(densY, 4) + (densY >= dmin ? ' ✔' : ' ✘'), { c: densY >= dmin ? C.green : C.red });
     ly += 6;
-    line('CM = (' + f2(xCM) + ', ' + f2(yCM) + ') m'); line('CR = (' + f2(xCR) + ', ' + f2(yCR) + ') m');
-    line('ex = ' + f2(eX) + ' m · ey = ' + f2(eY) + ' m');
+    const z = (v) => f2(Math.abs(v) < 1e-6 ? 0 : v, 3);
+    line('CM = (' + z(xCM) + ', ' + z(yCM) + ') m'); line('CR = (' + z(xCR) + ', ' + z(yCR) + ') m');
+    line('ex = xCM − xCR = ' + z(eX) + ' m'); line('ey = yCM − yCR = ' + z(eY) + ' m');
     // tabla de muros
     const row = (w) => `<tr><td>${esc(w.id)}</td><td>${w.dir}</td><td>${f2(w.L)}</td><td>${f2(w.t * 100, 1)}</td><td>${f2(w.n)}</td><td>${f2(w.L * w.t * w.n, 3)}</td><td>${w.ok ? f2(w.kf * 100, 1) : '—'}</td><td>${w.ok ? f2(w.rf * 100, 1) : '—'}</td></tr>`;
     ctx.tab = (ctx.tab || 0) + 1;
@@ -175,9 +178,9 @@ registerBlock('tanque', {
     const Pi = b.Pi ? evalParam(b.Pi, S, 'tonf', 0) : 0, Pc = b.Pc ? evalParam(b.Pc, S, 'tonf', 0) : 0, dmax = b.dmax ? evalParam(b.dmax, S, 'm', 0) : 0;
     const r = D / HL, k = circ0 ? 3.68 : 3.16;
     const wi = aci.WiWL(r), wc = circ0 ? aci.WcWLc(r) : aci.WcWLr(r), hi = aci.hiHL(r) * HL, hc = aci.hcHL(r, k) * HL;
-    const Wd = 720, Hd = elev ? 470 : 380;
-    const tot = Hw + Hf + (elev ? 1.0 : 0.6), sc = Math.min(250 / (D + 2 * tw), (Hd - 80) / tot);
-    const cx = 175, base = Hd - 46;
+    const tot = Hw + Hf + (elev ? 1.0 : 0.6) + 0.3, sc = Math.min(250 / (D + 2 * tw + 0.4), (elev ? 400 : 260) / tot);
+    const Wd = 720, Hd = Math.max(300, Math.round(tot * sc + 120));
+    const cx = 175, base = Hd - 56;
     const X = (x) => cx + x * sc, Y = (y) => base - (y + Hf) * sc;
     let g = arrowDefs;
     // suelo / soporte
@@ -197,7 +200,11 @@ registerBlock('tanque', {
     g += `<path d="M${X(-D / 2 - tw)},${Y(Hw)} L${X(-D / 2 - tw)},${Y(-tb)} L${X(D / 2 + tw)},${Y(-tb)} L${X(D / 2 + tw)},${Y(Hw)} L${X(D / 2)},${Y(Hw)} L${X(D / 2)},${Y(0)} L${X(-D / 2)},${Y(0)} L${X(-D / 2)},${Y(Hw)} Z" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.4"/>`;
     if (elev || buried) g += rect(X(-D / 2 - tw), Y(Hw) - 0.18 * sc, (D + 2 * tw) * sc, 0.18 * sc, C.conc, C.ink, 1.2);
     // oleaje
-    if (dmax > 0) { const ya = Y(HL + dmax); g += path([[X(-D / 2), ya], [X(-D / 4), Y(HL + dmax / 2)], [X(0), Y(HL)], [X(D / 4), Y(HL - dmax / 2)], [X(D / 2), Y(HL - dmax)]], C.blue, 1, '4 3') + T(X(-D / 2) + 4, ya - 4, 'dmax = ' + f2(dmax) + ' m', { fs: 9, a: 'start', c: C.blue }); }
+    if (dmax > 0) {
+      const dd = Math.min(dmax, Hw - HL + 0.02, HL), ya = Y(HL + dd);
+      g += path([[X(-D / 2), ya], [X(-D / 4), Y(HL + dd / 2)], [X(0), Y(HL)], [X(D / 4), Y(HL - dd / 2)], [X(D / 2), Y(HL - dd)]], C.blue, 1, '4 3');
+      g += T(X(-D / 2 - tw), Y(Hw) - (elev || buried ? 0.18 * sc : 0) - 6, 'oleaje dmax = ' + f2(dmax) + ' m' + (dmax > Hw - HL ? ' (> borde libre)' : ''), { fs: 9, a: 'start', c: C.blue });
+    }
     // masas de Housner
     const mi = Math.max(6, Math.min(16, 16 * Math.sqrt(wi))), mc = Math.max(6, Math.min(16, 16 * Math.sqrt(wc)));
     g += Lne(X(-D / 2), Y(hi), X(D / 2), Y(hi), C.red, 1.6) + rect(X(0) - mi, Y(hi) - mi * 0.7, 2 * mi, 1.4 * mi, C.red, C.ink, 0.8);
@@ -208,11 +215,12 @@ registerBlock('tanque', {
     g += dimV(X(D / 2 + tw) + 16, Y(HL), Y(0), 'HL = ' + f2(HL), C.blue, 1);
     g += dimV(X(-D / 2 - tw) - 14, Y(hi), Y(0), 'hi = ' + f2(hi), C.red);
     g += dimV(X(-D / 2 - tw) - 34, Y(hc), Y(0), 'hc = ' + f2(hc), C.green);
-    g += dimH(X(-D / 2), X(D / 2), Y(Hw) - 14, (circ0 ? 'D = ' : 'L = ') + f2(D) + ' m');
-    if (Pi > 0) g += arrow(X(D / 2 + tw) + 40, Y(hi), X(D / 2 + tw) + 92, Y(hi), C.red, 1.6) + T(X(D / 2 + tw) + 66, Y(hi) - 5, 'Pi = ' + f2(Pi) + ' t', { fs: 9, c: C.red });
-    if (Pc > 0) g += arrow(X(D / 2 + tw) + 40, Y(hc), X(D / 2 + tw) + 92, Y(hc), C.green, 1.6) + T(X(D / 2 + tw) + 66, Y(hc) - 5, 'Pc = ' + f2(Pc) + ' t', { fs: 9, c: C.green });
+    g += dimH(X(-D / 2), X(D / 2), Y(-Math.max(tw, 0.2)) + (elev ? 16 : 30), (circ0 ? 'D = ' : 'L = ') + f2(D) + ' m');
+    if (Pi > 0) g += arrow(X(D / 2 + tw) + 50, Y(hi), X(D / 2 + tw) + 104, Y(hi), C.red, 1.6) + T(X(D / 2 + tw) + 77, Y(hi) - 5, 'Pi = ' + f2(Pi) + ' t', { fs: 9, c: C.red });
+    if (Pc > 0) g += arrow(X(D / 2 + tw) + 50, Y(hc), X(D / 2 + tw) + 104, Y(hc), C.green, 1.6) + T(X(D / 2 + tw) + 77, Y(hc) - 5, 'Pc = ' + f2(Pc) + ' t', { fs: 9, c: C.green });
     // ---- diagramas de presión (por unidad de altura, normalizados)
-    const gx = 470, gw = 210, gy0 = Y(0), gy1 = Y(HL);
+    const gx = 470, gw = 210, gh = Math.max(160, Math.min(260, HL * sc)), gy0 = elev ? 70 + gh : base - 10, gy1 = gy0 - gh;
+    const YP = (y) => gy0 - y / HL * gh;
     const py = (P, h0, y) => P / 2 * (4 * HL - 6 * h0 - (6 * HL - 12 * h0) * y / HL) / (HL * HL); // ACI 350.3 Ec. 5-1 / 5-3
     const ys = Array.from({ length: 21 }, (_, i) => HL * i / 20);
     const Pref = Pi > 0 || Pc > 0 ? [Pi, Pc] : [wi, wc];
@@ -221,13 +229,13 @@ registerBlock('tanque', {
     const mx = Math.max(...fi.map(Math.abs), ...fc.map(Math.abs), 1e-9), mh = HL;
     const GX = (v, m) => gx + v / m * gw * 0.9;
     g += Lne(gx, gy0 + 4, gx, gy1 - 10, C.ink, 1) + Lne(gx, gy0, gx + gw, gy0, C.axis, 0.8);
-    g += poly([[gx, gy1], ...ys.map((y, i) => [GX(fh[i], mh), Y(y)]).reverse(), [gx, gy0]], 'rgba(31,111,235,.10)', C.blue, 1);
-    g += path(ys.map((y, i) => [GX(fi[i], mx), Y(y)]), C.red, 2) + path(ys.map((y, i) => [GX(fc[i], mx), Y(y)]), C.green, 2);
+    g += poly([[gx, gy1], ...ys.map((y, i) => [GX(fh[i], mh), YP(y)]).reverse(), [gx, gy0]], 'rgba(31,111,235,.10)', C.blue, 1);
+    g += path(ys.map((y, i) => [GX(fi[i], mx), YP(y)]), C.red, 2) + path(ys.map((y, i) => [GX(fc[i], mx), YP(y)]), C.green, 2);
     g += T(gx + gw / 2, gy1 - 18, 'Presiones sobre la pared', { fs: 10, b: 1 });
-    g += T(GX(fh[0], mh), gy0 + 13, 'γ·HL', { fs: 9, c: C.blue }) + T(GX(fi[0], mx) + 4, Y(ys[1]) - 2, 'impulsiva', { fs: 9, c: C.red, a: 'start' }) + T(GX(fc[20], mx) + 4, Y(ys[19]) + 10, 'convectiva', { fs: 9, c: C.green, a: 'start' });
+    g += T(GX(fh[0], mh), gy0 + 13, 'γ·HL', { fs: 9, c: C.blue }) + T(GX(fi[0], mx) + 4, YP(ys[1]) - 2, 'impulsiva', { fs: 9, c: C.red, a: 'start' }) + T(GX(fc[20], mx) + 4, YP(ys[19]) + 10, 'convectiva', { fs: 9, c: C.green, a: 'start' });
     g += T(gx + gw / 2, gy0 + 28, Pi > 0 ? 'Piy, Pcy [fuerza por unidad de altura] — ACI 350.3 Cap. 5' : 'Formas de Piy y Pcy (ACI 350.3 Cap. 5)', { fs: 9, c: C.axis });
     const info = `Wi/WL = ${f2(wi, 3)} · Wc/WL = ${f2(wc, 3)} · hi/HL = ${f2(hi / HL, 3)} · hc/HL = ${f2(hc / HL, 3)}`;
-    g += T(Wd / 2, 16, info, { fs: 10, c: '#24292f' });
+    g += T(Wd / 2, 18, info, { fs: 10.5, c: '#24292f', b: 1 });
     return `<div class="figure">${svgWrap(Wd, Hd, g)}${caption(ctx, b.titulo || `Modelo dinámico de Housner del tanque ${circ0 ? 'circular' : 'rectangular'} ${elev ? 'elevado' : buried ? 'enterrado' : 'apoyado'} (ACI 350.3-06)`)}</div>`;
   },
 });
@@ -281,7 +289,7 @@ registerBlock('cilindro', {
     for (let i = 0; i <= 10; i += 2) g += T(18, Yy(i / 10) + 3, f2(i / 10, 1) + 'H', { fs: 8.5, a: 'end', c: C.axis });
     g += panel(130, 230, CT.map(c => c * w * H * R), Tv, 'Tensión anular T', '[tonf/m] · T = C_T·w·H·R', C.blue, (v) => f2(v, 1));
     g += panel(430, 230, CMv.map(c => c * w * H ** 3), Mv, 'Momento vertical M', '[tonf·m/m] · (−) tracción cara interior', C.red, (v) => f2(v, 2));
-    g += T(Wd / 2, Hd - 14, `H²/(D·t) = ${f2(k, 2)} · βH = ${f2(sh.bH, 2)} · base ${basen === 1 ? 'empotrada' : 'articulada'} · Tmax = ${f2(sh.Tmax, 3)}·wHR en ${f2(sh.yTmax, 2)}H · Mbase = ${f2(sh.Mbase, 4)}·wH³`, { fs: 9.5, c: '#24292f' });
+    g += T(Wd / 2, Hd - 14, `H²/(D·t) = ${f2(k, 2)} · βH = ${f2(sh.bH, 2)} · base ${basen === 1 ? 'empotrada' : 'articulada'} · Tmax = ${sh.Tmax.toFixed(3)}·wHR en ${f2(sh.yTmax, 2)}H · Mbase = ${sh.Mbase.toFixed(4)}·wH³`, { fs: 9.5, c: '#24292f' });
     // tabla de coeficientes PCA
     ctx.tab = (ctx.tab || 0) + 1;
     const tbl = `<div class="cap">Tabla ${ctx.tab}: Coeficientes de tensión anular C<sub>T</sub> y momento C<sub>M</sub> (equivalentes a las Tablas A-${basen === 1 ? '1 y A-2' : '5 y A-7'} del PCA), H²/Dt = ${f2(k, 2)}</div><table class="tbl"><thead><tr><th>Punto</th>${ys.map(y => `<th>${f2(y, 1)}H</th>`).join('')}</tr></thead><tbody><tr><td>C<sub>T</sub></td>${CT.map(c => `<td>${f2(c, 3)}</td>`).join('')}</tr><tr><td>C<sub>M</sub></td>${CMv.map(c => `<td>${(c >= 0 ? '+' : '') + c.toFixed(4)}</td>`).join('')}</tr><tr><td>T [tonf/m]</td>${CT.map(c => `<td>${f2(c * w * H * R, 2)}</td>`).join('')}</tr><tr><td>M [t·m/m]</td>${CMv.map(c => `<td>${f2(c * w * H ** 3, 3)}</td>`).join('')}</tr></tbody></table>`;
@@ -433,7 +441,7 @@ registerBlock('tijeral', {
     nodes.forEach(nd => { g += circ(X(nd.x), Y(nd.y), 2.6, '#fff', C.ink, 1); });
     top.forEach((ni, i) => { const f = i === 0 || i === n ? 0.5 : 1, nd = nodes[ni]; if (P > 0) g += arrow(X(nd.x), Y(nd.y) - 30, X(nd.x), Y(nd.y) - 5) + T(X(nd.x), Y(nd.y) - 33, f2(P * f, 2), { fs: 8.5 }); });
     g += `<path d="M${X(0)},${Y(0) + 3} l-8,13 h16 z" fill="none" stroke="${C.ink}"/><path d="M${X(L)},${Y(0) + 3} l-8,13 h16 z" fill="none" stroke="${C.ink}"/>` + Lne(X(L) - 9, Y(0) + 19, X(L) + 9, Y(0) + 19);
-    g += dimH(X(0), X(L), Y(0) + 38, 'L = ' + f2(L) + ' m (' + n + ' paneles de ' + f2(L / n) + ' m)') + dimV(X(L) + 22, Y(Hc), Y(0), 'H = ' + f2(Hc) + ' m', C.ink, 1);
+    g += dimH(X(0), X(L), Y(0) + 38, 'L = ' + f2(L) + ' m (' + n + ' paneles de ' + f2(L / n) + ' m)') + Lne(X(0) - 30, Y(Hc), X(L / 2) - 4, Y(Hc), C.grid, 0.8, '3 3') + dimV(X(0) - 26, Y(Hc), Y(0), 'H = ' + f2(Hc) + ' m');
     g += T(Wd / 2, 18, `Tijeral ${/howe/i.test(b.tipo || 'Howe') ? 'Howe' : 'Pratt'} · fuerzas axiales en tonf (+ tracción, − compresión) · R = ${f2(Ra, 2)} t`, { fs: 10.5, b: 1 });
     return `<div class="figure">${svgWrap(Wd, Hd, g)}${caption(ctx, b.titulo || 'Geometría del tijeral y fuerzas axiales en las barras')}</div>`;
   },

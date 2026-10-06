@@ -1,0 +1,9 @@
+Implementaciones de referencia (JS puro, Node >= 18) usadas para generar los resultados de
+../algoritmos.md y ../videos.md §12. No forman parte de la app; son material de verificación.
+
+  node t1.mjs elcentro.dat   Newmark (Chopra Ej. 5.x), NJ, espectro El Centro, 5 pisos, CQC, Mander
+  node t3.mjs                ATC-40 (SOFiSTiK BE36), pushover + N2, condensación, Rayleigh, P-Delta
+  node t4.mjs elcentro.dat   THA modal 5 pisos, SIMQKE (E.030 Z4-S2), momento-curvatura por fibras
+  node t5.mjs                Casos normativos: AASHTO DF/HL-93, E.030, NCh433, BSL Ai, E.060, E.070, AISC, muro
+
+elcentro.dat: https://www.vibrationdata.com/elcentro.dat (El Centro 1940 NS, dt = 0.02 s, g).

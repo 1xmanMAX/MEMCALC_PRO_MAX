@@ -161,7 +161,7 @@ check S >= 1.10 m and S <= 4.90 m // Rango de aplicación 1100 ≤ S ≤ 4900 mm
 check L >= 6 m and L <= 73 m // 6000 ≤ L ≤ 73000 mm
 check ts >= 110 mm and ts <= 300 mm // 110 ≤ ts ≤ 300 mm
 check Kg >= 4e9 mm^4 and Kg <= 3e12 mm^4 // 4×10⁹ ≤ Kg ≤ 3×10¹² mm⁴
-check Nb >= 4 // Nb ≥ 4
+check Nb > 3 // Nb ≥ 4
 ## Viga interior
 gM1 = gMi1LRFD(S, L, ts, Kg) // Momento, un carril cargado (incluye m)
 gM2 = gMi2LRFD(S, L, ts, Kg) // Momento, dos o más carriles

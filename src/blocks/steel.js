@@ -128,7 +128,7 @@ registerBlock('steelsec', {
       if (s.fam === 'C') g += `<circle cx="${X(p.x)}" cy="${Y(p.d / 2)}" r="3" fill="${C.red}"/>` + T(X(p.x) + 6, Y(p.d / 2) - 6, 'x̄ = ' + fl(p.x), { fs: 10, a: 'start', c: C.red });
     } else if (s.fam === 'K') {
       g += lead(X(p.t / 2), Y(p.d * 0.62), X(p.bf) + 30, Y(p.d * 0.62), 't = ' + fl(p.t));
-      if (p.D > 0) g += dimV(X(p.bf) + 14, Y(p.d - p.D), Y(p.d), 'D = ' + fl(p.D), C.ink, 1);
+      if (p.D > 0) g += dimV(X(p.bf) + 22, Y(p.d - p.D), Y(p.d), 'D = ' + fl(p.D), C.ink, 1);
       g += `<circle cx="${X(p.x)}" cy="${Y(p.d / 2)}" r="3" fill="${C.red}"/>` + T(X(p.x) + 6, Y(p.d / 2) - 6, 'x̄ = ' + fl(p.x), { fs: 10, a: 'start', c: C.red });
     } else if (s.fam === 'L') {
       g += lead(X(p.t / 2), Y(p.d * 0.3), X(p.t) + 30, Y(p.d * 0.3), 't = ' + fl(p.t));
@@ -136,7 +136,9 @@ registerBlock('steelsec', {
     } else {
       g += lead(X(p.tdes / 2), Y(sh.h * 0.3), W - 6, Y(0) - 8, 't = ' + fl(p.tdes) + (p.tnom ? ' (nom. ' + fl(p.tnom) + ')' : ''), 'end');
     }
-    const head = `<div class="dt" style="text-align:center"><b>${esc(s.name)}</b> — ${esc(NAMEF[s.fam])} · ${K(valTex(rows.find(r => r[0] === 'peso' + sfx)?.[2] || 0, 2))}</div>`;
+    const pw = rows.find(r => r[0] === 'peso' + sfx)?.[2];
+    const pwt = pw ? (settings.sys === 'us' ? f2(pw.toNumber('lbf/ft'), 1) + ' lb/ft' : f2(pw.toNumber('kgf/m'), 2) + ' kg/m') : '';
+    const head = `<div class="dt" style="text-align:center"><b>${esc(s.name)}</b> — ${esc(NAMEF[s.fam])}${pwt ? ' · ' + pwt : ''}</div>`;
     let tb = '';
     if (b.tabla !== false) {
       const cells = rows.filter(r => r[0] !== 'peso' + sfx).map(r => `<td>${esc(r[1])}</td><td>${K(symTex(r[0]) + ' = ' + valTex(r[2], 3))}</td>`);
@@ -267,7 +269,8 @@ registerBlock('boltgroup', {
     const M = ex * Py - ey * Px; // momento respecto al centroide (antihorario +)
     const Ip = pts.reduce((a, p) => a + p[0] ** 2 + p[1] ** 2, 0);
     if (Math.abs(M) > 1e-12 && Ip < 1e-14) throw new Error('Un solo perno no resiste momento');
-    const F = pts.map(([x, y]) => { const rx = Px / n - (Ip ? M * y / Ip : 0), ry = Py / n + (Ip ? M * x / Ip : 0); return { x, y, rx, ry, R: Math.hypot(rx, ry) }; });
+    const cl = (v) => (Math.abs(v) < 1e-9 * (Math.abs(Pu) + 1) ? 0 : v);
+    const F = pts.map(([x, y]) => { const rx = cl(Px / n - (Ip ? M * y / Ip : 0)), ry = cl(Py / n + (Ip ? M * x / Ip : 0)); return { x: cl(x), y: cl(y), rx, ry, R: Math.hypot(rx, ry) }; });
     const Rmax = Math.max(...F.map(f => f.R)), crit = F.findIndex(f => f.R === Rmax);
     const sfx = b.sufijo ? '_' + String(b.sufijo).replace(/\W/g, '') : '';
     const Fu = (v) => math.unit(v, 'N').to(forU()), Lu = (v) => math.unit(v, 'm').to(lenU());
@@ -279,17 +282,19 @@ registerBlock('boltgroup', {
       ctx.checks.push({ ok: Rmax <= phiRn, label: 'Grupo de pernos (método elástico): perno crítico ru ≤ φrn', ratio: Rmax / phiRn, block: ctx.blockId });
     }
     // ---- dibujo ----
-    const W = 720, H = 360;
+    const W = 720;
     const xsA = F.map(f => f.x).concat([ex]), ysA = F.map(f => f.y).concat([ey]);
     const db = evalParam(b.db, S, LU, 0.019);
     const minx = Math.min(...xsA) - 2.5 * db, maxx = Math.max(...xsA) + 2.5 * db, miny = Math.min(...ysA) - 2.5 * db, maxy = Math.max(...ysA) + 2.5 * db;
-    const sc = Math.min(330 / Math.max(maxx - minx, 1e-9), 280 / Math.max(maxy - miny, 1e-9));
-    const ox = 200 - (minx + maxx) / 2 * sc, oy = 185 + (miny + maxy) / 2 * sc;
+    const sc = Math.min(330 / Math.max(maxx - minx, 1e-9), 260 / Math.max(maxy - miny, 1e-9));
+    const H = Math.max(230, (maxy - miny) * sc + 150);
+    const ox = 200 - (minx + maxx) / 2 * sc, oy = H / 2 + (miny + maxy) / 2 * sc;
     const X = (x) => ox + x * sc, Y = (y) => oy - y * sc;
     let g = arrowDefs;
     const bx = F.map(f => f.x), by = F.map(f => f.y), pad = 2 * db;
-    g += `<rect x="${X(Math.min(...bx) - pad)}" y="${Y(Math.max(...by) + pad)}" width="${(Math.max(...bx) - Math.min(...bx) + 2 * pad) * sc}" height="${(Math.max(...by) - Math.min(...by) + 2 * pad) * sc}" fill="#e6eaef" stroke="${C.ink}" stroke-width="1.2"/>`;
-    g += Lne(X(0) - 10, Y(0), X(0) + 10, Y(0), C.red, 1) + Lne(X(0), Y(0) - 10, X(0), Y(0) + 10, C.red, 1) + T(X(0) + 5, Y(0) - 5, 'CG', { fs: 9, a: 'start', c: C.red });
+    const rx0 = X(Math.min(...bx) - pad), ry0 = Y(Math.max(...by) + pad), rw = (Math.max(...bx) - Math.min(...bx) + 2 * pad) * sc, rh = (Math.max(...by) - Math.min(...by) + 2 * pad) * sc;
+    g += `<rect x="${rx0}" y="${ry0}" width="${rw}" height="${rh}" fill="#e6eaef" stroke="${C.ink}" stroke-width="1.2"/>`;
+    g += Lne(X(0) - 10, Y(0), X(0) + 10, Y(0), C.red, 1) + Lne(X(0), Y(0) - 10, X(0), Y(0) + 10, C.red, 1) + T(X(0) + 5, Y(0) + 14, 'CG', { fs: 9, a: 'start', c: C.red });
     const fmax = Rmax || 1, La = 46;
     F.forEach((f, i) => {
       g += `<circle cx="${X(f.x)}" cy="${Y(f.y)}" r="${Math.max(4, db / 2 * sc)}" fill="${i === crit ? C.red : C.steel}"/>`;
@@ -297,20 +302,103 @@ registerBlock('boltgroup', {
       if (Math.hypot(lx, ly) > 3) g += `<line x1="${X(f.x)}" y1="${Y(f.y)}" x2="${(X(f.x) + lx).toFixed(1)}" y2="${(Y(f.y) - ly).toFixed(1)}" stroke="${C.blue}" stroke-width="1.6" marker-end="url(#ar)"/>`;
       g += T(X(f.x) - 9, Y(f.y) - 7, String(i + 1), { fs: 9, a: 'end', c: C.axis });
     });
-    // carga
-    const ux = Math.sin(th), uy = -Math.cos(th), L0 = 70;
-    g += `<line x1="${(X(ex) - ux * L0).toFixed(1)}" y1="${(Y(ey) + uy * L0).toFixed(1)}" x2="${X(ex)}" y2="${Y(ey)}" stroke="${C.red}" stroke-width="2.4" marker-end="url(#arr)"/>`;
-    g += T(X(ex) - ux * L0 + 6, Y(ey) + uy * L0 - 4, 'Pu = ' + f2(Fu(Pu).toNumber(forU())) + ' ' + uTxt(forU()), { fs: 11, a: 'start', c: C.red, b: 1 });
+    // carga: la punta se ubica en el borde de la placa sobre la línea de acción
+    const ux = Math.sin(th), uy = Math.cos(th), L0 = 70; // dirección en pantalla (y hacia abajo)
+    let hx = X(ex), hy = Y(ey);
+    const inside = (x, y) => x > rx0 - 1 && x < rx0 + rw + 1 && y > ry0 - 1 && y < ry0 + rh + 1;
+    for (let k = 0; k < 2000 && inside(hx, hy); k++) { hx -= ux; hy -= uy; }
+    hx -= 6 * ux; hy -= 6 * uy;
+    g += `<line x1="${(hx - ux * L0).toFixed(1)}" y1="${(hy - uy * L0).toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" stroke="${C.red}" stroke-width="2.4" marker-end="url(#arr)"/>`;
+    g += Lne(hx, hy, X(ex), Y(ey), C.red, 0.8, '4 3');
+    g += T(hx - ux * L0 + 6, hy - uy * L0 + (uy > 0.5 ? 10 : -4), 'Pu = ' + f2(Fu(Pu).toNumber(forU())) + ' ' + uTxt(forU()), { fs: 11, a: 'start', c: C.red, b: 1 });
     if (Math.abs(ex) > 1e-9) g += dimH(Math.min(X(0), X(ex)), Math.max(X(0), X(ex)), Y(Math.max(...by) + pad) - 14, 'e = ' + f2(Lu(Math.abs(ex)).toNumber(lenU())) + ' ' + lenU(), C.red);
     // tabla
     const cr = F[crit];
     let tb = `<table class="tbl"><thead><tr><th>Perno</th><th>x [${lenU()}]</th><th>y [${lenU()}]</th><th>rx [${uTxt(forU())}]</th><th>ry [${uTxt(forU())}]</th><th>r [${uTxt(forU())}]</th></tr></thead><tbody>`;
     F.forEach((f, i) => { tb += `<tr${i === crit ? ' style="font-weight:600;color:#d1242f"' : ''}><td>${i + 1}</td><td>${f2(Lu(f.x).toNumber(lenU()))}</td><td>${f2(Lu(f.y).toNumber(lenU()))}</td><td>${f2(Fu(f.rx).toNumber(forU()))}</td><td>${f2(Fu(f.ry).toNumber(forU()))}</td><td>${f2(Fu(f.R).toNumber(forU()))}</td></tr>`; });
     tb += '</tbody></table>';
-    const leg = `<g font-family="Inter,Segoe UI,Arial">${T(470, 70, 'Método elástico', { a: 'start', b: 1 })}${T(470, 92, 'n = ' + n + ' pernos', { a: 'start' })}${T(470, 112, 'Ip = Σ(x² + y²) = ' + f2(math.unit(Ip, 'm^2').toNumber(lenU() + '^2')) + ' ' + lenU() + '²', { a: 'start' })}${T(470, 132, 'M = ' + f2(math.unit(Math.abs(M), 'N*m').toNumber(momU())) + ' ' + uTxt(momU()), { a: 'start' })}${T(470, 152, 'r máx = ' + f2(Fu(Rmax).toNumber(forU())) + ' ' + uTxt(forU()) + ' (perno ' + (crit + 1) + ')', { a: 'start', c: C.red, b: 1 })}${T(470, 172, 'C = Pu / r máx = ' + f2(Pu / Rmax, 3), { a: 'start' })}${phiRn !== null ? T(470, 192, 'φrn = ' + f2(Fu(phiRn).toNumber(forU())) + ' ' + uTxt(forU()) + (Rmax <= phiRn ? '  ✔ cumple' : '  ✘ no cumple'), { a: 'start', c: Rmax <= phiRn ? C.green : C.red, b: 1 }) : ''}</g>`;
+    const leg = `<g font-family="Inter,Segoe UI,Arial">${T(470, 40, 'Método elástico', { a: 'start', b: 1 })}${T(470, 62, 'n = ' + n + ' pernos', { a: 'start' })}${T(470, 82, 'Ip = Σ(x² + y²) = ' + f2(math.unit(Ip, 'm^2').toNumber(lenU() + '^2')) + ' ' + lenU() + '²', { a: 'start' })}${T(470, 102, 'M = ' + f2(math.unit(Math.abs(M), 'N*m').toNumber(momU())) + ' ' + uTxt(momU()), { a: 'start' })}${T(470, 122, 'r máx = ' + f2(Fu(Rmax).toNumber(forU())) + ' ' + uTxt(forU()) + ' (perno ' + (crit + 1) + ')', { a: 'start', c: C.red, b: 1 })}${T(470, 142, 'C = Pu / r máx = ' + f2(Pu / Rmax, 3), { a: 'start' })}${phiRn !== null ? T(470, 162, 'φrn = ' + f2(Fu(phiRn).toNumber(forU())) + ' ' + uTxt(forU()) + (Rmax <= phiRn ? '  ✔ cumple' : '  ✘ no cumple'), { a: 'start', c: Rmax <= phiRn ? C.green : C.red, b: 1 }) : ''}</g>`;
     g += leg;
     const info = `<div class="kv">${K('r_{x,i} = \\dfrac{P_x}{n} - \\dfrac{M\\,y_i}{I_p}')} ${K('r_{y,i} = \\dfrac{P_y}{n} + \\dfrac{M\\,x_i}{I_p}')} ${K(symTex('Rmax' + sfx) + ' = ' + valTex(Fu(Rmax)))} ${K('C = ' + f2(Pu / Rmax, 3))}</div>`;
     void cr;
     return `<div class="figure">${svgWrap(W, H, g)}${info}${tb}${caption(ctx, b.titulo || 'Grupo de pernos con carga excéntrica (método elástico)')}</div>`;
+  },
+});
+
+// ---------------------------------------------------------------------
+//  Armadura de cuerdas paralelas (Pratt / Howe) — método de los nudos
+// ---------------------------------------------------------------------
+function solveLin(A, b) {
+  const n = b.length; const M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if (Math.abs(M[p][c]) < 1e-12) throw new Error('Armadura inestable o mal definida');
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c] / M[c][c]; if (f) for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map((r, i) => r[n] / r[i]);
+}
+export function trussPratt(L, h, np, w, tipo = 'pratt') {
+  const a = L / np, nodes = [], mem = [];
+  for (let i = 0; i <= np; i++) nodes.push({ x: i * a, y: 0, k: 'B' + i });
+  for (let i = 0; i <= np; i++) nodes.push({ x: i * a, y: h, k: 'T' + i });
+  const B = (i) => i, Tn = (i) => np + 1 + i;
+  for (let i = 0; i < np; i++) { mem.push({ i: B(i), j: B(i + 1), t: 'ci' }); mem.push({ i: Tn(i), j: Tn(i + 1), t: 'cs' }); }
+  for (let i = 0; i <= np; i++) mem.push({ i: Tn(i), j: B(i), t: 'v' });
+  for (let i = 0; i < np; i++) {
+    const left = i < np / 2; const pr = tipo !== 'howe';
+    if (pr === left) mem.push({ i: Tn(i), j: B(i + 1), t: 'd' }); else mem.push({ i: B(i), j: Tn(i + 1), t: 'd' });
+  }
+  const nn = nodes.length, nu = mem.length + 3, A = Array.from({ length: 2 * nn }, () => new Array(nu).fill(0)), b = new Array(2 * nn).fill(0);
+  mem.forEach((m, k) => { const p = nodes[m.i], q = nodes[m.j], l = Math.hypot(q.x - p.x, q.y - p.y), cx = (q.x - p.x) / l, cy = (q.y - p.y) / l; m.L = l;
+    A[2 * m.i][k] += cx; A[2 * m.i + 1][k] += cy; A[2 * m.j][k] -= cx; A[2 * m.j + 1][k] -= cy; });
+  const k0 = mem.length; A[0][k0] = 1; A[1][k0 + 1] = 1; A[2 * np + 1][k0 + 2] = 1; // apoyos B0 (x, y) y Bn (y)
+  const P = w * a;
+  for (let i = 0; i <= np; i++) b[2 * Tn(i) + 1] = (i === 0 || i === np ? P / 2 : P); // cargas hacia abajo: −P en el equilibrio → al lado derecho +P
+  const x = solveLin(A, b);
+  mem.forEach((m, k) => { m.N = x[k]; }); // N > 0 tracción
+  return { nodes, mem, R: [x[k0 + 1], x[k0 + 2]], P, a };
+}
+registerBlock('armadura', {
+  name: 'Armadura Pratt/Howe', icon: 'grid', group: 'Acero',
+  fields: [F('L', 'Luz', '12 m'), F('h', 'Peralte entre ejes de cuerdas', '0.8 m'), F('np', 'Número de paneles (par)', '8'), F('w', 'Carga uniforme equivalente (aplicada en los nudos superiores)', '0.36 tonf/m'),
+    F('tipo', 'Tipo', '', 'select', [['pratt', 'Pratt (diagonales en tracción)'], ['howe', 'Howe (diagonales en compresión)']]), F('sufijo', 'Sufijo de variables exportadas', ''), F('titulo', 'Título', '')],
+  hint: 'Resuelve la armadura isostática de cuerdas paralelas por el <b>método de los nudos</b> (equilibrio ΣFx = ΣFy = 0 en cada nudo, sistema lineal completo) y dibuja las fuerzas axiales: rojo compresión, azul tracción. Exporta <code>Ncs</code> (compresión máx. en cuerda superior), <code>Nci</code> (tracción máx. en cuerda inferior), <code>Ndt</code>/<code>Ndc</code> (diagonales), <code>Nv</code> (montantes, compresión) y <code>Rtr</code> (reacción).',
+  def: { L: '12 m', h: '0.8 m', np: '8', w: '0.36 tonf/m', tipo: 'pratt' },
+  render(b, ctx) {
+    const S = ctx.scope;
+    const L = evalParam(b.L, S, 'm'), h = evalParam(b.h, S, 'm'), np = Math.round(evalParam(b.np, S, '', 8)), w = evalParam(b.w, S, 'N/m');
+    pos({ L, h }); if (np < 2 || np > 40 || np % 2) throw new Error('Número de paneles: par, entre 2 y 40');
+    const r = trussPratt(L, h, np, w, b.tipo || 'pratt');
+    const sfx = b.sufijo ? '_' + String(b.sufijo).replace(/\W/g, '') : '';
+    const Fu = (v) => math.unit(v, 'N').to(forU());
+    const pick = (t, f) => r.mem.filter(m => m.t === t).reduce((a, m) => f(a, m.N), 0);
+    const Ncs = -pick('cs', Math.min), Nci = pick('ci', Math.max), Ndt = pick('d', Math.max), Ndc = -pick('d', Math.min), Nv = -pick('v', Math.min);
+    setVar(ctx, 'Ncs' + sfx, Fu(Ncs)); setVar(ctx, 'Nci' + sfx, Fu(Nci)); setVar(ctx, 'Ndt' + sfx, Fu(Ndt)); setVar(ctx, 'Ndc' + sfx, Fu(Ndc)); setVar(ctx, 'Nv' + sfx, Fu(Nv)); setVar(ctx, 'Rtr' + sfx, Fu(r.R[0]));
+    // dibujo
+    const W = 760, padX = 40, sc = (W - padX - 80) / L, hs = Math.min(sc, 150 / h), H = h * hs + 150;
+    const X = (x) => padX + x * sc, Y = (y) => 80 + (h - y) * hs;
+    const Nmax = Math.max(...r.mem.map(m => Math.abs(m.N)), 1e-9);
+    let g = arrowDefs;
+    r.mem.forEach(m => {
+      const p = r.nodes[m.i], q = r.nodes[m.j], c = Math.abs(m.N) < 1e-6 * Nmax ? C.axis : m.N > 0 ? C.blue : C.red;
+      g += Lne(X(p.x), Y(p.y), X(q.x), Y(q.y), c, 1 + 3 * Math.abs(m.N) / Nmax);
+    });
+    r.nodes.forEach(n => { g += `<circle cx="${X(n.x)}" cy="${Y(n.y)}" r="2.6" fill="#fff" stroke="${C.ink}"/>`; });
+    const fs = np > 12 ? 7.5 : 9;
+    r.mem.forEach(m => {
+      const p = r.nodes[m.i], q = r.nodes[m.j]; const mx = (X(p.x) + X(q.x)) / 2, my = (Y(p.y) + Y(q.y)) / 2;
+      const dy = m.t === 'cs' ? -6 : m.t === 'ci' ? 13 : 3, dx = m.t === 'v' ? 3 : 0;
+      const val = Fu(m.N).toNumber(forU());
+      g += `<text x="${(mx + dx).toFixed(1)}" y="${(my + dy).toFixed(1)}" font-size="${fs}" fill="${m.N >= 0 ? C.blue : C.red}" text-anchor="${m.t === 'v' ? 'start' : 'middle'}" font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="2.5" paint-order="stroke">${esc(f2(val))}</text>`;
+    });
+    for (let i = 0; i <= np; i++) { const x = X(i * r.a); g += `<line x1="${x}" y1="${Y(h) - 40}" x2="${x}" y2="${Y(h) - 6}" stroke="${C.ink}" stroke-width="1.2" marker-end="url(#ar)"/>`; }
+    g += T(X(0) + 4, Y(h) - 46, 'P = ' + f2(Fu(r.P).toNumber(forU())) + ' ' + uTxt(forU()) + ' (P/2 en los extremos)', { a: 'start', fs: 10 });
+    const sup = (x, roll) => `<path d="M${x},${Y(0) + 3} l-8,13 h16 z" fill="#fff" stroke="${C.ink}"/>` + (roll ? `<circle cx="${x - 4}" cy="${Y(0) + 20}" r="2.5" fill="none" stroke="${C.ink}"/><circle cx="${x + 4}" cy="${Y(0) + 20}" r="2.5" fill="none" stroke="${C.ink}"/>` : Lne(x - 10, Y(0) + 17, x + 10, Y(0) + 17));
+    g += sup(X(0), false) + sup(X(L), true);
+    g += dimH(X(0), X(L), Y(0) + 42, 'L = ' + f2(L) + ' m · ' + np + ' paneles de ' + f2(r.a) + ' m') + dimV(X(L) + 44, Y(h), Y(0), 'h = ' + f2(h) + ' m', C.ink, 1);
+    g += `<g>${Lne(W - 250, 18, W - 226, 18, C.blue, 3)}${T(W - 222, 22, 'Tracción (+)', { a: 'start', fs: 10 })}${Lne(W - 140, 18, W - 116, 18, C.red, 3)}${T(W - 112, 22, 'Compresión (−)', { a: 'start', fs: 10 })}</g>`;
+    const info = `<div class="kv">${K(symTex('Ncs' + sfx) + ' = ' + valTex(Fu(Ncs)))} ${K(symTex('Nci' + sfx) + ' = ' + valTex(Fu(Nci)))} ${K(symTex('Ndt' + sfx) + ' = ' + valTex(Fu(Ndt)))} ${K(symTex('Nv' + sfx) + ' = ' + valTex(Fu(Nv)))} ${K('R = ' + valTex(Fu(r.R[0])))}</div>`;
+    return `<div class="figure">${svgWrap(W, H, g)}${info}${caption(ctx, b.titulo || 'Fuerzas axiales en la armadura (método de los nudos) [' + uTxt(forU()) + ']')}</div>`;
   },
 });

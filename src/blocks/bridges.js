@@ -10,11 +10,18 @@
 //  Referencias: AASHTO LRFD 3.6.1.2–3.6.1.4, 3.6.2, 3.4.1 (docs/referencias/bridges.md)
 // =====================================================================
 import { registerBlock, F } from '../blockreg.js';
-import { evalParam, evalList, esc, math, K, symTex, valTex } from '../engine.js';
+import { evalParam, evalList, esc, math, K, symTex, valTex, settings } from '../engine.js';
 import { C, T, Lne, svgWrap, arrowDefs, dimH, dimV, niceTicks, caption, setVar, pos, f2, solveBeam } from '../blocks.js';
 import { AX_TRUCK, AX_TANDEM, W_LANE } from '../norms/bridges.js';
 
 const U = (v, u) => math.unit(v, u);
+// Unidades de presentación según el sistema del documento (cálculo interno en tonf y m)
+function dispUnits() {
+  const sys = settings.sys;
+  if (sys === 'si') return { f: 9.80665, fm: 9.80665, fw: 9.80665, F: 'kN', M: 'kN*m', lF: 'kN', lM: 'kN·m', lw: 'kN/m', fl: 1, lL: 'm' };
+  if (sys === 'us') return { f: 2.2046226, fm: 7.2330139, fw: 0.6719690, F: 'kip', M: 'kip*ft', lF: 'kip', lM: 'kip·ft', lw: 'kip/ft', fl: 3.2808399, lL: 'ft' };
+  return { f: 1, fm: 1, fw: 1, F: 'tonf', M: 'tonf*m', lF: 't', lM: 't·m', lw: 't/m', fl: 1, lL: 'm' };
+}
 
 // ---------------------------------------------------------------------
 //  Cargas permanentes:  U * w | U 1 w | U 1-2 w | UP x1 x2 w | T 1 w1 w2 | P x P
@@ -235,7 +242,9 @@ function renderHL93(b, ctx) {
   res.forEach(o => KEYS.forEach(kk => { if (Math.abs(o[kk]) < 1e-7) o[kk] = 0; }));
   // ----- exportación -----
   const sfx = b.sufijo ? String(b.sufijo).replace(/\W/g, '') : '';
-  const set = (n, v, u) => setVar(ctx, n + sfx, U(v, u));
+  const UD = dispUnits();
+  const conv = (v, u) => (u === 'tonf*m' ? U(v * UD.fm, UD.M) : u === 'tonf' ? U(v * UD.f, UD.F) : u === 'm' ? U(v * UD.fl, UD.lL) : U(v, u));
+  const set = (n, v, u) => setVar(ctx, n + sfx, conv(v, u));
   const iMax = res.reduce((bi, o, i) => (o.Mp > res[bi].Mp ? i : bi), 0);
   const iMin = res.reduce((bi, o, i) => (o.Mn < res[bi].Mn ? i : bi), 0);
   const VLL = Math.max(...res.map(o => Math.max(Math.abs(o.Vp), Math.abs(o.Vn))));
@@ -272,18 +281,18 @@ function renderHL93(b, ctx) {
     if (t === 'E') g += `<rect x="${i === 0 ? xx - 10 : xx}" y="${yb - 22}" width="10" height="44" fill="url(#hatch)" stroke="${C.ink}"/>`;
     g += T(xx, yb + 40, String.fromCharCode(65 + i), { b: 1 });
   });
-  for (let i = 0; i < Ls.length; i++) g += dimH(px(X[i]), px(X[i + 1]), yb + 58, f2(Ls[i]) + ' m');
+  for (let i = 0; i < Ls.length; i++) g += dimH(px(X[i]), px(X[i + 1]), yb + 58, f2(Ls[i] * UD.fl) + ' ' + UD.lL);
   const pl = cr.pl || [];
   const onb = pl.filter(a => a.x >= -1e-9 && a.x <= Lt + 1e-9);
   if (onb.length) {
     const xa = Math.min(...onb.map(a => a.x)), xb = Math.max(...onb.map(a => a.x));
     if (!isCustom) g += `<rect x="${(px(xa) - 8).toFixed(1)}" y="${yb - 74}" width="${(px(xb) - px(xa) + 16).toFixed(1)}" height="20" rx="4" fill="${C.redF}" stroke="${C.red}"/>`;
     const pmax = Math.max(...onb.map(a => a.p));
-    onb.forEach(a => { const xx = px(a.x), hh = 14 + 24 * a.p / pmax; g += `<line x1="${xx.toFixed(1)}" y1="${(yb - 6 - hh).toFixed(1)}" x2="${xx.toFixed(1)}" y2="${yb - 6}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + T(xx, yb - 80 - (isCustom ? 0 : 0), f2(a.p) + ' t', { fs: 9, c: C.red }); });
+    onb.forEach(a => { const xx = px(a.x), hh = 14 + 24 * a.p / pmax; g += `<line x1="${xx.toFixed(1)}" y1="${(yb - 6 - hh).toFixed(1)}" x2="${xx.toFixed(1)}" y2="${yb - 6}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + T(xx, yb - 80, f2(a.p * UD.f) + ' ' + UD.lF, { fs: 9, c: C.red }); });
   }
-  if (wl > 0) g += `<rect x="${px(0)}" y="${yb - 12}" width="${(Lt * sc).toFixed(1)}" height="4" fill="${C.blueF}" stroke="${C.blue}" stroke-width=".6"/>` + T(px(Lt) - 2, yb - 16, 'carril ' + f2(wl, 3) + ' t/m', { fs: 9, c: C.blue, a: 'end' });
+  if (wl > 0) g += `<rect x="${px(0)}" y="${yb - 12}" width="${(Lt * sc).toFixed(1)}" height="4" fill="${C.blueF}" stroke="${C.blue}" stroke-width=".6"/>` + T(px(Lt) - 2, yb - 16, 'carril ' + f2(wl * UD.fw, 3) + ' ' + UD.lw, { fs: 9, c: C.blue, a: 'end' });
   const vName = isFat ? 'Camión de fatiga (14.52 t a 9.0 m)' : isCustom ? 'Tren de ejes definido por el usuario' : 'HL-93: camión / tándem + carril';
-  g += T(padL, 14, vName + ' — posición crítica para M⁺ máx. en x = ' + f2(cr.x) + ' m', { fs: 10, a: 'start', c: C.axis });
+  g += T(padL, 14, vName + ' — posición crítica para M⁺ máx. en x = ' + f2(cr.x * UD.fl) + ' ' + UD.lL, { fs: 10, a: 'start', c: C.axis });
   let out = svgWrap(W, yb + 70, g);
   // ----- diagramas -----
   const diag = (ys1, ys2, ys3, ys4, title, unit, cols) => {
@@ -312,9 +321,10 @@ function renderHL93(b, ctx) {
   const cM = [[C.blue, C.blueF], [C.red, C.redF]], cV = [[C.green, C.greenF], [C.orange, 'rgba(212,115,12,.14)']];
   const lbl = isFat ? 'camión de fatiga' : 'LL+IM';
   out += `<div class="dt">Envolvente de momento flector por ${lbl}${gdf !== 1 ? ' × g = ' + f2(gdf, 3) : strip ? '' : ' (por carril)'}${strip ? ' por metro de ancho (÷ E⁺ = ' + f2(Ep) + ' m, ÷ E⁻ = ' + f2(En) + ' m)' : ''}${hasPerm ? '; en trazo discontinuo: Resistencia I (η = ' + f2(eta) + ')' : ''}</div>`;
-  out += diag(res.map(o => o.Mp), res.map(o => o.Mn), hasPerm ? res.map(o => o.Mup) : null, hasPerm ? res.map(o => o.Mun) : null, 'M', 't·m', cM);
+  const cm = (a) => a.map(v => v * UD.fm), cf = (a) => a.map(v => v * UD.f);
+  out += diag(cm(res.map(o => o.Mp)), cm(res.map(o => o.Mn)), hasPerm ? cm(res.map(o => o.Mup)) : null, hasPerm ? cm(res.map(o => o.Mun)) : null, 'M', UD.lM, cM);
   out += `<div class="dt">Envolvente de fuerza cortante por ${lbl}${hasPerm ? '; en trazo discontinuo: Resistencia I' : ''}</div>`;
-  out += diag(res.map(o => o.Vp), res.map(o => o.Vn), hasPerm ? res.map(o => o.Vup) : null, hasPerm ? res.map(o => o.Vun) : null, 'V', 't', cV);
+  out += diag(cf(res.map(o => o.Vp)), cf(res.map(o => o.Vn)), hasPerm ? cf(res.map(o => o.Vup)) : null, hasPerm ? cf(res.map(o => o.Vun)) : null, 'V', UD.lF, cV);
   // ----- tabla en décimos de luz -----
   const rows = [];
   const tpts = Ls.length <= 2 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [0, 5, 10];
@@ -322,10 +332,11 @@ function renderHL93(b, ctx) {
     const x = X[i] + Ls[i] * t / 10, side = t === 10 ? 'L' : 'R';
     const o = res.find(q => Math.abs(q.x - x) < 1e-7 && q.side === side); if (o) rows.push({ o, lab: (Ls.length > 1 ? 'T' + (i + 1) + ' ' : '') + (t / 10).toFixed(1) + 'L' });
   }
-  let tb = `<table class="tbl"><thead><tr><th>Sección</th><th>x [m]</th><th>M⁺ ${lbl} [t·m]</th><th>M⁻ ${lbl} [t·m]</th><th>V⁺ [t]</th><th>V⁻ [t]</th>${hasPerm ? '<th>M DC [t·m]</th><th>M DW [t·m]</th><th>Mu⁺ [t·m]</th><th>Mu⁻ [t·m]</th><th>|Vu| [t]</th>' : ''}</tr></thead><tbody>`;
-  rows.forEach(({ o, lab }) => { tb += `<tr><td>${lab}</td><td>${f2(o.x)}</td><td>${f2(o.Mp)}</td><td>${f2(o.Mn)}</td><td>${f2(o.Vp)}</td><td>${f2(o.Vn)}</td>${hasPerm ? `<td>${f2(o.MDC)}</td><td>${f2(o.MDW)}</td><td>${f2(o.Mup)}</td><td>${f2(o.Mun)}</td><td>${f2(Math.max(Math.abs(o.Vup), Math.abs(o.Vun)))}</td>` : ''}</tr>`; });
+  let tb = `<table class="tbl"><thead><tr><th>Sección</th><th>x [${UD.lL}]</th><th>M⁺ ${lbl} [${UD.lM}]</th><th>M⁻ ${lbl} [${UD.lM}]</th><th>V⁺ [${UD.lF}]</th><th>V⁻ [${UD.lF}]</th>${hasPerm ? `<th>M DC [${UD.lM}]</th><th>M DW [${UD.lM}]</th><th>Mu⁺ [${UD.lM}]</th><th>Mu⁻ [${UD.lM}]</th><th>|Vu| [${UD.lF}]</th>` : ''}</tr></thead><tbody>`;
+  const m_ = (v) => f2(v * UD.fm), v_ = (v) => f2(v * UD.f);
+  rows.forEach(({ o, lab }) => { tb += `<tr><td>${lab}</td><td>${f2(o.x * UD.fl)}</td><td>${m_(o.Mp)}</td><td>${m_(o.Mn)}</td><td>${v_(o.Vp)}</td><td>${v_(o.Vn)}</td>${hasPerm ? `<td>${m_(o.MDC)}</td><td>${m_(o.MDW)}</td><td>${m_(o.Mup)}</td><td>${m_(o.Mun)}</td><td>${v_(Math.max(Math.abs(o.Vup), Math.abs(o.Vun)))}</td>` : ''}</tr>`; });
   tb += '</tbody></table>';
-  const kv = (n, v, u) => K(symTex(n + sfx) + '=' + valTex(U(v, u)));
+  const kv = (n, v, u) => K(symTex(n + sfx) + '=' + valTex(conv(v, u)));
   let info = `<div class="kv">${kv('MLLp', cr.Mp, 'tonf*m')} ${kv('MLLn', res[iMin].Mn, 'tonf*m')} ${kv('VLL', VLL, 'tonf')} ${kv('xMLL', cr.x, 'm')} ${K('IM = ' + f2(IM, 2))} ${K('g = ' + f2(gdf, 3))}</div>`;
   if (hasPerm) info += `<div class="kv">${kv('Mup', Math.max(0, ...res.map(o => o.Mup)), 'tonf*m')} ${kv('Mun', Math.min(0, ...res.map(o => o.Mun)), 'tonf*m')} ${kv('Vu', Math.max(...res.map(o => Math.max(Math.abs(o.Vup), Math.abs(o.Vun)))), 'tonf')}</div>`;
   const note = `<div class="txt muted" style="font-size:12px">Líneas de influencia por el método de rigidez (${N} nudos). ${isFat ? 'Camión de fatiga con separación fija de 9.0 m, sin carga de carril (3.6.1.4.1).' : isCustom ? 'Ejes definidos por el usuario; se desprecian los ejes que no contribuyen al efecto extremo (3.6.1.3.1).' : 'Camión con separación posterior ' + (continuous ? 'variable 4.3–9.0 m' : '4.3 m') + ', tándem y carril de 0.952 t/m en las zonas que producen el extremo (3.6.1.3.1); ' + (continuous ? 'para momento negativo se incluye el 90 % de dos camiones separados ≥ 15 m más el 90 % del carril.' : 'IM no se aplica a la carga de carril (3.6.2.1).')}</div>`;
@@ -353,6 +364,8 @@ registerBlock('hl93env', {
 // =====================================================================
 function renderSec(b, ctx) {
   const S = ctx.scope;
+  const LU = settings.sys === 'us' ? { f: 3.2808399, u: 'ft' } : { f: 1, u: 'm' };
+  const fl = (v) => f2(v * LU.f);
   const B = evalParam(b.B, S, 'm', 8.4), ts = evalParam(b.ts, S, 'm', 0.2);
   const nv = Math.round(evalParam(b.nv, S, '', 4)), Sg = evalParam(b.S, S, 'm', 2.1);
   const hv = evalParam(b.hv, S, 'm', 1.2), bw = evalParam(b.bw, S, 'm', 0.4);
@@ -424,26 +437,26 @@ function renderSec(b, ctx) {
     const w1 = xm - 0.9, w2 = xm + 0.9, yT = Y(-tasf);
     g += `<rect x="${X(w1 - 0.35)}" y="${(yT - 62).toFixed(1)}" width="${((1.8 + 0.7) * sc).toFixed(1)}" height="30" rx="5" fill="${C.redF}" stroke="${C.red}"/>`;
     [w1, w2].forEach(w => { g += `<rect x="${(X(w) - 7).toFixed(1)}" y="${(yT - 30).toFixed(1)}" width="14" height="${(26).toFixed(1)}" rx="3" fill="#333"/>`; g += `<line x1="${X(w).toFixed(1)}" y1="${(yT - 100).toFixed(1)}" x2="${X(w).toFixed(1)}" y2="${(yT - 66).toFixed(1)}" stroke="${C.red}" stroke-width="1.8" marker-end="url(#arr)"/>`; });
-    g += T(X(xm), yT - 104, 'P/2 = 7.26 t', { fs: 9, c: C.red });
+    g += T(X(xm), yT - 104, settings.sys === 'si' ? 'P/2 = 71.2 kN' : settings.sys === 'us' ? 'P/2 = 16 kip' : 'P/2 = 7.26 t', { fs: 9, c: C.red });
     g += T(X(xm), yT - 44, 'Carril ' + (i + 1), { fs: 9, c: C.red, b: 1 });
-    g += dimH(X(w1), X(w2), yT - 118, '1.80');
+    g += dimH(X(w1), X(w2), yT - 118, LU.u === 'ft' ? '6 ft' : '1.80');
   }
   // cotas
-  g += dimH(X(0), X(B), Y(hTot) + 46, 'B = ' + f2(B) + ' m');
-  g += dimH(X(xc0), X(B - xc0), 18, 'Calzada = ' + f2(wc) + ' m (' + NL + ' carril' + (NL > 1 ? 'es' : '') + ' de diseño)');
+  g += dimH(X(0), X(B), Y(hTot) + 46, 'B = ' + fl(B) + ' ' + LU.u);
+  g += dimH(X(xc0), X(B - xc0), 18, 'Calzada = ' + fl(wc) + ' ' + LU.u + ' (' + NL + ' carril' + (NL > 1 ? 'es' : '') + ' de diseño)');
   if (tipo !== 'losa') {
     const yd = Y(hTot) + 22;
-    g += dimH(X(0), X(xg[0]), yd, f2(vol));
-    for (let i = 0; i < nv - 1; i++) g += dimH(X(xg[i]), X(xg[i + 1]), yd, 'S = ' + f2(Sg));
-    g += dimH(X(xg[nv - 1]), X(B), yd, f2(vol));
-    g += dimV(X(0) - 14, Y(0), Y(hTot), 'h = ' + f2(hTot), C.ink, -1);
-    g += T(X(xg[0] + bw / 2) + 4, Y(ts + hv / 2), 'bw = ' + f2(bw), { fs: 9, a: 'start', c: C.axis });
+    g += dimH(X(0), X(xg[0]), yd, fl(vol));
+    for (let i = 0; i < nv - 1; i++) g += dimH(X(xg[i]), X(xg[i + 1]), yd, 'S = ' + fl(Sg));
+    g += dimH(X(xg[nv - 1]), X(B), yd, fl(vol));
+    g += dimV(X(0) - 14, Y(0), Y(hTot), 'h = ' + fl(hTot), C.ink, -1);
+    g += T(X(xg[0] + bw / 2) + 4, Y(ts + hv / 2), 'bw = ' + fl(bw), { fs: 9, a: 'start', c: C.axis });
   }
-  g += Lne(X(B) + 6, Y(0), X(B) + 16, Y(0), C.ink, 0.8) + Lne(X(B) + 6, Y(ts), X(B) + 16, Y(ts), C.ink, 0.8) + Lne(X(B) + 12, Y(0), X(B) + 12, Y(ts), C.ink, 0.8) + T(X(B) + 18, Y(ts / 2) + 4, 'ts = ' + f2(ts), { fs: 10, a: 'start' });
+  g += Lne(X(B) + 6, Y(0), X(B) + 16, Y(0), C.ink, 0.8) + Lne(X(B) + 6, Y(ts), X(B) + 16, Y(ts), C.ink, 0.8) + Lne(X(B) + 12, Y(0), X(B) + 12, Y(ts), C.ink, 0.8) + T(X(B) + 18, Y(ts / 2) + 4, 'ts = ' + fl(ts), { fs: 10, a: 'start' });
   if (tasf > 0) g += T(X(tipo === 'losa' || nv < 2 ? B / 2 : xg[0] + Sg / 2), Y(ts) + (tipo === 'losa' ? 14 : 14), 'asfalto e = ' + f2(tasf * 100, 1) + ' cm', { fs: 9, c: C.axis });
   const de = vol - bar - ver;
   const tipTxt = { t: 'vigas T de concreto armado', i: 'vigas I de concreto presforzado', cajon: 'vigas cajón', acero: 'vigas de acero compuestas', losa: 'losa maciza' }[tipo] || 'vigas';
-  const info = `<div class="kv">${K('B = ' + f2(B) + '\\,\\mathrm{m}')} ${K('w_{calzada} = ' + f2(wc) + '\\,\\mathrm{m}')} ${K('N_L = ' + NL)} ${tipo !== 'losa' ? K('N_b = ' + nv) + ' ' + K('S = ' + f2(Sg) + '\\,\\mathrm{m}') + ' ' + K('voladizo = ' + f2(vol) + '\\,\\mathrm{m}') + ' ' + K('d_e = ' + f2(de) + '\\,\\mathrm{m}') : ''}</div>`;
+  const info = `<div class="kv">${K('B = ' + fl(B) + '\\,\\mathrm{' + LU.u + '}')} ${K('w_{calzada} = ' + fl(wc) + '\\,\\mathrm{' + LU.u + '}')} ${K('N_L = ' + NL)} ${tipo !== 'losa' ? K('N_b = ' + nv) + ' ' + K('S = ' + fl(Sg) + '\\,\\mathrm{' + LU.u + '}') + ' ' + K('voladizo = ' + fl(vol) + '\\,\\mathrm{' + LU.u + '}') + ' ' + K('d_e = ' + fl(de) + '\\,\\mathrm{' + LU.u + '}') : ''}</div>`;
   return `<div class="figure">${svgWrap(Wd, H, g)}${info}${caption(ctx, b.titulo || 'Sección transversal del tablero (' + tipTxt + ')')}</div>`;
 }
 

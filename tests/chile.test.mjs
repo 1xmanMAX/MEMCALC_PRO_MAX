@@ -99,6 +99,50 @@ v2 = SaNCh2369v23(2 s, 2, 0.4, 1, 5, 0.05)`);
   near('Sa(1.5 s) rama descendente', g('sa2'), 2.75 * 0.4 / 5 * (0.35 / 1.5) ** 1.33 * (0.05 / 0.03) ** 0.4);
   near('NCh2369:2023 meseta Smáx = 2.75·I·S·Ao/(R+1)·(0.05/ξ)^0.4 (ec. 1.1)', g('v1'), 2.75 * 0.4 / 6);
   near('NCh2369:2023 Sa(2 s) = 0.7·I·1.4·S·Ao·α/R (ec. 1 y 3, suelo B)', g('v2'), 0.7 * 1.4 * 0.4 * al(2, 0.30, 1.60) / 5);
+  const h = calc(`sv1 = SaVNCh2369v23(0.1 s, 3, 0.4, 1)
+sv2 = SaVNCh2369v23(0.5 s, 1, 0.3, 1.2, 2, 0.05)
+i1 = INCh2369v23(1)
+i4 = INCh2369v23(4)
+cm = CminNCh2369v23(1.2, 1.05, 0.4)
+cmx5 = CmaxNCh433(5, 1, 0.4)`);
+  near('NCh2369:2023 vertical (ec. 2 y 4): 0,7·S·Ao·α(1,7TV/T0)/2·(0,05/0,03)^0,4, suelo C', h('sv1'), 0.7 * 1.05 * 0.4 * al(0.17, 0.40, 1.50) / 2 * (0.05 / 0.03) ** 0.4);
+  near('NCh2369:2023 vertical con ξV = 0,05, suelo A, I = 1,2', h('sv2'), 0.7 * 1.2 * 0.9 * 0.3 * al(0.85, 0.15, 1.85) / 2);
+  near('NCh2369:2023 4.3.2: I categoría I = 0,80', h('i1'), 0.8); near('NCh2369:2023 4.3.2: I categoría IV = 1,20', h('i4'), 1.2);
+  near('NCh2369:2023 5.12.1: Cmín = 0,25·I·S·Ao/g', h('cm'), 0.25 * 1.2 * 1.05 * 0.4);
+  near('NCh433 Tabla 6.4: R = 5 (IMF, no tabulado) interpolado 0,45·S·Ao/g', h('cmx5'), 0.45 * 0.4);
+  let err = ''; try { calc('x = SaNCh2369v23(1 s, 2, 0.4, 1, 5, 0.01)'); } catch (e) { err = String(e.message); }
+  truthy('NCh2369:2023: ξ fuera de 0,02–0,05 → error explícito', /0,02/.test(err));
+}
+
+section('Ejemplo publicado: análisis estático NCh433+DS61 (Meriño Sepúlveda, memoria de título U. del Bío-Bío, Anexo A, Tablas 1–4)');
+{
+  // Edificio de 5 pisos de muros, h = 2,5 m, zona 3, suelo D, cat. II, P = 914,6005 tonf, bky = 23,5 m.
+  // Publicado: Cmáx(R = 4) = 0,264; Cmáx(R = 7) = 0,168; Cmín = 0,080; Qb = 241,45 / 153,65 tonf;
+  // Ak = 0,106/0,120/0,142/0,185/0,447; Fkx (R = 4) = 29,361/33,326/39,531/51,518/87,719 tonf; ex1 = 0,470 m; Tax1 = 13,800 tonf·m.
+  const g = calc(`Ao = AoNCh433(3)
+S = SNCh433("D")
+Pk = [194.3775, 194.3775, 194.3775, 194.3775, 137.0905] tonf
+P = sum(Pk)
+Zk = 2.5 m*(1:5)
+c4 = min(max(CNCh433(0.08 s, S, TpNCh433(4), nNCh433(4), Ao, 4), CminNCh433(S, Ao)), CmaxNCh433(4, S, Ao))
+c7 = min(max(CNCh433(0.08 s, S, TpNCh433(4), nNCh433(4), Ao, 7), CminNCh433(S, Ao)), CmaxNCh433(7, S, Ao))
+cmin = CminNCh433(S, Ao)
+Q4 = c4*INCh433(2)*P
+Q7 = c7*INCh433(2)*P
+Ak = AkNCh433(Zk)
+F4 = Ak .* Pk / sum(Ak .* Pk) * Q4
+ex = 0.10*23.5 m*Zk/(12.5 m)
+Mt = F4 .* ex`);
+  near('Meriño: Cmáx (R = 4, suelo D, zona 3) = 0,264', g('c4'), 0.264, 0.002);
+  near('Meriño: Cmáx (R = 7) = 0,168', g('c7'), 0.168, 0.002);
+  near('Meriño: Cmín = 0,080', g('cmin'), 0.080, 0.002);
+  near('Meriño: Qbx (R = 4) = 241,45 tonf', g('Q4', 'tonf'), 241.45, 0.001);
+  near('Meriño: Qbx (R = 7) = 153,65 tonf', g('Q7', 'tonf'), 153.65, 0.001);
+  const Ak = g('Ak').toArray(), F = g('F4').toArray().map(u => u.toNumber('tonf')), Mt = g('Mt').toArray().map(u => u.toNumber('tonf*m'));
+  [0.106, 0.120, 0.142, 0.185, 0.447].forEach((v, i) => near(`Meriño: A${i + 1} = ${v}`, Ak[i], v, 0.005));
+  [29.361, 33.326, 39.531, 51.518, 87.719].forEach((v, i) => near(`Meriño: F${i + 1}x (R = 4) = ${v} tonf`, F[i], v, 0.002));
+  near('Meriño: momento torsor accidental nivel 1 = 13,800 tonf·m', Mt[0], 13.800, 0.002);
+  near('Meriño: momento torsor accidental nivel 5 = 206,140 tonf·m', Mt[4], 206.140, 0.002);
 }
 
 section('Análisis modal (edificio de cortante) y CQC');
@@ -146,6 +190,11 @@ o3 = qNCh432Of71(25 m, 1)`);
   near('qz = 0.613·Kz·Kd·V²·I [N/m²]', g('q', 'N/m^2'), 0.613 * 2.01 * (10 / 274.32) ** (2 / 9.5) * 0.85 * 35 * 35);
   near('Cp techo barlovento θ = 10°, h/L ≤ 0.25 = −0.7', g('c1'), -0.7); near('Cp techo barlovento θ = 20°, h/L = 0.5, caso 2 = 0.0', g('c2') + 1, 1);
   near('Cp techo sotavento θ = 15°, h/L ≥ 1 = −0.6', g('c3'), -0.6); near('Cp muro sotavento L/B = 2 = −0.3', g('c4'), -0.3);
+  const w = calc(`f1 = CpTechoNCh432(5 deg, 0.3, 1)
+f2 = CpTechoNCh432(5 deg, 1.0, 1)
+f3 = CpTechoSotNCh432(5 deg, 0.3)`);
+  near('Cp techo θ < 10° (h/L ≤ 0,5): borde de barlovento −0,9 (ASCE 7-05 Fig. 6-6)', w('f1'), -0.9); near('Cp techo θ < 10° (h/L ≥ 1): −1,3', w('f2'), -1.3);
+  near('Cp sotavento θ < 10°: zona h–2h −0,5 (envolvente)', w('f3'), -0.5);
   near('NCh432.Of71 Tabla 1: ciudad, 15 m = 75 kgf/m²', g('o1', 'kgf/m^2'), 75); near('NCh432.Of71: campo abierto, 10 m = 106 kgf/m²', g('o2', 'kgf/m^2'), 106);
   near('NCh432.Of71: interpolación ciudad 25 m = 90 kgf/m²', g('o3', 'kgf/m^2'), 90);
 }
@@ -166,10 +215,12 @@ section('Bloques');
   truthy('muroCL: Mn (P = 0) ≥ As·fy·(distancia entre centroides de bordes)', b2 && m('Mn_w', 'tonf*m') >= Mlow * 0.98, `Mn = ${m('Mn_w', 'tonf*m').toFixed(1)} t·m ≥ ${Mlow.toFixed(1)}`);
   truthy('muroCL: Mn (P = 0) ≤ 1.5 × cota (aporte de la malla del alma acotado)', m('Mn_w', 'tonf*m') <= Mlow * 1.5);
   near('muroCL: φ = 0.9 (sección controlada por tracción)', m('phi_w'), 0.9);
-  const m2 = block('muroCL', { lw: '4 m', e: '30 cm', fc: '30 MPa', fy: '420 MPa', nb: '8', dbb: '22', lb: '60 cm', dbw: '10', sw: '20 cm', rec: '4 cm', Pu: '800 tonf', du: '8 cm', hw: '30 m' });
+  const m2 = block('muroCL', { lw: '4 m', e: '30 cm', fc: '30 MPa', fy: '420 MPa', nb: '8', dbb: '22', lb: '60 cm', dbw: '10', sw: '20 cm', rec: '4 cm', Pu: '800 tonf', du: '20 cm', hw: '30 m' });
   truthy('muroCL: mayor Pu → mayor profundidad del eje neutro', m2('c_w', 'cm') > m('c_w', 'cm'));
-  const climit = 400 / (600 * 8 / 3000);
-  near('muroCL: cc = c − lw/(600·δu/hw) (DS60 ec. 21-8a)', m2('cc_w', 'cm'), Math.max(0, m2('c_w', 'cm') - climit), 0.002);
+  const climit = 400 / (600 * 20 / 3000), c2 = m2('c_w', 'cm');
+  truthy('muroCL: Pu = 800 tonf exige elemento de borde (c ≥ lw/(600δu/hw))', c2 >= climit, `c = ${c2.toFixed(1)} cm, c_lím = ${climit.toFixed(1)} cm`);
+  near('muroCL: cc = máx(c − c_lím; c − 0.1lw; c/2) (DS60 21-8a / ACI 21.9.6.4 a)', m2('cc_w', 'cm'), Math.max(c2 - climit, c2 - 40, c2 / 2), 0.002);
+  near('muroCL: sin elemento de borde requerido → cc = 0', m('cc_w', 'cm') + 1, 1);
   const f = block('fuerzasCL', { Z: '[3, 6, 9]', F: '[10, 20, 30] tonf', u: 'tonf' });
   truthy('fuerzasCL dibuja la elevación', /<svg/.test(f.html) && /V3 = 30/.test(f.html));
 }
@@ -200,13 +251,29 @@ section('Plantillas: valores de control (cálculo manual independiente)');
   near('Muro: Vn = Acv(αc√f\'c + ρt·fy) [tonf]', w('Vn', 'tonf'), 1.5e6 * (0.17 * Math.sqrt(30) + 2 * Math.PI * 25 / (250 * 200) * 420) / 9806.65);
   const v = runTemplate('cl-viento-galpon');
   near('Viento: qh = 0.613·Kz(h)·Kd·V² [kgf/m²]', v('qh', 'kgf/m^2'), 0.613 * 2.01 * (v('h', 'm') / 274.32) ** (2 / 9.5) * 0.85 * 35 ** 2 / 9.80665);
+  near('NCh2369: corte en marco interior = Qo·s/L', n('Qmarco', 'tonf'), 0.23 * n('P', 'tonf') * 6 / 60);
+  truthy('NCh2369:2023: corte basal comparativo calculado', n('Q23', 'tonf') > 0 && Number.isFinite(n('r23')), `Q23 = ${n('Q23', 'tonf').toFixed(2)} tonf, Q23/Q2003 = ${n('r23').toFixed(3)}`);
+  {
+    const B = 20, he = 7, r = 10 * Math.tan(10 * Math.PI / 180), s = 6, k = s / 1000;
+    const wmb = v('pmb', 'kgf/m^2') * k, wms = v('pms', 'kgf/m^2') * k, wtb = v('ptb', 'kgf/m^2') * k, wts = v('pts', 'kgf/m^2') * k;
+    // equilibrio global, momentos respecto de la base de sotavento (vertical: carga en faldón sobre B/2, centroides a B/4 y 3B/4)
+    const Rup = (-wtb * B / 2 * 0.75 - wts * B / 2 * 0.25) + ((wmb - wms) * he * he / 2 + (wtb - wts) * r * (he + r / 2)) / B;
+    near('Viento: levantamiento en base de barlovento por equilibrio global [tonf]', v('Rup', 'tonf'), Rup);
+  }
   const c = runTemplate('cl-nch3171');
   near('NCh3171: Pu máx = 1.2D + 1.4E + L', c('Pumax', 'tonf'), 1.2 * 85 + 1.4 * 32 + 28);
   near('NCh3171: Pu mín = 0.9D − 1.4E', c('Pumin', 'tonf'), 0.9 * 85 - 1.4 * 32);
 }
 
-section('Datos absurdos no producen «TODAS CUMPLEN»');
+section('Datos absurdos no producen «TODAS CUMPLEN» ni errores');
 {
+  const cleanFail = (r) => r.res.ctx.errors.length === 0 && r.res.ctx.checks.some(c => !c.ok) && !/NaN/.test(r.res.html);
+  const muta = (id, pairs) => runTemplate(id, d => { for (const [a, b] of pairs) { const bl = d.blocks.find(x => (x.src || '').includes(a)); bl.src = bl.src.replace(a, b); } });
+  truthy('Estático con N = 8 pisos: falla 6.2.1 b) sin errores', cleanFail(muta('cl-nch433-estatico', [['N = 5', 'N = 8'], ['dcmx = [0.08, 0.11, 0.12, 0.12, 0.11]', 'dcmx = [0.08, 0.11, 0.12, 0.12, 0.11, 0.1, 0.1, 0.1]'], ['dpx = [0.11, 0.15, 0.16, 0.16, 0.15]', 'dpx = [0.11, 0.15, 0.16, 0.16, 0.15, 0.1, 0.1, 0.1]'], ['dcmy = [0.06, 0.08, 0.09, 0.09, 0.08]', 'dcmy = [0.06, 0.08, 0.09, 0.09, 0.08, 0.1, 0.1, 0.1]'], ['dpy = [0.09, 0.12, 0.13, 0.13, 0.12]', 'dpy = [0.09, 0.12, 0.13, 0.13, 0.12, 0.1, 0.1, 0.1]']])));
+  truthy('Modal con rigideces 100 veces menores: falla la deriva', cleanFail(muta('cl-nch433-modal', [['kx = [60000, 56000, 52000, 46000, 38000, 28000]', 'kx = [600, 560, 520, 460, 380, 280]']])));
+  truthy('NCh2369 con K = 50 tonf/m y R = 1: falla deformación 0,015h', cleanFail(muta('cl-nch2369', [['R = 5 //', 'R = 1 //'], ['K = 5200', 'K = 50']])));
+  truthy('Muro con Tx = 1,3 s y Pu = 1300 tonf: exige elemento de borde y falla', cleanFail(muta('cl-muro-ds60', [['Pu = 520 tonf', 'Pu = 1300 tonf'], ['Tx = 0.75 s', 'Tx = 1.3 s']])));
+  truthy('NCh3171 con E = 300 tonf: falla resistencia y tracción', cleanFail(muta('cl-nch3171', [['E = 32 tonf', 'E = 300 tonf']])));
   const g = runTemplate('cl-nch433-estatico', d => { const b = d.blocks.find(x => /dcmx = /.test(x.src || '')); b.src = b.src.replace('dcmx = [0.08,', 'dcmx = [0.98,'); });
   truthy('Deriva excesiva → falla 5.9.2', g.res.ctx.checks.some(c => !c.ok) && !/TODAS LAS VERIFICACIONES CUMPLEN/.test(g.res.html));
   const w = runTemplate('cl-muro-ds60', d => { const b = d.blocks.find(x => /Pu = 520/.test(x.src || '')); b.src = b.src.replace('Pu = 520 tonf', 'Pu = 2000 tonf'); });
