@@ -156,7 +156,7 @@ function rigidPressure(L, loads) {
   // momento respecto al centro (horario +)
   let Mc = loads.pts.reduce((s, p) => s + p.P * (p.x - L / 2), 0) + loads.mom.reduce((s, m) => s + m.M, 0);
   for (const d of loads.dist) { const a = Math.max(0, d.x1), b = Math.min(L, d.x2); Mc += d.w * (b - a) * ((a + b) / 2 - L / 2); }
-  const e = Mc / R; // resultante en x = L/2 + e
+  let e = Mc / R; if (Math.abs(e) < 1e-9 * L) e = 0; // resultante en x = L/2 + e
   if (Math.abs(e) >= L / 2) throw new Error('La resultante cae fuera de la cimentación (e = ' + f2(e) + ' m)');
   let pf;
   if (Math.abs(e) <= L / 6) { const p0 = R / L, dp = 12 * R * e / L ** 3; pf = (x) => p0 + dp * (x - L / 2); }
@@ -221,7 +221,8 @@ registerBlock('winkler', {
     const q = P.map(p => p / B);
     const sfx = b.sufijo ? '_' + b.sufijo.replace(/\W/g, '') : '';
     const qmax = Math.max(...q), qmin = Math.min(...q), wmax = Math.max(...Wd), wmin = Math.min(...Wd);
-    const Mpos = Math.max(0, ...st.M), Mneg = Math.min(0, ...st.M), Vmax = Math.max(...st.V.map(Math.abs));
+    const cl = (v) => (Math.abs(v) < 1e-9 ? 0 : v);
+    const Mpos = cl(Math.max(0, ...st.M)), Mneg = cl(Math.min(0, ...st.M)), Vmax = Math.max(...st.V.map(Math.abs));
     const sumR = P.reduce((s, p, i) => (i ? s + (p + P[i - 1]) / 2 * (X[i] - X[i - 1]) : s), 0);
     setVar(ctx, 'qmax' + sfx, U(qmax, 'tonf/m^2')); setVar(ctx, 'qmin' + sfx, U(qmin, 'tonf/m^2'));
     setVar(ctx, 'wmax' + sfx, U(wmax * 1000, 'mm')); setVar(ctx, 'wmin' + sfx, U(wmin * 1000, 'mm'));
@@ -355,7 +356,7 @@ registerBlock('soilprofile', {
       { xs: rows.map(r => r.N60), zs: rows.map(r => r.z), color: C.blue, marker: 'sq', dash: '5 3', w: 1.2 },
       { xs: rows.map(r => r.N160), zs: rows.map(r => r.z), color: C.red, marker: 'c', w: 1.6 },
     ], 'N-SPT [golpes/30 cm]', { noZ: true, nf });
-    rows.forEach(r => { g += T(p1 + (r.N / Nmax) * w1 - 6, Y(r.z) + 3.5, f2(r.N, 0), { fs: 8, a: 'end', c: C.ink }); });
+    rows.forEach(r => { g += lab(p1 + (Math.max(r.N, r.N60, r.N160) / Nmax) * w1 + 7, Y(r.z) + 3.5, f2(r.N, 0), { fs: 8.5, a: 'start', c: C.ink }); });
     // esfuerzos
     const p2 = 498, w2 = 190, zz = []; for (let i = 0; i <= 80; i++) zz.push(zmax * i / 80);
     if (nf !== null) zz.push(nf); top = 0; layers.forEach(l => { top += l.h; zz.push(top); }); zz.sort((a, c) => a - c);
@@ -606,11 +607,11 @@ registerBlock('pilegroup', {
     if (n1 > 1) g += dimH(Xp(e), Xp(e + s), Yp(0) - 12, 's = ' + f2(s));
     g += T(190, Yp(Bc) + 42, `${n1 * n2} pilotes Ø ${f2(D * 100, 0)} cm`, { fs: 10, c: C.axis });
     // elevación
-    const ex = 400, Wl = 290, zTot = Df + Lp + 1.2, sc2 = Math.min(Wl / (Lc + 1.5), 330 / zTot), gy = 50;
-    const Xe = (x) => ex + (Wl - Lc * sc2) / 2 + x * sc2, Ye = (z) => gy + z * sc2;
+    const ex = 400, Wl = 290, zTot = Df + Lp + 1.2, sc2 = Math.min((Wl - 90) / Lc, 330 / zTot), gy = 50;
+    const Xe = (x) => ex + 30 + x * sc2, Ye = (z) => gy + z * sc2;
     g += T(ex + Wl / 2, 22, 'ELEVACIÓN', { b: 1 });
     g += `<rect x="${ex}" y="${gy}" width="${Wl}" height="${zTot * sc2}" fill="url(#soilp)" opacity=".55"/>` + Lne(ex, gy, ex + Wl, gy, C.soil, 2);
-    if (b.estratos) { let z = 0; lines(b.estratos).forEach(l => { const t = l.split(/\s+/); z += evalParam(t[0], S, 'm'); if (z < zTot) g += Lne(ex, Ye(z), ex + Wl, Ye(z), '#8a7440', 0.8, '6 3'); g += T(ex + Wl - 3, Ye(z) - 3, t.slice(1).join(' '), { fs: 8.5, a: 'end', c: '#5d4e2c' }); }); }
+    if (b.estratos) { let z = 0; lines(b.estratos).forEach(l => { const t = l.split(/\s+/); z += evalParam(t[0], S, 'm'); if (z < zTot) g += Lne(ex, Ye(z), ex + Wl, Ye(z), '#8a7440', 0.8, '6 3'); g += lab(ex + 4, Math.min(Ye(z), Ye(zTot)) - 4, t.slice(1).join(' '), { fs: 8.5, a: 'start', c: '#5d4e2c' }); }); }
     for (let i = 0; i < n1; i++) { const x = e + i * s; g += `<rect x="${Xe(x - D / 2)}" y="${Ye(Df)}" width="${D * sc2}" height="${Lp * sc2}" fill="#b8c0c8" stroke="${C.ink}" stroke-width=".8"/>`; }
     g += `<rect x="${Xe(0)}" y="${Ye(Df - hc)}" width="${Lc * sc2}" height="${hc * sc2}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.4"/>`;
     g += `<rect x="${Xe((Lc - c1) / 2)}" y="${gy - 22}" width="${c1 * sc2}" height="${(Df - hc) * sc2 + 22}" fill="#7d8894" stroke="${C.ink}"/>`;
@@ -640,13 +641,55 @@ registerBlock('liqchart', {
     const zmax = Math.ceil(Math.max(...z) * 1.1 + 0.5);
     const W = 720, y0 = 44, Hh = 330;
     let g = '';
-    const cmax = Math.min(0.8, Math.max(0.3, ...csr, ...crr.filter(v => v < 1.5)) * 1.1);
-    g += zPanel(70, y0, 280, Hh, zmax, [0, cmax], [{ xs: csr, zs: z, color: C.red, marker: 'c' }, { xs: crr.map(v => Math.min(v, cmax)), zs: z, color: C.blue, marker: 'sq', dash: '5 3' }], 'CSR y CRR_M', { nf });
+    const cmax = Math.min(1.0, Math.max(0.5, ...csr.map(v => v * 1.25), ...crr.filter(v => v < 1).map(v => v * 1.1)));
+    const okc = crr.map(v => v < cmax);
+    g += zPanel(70, y0, 280, Hh, zmax, [0, cmax], [{ xs: csr, zs: z, color: C.red, marker: 'c' }, { xs: crr.filter((v, i) => okc[i]), zs: z.filter((v, i) => okc[i]), color: C.blue, marker: 'sq', dash: '5 3' }], 'CSR y CRR_M', { nf });
+    crr.forEach((v, i) => { if (!okc[i]) { const yy = y0 + z[i] / zmax * Hh; g += `<path d="M${350 - 9},${(yy - 4).toFixed(1)} l8,4 l-8,4 z" fill="${C.blue}"/>` + lab(350 - 12, yy + 3.5, 'NL', { a: 'end', c: C.blue, fs: 8.5 }); } });
+    if (okc.some(v => !v)) g += T(210, y0 + Hh + 14, 'NL: (N1)60cs ≥ 30, no licuable (CRR fuera de escala)', { fs: 9, c: C.axis });
     g += T(24, y0 + Hh / 2, 'Profundidad z [m]', { fs: 10, r: -90, c: C.axis });
     if (fs) { const fmx = 3; g += zPanel(420, y0, 260, Hh, zmax, [0, fmx], [{ xs: fs.map(v => Math.min(v, fmx)), zs: z, color: C.green, marker: 'c' }], 'FS_L = CRR_M / CSR', { nf, vref: [[FSmin, C.red, 'FS mín = ' + f2(FSmin)], [1, C.axis, '']] }); niceTicks(0, zmax, 8).forEach(t => { g += T(416, y0 + t / zmax * Hh + 3, f2(t, 1), { fs: 9, c: C.axis, a: 'end' }); }); fs.forEach((v, i) => { if (v < FSmin) g += `<circle cx="${(420 + Math.min(v, 3) / 3 * 260).toFixed(1)}" cy="${(y0 + z[i] / zmax * Hh).toFixed(1)}" r="5" fill="none" stroke="${C.red}" stroke-width="1.6"/>`; }); }
-    const out = svgWrap(W, y0 + Hh + 12, g) + legend([[C.red, 'CSR (demanda sísmica)'], [C.blue, 'CRR_M (resistencia)', 1], [C.green, 'FS_L'], [C.blue, 'Nivel freático', 1]]);
+    const out = svgWrap(W, y0 + Hh + 20, g) + legend([[C.red, 'CSR (demanda sísmica)'], [C.blue, 'CRR_M (resistencia)', 1], [C.green, 'FS_L'], [C.blue, 'Nivel freático', 1]]);
     return `<div class="figure">${out}${caption(ctx, b.titulo || 'Potencial de licuación con la profundidad (Youd et al. 2001)')}</div>`;
   },
 });
 
 void interp;
+
+// =====================================================================
+//  6) CIMIENTO CORRIDO (sección transversal)
+// =====================================================================
+registerBlock('stripfooting', {
+  name: 'Cimiento corrido (sección)', icon: 'wall', group: 'Cimentaciones',
+  fields: [
+    F('B', 'Ancho del cimiento B', '0.80 m'), F('hc', 'Peralte del cimiento', '0.80 m'), F('bs', 'Ancho del sobrecimiento', '0.25 m'), F('hs', 'Altura del sobrecimiento', '0.50 m'),
+    F('tm', 'Espesor del muro', '0.25 m'), F('Df', 'Profundidad de desplante', '1.00 m'), F('npt', 'Altura del NPT sobre el terreno', '0.20 m'),
+    F('q', 'Presión en la base', '10 tonf/m^2'), F('material', 'Texto del material', 'Concreto ciclópeo 1:10 + 30 % P.G.'), F('titulo', 'Título', ''),
+  ],
+  hint: 'Dibuja la sección transversal de un cimiento corrido de concreto ciclópeo con sobrecimiento, muro y presión de contacto.',
+  def: { B: '0.80 m', hc: '0.80 m', bs: '0.25 m', hs: '0.50 m', tm: '0.25 m', Df: '1.00 m', npt: '0.20 m', q: '10 tonf/m^2' },
+  render(b, ctx) {
+    const S = ctx.scope;
+    const B = evalParam(b.B, S, 'm', 0.8), hc = evalParam(b.hc, S, 'm', 0.8), bs = evalParam(b.bs, S, 'm', 0.25), hs = evalParam(b.hs, S, 'm', 0.5);
+    const tm = evalParam(b.tm, S, 'm', 0.25), Df = evalParam(b.Df, S, 'm', 1), npt = evalParam(b.npt, S, 'm', 0.2), q = evalParam(b.q, S, 'tonf/m^2', 0);
+    pos({ B, hc, bs, hs, tm, Df });
+    const W = 620, ztop = Math.max(hs - (Df - hc), npt) + 0.9, zbot = Df + 0.55;
+    const sc = Math.min(330 / (ztop + zbot), 380 / (B + 1.2)), cx = W / 2, y0 = 20 + ztop * sc; // y0 = cota del terreno
+    const X = (x) => cx + x * sc, Y = (z) => y0 + z * sc; // z hacia abajo desde el terreno
+    const H = Math.max(Y(zbot), Y(Df) + (q > 0 ? 92 : 40)) + 6;
+    let g = arrowDefs;
+    g += `<rect x="${X(-B / 2 - 0.55)}" y="${Y(0)}" width="${(B + 1.1) * sc}" height="${zbot * sc}" fill="url(#soilp)" opacity=".6"/>`;
+    g += Lne(X(-B / 2 - 0.55), Y(0), X(B / 2 + 0.55), Y(0), C.soil, 2) + T(X(-B / 2 - 0.5), Y(0) - 4, 'NTN ±0.00', { fs: 9, a: 'start', c: C.axis });
+    g += `<rect x="${X(-B / 2)}" y="${Y(Df - hc)}" width="${B * sc}" height="${hc * sc}" fill="#d9d4cc" stroke="${C.ink}" stroke-width="1.4"/>`;
+    for (let i = 0; i < Math.round(B * hc * 60); i++) { const rx = ((i * 0.6180339) % 1), ry = ((i * 0.4142135) % 1); g += `<ellipse cx="${(X(-B / 2) + 6 + rx * (B * sc - 12)).toFixed(1)}" cy="${(Y(Df - hc) + 6 + ry * (hc * sc - 12)).toFixed(1)}" rx="5" ry="3.5" fill="#b8b0a2" stroke="#8d8577" stroke-width=".6"/>`; }
+    const ys = Df - hc - hs;
+    g += `<rect x="${X(-bs / 2)}" y="${Y(ys)}" width="${bs * sc}" height="${hs * sc}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.2"/>`;
+    g += `<rect x="${X(-tm / 2)}" y="${Y(ys) - 0.85 * sc}" width="${tm * sc}" height="${0.85 * sc}" fill="#c96f4a" stroke="${C.ink}" stroke-width="1"/>`;
+    for (let k = 1; k < 8; k++) g += Lne(X(-tm / 2), Y(ys) - k * 0.85 * sc / 8, X(tm / 2), Y(ys) - k * 0.85 * sc / 8, '#8e4a2e', 0.6);
+    g += `<rect x="${X(bs / 2)}" y="${Y(-npt)}" width="${(B / 2 + 0.5 - bs / 2) * sc}" height="${0.1 * sc}" fill="${C.conc}" stroke="${C.ink}" stroke-width=".8"/>` + T(X(B / 2 + 0.5), Y(-npt) - 4, 'NPT +' + f2(npt), { fs: 9, a: 'end', c: C.axis });
+    g += dimH(X(-B / 2), X(B / 2), Y(Df) + (q > 0 ? 80 : 18), 'B = ' + f2(B) + ' m') + dimV(X(-B / 2) - 16, Y(Df - hc), Y(Df), 'hc = ' + f2(hc) + ' m') + dimV(X(B / 2 + 0.45), Y(0), Y(Df), 'Df = ' + f2(Df) + ' m', C.ink, 1);
+    g += dimV(X(-bs / 2) - 12, Y(ys), Y(Df - hc), 'hs = ' + f2(hs)) + T(X(0), Y(ys) - 0.85 * sc - 6, 'Muro e = ' + f2(tm) + ' m', { fs: 10 });
+    if (q > 0) { const py = Y(Df) + 4, ph = 34; g += `<rect x="${X(-B / 2)}" y="${py}" width="${B * sc}" height="${ph}" fill="${C.redF}" stroke="${C.red}"/>`; for (let i = 0; i <= 6; i++) { const x = X(-B / 2 + B * i / 6); g += Lne(x, py + ph, x, py + 2, C.red, 0.8).replace('/>', ' marker-end="url(#arr)"/>'); } g += lab(X(0), py + ph + 13, 'q = ' + f2(q) + ' t/m²', { c: C.red, b: 1 }); }
+    if (b.material) g += lab(X(0), Y(Df - hc / 2) + 4, interp(b.material, S), { fs: 9.5 });
+    return `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Sección transversal del cimiento corrido')}</div>`;
+  },
+});

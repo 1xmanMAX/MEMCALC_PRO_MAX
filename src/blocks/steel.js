@@ -116,11 +116,15 @@ registerBlock('steelsec', {
     g += T(X(sh.w) + 24, Y(sh.cy) + 4, 'x', { c: C.red, fs: 12, b: 1 }) + T(X(sh.cx) + 2, Y(0) - 22, 'y', { c: C.red, fs: 12, b: 1 });
     g += dimV(X(0) - 26, Y(0), Y(sh.h), (s.fam === 'R' ? 'H = ' : s.fam === 'O' ? 'D = ' : 'd = ') + fl(sh.h));
     g += dimH(X(0), X(sh.w), Y(sh.h) + 26, (s.fam === 'R' ? 'B = ' : s.fam === 'O' ? 'D = ' : s.fam === 'L' ? 'b = ' : 'bf = ') + fl(sh.w));
-    const lead = (x1, y1, x2, y2, txt, a = 'start') => Lne(x1, y1, x2, y2, C.axis, 0.8) + `<circle cx="${x1}" cy="${y1}" r="1.8" fill="${C.ink}"/>` + T(x2 + (a === 'start' ? 3 : -3), y2 + 4, txt, { fs: 10, a });
+    // línea de referencia con quiebre horizontal bajo el texto
+    const lead = (x1, y1, x2, y2, txt, a = 'start') => {
+      const w = txt.length * 5.6 + 4, ex = a === 'start' ? x2 : x2 - w;
+      return Lne(x1, y1, ex, y2, C.axis, 0.8) + Lne(ex, y2, ex + w, y2, C.axis, 0.8) + `<circle cx="${x1}" cy="${y1}" r="1.8" fill="${C.ink}"/>` + T(ex + 2, y2 - 3, txt, { fs: 10, a: 'start' });
+    };
     if (s.fam === 'I' || s.fam === 'E' || s.fam === 'C') {
       const xw = s.fam === 'C' ? p.tw / 2 : p.bf / 2;
-      g += lead(X(p.bf * 0.85), Y(p.tf / 2), W - 8, Y(0) - 10, 'tf = ' + fl(p.tf), 'end');
-      g += lead(X(xw), Y(p.d * 0.62), W - 8, Y(p.d * 0.62) + 26, 'tw = ' + fl(p.tw), 'end');
+      g += lead(X(p.bf * 0.85), Y(p.tf / 2), W - 6, Y(0) - 10, 'tf = ' + fl(p.tf), 'end');
+      g += lead(X(xw), Y(p.d * 0.62), W - 6, Y(p.d * 0.62) + 26, 'tw = ' + fl(p.tw), 'end');
       if (s.fam === 'C') g += `<circle cx="${X(p.x)}" cy="${Y(p.d / 2)}" r="3" fill="${C.red}"/>` + T(X(p.x) + 6, Y(p.d / 2) - 6, 'x̄ = ' + fl(p.x), { fs: 10, a: 'start', c: C.red });
     } else if (s.fam === 'K') {
       g += lead(X(p.t / 2), Y(p.d * 0.62), X(p.bf) + 30, Y(p.d * 0.62), 't = ' + fl(p.t));
@@ -130,18 +134,18 @@ registerBlock('steelsec', {
       g += lead(X(p.t / 2), Y(p.d * 0.3), X(p.t) + 30, Y(p.d * 0.3), 't = ' + fl(p.t));
       g += `<circle cx="${X(p.x)}" cy="${Y(p.d - p.y)}" r="3" fill="${C.red}"/>` + T(X(p.x) + 6, Y(p.d - p.y) - 6, 'x̄ = ' + fl(p.x) + ', ȳ = ' + fl(p.y), { fs: 10, a: 'start', c: C.red });
     } else {
-      g += lead(X(p.tdes / 2), Y(sh.h * 0.3), X(sh.w) + 10, Y(0) - 8, 't = ' + fl(p.tdes) + (p.tnom ? ' (nom. ' + fl(p.tnom) + ')' : ''), 'end');
+      g += lead(X(p.tdes / 2), Y(sh.h * 0.3), W - 6, Y(0) - 8, 't = ' + fl(p.tdes) + (p.tnom ? ' (nom. ' + fl(p.tnom) + ')' : ''), 'end');
     }
     const head = `<div class="dt" style="text-align:center"><b>${esc(s.name)}</b> — ${esc(NAMEF[s.fam])} · ${K(valTex(rows.find(r => r[0] === 'peso' + sfx)?.[2] || 0, 2))}</div>`;
     let tb = '';
     if (b.tabla !== false) {
-      const cells = rows.filter(r => r[0] !== 'peso' + sfx).map(r => `<td>${esc(r[1])}</td><td>${K(symTex(r[0]) + ' = ' + valTex(r[2], 4))}</td>`);
+      const cells = rows.filter(r => r[0] !== 'peso' + sfx).map(r => `<td>${esc(r[1])}</td><td>${K(symTex(r[0]) + ' = ' + valTex(r[2], 3))}</td>`);
       tb = '<table class="tbl"><thead><tr><th>Propiedad</th><th>Valor</th><th>Propiedad</th><th>Valor</th></tr></thead><tbody>';
       for (let i = 0; i < cells.length; i += 2) tb += '<tr>' + cells[i] + (cells[i + 1] || '<td></td><td></td>') + '</tr>';
       tb += '</tbody></table>';
     }
     const src = s.fam === 'K' ? 'Propiedades calculadas por el método lineal con esquinas rectas (AISI Cold-Formed Steel Design Manual); dimensiones exteriores H × B × D × t en mm.' : s.fam === 'E' ? 'Fuente: tablas ArcelorMittal / EN 10365 (It e Iw calculados con las fórmulas del fabricante).' : 'Fuente: AISC Shapes Database (Steel Construction Manual, Parte 1).';
-    return `<div class="figure">${head}${svgWrap(W, H, g)}${tb}<div class="txt muted" style="font-size:.85em">${src}</div>${caption(ctx, b.titulo || 'Sección ' + s.name)}</div>`;
+    return `<div class="figure">${head}<div class="fig-sm">${svgWrap(W, H, g)}</div>${tb}<div class="txt muted" style="font-size:.85em">${src}</div>${caption(ctx, b.titulo || 'Sección ' + s.name)}</div>`;
   },
 });
 

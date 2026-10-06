@@ -2,7 +2,7 @@
 //  Bloques gráficos — módulo «japan»
 //   aidist  : distribución Ai en altura (BSL) → Ai, Ci, Qi por piso
 //   qunqu   : capacidad lateral última Qu vs Qun = Ds·Fes·Qud por piso
-//   kaberyo : cantidad de muros (壁量) y balance yonbun-wari de casas de madera
+//   kaberyo : cantidad de muros (kabe-ryo) y balance yonbun-wari de casas de madera
 // =====================================================================
 import { registerBlock, F } from '../blockreg.js';
 import { evalParam, esc, math } from '../engine.js';
@@ -156,7 +156,7 @@ registerBlock('qunqu', {
 //  3) Cantidad de muros + yonbun-wari (Order Art. 46; Notif. 1352)
 // ---------------------------------------------------------------------
 registerBlock('kaberyo', {
-  name: 'Muros de casa de madera (壁量 / 4分割)', icon: 'wall', group: 'Madera',
+  name: 'Muros de casa de madera (kabe-ryo / yonbun-wari)', icon: 'wall', group: 'Madera',
   fields: [
     F('Lx', 'Largo de la planta en X (m)', '10.92', 'text'),
     F('Ly', 'Ancho de la planta en Y (m)', '7.28', 'text'),
@@ -165,7 +165,7 @@ registerBlock('kaberyo', {
     F('coefLado', 'Requerida en las franjas laterales (cm/m²)', '', 'text'),
     F('titulo', 'Título', ''),
   ],
-  hint: 'Cada muro es un segmento horizontal (resiste X) o vertical (resiste Y) con su multiplicador de muro (壁倍率). Calcula longitudes efectivas y el balance por cuartos (yonbun-wari, Notif. 1352). Exporta <code>LeX, LeY, rX1, rX2, rY1, rY2, bX, bY</code>.',
+  hint: 'Cada muro es un segmento horizontal (resiste X) o vertical (resiste Y) con su multiplicador de muro (kabe-bairitsu). Calcula longitudes efectivas y el balance por cuartos (yonbun-wari, Notif. 1352). Exporta <code>LeX, LeY, rX1, rX2, rY1, rY2, bX, bY</code>.',
   def: { Lx: '10.92', Ly: '7.28', muros: '0 0 2.73 0 2.5', coef: '33' },
   render(b, ctx) {
     const S = ctx.scope;

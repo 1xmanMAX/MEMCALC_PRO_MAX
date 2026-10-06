@@ -321,7 +321,7 @@ function renderWallRebar(b, ctx) {
   let zt = 0;
   { let lo = 0, hi = hp; if (Mu(hp) <= phiMn(Ar, hp)) zt = hp; else { for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; if (Mu(m) <= phiMn(Ar, m)) lo = m; else hi = m; } zt = lo; } }
   const dcut = dz(zt) / 100, ext = max(dcut, 12 * db / 100); // E.060 12.10.3
-  const ld = max(0.06 * Ab * fy / sqrt(fc), 0.006 * db * fy, 30) / 100 * 1.0; // ld básica (E.060 12.2, barras inferiores, simplificada)
+  const ld = max(fy * db / ((bar <= 6 ? 6.6 : 5.3) * sqrt(fc)), 30) / 100; // ld en tracción (E.060 12.2.2, ψt = ψe = λ = 1)
   let hcut = hp - zt + ext; hcut = Math.ceil(hcut * 20 - 1e-9) / 20; // redondeo a 5 cm hacia arriba
   const hcut2 = max(hcut, ld);
   const zc = hp - hcut2; // profundidad del extremo real de las barras cortadas

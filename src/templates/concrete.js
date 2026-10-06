@@ -503,8 +503,8 @@ a = si(As*fy/(0.85*fc*bf) <= hf, As*fy/(0.85*fc*bf), aw) // Profundidad del bloq
 Mn = si(a <= hf, As*fy*(d - a/2), Asf*fy*(d - hf/2) + (As - Asf)*fy*(d - a/2)) -> tonf*m // Momento nominal
 beta1 = beta1E060(fc) // E.060 10.2.7.3
 c = a/beta1 // Eje neutro
-epst = 0.003*(dt - c)/c // Deformación neta en el acero extremo
-check epst >= 0.004 // Ductilidad: εt ≥ 0.004 (E.060 10.3.5)
+epsilont = 0.003*(dt - c)/c // Deformación neta en el acero extremo
+check epsilont >= 0.004 // Ductilidad: εt ≥ 0.004 (E.060 10.3.5)
 phiMn = 0.9*Mn // Resistencia de diseño (E.060 9.3.2.1)
 check Mu <= phiMn // Resistencia a flexión
 cb = 6000 kgf/cm^2*d/(6000 kgf/cm^2 + fy) // Eje neutro balanceado
@@ -729,7 +729,7 @@ Es = 2000000 kgf/cm^2 // Módulo del acero
 b = 30 cm // Ancho
 h = 60 cm // Peralte en el empotramiento
 Lv = 2.50 m // Longitud del voladizo
-wD = 1.8 tonf/m // Carga muerta repartida (incluye peso propio)
+wD = 1.6 tonf/m // Carga muerta repartida (incluye peso propio)
 wL = 0.8 tonf/m // Carga viva repartida
 PD = 1.2 tonf // Parapeto en la punta (carga muerta)
 rec = 4 cm // Recubrimiento libre
@@ -748,8 +748,8 @@ As = n*Ab(bar) // Acero colocado
 a = As*fy/(0.85*fc*b) // Bloque de compresión
 phiMn = 0.9*As*fy*(d - a/2) -> tonf*m // Resistencia de diseño
 check Mu <= phiMn // Resistencia a flexión
-epst = 0.003*(d - a/beta1E060(fc))/(a/beta1E060(fc)) // Deformación neta del acero
-check epst >= 0.004 // Ductilidad (E.060 10.3.5)
+epsilont = 0.003*(d - a/beta1E060(fc))/(a/beta1E060(fc)) // Deformación neta del acero
+check epsilont >= 0.004 // Ductilidad (E.060 10.3.5)
 ## Anclaje en el apoyo (E.060 12.5)
 ldg = ldgE060(bar, fc, fy) // Desarrollo con gancho estándar en el elemento de apoyo
 "Las {n} barras #{bar} superiores se anclan en el apoyo con gancho de 90°: ℓdg = {ldg}; en el voladizo se prolongan hasta el extremo (barras superiores, ψt = 1.3: ℓd = {ldE060(bar, fc, fy, 1.3)}).

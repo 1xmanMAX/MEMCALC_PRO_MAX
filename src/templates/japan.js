@@ -14,17 +14,17 @@ export default [
   {
     id: 'jp-bsl-ruta12', pais: 'JP', cat: 'Sismo — Japón', icon: 'quake', settings: { sys: 'si' },
     name: 'Diseño sísmico BSL — Rutas 1 y 2 (Ai, derivas, Rs, Re)',
-    normas: 'Building Standard Law · Enforcement Order Art. 82, 82-2, 82-6, 88 · Notif. MOC 1793 (1980) · Notif. MOC 1791 (1980)',
-    desc: 'Primera fase (Co = 0.2): Ci = Z·Rt·Ai·Co por piso, deriva ≤ 1/200, rigidez relativa Rs ≥ 0.6, excentricidad Re ≤ 0.15 y cantidad de muros y columnas de C°A° (Ruta 2-1).',
+    normas: 'Building Standard Law · Enforcement Order Art. 81, 82, 82-2, 82-6, 88 · Notif. MOC 1793 (1980) · Notif. MOC 1791 (1980, mod. 2007)',
+    desc: 'Primera fase (Co = 0.2): Ci = Z·Rt·Ai·Co por piso, deriva ≤ 1/200, rigidez relativa Rs ≥ 0.6, excentricidad Re ≤ 0.15, esbeltez H/B ≤ 4 y cantidad de muros y columnas de C°A° (Ruta 2-1).',
     titulo: 'Diseño sísmico de edificio de concreto armado de 5 pisos — BSL Japón, Rutas 1 y 2',
     blocks: [
       text(`# Generalidades
-La **Building Standard Law** (建築基準法, BSL) de Japón y su **Enforcement Order** (施行令) establecen el diseño sísmico en dos fases:
+La **Building Standard Law** (*Kenchiku Kijun-ho*, BSL) de Japón y su **Enforcement Order** (*Shiko-rei*) establecen el diseño sísmico en dos fases:
 
-- **Primera fase** (sismo moderado, $C_o = 0.2$, Order Art. 88): se calculan los esfuerzos por el **método de esfuerzos admisibles** (許容応力度計算, Order Art. 82) y se limita la deriva de entrepiso a **1/200** (Art. 82-2).
+- **Primera fase** (sismo moderado, $C_o = 0.2$, Order Art. 88): se calculan los esfuerzos por el **método de esfuerzos admisibles** (*kyoyo oryokudo keisan*, Order Art. 82) y se limita la deriva de entrepiso a **1/200** (Art. 82-2).
 - **Segunda fase** (sismo severo, $C_o = 1.0$): según la ruta de cálculo, se verifica la regularidad (Ruta 2: $R_s \\ge 0.6$, $R_e \\le 0.15$, Art. 82-6) o la resistencia lateral última $Q_u \\ge Q_{un}$ (Ruta 3, Art. 82-3).
 
-Esta memoria corresponde a un edificio de oficinas de **5 pisos de concreto armado** (pórticos con muros de corte) de altura menor a 31 m, verificado por la **Ruta 2-1** (Notif. 1791 Art. 3): cantidad mínima de muros y columnas, deriva, rigidez relativa y excentricidad. El coeficiente de corte del entrepiso $i$ es
+Esta memoria corresponde a un edificio de oficinas de **5 pisos de concreto armado** (pórticos con muros de corte) de altura menor a 31 m, verificado por la **Ruta 2-1** (Notif. 1791 Art. 3): cantidad mínima de muros y columnas, deriva, rigidez relativa, excentricidad y relación de esbeltez del edificio (*tojo-hi* ≤ 4, exigida desde la reforma de 2007). El coeficiente de corte del entrepiso $i$ es
 $$C_i = Z\\,R_t\\,A_i\\,C_o, \\qquad Q_i = C_i \\sum_{j \\ge i} w_j$$
 con $A_i = 1 + \\left(\\dfrac{1}{\\sqrt{\\alpha_i}} - \\alpha_i\\right)\\dfrac{2T}{1+3T}$ (Notif. 1793 Art. 3).
 
@@ -35,38 +35,42 @@ alpha_h = 0 // Fracción de la altura con estructura de acero o madera (Notif. 1
 Fc = 24 N/mm^2 // Resistencia de diseño del concreto [21 N/mm^2|24 N/mm^2|27 N/mm^2|30 N/mm^2|36 N/mm^2]
 wi = [5600, 5300, 5300, 5200, 4300] kN // Peso sísmico por piso, del 1F al 5F (Order Art. 88: G + P sísmica)
 hs = [4.0, 3.5, 3.5, 3.5, 3.5] m // Altura de cada entrepiso
+Bx = 24.0 m // Dimensión en planta en X
+By = 14.0 m // Dimensión en planta en Y
 ## Coeficientes sísmicos (Order Art. 88; Notif. 1793)
 Z = ZBSL(zona) // Coeficiente de zona (Notif. 1793 Art. 1)
 Tc = TcBSL(suelo) // Periodo característico del suelo (Notif. 1793 Art. 2)
 hT = sum(hs) // Altura total del edificio
-check hT <= 31 m // Ruta 2: altura ≤ 31 m (Order Art. 81-2; Notif. 593)
+check hT <= 31 m // Ruta 2: altura ≤ 31 m (Order Art. 81-2)
+check hT/min(Bx, By) <= 4 // Relación de esbeltez H/B ≤ 4 para Rutas 1 y 2 (Notif. 1791 Art. 3, reforma 2007)
 T = TBSL(hT, alpha_h) // Periodo fundamental de diseño T = h(0.02 + 0.01α) (Notif. 1793 Art. 2)
 Co = 0.2 // Coeficiente de corte estándar, primera fase (Order Art. 88-2)`),
       { type: 'aidist', wi: 'wi', hi: 'hs', T: 'T', Z: 'Z', Tc: 'Tc', Co: 'Co', titulo: 'Distribución Ai, coeficiente de corte Ci y cortante de entrepiso Qi (primera fase, Co = 0.2)' },
       calc(`## Fuerza sísmica de diseño (Order Art. 88-1)
-Qb = Qi[1] // Cortante basal de primera fase (del bloque Ai)
-CB = Qb/sum(wi) // Coeficiente de corte basal C1 = Z·Rt·Co (A1 = 1)
+CB = Qb/sum(wi) // Coeficiente de corte basal C1 = Z·Rt·Co (A1 = 1); Qb = cortante basal exportado por el bloque Ai
 # Deriva de entrepiso (Order Art. 82-2)
 di = [8.6, 8.9, 8.4, 7.3, 5.5] mm // Desplazamiento relativo de entrepiso bajo Qi (análisis elástico)
 theta = di ./ hs // Deriva de entrepiso δi/hi
 check max(theta) <= 1/200 // Deriva ≤ 1/200 (Order Art. 82-2)
 # Rigidez relativa Rs (Order Art. 82-6, inc. 2 (a))
+"Se muestra la dirección X; el procedimiento se repite en la dirección Y con sus propios desplazamientos.
 rs = hs ./ di // Inversa de la deriva rs = hi/δi
 rsm = mean(rs) // Promedio de rs en todos los pisos
-Rs = rs/rsm // Rigidez relativa (剛性率) Rs = rs/r̄s
+Rs = rs/rsm // Rigidez relativa (gosei-ritsu) Rs = rs/r̄s
 check min(Rs) >= 0.6 // Rs ≥ 0.6 en todos los pisos (Order Art. 82-6, inc. 2 (a))
 # Excentricidad Re del 1F (Order Art. 82-6, inc. 2 (b))
+"Se muestra el 1F; la verificación se repite en cada piso con las rigideces de sus ejes.
 xY = [0, 6, 12, 18, 24] m // Posición x de los ejes resistentes en Y
 KY = [0.9, 1.2, 1.2, 1.2, 1.0] kN/mm // Rigidez lateral de cada eje en Y
 yX = [0, 7, 14] m // Posición y de los ejes resistentes en X
 KX = [1.5, 1.2, 1.4] kN/mm // Rigidez lateral de cada eje en X
 gx = 12.0 m // Centro de masas, coordenada x
 gy = 7.0 m // Centro de masas, coordenada y
-lx = sum(KY .* xY)/sum(KY) // Centro de rigidez, coordenada x
-ly = sum(KX .* yX)/sum(KX) // Centro de rigidez, coordenada y
-KR = sum(KY .* (xY - lx).^2) + sum(KX .* (yX - ly).^2) // Rigidez torsional respecto al centro de rigidez
-rex = sqrt(KR/sum(KX)) // Radio elástico para sismo en X
-rey = sqrt(KR/sum(KY)) // Radio elástico para sismo en Y
+lx = sum(KY .* xY)/sum(KY) -> m // Centro de rigidez, coordenada x
+ly = sum(KX .* yX)/sum(KX) -> m // Centro de rigidez, coordenada y
+KR = sum(KY .* (xY - lx).^2) + sum(KX .* (yX - ly).^2) -> kN*m // Rigidez torsional respecto al centro de rigidez
+rex = sqrt(KR/sum(KX)) -> m // Radio elástico para sismo en X
+rey = sqrt(KR/sum(KY)) -> m // Radio elástico para sismo en Y
 Rex = abs(gy - ly)/rex // Excentricidad relativa, sismo en X
 Rey = abs(gx - lx)/rey // Excentricidad relativa, sismo en Y
 check Rex <= 0.15 // Re ≤ 0.15, sismo en X (Order Art. 82-6, inc. 2 (b))
@@ -75,10 +79,10 @@ check Rey <= 0.15 // Re ≤ 0.15, sismo en Y (Order Art. 82-6, inc. 2 (b))
 alpha_F = min(sqrt(Fc/(18 N/mm^2)), sqrt(2)) // Factor por resistencia del concreto α = √(Fc/18) ≤ √2
 Aw = [7.2, 6.6, 6.0, 5.4, 4.2] m^2 // Área horizontal de muros de corte en la dirección analizada
 Ac = [6.4, 5.8, 5.8, 5.2, 5.2] m^2 // Área horizontal de columnas
-Qr = alpha_F*(2.5 N/mm^2*Aw + 0.7 N/mm^2*Ac) // Resistencia convencional Σ2.5αAw + 0.7αAc
+Qr = alpha_F*(2.5 N/mm^2*Aw + 0.7 N/mm^2*Ac) -> kN // Resistencia convencional Σ2.5αAw + 0.7αAc
 Qreq = 0.75*Z*Ai .* Wi // Demanda 0.75·Z·W·Ai (Ruta 2-1)
 check min(Qr ./ Qreq) >= 1 // Σ2.5αAw + 0.7αAc ≥ 0.75·Z·W·Ai en todos los pisos (Notif. 1791 Art. 3)
-"Además, en la Ruta 2-1 el cortante de diseño de vigas y columnas se amplifica: $Q_D = Q_L + n\\,Q_E$ con $n \\ge 2$, o $Q_D = Q_L + Q_y$ (Notif. 1791 Art. 3), y los esfuerzos de primera fase deben cumplir los esfuerzos admisibles de corto plazo (Order Art. 82).`),
+"Además, en la Ruta 2-1 el cortante de diseño de vigas y columnas se amplifica: $Q_D = Q_L + n\\,Q_E$ con $n \\ge 2$, o $Q_D = Q_L + Q_y$ (Notif. 1791 Art. 3), y los esfuerzos de primera fase deben cumplir los esfuerzos admisibles de corto plazo (Order Art. 82); véanse las plantillas de viga y columna AIJ.`),
       { type: 'table', columnas: 'Piso = 1:5\n$h_i$ [m] = hs\n$\\delta_i$ [mm] = di\n$\\delta_i/h_i$ = theta\n$R_s$ = Rs\n$Q_r$ [kN] = Qr\n$0.75ZWA_i$ [kN] = Qreq', dec: '4', titulo: 'Deriva, rigidez relativa y cantidad de muros por entrepiso' },
       { type: 'plot', expr: 'Z*RtBSL(x, 0.4); Z*RtBSL(x, 0.6); Z*RtBSL(x, 0.8)', var: 'x', desde: '0', hasta: '3', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Z·Rt', leyenda: true, nombres: 'Suelo tipo 1 (Tc = 0.4 s); Suelo tipo 2 (Tc = 0.6 s); Suelo tipo 3 (Tc = 0.8 s)', titulo: 'Coeficiente espectral Z·Rt (Notif. 1793 Art. 2)' },
       summary(),
@@ -92,16 +96,16 @@ check min(Qr ./ Qreq) >= 1 // Σ2.5αAw + 0.7αAc ≥ 0.75·Z·W·Ai en todos lo
     name: 'Capacidad lateral última BSL — Ruta 3 (Qun = Ds·Fes·Qud)',
     normas: 'Building Standard Law · Enforcement Order Art. 82-3 · Notif. MOC 1792 (1980, mod. 2007) · Notif. MOC 1793',
     desc: 'Segunda fase (Co = 1.0): Qud con distribución Ai, Ds por rango de miembros (FA–FD, WA–WD) y βu, Fes = Fs·Fe por piso, y comparación con la resistencia de un análisis pushover.',
-    titulo: 'Verificación de la resistencia lateral última (保有水平耐力) — Ruta 3 BSL',
+    titulo: 'Verificación de la resistencia lateral última (horyu suihei tairyoku) — Ruta 3 BSL',
     blocks: [
       text(`# Generalidades
-En la **Ruta 3** (保有水平耐力計算, Order Art. 82-3) se exige que la **resistencia lateral última** $Q_u$ de cada entrepiso, obtenida de un análisis incremental (pushover) hasta formar el mecanismo, sea mayor o igual que la **resistencia lateral requerida**
+En la **Ruta 3** (*horyu suihei tairyoku keisan*, Order Art. 82-3) se exige que la **resistencia lateral última** $Q_u$ de cada entrepiso, obtenida de un análisis incremental (pushover) hasta formar el mecanismo, sea mayor o igual que la **resistencia lateral requerida**
 $$Q_{un} = D_s\\,F_{es}\\,Q_{ud}, \\qquad Q_{ud} = Z\\,R_t\\,A_i\\,C_o \\sum_{j \\ge i} w_j \\;\\; (C_o = 1.0)$$
 
-- $D_s$: **coeficiente de características estructurales** (Notif. 1792 Art. 4), según el rango de ductilidad de vigas y columnas (FA–FD), de los muros (WA–WD) y la fracción $\\beta_u$ del cortante último resistida por los muros.
+- $D_s$: **coeficiente de características estructurales** (Notif. 1792 Art. 4, tabla para pórticos con muros), según el rango del grupo de vigas y columnas (FA–FD), el rango del grupo de muros (WA–WD) y la fracción $\\beta_u$ de la resistencia lateral última tomada por los muros.
 - $F_{es} = F_s\\,F_e$: **factor de forma** por rigidez relativa $R_s$ y excentricidad $R_e$ (Notif. 1792 Art. 7): $F_s = 2 - R_s/0.6$ si $R_s < 0.6$; $F_e$ crece linealmente de 1.0 ($R_e \\le 0.15$) a 1.5 ($R_e \\ge 0.30$).
 
-Edificio de concreto armado de 5 pisos (pórticos FB con muros WA). Los valores $Q_u$ provienen del análisis pushover del proyecto.`),
+Edificio de concreto armado de 5 pisos (pórticos FB con muros WA). Los valores $Q_u$, $\\beta_u$, $R_s$ y $R_e$ provienen del análisis incremental y del análisis elástico de primera fase del proyecto. La Ruta 3 no exime de la primera fase (esfuerzos admisibles y deriva ≤ 1/200).`),
       calc(`# Datos
 ${ZONA}
 alpha_h = 0 // Fracción de altura de acero o madera
@@ -126,10 +130,10 @@ Fes = FesBSL(Rs, Re) // Fes = Fs·Fe
 ## Resistencia requerida y resistencia última
 Qun = Ds .* Fes .* Qud // Qun = Ds·Fes·Qud (Order Art. 82-3)
 Qu = [11300, 10050, 8350, 6450, 3700] kN // Resistencia lateral última por piso (análisis pushover)
-check min(Qu ./ Qun) >= 1 // Qu ≥ Qun en todos los pisos (Order Art. 82-3)`),
+"La verificación $Q_u \\ge Q_{un}$ se hace piso por piso en la figura siguiente (Order Art. 82-3).`),
       { type: 'qunqu', Qu: 'Qu', Qun: 'Qun', titulo: 'Resistencia lateral última Qu vs. requerida Qun por entrepiso' },
       { type: 'table', columnas: 'Piso = 1:5\n$A_i$ = Ai\n$Q_{ud}$ [kN] = Qud\n$\\beta_u$ = bu\n$D_s$ = Ds\n$F_{es}$ = Fes\n$Q_{un}$ [kN] = Qun\n$Q_u$ [kN] = Qu\n$Q_u/Q_{un}$ = QuQun', dec: '3', titulo: 'Resumen de la verificación de capacidad última por piso' },
-      text(`> **Notas.** (1) En cada piso, el rango del grupo de miembros se obtiene de las relaciones $h_0/D$, $\\sigma_0/F_c$, $p_t$ y $\\tau_u/F_c$ (C°A°) o de las relaciones ancho/espesor (acero), Notif. 1792 Arts. 3 y 4. (2) Si se usa $F_e$ con interpolación hasta $R_e = 0.30$, se reproduce la tabla 2 del Art. 7 de la Notif. 1792 (función \`FesBSL\`).`),
+      text(`> **Notas.** (1) En cada piso, el rango de cada miembro se obtiene de $h_0/D$, $\\sigma_0/F_c$, $p_t$ y $\\tau_u/F_c$ (C°A°) o de las relaciones ancho/espesor (acero), y el rango del grupo resulta de las proporciones de miembros A, B y C (Notif. 1792 Arts. 3 y 4). (2) $F_e$ se interpola linealmente entre 1.0 ($R_e \\le 0.15$) y 1.5 ($R_e \\ge 0.30$) y $F_s = 2 - R_s/0.6$ si $R_s < 0.6$ (Notif. 1792 Art. 7). (3) Los miembros que pueden fallar por cortante deben tener una resistencia a cortante mayor que la del mecanismo con un margen (diseño de garantía); ver las plantillas de viga y columna AIJ.`),
       summary(),
     ],
   },
@@ -139,12 +143,12 @@ check min(Qu ./ Qun) >= 1 // Qu ≥ Qun en todos los pisos (Order Art. 82-3)`),
   {
     id: 'jp-aij-viga', pais: 'JP', cat: 'Concreto — normas extranjeras', icon: 'beam', settings: { sys: 'si' },
     name: 'Viga de concreto armado AIJ (esfuerzos admisibles + Arakawa)',
-    normas: 'AIJ Standard for Structural Calculation of Reinforced Concrete Structures (2018) · Notif. MLIT 594 · Notif. MOC 1791',
-    desc: 'Flexión at = M/(ft·j), cortante admisible de largo y corto plazo con α = 4/(M/(Qd)+1), y resistencia última Mu = 0.9·at·σy·d y Qsu de Arakawa con margen frente al mecanismo.',
+    normas: 'AIJ Standard for Structural Calculation of Reinforced Concrete Structures (2010/2018) · Notif. MLIT 594 · Notif. MOC 1791',
+    desc: 'Flexión at = M/(ft·j), cortante admisible de largo plazo, de corto plazo con control de daño y de seguridad (AIJ 2010 art. 15), y resistencia última Mu = 0.9·at·σy·d y Qsu de Arakawa (mín.) frente al mecanismo.',
     titulo: 'Diseño de viga de concreto armado — AIJ (esfuerzos admisibles y resistencia última)',
     blocks: [
       text(`# Generalidades
-El **AIJ Standard for Structural Calculation of Reinforced Concrete Structures** (鉄筋コンクリート構造計算規準) aplica **esfuerzos admisibles** de largo plazo (cargas permanentes $G + P$) y de corto plazo ($G + P + K$, sismo con $C_o = 0.2$):
+El **AIJ Standard for Structural Calculation of Reinforced Concrete Structures** (*RC kozo keisan kijun*) aplica **esfuerzos admisibles** de largo plazo (cargas permanentes $G + P$) y de corto plazo ($G + P + K$, sismo con $C_o = 0.2$):
 
 | Material | Largo plazo | Corto plazo |
 |---|---|---|
@@ -153,10 +157,15 @@ El **AIJ Standard for Structural Calculation of Reinforced Concrete Structures**
 | SD345 (≤ D25) | 215 N/mm² | 345 N/mm² |
 | Estribos SD295/SD345 | 195 N/mm² | 295 / 345 N/mm² |
 
-Flexión (art. 13): $a_t = M/(f_t\\,j)$ con $j = 7d/8$. Cortante (art. 15): $Q_A = b\\,j\\,[\\alpha f_s + 0.5\\,{}_wf_t\\,(p_w - 0.002)]$, $\\alpha = 4/(M/(Qd) + 1)$, $1 \\le \\alpha \\le 2$.
-Para garantizar la falla dúctil se compara la resistencia a cortante de **Arakawa** $Q_{su}$ con el cortante del mecanismo $Q_m = Q_L + 2M_u/l_0$.
+Flexión (art. 13): $M_a = a_t\\,f_t\\,j$ con $j = 7d/8$. Cortante (art. 15, ed. 2010), con $\\alpha = 4/(M/(Qd) + 1)$, $1 \\le \\alpha \\le 2$:
 
-Viga de pórtico de 7.0 m (luz libre 6.3 m), sección 400 × 700 mm, Fc = 24 N/mm², SD345.`),
+- largo plazo: $Q_{AL} = b\\,j\\,\\alpha f_s$;
+- corto plazo, **control de daño** con $Q_{DS} = Q_L + Q_E$: $Q_{AS} = b\\,j\\,[\\tfrac{2}{3}\\alpha f_s + 0.5\\,{}_wf_t\\,(p_w - 0.002)]$;
+- corto plazo, **seguridad** con $Q_D = Q_L + n\\,Q_E$: $Q_A = b\\,j\\,[\\alpha f_s + 0.5\\,{}_wf_t\\,(p_w - 0.002)]$, con $p_w \\le 1.2\\%$ y ${}_wf_t \\le 390$ N/mm².
+
+Para garantizar la falla dúctil (diseño de garantía) se compara la resistencia a cortante de **Arakawa** (fórmula mínima) $Q_{su}$ con el cortante del mecanismo amplificado $Q_L + n_m\\cdot 2M_u/l_0$.
+
+Viga de pórtico de 7.0 m (luz libre 6.3 m), sección 400 × 700 mm, 4-D25, estribos 2-D10@125, Fc = 24 N/mm², SD345.`),
       calc(`# Materiales y sección
 Fc = 24 N/mm^2 // Resistencia de diseño del concreto [21 N/mm^2|24 N/mm^2|27 N/mm^2|30 N/mm^2]
 SD = 345 // Acero longitudinal [295 : SD295|345 : SD345|390 : SD390]
@@ -168,7 +177,7 @@ nb = 4 // Número de barras en tracción
 db = 25 // Diámetro de las barras [19 : D19|22 : D22|25 : D25|29 : D29]
 nw = 2 // Ramas de estribo
 dw = 10 // Diámetro de estribo [10 : D10|13 : D13]
-sw = 150 mm // Espaciamiento de estribos
+sw = 125 mm // Espaciamiento de estribos
 l0 = 6.3 m // Luz libre de la viga
 ## Propiedades
 d = D - dt // Peralte efectivo
@@ -177,7 +186,9 @@ at = nb*AbJIS(db) // Área de acero en tracción
 pt = at/(b*d) // Cuantía de tracción
 aw = nw*AbJIS(dw) // Área de un juego de estribos
 pw = aw/(b*sw) // Cuantía de estribos
+check pt >= 0.004 // Cuantía mínima de tracción pt ≥ 0.4 % (AIJ RC art. 13)
 check pw >= 0.002 // pw ≥ 0.2 % (AIJ RC art. 15)
+check sw <= min(D/2, 250 mm) // Separación de estribos ≤ D/2 y ≤ 250 mm (AIJ RC art. 15)
 # Esfuerzos admisibles (AIJ RC art. 6)
 ft_L = ftAIJ(SD, 1, db) // Tracción, largo plazo
 ft_S = ftAIJ(SD, 2, db) // Tracción, corto plazo
@@ -191,6 +202,7 @@ M_E = 175 kN*m // Momento sísmico (Co = 0.2)
 Q_E = 55 kN // Cortante sísmico
 n = 2 // Factor de amplificación del cortante sísmico [1.5 : Ruta 1|2 : Ruta 2-1 / 2-2]
 M_S = M_L + M_E // Momento de corto plazo
+Q_S = Q_L + Q_E // Cortante de corto plazo sin amplificar
 # Flexión (AIJ RC art. 13)
 Ma_L = at*ft_L*j -> kN*m // Momento admisible de largo plazo Ma = at·ft·j
 check M_L <= Ma_L // Flexión de largo plazo
@@ -200,19 +212,24 @@ check M_S <= Ma_S // Flexión de corto plazo
 alpha_L = alphaAIJ(M_L, Q_L, d, 2) // α = 4/(M/(Qd) + 1), 1 ≤ α ≤ 2
 Qa_L = b*j*alpha_L*fs_L -> kN // Cortante admisible de largo plazo
 check Q_L <= Qa_L // Cortante de largo plazo
-Q_D = Q_L + n*Q_E // Cortante de diseño de corto plazo (Notif. 1791 Art. 3)
+alpha_DS = alphaAIJ(M_S, Q_S, d, 2) // Factor α para control de daño
+Qas_S = QasAIJ(b, j, alpha_DS, fs_S, wft_S, pw) // QAS = b·j·((2/3)·α·fs + 0.5·wft·(pw − 0.002))
+check Q_S <= Qas_S // Cortante de corto plazo, control de daño QDS = QL + QE (AIJ RC art. 15, ec. 15.3)
+Q_D = Q_L + n*Q_E // Cortante de diseño de seguridad (AIJ RC ec. 15.9; Notif. 1791 Art. 3)
 alpha_S = alphaAIJ(M_S, Q_D, d, 2) // Factor α para corto plazo
 Qa_S = QaAIJ(b, j, alpha_S, fs_S, wft_S, pw) // QA = b·j·(α·fs + 0.5·wft·(pw − 0.002))
-check Q_D <= Qa_S // Cortante de corto plazo
+check Q_D <= Qa_S // Cortante de corto plazo, seguridad (AIJ RC art. 15, ec. 15.5)
 # Resistencia última y falla dúctil (Notif. 594; AIJ)
-sy = 1.1*SD*1 N/mm^2 // Resistencia de fluencia esperada 1.1·F (Notif. 2464)
+Fy = SD*1 N/mm^2 // Valor F del acero longitudinal (Notif. 2464)
+sy = 1.1*Fy // Resistencia de fluencia para resistencia última: 1.1·F en barras JIS (Notif. 2464)
 Mu = MuAIJ(at, sy, d) // Momento último Mu = 0.9·at·σy·d
-Qm = Q_L + 2*Mu/l0 // Cortante en el mecanismo de flexión
-MQd = l0/(2*d) // Relación de corte M/(Q·d) (1 ≤ M/Qd ≤ 3)
+nm = 1.1 // Factor de amplificación del cortante del mecanismo (diseño de garantía) [1.1|1.2|1.25]
+Qm = Q_L + nm*2*Mu/l0 // Cortante de diseño en el mecanismo de flexión (rótulas en ambos extremos)
+MQd = l0/(2*d) // Relación de corte M/(Q·d) (se limita a 1 ≤ M/Qd ≤ 3 dentro de Qsu)
 swy = SD_w*1 N/mm^2 // Fluencia de estribos
-Qsu = QsuAIJ(pt, Fc, MQd, pw, swy, 0 N/mm^2, b, j) // Resistencia a cortante de Arakawa (mín.)
-check Qsu >= 1.1*Qm // Qsu ≥ 1.1·Qm: falla por flexión antes que por cortante (rango FA, Notif. 1792)`),
-      { type: 'secjp', b: 'b', D: 'D', dt: 'dt', tipo: 'viga', sup: '{nb}-D{db}', inf: '3-D{db}', est: '{nw}-D{dw}@150', titulo: 'Sección de la viga en el apoyo (barras corrugadas JIS)' },
+Qsu = QsuAIJ(pt, Fc, MQd, pw, swy, 0 N/mm^2, b, j) // Resistencia a cortante de Arakawa (fórmula mínima)
+check Qsu >= Qm // Qsu ≥ QL + nm·2Mu/l0: falla por flexión antes que por cortante (rango FA, Notif. 1792)`),
+      { type: 'secjp', b: 'b', D: 'D', dt: 'dt', tipo: 'viga', sup: '{nb}-D{db}', inf: '3-D{db}', est: '{nw}-D{dw}@{sw/(1 mm)}', titulo: 'Sección de la viga en el apoyo (barras corrugadas JIS)' },
       { type: 'plot', expr: 'QsuAIJ(pt, Fc, x, pw, swy, 0 N/mm^2, b, j)/(1 kN); QaAIJ(b, j, min(max(4/(x + 1), 1), 2), fs_S, wft_S, pw)/(1 kN)', var: 'x', desde: '1', hasta: '3', puntos: '100', xlabel: 'M/(Q·d)', ylabel: 'Cortante [kN]', leyenda: true, nombres: 'Qsu de Arakawa (resistencia última); QA admisible de corto plazo', titulo: 'Cortante resistente en función de la relación M/(Qd)' },
       summary(),
     ],
@@ -224,29 +241,29 @@ check Qsu >= 1.1*Qm // Qsu ≥ 1.1·Qm: falla por flexión antes que por cortant
     id: 'jp-aij-columna', pais: 'JP', cat: 'Concreto — normas extranjeras', icon: 'column', settings: { sys: 'si' },
     name: 'Columna de concreto armado AIJ (flexocompresión y cortante)',
     normas: 'AIJ Standard for Structural Calculation of Reinforced Concrete Structures (2018) · Notif. MLIT 594 · Notif. MOC 1791',
-    desc: 'Momento admisible para la carga axial (sección fisurada, n = 15) a largo y corto plazo, cortante admisible, y resistencia última Mu y Qsu (Arakawa) con margen frente al mecanismo.',
+    desc: 'Momento admisible para la carga axial (sección fisurada, n = 15) a largo y corto plazo, cortante admisible de largo plazo, de control de daño y de seguridad, y resistencia última Mu y Qsu (Arakawa mín.) con margen frente al mecanismo.',
     titulo: 'Diseño de columna de concreto armado — AIJ (esfuerzos admisibles y resistencia última)',
     blocks: [
       text(`# Generalidades
-La columna se verifica a **flexocompresión** con esfuerzos admisibles (AIJ RC art. 14): para la carga axial $N$ se busca la posición del eje neutro de la sección fisurada (relación de módulos $n$) tal que se alcance primero el esfuerzo admisible del concreto $f_c$ o del acero $f_t$; el momento resultante es el **momento admisible** $M_A$. El **cortante** de corto plazo se verifica con $Q_A = b\\,j\\,[f_s + 0.5\\,{}_wf_t\\,(p_w - 0.002)]$ (art. 15, se adopta $\\alpha = 1$, del lado de la seguridad).
+La columna se verifica a **flexocompresión** con esfuerzos admisibles (AIJ RC art. 14): para la carga axial $N$ se busca la posición del eje neutro de la sección fisurada (relación de módulos $n$) tal que se alcance primero el esfuerzo admisible del concreto $f_c$ o del acero $f_t$; el momento resultante es el **momento admisible** $M_A$. El **cortante** se verifica a largo plazo ($Q_{AL} = b\\,j\\,\\alpha f_s$, se adopta $\\alpha = 1$), a corto plazo con **control de daño** ($Q_L + Q_E \\le b\\,j\\,[\\tfrac{2}{3}\\alpha f_s + 0.5\\,{}_wf_t\\,(p_w - 0.002)]$, $1 \\le \\alpha \\le 1.5$) y con **seguridad** ($Q_L + n\\,Q_E \\le b\\,j\\,[f_s + 0.5\\,{}_wf_t\\,(p_w - 0.002)]$), AIJ RC 2010 art. 15.
 
 Para la resistencia última se usa (Notif. 594 / guía técnica de la BSL):
 $$M_u = 0.8\\,a_t\\,\\sigma_y\\,D + 0.5\\,N\\,D\\left(1 - \\frac{N}{b\\,D\\,F_c}\\right) \\quad (0 \\le N \\le 0.4\\,bDF_c)$$
-y la fórmula de **Arakawa** incluyendo el efecto de la compresión $0.1\\,\\sigma_0$.
+y la fórmula **mínima de Arakawa** incluyendo el efecto de la compresión $0.1\\,\\sigma_0$, comparada con el cortante del mecanismo amplificado $n_m\\cdot 2M_u/h_0$.
 
-Columna interior del 1F de 600 × 600 mm, 16-D25 (5 por cara), zunchos 2-D13@100, Fc = 24 N/mm², SD345.`),
+Columna interior del 1F de 600 × 600 mm, 16-D25 (5 por cara), estribos cerrados de 4 ramas D13@100, Fc = 24 N/mm², SD345.`),
       calc(`# Materiales y sección
 Fc = 24 N/mm^2 // Resistencia de diseño del concreto [21 N/mm^2|24 N/mm^2|27 N/mm^2|30 N/mm^2]
 SD = 345 // Acero longitudinal [295 : SD295|345 : SD345|390 : SD390]
-SD_w = 345 // Acero de zunchos [295 : SD295|345 : SD345]
+SD_w = 345 // Acero de estribos [295 : SD295|345 : SD345]
 b = 600 mm // Ancho de la columna
 D = 600 mm // Peralte en la dirección analizada
 dt = 65 mm // Distancia del borde al centroide de las barras de la cara
 nc = 5 // Barras por cara (armadura simétrica)
 db = 25 // Diámetro de barras [22 : D22|25 : D25|29 : D29]
-nw = 2 // Ramas de zuncho
-dw = 13 // Diámetro de zuncho [10 : D10|13 : D13]
-sw = 100 mm // Espaciamiento de zunchos
+nw = 4 // Ramas de estribo en la dirección analizada [2|3|4]
+dw = 13 // Diámetro de estribo [10 : D10|13 : D13]
+sw = 100 mm // Espaciamiento de estribos
 h0 = 3.2 m // Altura libre de la columna
 ## Propiedades
 d = D - dt // Peralte efectivo
@@ -255,9 +272,10 @@ at = nc*AbJIS(db) // Acero en la cara traccionada
 pt = at/(b*d) // Cuantía de tracción
 pg = (4*nc - 4)*AbJIS(db)/(b*D) // Cuantía total
 check pg >= 0.008 // Cuantía total ≥ 0.8 % (AIJ RC art. 14)
-aw = nw*AbJIS(dw) // Área de un juego de zunchos
-pw = aw/(b*sw) // Cuantía de zunchos
+aw = nw*AbJIS(dw) // Área de un juego de estribos
+pw = aw/(b*sw) // Cuantía de estribos
 check pw >= 0.002 // pw ≥ 0.2 % (AIJ RC art. 15)
+check sw <= 100 mm // Separación de estribos ≤ 100 mm en los extremos (AIJ RC art. 15)
 n = nAIJ(Fc) // Relación de módulos de Young (AIJ RC art. 5)
 # Esfuerzos admisibles (AIJ RC art. 6)
 fca_L = fcaAIJ(Fc, 1) // Compresión, largo plazo Fc/3
@@ -266,7 +284,7 @@ ft_L = ftAIJ(SD, 1, db) // Acero, largo plazo
 ft_S = ftAIJ(SD, 2, db) // Acero, corto plazo
 fs_L = fsaAIJ(Fc, 1) // Cortante concreto, largo plazo
 fs_S = fsaAIJ(Fc, 2) // Cortante concreto, corto plazo
-wft_S = wftAIJ(SD_w, 2) // Zunchos, corto plazo
+wft_S = wftAIJ(SD_w, 2) // Estribos, corto plazo
 # Solicitaciones
 N_L = 1650 kN // Carga axial de largo plazo
 M_L = 45 kN*m // Momento de largo plazo
@@ -289,19 +307,26 @@ check M_S <= Ma_S2 // Flexocompresión de corto plazo con N mín. (AIJ RC art. 1
 # Cortante (AIJ RC art. 15)
 Qa_L = b*j*fs_L -> kN // Cortante admisible de largo plazo (α = 1)
 check Q_L <= Qa_L // Cortante de largo plazo (AIJ RC art. 15)
-Q_D = Q_L + nQ*Q_E // Cortante de diseño de corto plazo
+Q_S = Q_L + Q_E // Cortante de corto plazo sin amplificar (control de daño)
+alpha_DS = alphaAIJ(M_S, Q_S, d, 1.5) // α = 4/(M/(Qd) + 1), 1 ≤ α ≤ 1.5 en columnas
+Qas_S = QasAIJ(b, j, alpha_DS, fs_S, wft_S, pw) // QAS = b·j·((2/3)·α·fs + 0.5·wft·(pw − 0.002))
+check Q_S <= Qas_S // Cortante de corto plazo, control de daño (AIJ RC art. 15, ec. 15.3)
+Q_D = Q_L + nQ*Q_E // Cortante de diseño de seguridad
 Qa_S = QaAIJ(b, j, 1, fs_S, wft_S, pw) // QA = b·j·(fs + 0.5·wft·(pw − 0.002))
-check Q_D <= Qa_S // Cortante de corto plazo (AIJ RC art. 15)
+check Q_D <= Qa_S // Cortante de corto plazo, seguridad (AIJ RC art. 15, ec. 15.6)
 # Resistencia última y falla dúctil
-sy = 1.1*SD*1 N/mm^2 // Fluencia esperada 1.1·F
+Fy = SD*1 N/mm^2 // Valor F del acero longitudinal (Notif. 2464)
+sy = 1.1*Fy // Resistencia de fluencia para resistencia última: 1.1·F (Notif. 2464)
 check N1 <= 0.4*b*D*Fc // Rango de validez de la fórmula de Mu (N ≤ 0.4bDFc)
 Mu = MucAIJ(at, sy, D, N1, b, Fc) // Momento último con N máx.
-Qm = 2*Mu/h0 // Cortante en el mecanismo (rótulas en ambos extremos)
+nm = 1.25 // Factor de amplificación del cortante del mecanismo en columnas (diseño de garantía) [1.1|1.2|1.25]
+Qm = nm*2*Mu/h0 // Cortante de diseño en el mecanismo (rótulas en ambos extremos)
 s0 = N1/(b*D) -> N/mm^2 // Esfuerzo axial medio σ0
 MQd = h0/(2*d) // Relación de corte M/(Qd)
-Qsu = QsuAIJ(pt, Fc, MQd, pw, SD_w*1 N/mm^2, s0, b, j) // Arakawa con 0.1·σ0
-check Qsu >= 1.1*Qm // Qsu ≥ 1.1·Qm: falla por flexión (Notif. 1792)`),
-      { type: 'secjp', b: 'b', D: 'D', dt: 'dt', tipo: 'columna', sup: '{nc}-D{db}', est: '{nw}-D{dw}@100', titulo: 'Sección de la columna (armadura simétrica, barras JIS)' },
+swy = SD_w*1 N/mm^2 // Fluencia de estribos
+Qsu = QsuAIJ(pt, Fc, MQd, pw, swy, s0, b, j) // Arakawa (fórmula mínima) con 0.1·σ0
+check Qsu >= Qm // Qsu ≥ nm·2Mu/h0: falla por flexión antes que por cortante (Notif. 1792)`),
+      { type: 'secjp', b: 'b', D: 'D', dt: 'dt', tipo: 'columna', sup: '{nc}-D{db}', est: '{nw} ramas D{dw}@{sw/(1 mm)}', titulo: 'Sección de la columna (armadura simétrica, barras JIS)' },
       { type: 'plot', expr: 'MaColAIJ(x kN, b, D, at, dt, fca_L, ft_L, n)/(1 kN*m); MaColAIJ(x kN, b, D, at, dt, fca_S, ft_S, n)/(1 kN*m)', var: 'x', desde: '-800', hasta: '6000', puntos: '120', xlabel: 'Carga axial N [kN] (compresión +)', ylabel: 'Momento admisible MA [kN·m]', leyenda: true, nombres: 'Largo plazo (Fc/3, ft = 215); Corto plazo (2Fc/3, ft = F)', titulo: 'Diagrama de momento admisible – carga axial (AIJ RC art. 14). Demandas (N; M) en kN y kN·m: largo plazo (1650; 45), corto plazo (2030; 375) y (1270; 375)' },
       summary(),
     ],

@@ -22,7 +22,7 @@ export default [
       text(`# Generalidades
 Se verifica una columna de perfil laminado W de un pórtico arriostrado, **articulada en ambos extremos** y en ambos ejes, sometida a carga axial de gravedad. El procedimiento sigue el **Capítulo E de ANSI/AISC 360-16/22** por el método LRFD; la NTE E.090 (Perú) adopta el mismo enfoque de diseño por factores de carga y resistencia.
 
-- **Datos del ejemplo:** AISC *Design Examples* v16, Ejemplo **E.1A** (W14×132, ASTM A992, L = 30 ft, PD = 140 kip, PL = 420 kip). Resultado de referencia: φcPn = 893 kip (Tabla 4-1a).
+- **Datos del ejemplo:** AISC *Design Examples* v16, Ejemplo **E.1A** (W14×132, ASTM A992, L = 30 ft, D = 140 kip, L = 420 kip). Resultado de referencia: φcPn = 893 kip (Tabla 4-1a).
 - **Combinación de carga:** ASCE/SEI 7 §2.3.1 — 1.4D; 1.2D + 1.6L (coincide con NTE E.090 1.4.1).
 - **Propiedades del perfil:** AISC Shapes Database (bloque *Perfil de acero*).`),
       { type: 'steelsec', perfil: 'W14X132', tabla: true, titulo: '' },
@@ -34,10 +34,10 @@ E = 29000 ksi // Módulo de elasticidad del acero (AISC 360 B4.1)
 L = 30 ft // Longitud no arriostrada de la columna
 Kx = 1.0 // Factor de longitud efectiva eje x (articulado–articulado, App. 7) [0.65|0.8|1.0|1.2|2.0]
 Ky = 1.0 // Factor de longitud efectiva eje y [0.65|0.8|1.0|1.2|2.0]
-PD = 140 kip // Carga axial muerta de servicio
-PL = 420 kip // Carga axial viva de servicio
+P_D = 140 kip // Carga axial muerta de servicio
+P_L = 420 kip // Carga axial viva de servicio
 ## Resistencia requerida
-Pu = max(1.4*PD, 1.2*PD + 1.6*PL) // ASCE 7 §2.3.1 / E.090 1.4.1 (LRFD)
+Pu = max(1.4*P_D, 1.2*P_D + 1.6*P_L) // ASCE 7 §2.3.1 / E.090 1.4.1 (LRFD)
 # Pandeo local de los elementos (Tabla B4.1a)
 lambdarf = 0.56*sqrt(E/Fy) // Límite λr del ala (caso 1, elemento no atiesado)
 lambdarw = 1.49*sqrt(E/Fy) // Límite λr del alma (caso 5, elemento atiesado)
@@ -147,9 +147,9 @@ Fy = 36 ksi // Fluencia del ángulo, ASTM A36 [36 ksi|50 ksi]
 Fu = 58 ksi // Resistencia a la tracción, ASTM A36 [58 ksi|65 ksi]
 grupo = "A325" // Grupo de pernos (Tabla J3.2): "A325", "A490" o "A307"
 ## Cargas
-PD = 15 kip // Carga muerta de servicio
-PL = 45 kip // Carga viva de servicio
-Pu = max(1.4*PD, 1.2*PD + 1.6*PL) // Resistencia requerida (ASCE 7 §2.3.1)
+P_D = 15 kip // Carga muerta de servicio
+P_L = 45 kip // Carga viva de servicio
+Pu = max(1.4*P_D, 1.2*P_D + 1.6*P_L) // Resistencia requerida (ASCE 7 §2.3.1)
 ## Conexión
 db = 7/8 in // Diámetro nominal del perno [3/4 in|7/8 in|1 in]
 nb = 4 // Número de pernos en la línea
@@ -295,10 +295,10 @@ Placa base de una columna de acero apoyada sobre un pedestal de concreto armado 
       { type: 'steelsec', perfil: 'W10X49', tabla: false, titulo: 'Columna W10×49 (ASTM A992)' },
       calc(`# Datos
 ## Cargas de servicio
-PD = 50 tonf // Carga axial muerta
-PL = 40 tonf // Carga axial viva
-VD = 1.5 tonf // Cortante por carga muerta
-VL = 1.0 tonf // Cortante por carga viva
+P_D = 50 tonf // Carga axial muerta
+P_L = 40 tonf // Carga axial viva
+V_D = 1.5 tonf // Cortante por carga muerta
+V_L = 1.0 tonf // Cortante por carga viva
 ## Materiales
 fc = 210 kgf/cm^2 // Resistencia del concreto del pedestal (E.060) [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2]
 Fyp = 2530 kgf/cm^2 // Fluencia de la placa, ASTM A36
@@ -313,9 +313,9 @@ da = 19.05 mm // Diámetro de los pernos de anclaje [19.05 mm : 3/4"|22.23 mm : 
 ed = 5 cm // Distancia del eje del perno al borde de la placa
 hef = 30 cm // Longitud de empotramiento
 ## Solicitaciones de diseño
-Pu = max(1.4*PD, 1.2*PD + 1.6*PL) // Compresión factorizada (E.090 1.4.1)
-Vu = 1.2*VD + 1.6*VL // Cortante factorizado
-Pumin = 0.9*PD // Compresión mínima concomitante (0.9D)`),
+Pu = max(1.4*P_D, 1.2*P_D + 1.6*P_L) // Compresión factorizada (E.090 1.4.1)
+Vu = 1.2*V_D + 1.6*V_L // Cortante factorizado
+Pumin = 0.9*P_D // Compresión mínima concomitante (0.9D)`),
       { type: 'basepl', perfil: 'W10X49', N: 'Np', B: 'Bp', tp: 'tp', na: 'na', da: 'da', ed: 'ed', N2: 'Np2', B2: 'Bp2', hef: 'hef', titulo: '' },
       calc(`# Aplastamiento del concreto (AISC 360 J8)
 phic = 0.65 // Factor de resistencia al aplastamiento (J8)
@@ -670,6 +670,168 @@ check Vsis <= 1.3*Vw // Resistencia lateral: el cortante sísmico no excede el d
 Dsis = 0.75*Rs*Vsis/Kl -> cm // Desplazamiento inelástico 0.75·R·Δelástico (E.030 Art. 31, regular)
 check Dsis/hc <= 0.010 // Distorsión máxima de entrepiso para acero (E.030 Tabla N.º 11)`),
       { type: 'plot', expr: '((1.2*wD + 1.6*wLr)*(x m)*(Lf - x m)/2 - Mr2)/(1 tonf*m); ((1.2*wD + 1.6*wLr - 0.8*wr1)*(x m)*(Lf - x m)/2 - Mr3)/(1 tonf*m)', var: 'x', desde: '0', hasta: 'Lf/(1 m)', puntos: '100', xlabel: 'x [m]', ylabel: 'M [t·m]', nombres: '1.2D + 1.6Lr; 1.2D + 1.6Lr + 0.8W (esquina crítica)', leyenda: true, titulo: 'Momento flector en la viga del pórtico (positivo: tracción en el ala inferior)' },
+      summary(),
+    ],
+  },
+  // ------------------------------------------------------------------
+  //  9) Viga compuesta acero–concreto con losa colaborante
+  // ------------------------------------------------------------------
+  {
+    id: 'st-compuesta', pais: 'PE', cat: CAT, icon: 'slab', settings: TEC,
+    name: 'Viga compuesta acero–concreto con losa colaborante (AISC I3, I8)',
+    normas: 'ANSI/AISC 360-16/22 Cap. I (I3.1, I3.2, I8.2) · Comentario I3 (inercia de límite inferior) · NTE E.090 · NTE E.020',
+    desc: 'Viga W no apuntalada con losa sobre placa colaborante perpendicular: etapa constructiva, ancho efectivo, conectores tipo perno (Qn), compuesta parcial con eje neutro plástico, cortante y flecha con ILB.',
+    titulo: 'Diseño de viga compuesta acero–concreto — AISC 360 Cap. I',
+    blocks: [
+      text(`# Generalidades
+Viga secundaria de entrepiso, simplemente apoyada, de perfil W **no apuntalado** durante el vaciado, que actúa en sección compuesta con una losa de concreto sobre **placa colaborante** (tipo Acero-Deck) con nervios **perpendiculares** a la viga. La conexión de corte se materializa con **conectores tipo perno** (*headed studs*) de ¾" soldados a través de la placa, uno por nervio.
+
+- **Etapa constructiva:** el perfil solo resiste el peso del concreto fresco y una carga de construcción de 50 kgf/m² (ASCE 37), con el ala superior arriostrada por la placa.
+- **Etapa compuesta:** resistencia plástica a flexión (AISC I3.2a) con compuesta parcial ΣQn < AsFy; el concreto por debajo de la cresta de los nervios se desprecia (I3.2c).
+- **Servicio:** flecha por carga viva con la **inercia de límite inferior** ILB (Comentario I3, Ec. C-I3-1).`),
+      { type: 'steelsec', perfil: 'W12X19', tabla: true, titulo: 'Perfil de acero W12×19 (ASTM A992)' },
+      calc(`# Datos
+## Geometría
+Lv = 9 m // Luz de la viga
+sv = 3 m // Separación entre vigas
+hr = 6 cm // Altura del nervio de la placa colaborante
+tc = 6 cm // Espesor de concreto sobre la cresta
+wr = 15 cm // Ancho medio del nervio
+ss = 30 cm // Separación de conectores (uno por nervio)
+## Materiales
+Fy = 3515 kgf/cm^2 // Fluencia ASTM A992 (50 ksi)
+E = 2039000 kgf/cm^2 // Módulo de elasticidad del acero
+fc = 210 kgf/cm^2 // Resistencia del concreto [210 kgf/cm^2|280 kgf/cm^2]
+wc = 145 lbf/ft^3 // Peso unitario del concreto (≈ 2320 kgf/m³)
+dsa = 19.05 mm // Diámetro del conector [15.88 mm : 5/8"|19.05 mm : 3/4"]
+Fusa = 4570 kgf/cm^2 // Resistencia a tracción del conector (ASTM A108, 65 ksi)
+## Cargas (E.020)
+wdeck = 10 kgf/m^2 // Placa colaborante calibre 22
+wcon = 2400 kgf/m^3*(tc + hr/2) -> kgf/m^2 // Concreto de la losa (nervios de sección media)
+wsd = 100 kgf/m^2 // Muerta sobreimpuesta: acabados y tabiquería móvil
+wL = 250 kgf/m^2 // Carga viva de oficinas (E.020 Tabla 1)
+wcons = 50 kgf/m^2 // Carga de construcción (ASCE 37)
+# Etapa constructiva (perfil solo, AISC F2)
+wu1 = 1.2*((wdeck + wcon)*sv + peso) + 1.6*wcons*sv -> tonf/m // 1.2D + 1.6Lc
+Mu1 = wu1*Lv^2/8 -> tonf*m
+phiMp = 0.90*Fy*Zx -> tonf*m // Ala comprimida arriostrada por la placa: Lb ≈ 0, Mn = Mp (F2-1)
+check lambdaf <= 0.38*sqrt(E/Fy) // Ala compacta (Tabla B4.1b)
+check Mu1 <= phiMp // Resistencia en la etapa constructiva
+dpre = 5*((wdeck + wcon)*sv + peso)*Lv^4/(384*E*Ix) -> cm // Flecha por concreto fresco (se compensa con contraflecha)
+camber = roundup(0.8*dpre, 0.5 cm) // Contraflecha recomendada ≈ 80 % de la flecha por peso propio
+# Etapa compuesta — resistencia requerida
+wu2 = 1.2*((wdeck + wcon + wsd)*sv + peso) + 1.6*wL*sv -> tonf/m // 1.2D + 1.6L (E.090 1.4.1)
+Mu = wu2*Lv^2/8 -> tonf*m
+Vu = wu2*Lv/2 -> tonf
+# Ancho efectivo (I3.1a)
+beff = min(Lv/4, sv) -> cm // Suma de L/8 a cada lado, sin exceder la separación entre vigas
+# Conectores de corte (I8.2a)
+Ec = EcAISC(fc, wc) // Ec = wc^1.5 √f'c (I2.1b)
+Asa = pi*dsa^2/4 -> cm^2 // Área del conector
+check hr <= 7.5 cm // Altura del nervio hr ≤ 3 in (I3.2c)
+check wr >= 5 cm // Ancho medio del nervio ≥ 2 in (I3.2c)
+check tc >= 5 cm // Concreto sobre la placa ≥ 2 in (I3.2c)
+Rg = 1.0 // Un conector por nervio, placa perpendicular (Tabla I8.1)
+Rp = 0.6 // Conector en posición débil, placa perpendicular (Tabla I8.1)
+Qn = min(0.5*Asa*sqrt(fc*Ec), Rg*Rp*Asa*Fusa) -> tonf // Resistencia de un conector (I8-1)
+nq = floor((Lv/2)/ss) // Conectores entre el apoyo y el centro de luz
+SQn = nq*Qn -> tonf // Fuerza de corte horizontal transferida
+Cc = 0.85*fc*beff*tc -> tonf // Compresión máxima del concreto sobre la placa (I3-1b)
+AsFy = A*Fy -> tonf // Tracción máxima del acero (I3-1a)
+Cf = min(Cc, AsFy, SQn) -> tonf // Fuerza de compresión en el concreto (I3.2d)
+check Cf >= 0.25*AsFy // Grado de acción compuesta ≥ 25 % (recomendación del Comentario I3.2d)
+# Momento resistente plástico (I3.2a)
+af = Cf/(0.85*fc*beff) // Profundidad del bloque de compresión
+check af <= tc // El bloque de compresión queda sobre la placa
+Cs = (AsFy - Cf)/2 -> tonf // Compresión en el perfil
+yf = si(Cs <= bf*tf*Fy, Cs/(bf*Fy), tf + (Cs - bf*tf*Fy)/(tw*Fy)) // Profundidad del ENP en el perfil (ala o alma)
+check Cs <= bf*tf*Fy // ENP dentro del ala superior (la fórmula siguiente supone este caso)
+Mn = Cf*(d/2 + hr + tc - af/2) + 2*Cs*(d/2 - yf/2) -> tonf*m // Momento de las fuerzas respecto al centroide del perfil
+phiMn = 0.90*Mn -> tonf*m // φb = 0.90 (I3.2a)
+check Mu <= phiMn // Resistencia a flexión de la sección compuesta
+# Cortante (I4.2, G2.1)
+check lambdaw <= 2.24*sqrt(E/Fy) // φv = 1.0 y Cv1 = 1 (G2.1a)
+phiVn = 1.0*0.6*Fy*d*tw -> tonf // Solo el alma del perfil (I4.2)
+check Vu <= phiVn // Resistencia a cortante
+# Flecha por carga viva (Comentario I3.2)
+d1 = hr + tc - af/2 // Distancia de la fuerza en el concreto a la cara superior del acero
+YENA = (A*d/2 + SQn/Fy*(d + d1))/(A + SQn/Fy) // Eje neutro elástico desde la cara inferior del acero (C-I3-2)
+ILB = Ix + A*(YENA - d/2)^2 + SQn/Fy*(d + d1 - YENA)^2 -> cm^4 // Inercia de límite inferior (C-I3-1)
+dL = 5*wL*sv*Lv^4/(384*E*ILB) -> cm // Flecha por carga viva
+check dL <= Lv/360 // Límite L/360 para carga viva (IBC Tabla 1604.3)
+"Contraflecha recomendada del perfil: {camber}. Conectores ¾\\" × 4\\": {nq} entre el apoyo y el centro de luz (total {2*nq}).`),
+      { type: 'plot', expr: 'wu2*(x m)*(Lv - x m)/2/(1 tonf*m); phiMn/(1 tonf*m)', var: 'x', desde: '0', hasta: 'Lv/(1 m)', puntos: '80', xlabel: 'x [m]', ylabel: 'M [t·m]', nombres: 'Mu (1.2D + 1.6L); φMn sección compuesta', leyenda: true, titulo: 'Momento solicitante y resistencia de la sección compuesta' },
+      summary(),
+    ],
+  },
+  // ------------------------------------------------------------------
+  //  10) Viga con perfil europeo IPE — AISC 360 y NTE E.090
+  // ------------------------------------------------------------------
+  {
+    id: 'st-viga-ipe', pais: 'PE', cat: CAT, icon: 'beam', settings: TEC,
+    name: 'Viga de perfil europeo IPE (AISC 360 y NTE E.090)',
+    normas: 'ANSI/AISC 360-16/22 F2, G2, J10 · NTE E.090 (Cap. F, LRFD 1999) · NTE E.020',
+    desc: 'Viga IPE simplemente apoyada con arriostre lateral intermedio: pandeo lateral-torsional por AISC 360 F2 y por E.090 (X1, X2, FL), cortante, cargas concentradas en el alma (J10) y flecha.',
+    titulo: 'Diseño de viga de acero IPE — AISC 360-16 / NTE E.090',
+    blocks: [
+      text(`# Generalidades
+Viga de entrepiso de **perfil europeo IPE** (EN 10365), acero S275JR, simplemente apoyada sobre vigas principales y arriostrada lateralmente en el centro de la luz por una viga secundaria. Se verifica la flexión con pandeo lateral-torsional según **AISC 360-16/22 Sección F2** y, como comparación, según la **NTE E.090 (2006)** — basada en AISC LRFD 1999 —, que usa los parámetros X1, X2 y FL = Fy − Fr.
+
+- **Propiedades:** tablas ArcelorMittal (EN 10365); It e Iw con las fórmulas del fabricante.
+- **Cargas:** D = 1.2 t/m (losa, acabados y peso propio), L = 1.0 t/m (E.020); combinación 1.2D + 1.6L (E.090 1.4.1).`),
+      { type: 'steelsec', perfil: 'IPE300', tabla: true, titulo: '' },
+      calc(`# Datos
+Fy = 2804 kgf/cm^2 // Fluencia S275 (275 MPa) [2396 kgf/cm^2|2804 kgf/cm^2|3620 kgf/cm^2]
+E = 2039000 kgf/cm^2 // Módulo de elasticidad (200 GPa en EN; 29 000 ksi en AISC)
+G = 784000 kgf/cm^2 // Módulo de corte (11 200 ksi)
+Lv = 6 m // Luz de la viga
+Lb = 3 m // Longitud no arriostrada (arriostre en el centro)
+wDs = 1.2 tonf/m // Carga muerta de servicio
+wLs = 1.0 tonf/m // Carga viva de servicio
+lbr = 10 cm // Longitud de apoyo en los extremos
+# Solicitaciones (E.090 1.4.1)
+wu = max(1.4*wDs, 1.2*wDs + 1.6*wLs) -> tonf/m
+Mu = wu*Lv^2/8 -> tonf*m // Momento máximo (centro)
+Vu = wu*Lv/2 -> tonf // Cortante y reacción
+Cb = CbF1(1, 0.4375, 0.75, 0.9375) // Segmento entre apoyo y centro, carga uniforme: Mmax = 1, MA, MB, MC (F1-1) ≈ 1.30`),
+      { type: 'beam', tramos: 'Lv', apoyos: 'A A', E: 'E', I: 'Ix', cargas: 'CM: U 1 wDs\nCV: U 1 wLs', titulo: 'Diagramas de servicio de la viga (CM + CV)' },
+      calc(`# Compacidad (AISC Tabla B4.1b)
+check lambdaf <= 0.38*sqrt(E/Fy) // Ala compacta (caso 10)
+check lambdaw <= 3.76*sqrt(E/Fy) // Alma compacta (caso 15)
+# Flexión — AISC 360-16/22 F2
+Mp = Fy*Zx -> tonf*m // Momento plástico (F2-1)
+Lp = 1.76*ry*sqrt(E/Fy) -> m // F2-5
+Lr = 1.95*rts*E/(0.7*Fy)*sqrt(J/(Sx*ho) + sqrt((J/(Sx*ho))^2 + 6.76*(0.7*Fy/E)^2)) -> m // F2-6
+Fcr = Cb*pi^2*E/(Lb/rts)^2*sqrt(1 + 0.078*J/(Sx*ho)*(Lb/rts)^2) // F2-4
+Mn = si(Lb <= Lp, Mp, si(Lb <= Lr, min(Cb*(Mp - (Mp - 0.7*Fy*Sx)*(Lb - Lp)/(Lr - Lp)), Mp), min(Fcr*Sx, Mp))) -> tonf*m // F2-1 a F2-3
+phiMn = 0.90*Mn -> tonf*m
+check Mu <= phiMn // Flexión AISC 360 (F1)
+# Flexión — NTE E.090 (F1.1, perfiles compactos)
+Fr = 69 MPa // Esfuerzo residual en perfiles laminados (E.090 F1.1)
+FL = Fy - Fr // Esfuerzo FL = Fy − Fr
+X1 = pi/Sx*sqrt(E*G*J*A/2) // E.090 Ec. F1-8
+X2 = 4*Cw/Iy*(Sx/(G*J))^2 // E.090 Ec. F1-9
+Lp090 = 1.76*ry*sqrt(E/Fy) -> m // Lp = 300ry/√Fy (ksi) (E.090 F1-4)
+Lr090 = ry*X1/FL*sqrt(1 + sqrt(1 + X2*FL^2)) -> m // E.090 F1-6
+Mr = FL*Sx -> tonf*m // E.090 F1-7
+Mn090 = si(Lb <= Lp090, Mp, min(Cb*(Mp - (Mp - Mr)*(Lb - Lp090)/(Lr090 - Lp090)), Mp)) -> tonf*m // E.090 F1-2 (Lb ≤ Lr)
+check Lb <= Lr090 // Zona inelástica (aplica F1-2)
+check Mu <= 0.90*Mn090 // Flexión NTE E.090
+# Cortante (G2.1)
+check lambdaw <= 2.24*sqrt(E/Fy) // φv = 1.0, Cv1 = 1 (G2.1a)
+phiVn = 1.0*0.6*Fy*d*tw -> tonf // G2-1
+check Vu <= phiVn // Resistencia a cortante
+# Reacción en el apoyo: alma (J10)
+phiRy = 1.0*RnJ10y(Fy, tw, kdes, lbr, 0 cm, d) -> tonf // Fluencia local del alma, reacción en el extremo (J10-3)
+check Vu <= phiRy // Fluencia local del alma
+phiRc = 0.75*RnJ10c(tw, tf, d, lbr, Fy, E, 0 cm) -> tonf // Aplastamiento del alma, x < d/2 (J10-5)
+check Vu <= phiRc // Aplastamiento (crippling) del alma
+# Flecha
+dL = 5*wLs*Lv^4/(384*E*Ix) -> cm // Por carga viva
+check dL <= Lv/360 // L/360 (IBC 1604.3)
+dT = 5*(wDs + wLs)*Lv^4/(384*E*Ix) -> cm // Por carga total
+check dT <= Lv/240 // L/240`),
+      { type: 'plot', expr: '0.9*MnW(perfil, Fy, x m, Cb, E)/(1 tonf*m); 0.9*MnW(perfil, Fy, x m, 1, E)/(1 tonf*m); Mu/(1 tonf*m)', var: 'x', desde: '0.5', hasta: '10', puntos: '160', xlabel: 'Lb [m]', ylabel: 'φMn [t·m]', nombres: 'φMn con Cb; φMn con Cb = 1; Mu', leyenda: true, titulo: 'Resistencia a flexión del IPE en función de la longitud no arriostrada (AISC F2)' },
       summary(),
     ],
   },

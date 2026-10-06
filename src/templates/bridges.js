@@ -1113,4 +1113,240 @@ check Nreq <= bseat // Longitud de apoyo suficiente`),
   ],
 };
 
-export default [vigaT, presf, acero, estribo, pilar, neopreno, sismo];
+// =====================================================================
+//  8) ALCANTARILLA MARCO (BOX CULVERT) CON RELLENO
+// =====================================================================
+// Bloque reutilizable de análisis de un combo (pendiente-deflexión con simetría)
+const boxCombo = (k, gDC, gEV, gEH, gLS, gLL) => `## Combinación ${k}
+qt${k} = ${gDC}*wtop + ${gEV}*pEV // Carga uniforme sobre la losa superior
+qL${k} = ${gLL}*pLL // Carga viva sobre la longitud c (centrada)
+qb${k} = (qt${k}*Lc + qL${k}*cL + ${gDC}*2*wwall)/Lc // Reacción uniforme del suelo bajo la losa inferior
+pA${k} = (${gEH}*k0*gammas*(Hf + tt/2) + ${gLS}*k0*gammas*heq)*1 m // Presión lateral en el eje de la losa superior
+pB${k} = (${gEH}*k0*gammas*(Hf + tt/2 + Hcl) + ${gLS}*k0*gammas*heq)*1 m // Presión lateral en el eje de la losa inferior
+FEt${k} = -(qt${k}*Lc^2/12 + qL${k}*cL*(3*Lc^2 - cL^2)/(24*Lc)) // Momento de empotramiento, losa superior (horario +)
+FEb${k} = qb${k}*Lc^2/12 // Losa inferior (carga hacia arriba)
+FEab${k} = pA${k}*Hcl^2/12 + (pB${k} - pA${k})*Hcl^2/30 // Muro, extremo superior
+FEba${k} = -(pA${k}*Hcl^2/12 + (pB${k} - pA${k})*Hcl^2/20) // Muro, extremo inferior
+thA${k} = thA(-(FEt${k} + FEab${k}), -(FEb${k} + FEba${k})) // Giro del nudo superior
+thB${k} = thB(-(FEt${k} + FEab${k}), -(FEb${k} + FEba${k})) // Giro del nudo inferior
+MA${k} = kt*thA${k} + FEt${k} // Momento en la esquina superior (losa)
+MB${k} = kb*thB${k} + FEb${k} // Momento en la esquina inferior (losa)
+Mt${k} = qt${k}*Lc^2/8 + qL${k}*cL*(2*Lc - cL)/8 + MA${k} -> tonf*m // Momento en el centro de la losa superior (tracción abajo +)
+Mb${k} = qb${k}*Lc^2/8 - MB${k} -> tonf*m // Momento en el centro de la losa inferior (tracción arriba +)
+Mw${k} = (pA${k} + pB${k})*Hcl^2/16 - (abs(MA${k}) + abs(MB${k}))/2 -> tonf*m // Momento a media altura del muro (tracción interior +)`;
+
+const alcantarilla = {
+  id: 'br-alcantarilla', pais: 'PE', cat: CAT, icon: 'section', settings: {},
+  name: 'Alcantarilla marco de concreto armado (box culvert) con relleno',
+  normas: 'AASHTO LRFD 9.ª ed. Art. 3.6.1.2.6, 3.11, 12.11 y 5.12.7.3 · Manual de Puentes MTC (2018)',
+  desc: 'Alcantarilla de una celda 3.00 × 2.50 m bajo 1.50 m de relleno: cargas EV con interacción suelo-estructura, EH en reposo, LS, HL-93 distribuida a través del relleno (LLDF = 1.15), análisis del marco cerrado por pendiente-deflexión y diseño de losas y muros.',
+  titulo: 'Diseño de alcantarilla marco de concreto armado 3.00 × 2.50 m — AASHTO LRFD',
+  blocks: [
+    text(`# Generalidades
+Alcantarilla tipo **marco cerrado** de una celda, de concreto armado vaciado in situ, con luz libre de 3.00 m, altura libre de 2.50 m y **1.50 m de relleno** compactado sobre la losa superior, bajo una vía con tránsito HL-93. Se analiza una franja de 1 m en el sentido longitudinal de la alcantarilla.
+
+## Normas y referencias
+- AASHTO LRFD 9.ª ed.: 3.6.1.2.6 (distribución de la carga de rueda a través del relleno, $LLDF = 1.15$), 3.6.2.2 (IM en estructuras enterradas), 3.11.5.2 (empuje en reposo $k_0 = 1 - \\sin\\phi'_f$), 3.11.7 (reducción del 50 % del empuje lateral para momento positivo en la losa superior), 12.11.2.2 (factor de interacción suelo-estructura $F_e$), 5.12.7.3 (cortante en losas de alcantarillas), Tabla 3.4.1-2 ($\\gamma_{EV} = 1.30$ estructura rígida enterrada, $\\gamma_{EH} = 1.35$ en reposo).
+- Manual de Puentes MTC (2018); Rodríguez Serquén, cap. XIII (alcantarillas).
+
+## Modelo
+Marco cerrado simétrico con ejes en el centro de los elementos. Por simetría solo hay dos giros desconocidos (esquinas superior e inferior); se resuelve por **pendiente-deflexión** sin desplazamiento lateral. Reacción del suelo uniforme bajo la losa inferior.`),
+    calc(`# Datos
+Bi = 3.00 m // Luz libre interior
+Hi = 2.50 m // Altura libre interior
+tt = 0.30 m // Espesor de la losa superior
+tb = 0.30 m // Espesor de la losa inferior
+tw = 0.30 m // Espesor de los muros
+Hf = 1.50 m // Altura del relleno sobre la losa superior
+gammas = 1.90 tonf/m^3 // Peso unitario del relleno compactado
+phis = 30 deg // Ángulo de fricción del relleno
+gammac = 2.40 tonf/m^3 // Concreto armado
+fc = 280 kgf/cm^2 // f'c
+fy = 4200 kgf/cm^2 // Acero Gr. 60
+Ec = EcLRFD(fc) -> kgf/cm^2
+# Geometría de cálculo
+Lc = Bi + tw // Luz entre ejes de muros
+Hcl = Hi + (tt + tb)/2 // Altura entre ejes de losas
+Bc = Bi + 2*tw // Ancho exterior
+# Cargas por metro
+wtop = gammac*tt*1 m -> tonf/m // Peso propio de la losa superior (DC)
+wwall = gammac*tw*Hcl*1 m -> tonf // Peso de cada muro (DC)
+Fe = min(1 + 0.20*Hf/Bc, 1.15) // Interacción suelo-estructura, relleno compactado (12.11.2.2.1-2)
+pEV = Fe*gammas*Hf*1 m -> tonf/m // Carga vertical de tierra (EV)
+k0 = 1 - sin(phis) // Coeficiente en reposo (3.11.5.2-1)
+heq = 0.60 m // Sobrecarga vehicular equivalente sobre los muros (3.11.6.4)
+## Carga viva a través del relleno (3.6.1.2.6)
+LLDF = 1.15 // Factor de distribución en relleno granular (Tabla 3.6.1.2.6a-1)
+IMb = IMburLRFD(Hf) // IM = 33(1 − 4.1×10⁻⁴ DE) % (3.6.2.2-1)
+check Hf >= 0.60 m // Relleno ≥ 0.60 m: distribución a través del suelo (3.6.1.2.6)
+Di = Bi // Luz libre interior
+Hintt = (1.80 m - 0.51 m - 0.06*Di)/LLDF // Profundidad de interacción entre ruedas (3.6.1.2.6b-1)
+ww = si(Hf > Hintt, 0.51 m + 1.80 m + LLDF*Hf + 0.06*Di, 0.51 m + LLDF*Hf + 0.06*Di) // Ancho de la huella a la profundidad H (perpendicular a la luz)
+lwt = 0.25 m + LLDF*Hf // Longitud de la huella de un eje del camión (paralela a la luz)
+lwd = si(Hf > (1.20 m - 0.25 m)/LLDF, 0.25 m + 1.20 m + LLDF*Hf, 0.25 m + LLDF*Hf) // Longitud de la huella del tándem
+pLLt = mpLRFD(1)*(1 + IMb)*14.52 tonf/(ww*lwt)*1 m // Presión por eje del camión
+pLLd = mpLRFD(1)*(1 + IMb)*22.68 tonf/(ww*lwd)*1 m // Presión por el tándem
+pLL = max(pLLt, pLLd) -> tonf/m // Presión viva de diseño (por metro de franja)
+cL = min(si(pLLt >= pLLd, lwt, lwd), Lc) // Longitud cargada sobre la luz
+"No se aplica la carga de carril a alcantarillas con relleno ≥ 0.60 m en este modelo (la presión del eje gobierna).
+# Análisis del marco (pendiente-deflexión, simetría)
+It = 1 m*tt^3/12 -> m^4
+Ib = 1 m*tb^3/12 -> m^4
+Iw = 1 m*tw^3/12 -> m^4
+kt = 2*Ec*It/Lc -> tonf*m // Rigidez de la losa superior con giros simétricos (2EI/L)
+kb = 2*Ec*Ib/Lc -> tonf*m
+kw = 2*Ec*Iw/Hcl -> tonf*m // Rigidez de los muros (2EI/H)
+det = (kt + 2*kw)*(kb + 2*kw) - kw^2
+thA(r1, r2) = (r1*(kb + 2*kw) - kw*r2)/det
+thB(r1, r2) = ((kt + 2*kw)*r2 - kw*r1)/det
+${boxCombo(1, '1.25', '1.30', '0.5*0.90', '0', '1.75')}
+${boxCombo(2, '1.25', '1.30', '1.35', '1.75', '1.75')}
+${boxCombo(3, '1.00', '1.00', '1.00', '1.00', '1.00')}
+"Combinación 1: Resistencia I con empuje lateral reducido al 50 % (3.11.7) para el momento positivo de la losa superior; combinación 2: Resistencia I con empujes máximos (esquinas y muros); combinación 3: Servicio I.
+# Diseño (franja de 1 m)
+phif = 0.90 // Flexión (5.5.4.2)
+bar = 5 // Varilla [5 : 5/8"|6 : 3/4"]
+rec = 5.0 cm // Recubrimiento (Tabla 5.10.1-1, contacto con suelo)
+## Losa superior — centro de la luz (acero inferior)
+Mu1 = max(Mt1, Mt2) -> tonf*m
+dts = tt - rec - db(bar)/2
+As1 = 0.85*fc*100 cm/fy*(dts - sqrt(dts^2 - 2*Mu1/(0.85*phif*fc*100 cm)))
+s1 = rounddown(min(Ab(bar)*100 cm/As1, 45 cm), 2.5 cm)
+phiM1 = phif*Ab(bar)*100 cm/s1*fy*(dts - Ab(bar)*100 cm/s1*fy/(2*0.85*fc*100 cm)) -> tonf*m
+check Mu1 <= phiM1 // Flexión positiva losa superior
+## Esquinas (acero exterior)
+Mu2 = max(abs(MA1), abs(MA2), abs(MB1), abs(MB2)) -> tonf*m
+As2 = 0.85*fc*100 cm/fy*(dts - sqrt(dts^2 - 2*Mu2/(0.85*phif*fc*100 cm)))
+s2 = rounddown(min(Ab(bar)*100 cm/As2, 45 cm), 2.5 cm)
+phiM2 = phif*Ab(bar)*100 cm/s2*fy*(dts - Ab(bar)*100 cm/s2*fy/(2*0.85*fc*100 cm)) -> tonf*m
+check Mu2 <= phiM2 // Flexión negativa en las esquinas
+## Losa inferior — centro (acero superior)
+Mu3 = max(Mb1, Mb2) -> tonf*m
+dbs = tb - rec - db(bar)/2
+As3 = 0.85*fc*100 cm/fy*(dbs - sqrt(dbs^2 - 2*Mu3/(0.85*phif*fc*100 cm)))
+s3 = rounddown(min(Ab(bar)*100 cm/As3, 45 cm), 2.5 cm)
+phiM3 = phif*Ab(bar)*100 cm/s3*fy*(dbs - Ab(bar)*100 cm/s3*fy/(2*0.85*fc*100 cm)) -> tonf*m
+check Mu3 <= phiM3 // Flexión en la losa inferior
+## Muros — media altura (acero interior)
+Mu4 = max(Mw1, Mw2, 0.1 tonf*m) -> tonf*m
+dws = tw - rec - db(bar)/2
+As4 = max(0.85*fc*100 cm/fy*(dws - sqrt(dws^2 - 2*Mu4/(0.85*phif*fc*100 cm))), 0.0015*100 cm*tw)
+s4 = rounddown(min(Ab(bar)*100 cm/As4, 45 cm), 2.5 cm)
+## Acero mínimo (5.6.3.3)
+Mcr = 1.6*0.67*frLRFD(fc)*100 cm*tt^2/6 -> tonf*m
+check phiM1 >= min(Mcr, 1.33*Mu1) // Mínimo, losa superior
+check phiM2 >= min(Mcr, 1.33*Mu2) // Mínimo, esquinas
+## Cortante en la losa superior a dv de la cara del muro (5.12.7.3)
+dv = max(0.9*dts, 0.72*tt)
+Vu = (1.25*wtop + 1.30*pEV)*(Bi/2 - dv) + 1.75*pLL*min(cL/2, Bi/2 - dv) -> tonf // Resistencia I
+Mux = max(abs(MA2), Vu*dts) // Momento concomitante
+Vc = min((0.178*sqrtMPa(fc) + 32*Ab(bar)/(s1*dts)*min(Vu*dts/Mux, 1)*1 MPa)*100 cm*dts, 0.332*sqrtMPa(fc)*100 cm*dts) -> tonf // Losas de alcantarillas monolíticas (5.12.7.3-1, SI)
+check Vu <= 0.90*Vc // Cortante sin estribos
+## Servicio I — fisuración en el centro de la losa superior (5.6.7)
+Ms = Mt3 -> tonf*m
+nmod = 200000 MPa/Ec
+Asx = Ab(bar)*100 cm/s1
+rhox = Asx/(100 cm*dts)
+kx = sqrt(2*rhox*nmod + (rhox*nmod)^2) - rhox*nmod
+fss = min(Ms/(Asx*dts*(1 - kx/3)), 0.6*fy) -> kgf/cm^2
+dc = rec + db(bar)/2
+betas = 1 + dc/(0.7*(tt - dc))
+check s1 <= 123000*1.0/(betas*fss/(1 MPa))*1 mm - 2*dc // Espaciamiento máximo, exposición clase 1
+"Refuerzo: losa superior #{bar} @ {s1} inferior; esquinas y cara exterior #{bar} @ {s2}; losa inferior #{bar} @ {s3} superior; muros #{bar} @ {s4} interior; el acero exterior de las esquinas se prolonga en toda la altura de los muros (el momento a media altura del muro produce tracción exterior). Distribución y temperatura según 5.10.6 y 9.7.3.2.`),
+    { type: 'table', columnas: 'Combinación = [1, 2, 3]\nM esquina sup. [tonf*m] = [MA1, MA2, MA3]\nM esquina inf. [tonf*m] = [MB1, MB2, MB3]\nM centro losa sup. [tonf*m] = [Mt1, Mt2, Mt3]\nM centro losa inf. [tonf*m] = [Mb1, Mb2, Mb3]\nM muro [tonf*m] = [Mw1, Mw2, Mw3]', dec: '2', titulo: 'Momentos flectores por metro (convención: + tracción interior en losas y muros; esquinas: horario +)' },
+    summary(),
+  ],
+};
+
+// =====================================================================
+//  9) PUENTE PEATONAL (VIGAS DE ACERO) — CARGA PEATONAL Y VIBRACIÓN
+// =====================================================================
+const peatonal = {
+  id: 'br-peatonal', pais: 'PE', cat: CAT, icon: 'steel', settings: { sys: 'si' },
+  name: 'Puente peatonal de vigas de acero (carga peatonal y vibración)',
+  normas: 'AASHTO LRFD Guide Specifications for the Design of Pedestrian Bridges (2009) · AASHTO LRFD 9.ª ed. Secc. 6 · Manual de Puentes MTC (2018)',
+  desc: 'Pasarela simplemente apoyada L = 30 m con dos vigas I armadas y losa de concreto: carga peatonal 4.3 kPa, vehículo de mantenimiento H5, Resistencia I, flexión y cortante (AASHTO Secc. 6), deflexión L/360 y frecuencias vertical (≥ 3.0 Hz) y lateral (≥ 1.3 Hz).',
+  titulo: 'Diseño de puente peatonal de vigas de acero L = 30.00 m — AASHTO LRFD Pedestrian Bridges',
+  blocks: [
+    text(`# Generalidades
+Puente peatonal de un tramo simplemente apoyado de **30.00 m** con dos vigas I armadas de acero ASTM A709 Gr. 50 separadas 2.00 m y losa de concreto de 0.12 m (no compuesta) con barandas metálicas. El ancho libre es de 2.50 m.
+
+## Normas y referencias
+- AASHTO, *LRFD Guide Specifications for the Design of Pedestrian Bridges* (2009, rev. 2015): 3.1 (carga peatonal 90 psf = 4.3 kPa sin reducción por área), 3.2 (vehículo de mantenimiento H5 para anchos de 2.1 a 3.0 m), 5 (deflexión L/360), 6 (vibraciones: $f_v \\ge 3.0$ Hz o $W \\ge 180\\,e^{-0.35 f}$ kip; $f_{lat} \\ge 1.3$ Hz).
+- AASHTO LRFD 9.ª ed., Secc. 6 (6.10.8 flexión con ala comprimida arriostrada continuamente, 6.10.9 cortante) y Tabla 3.4.1-1 (Resistencia I).
+- Manual de Puentes MTC (2018), 2.4.3.7 (carga peatonal) y Rodríguez Serquén, cap. XIV.`),
+    calc(`# Datos
+L = 30.0 m // Luz de cálculo
+wb = 2.50 m // Ancho libre del tablero
+nv = 2 // Número de vigas
+## Viga I armada (acero A709 Gr. 50)
+Fy = 345 MPa // Fluencia
+Es = 200000 MPa // Módulo de elasticidad (6.4.1)
+D = 1400 mm // Altura del alma
+tw = 12 mm // Espesor del alma
+bf = 350 mm // Ancho de las alas (sección doblemente simétrica)
+tf = 25 mm // Espesor de las alas
+## Tablero
+tl = 0.12 m // Espesor de la losa de concreto
+gammac = 23.5 kN/m^3 // Concreto armado
+wbar = 0.50 kN/m // Barandas (cada lado)
+PL = 4.3 kPa // Carga peatonal (Guide Spec 3.1)
+# Propiedades de la viga
+Av = 2*bf*tf + D*tw -> mm^2 // Área
+d = D + 2*tf // Peralte total
+Ix = tw*D^3/12 + 2*bf*tf*((D + tf)/2)^2 + 2*bf*tf^3/12 -> mm^4 // Inercia
+Sx = Ix/(d/2) -> mm^3 // Módulo elástico
+check D/tw <= 150 // Esbeltez del alma (6.10.2.1.1)
+check bf/(2*tf) <= 12 and bf >= D/6 and tf >= 1.1*tw // Proporciones de alas (6.10.2.2)
+# Cargas por viga
+wDCs = 78.5 kN/m^3*Av -> kN/m // Peso propio de la viga
+wDCd = (gammac*tl*(wb + 0.30 m) + 2*wbar)/nv -> kN/m // Losa y barandas
+wDC = 1.10*wDCs + wDCd // DC total (+10 % de arriostres y conexiones)
+wPL = PL*wb/nv -> kN/m // Carga peatonal por viga
+MDC = wDC*L^2/8 -> kN*m
+MPL = wPL*L^2/8 -> kN*m
+VDC = wDC*L/2 -> kN
+VPL = wPL*L/2 -> kN`),
+    { type: 'hl93env', tramos: 'L', apoyos: 'A A', vehiculo: 'Ejes', ejes: '8.9kN 0; 35.6kN 4.27', IM: '0', g: '0.5', carril: '0', sufijo: 'H5', titulo: 'Vehículo de mantenimiento H5 (2 + 8 kip, ejes a 4.27 m), sin impacto, ½ por viga' },
+    calc(`# Resistencia I
+MLL = max(MPL, MLLpH5) // La carga peatonal y el vehículo no actúan simultáneamente (Guide Spec 3.2)
+VLL = max(VPL, VLLH5)
+Mu = 1.25*MDC + 1.75*MLL // Resistencia I (Tabla 3.4.1-1)
+Vu = 1.25*VDC + 1.75*VLL
+## Flexión — ala superior arriostrada continuamente por la losa (6.10.8.1)
+Dc = D/2 // Alma en compresión (sección simétrica)
+lamrw = 5.7*sqrt(Es/Fy) // Esbeltez límite del alma no compacta (6.10.1.10.2-4)
+awc = 2*Dc*tw/(bf*tf) // (6.10.1.10.2-5)
+Rb = si(2*Dc/tw <= lamrw, 1, min(1, 1 - awc/(1200 + 300*awc)*(2*Dc/tw - lamrw))) // Factor de pandeo del alma (6.10.1.10.2)
+lamf = bf/(2*tf)
+lampf = 0.38*sqrt(Es/Fy)
+lamrf = 0.56*sqrt(Es/(0.7*Fy))
+Fnc = si(lamf <= lampf, Rb*Fy, Rb*Fy*(1 - (1 - 0.7)*(lamf - lampf)/(lamrf - lampf))) // Pandeo local del ala (6.10.8.2.2)
+fbu = Mu/Sx -> MPa
+check fbu <= 1.00*Fnc // Ala comprimida (6.10.8.1.1-1, φf = 1.0)
+check fbu <= 1.00*Fy // Ala traccionada (6.10.8.1.2-1)
+## Cortante (6.10.9)
+Vp = 0.58*Fy*D*tw -> kN
+kv = 5 // Alma sin rigidizadores intermedios
+Cv = si(D/tw <= 1.12*sqrt(Es*kv/Fy), 1, si(D/tw <= 1.40*sqrt(Es*kv/Fy), 1.12/(D/tw)*sqrt(Es*kv/Fy), 1.57/(D/tw)^2*(Es*kv/Fy)))
+check Vu <= 1.00*Cv*Vp // Resistencia a cortante, φv = 1.0
+# Servicio
+## Deflexión por carga peatonal (Guide Spec 5)
+dPL = 5*wPL*L^4/(384*Es*Ix) -> mm
+check dPL <= L/360 // L/360
+## Vibración vertical (Guide Spec 6.2)
+wv = wDC // Peso por unidad de longitud de la viga (sin carga peatonal)
+fv = pi/(2*L^2)*sqrt(Es*Ix*9.81 m/s^2/wv) -> Hz // Primera frecuencia vertical de viga simple
+Wtot = nv*wv*L -> kN // Peso total del puente
+check fv >= 3.0 Hz or Wtot >= 180 kip*e^(-0.35*fv/(1 Hz)) // f ≥ 3.0 Hz, o W ≥ 180e^(−0.35f) kip (Guide Spec 6.2)
+## Vibración lateral (Guide Spec 6.2)
+Ilat = tl*(wb + 0.30 m)^3/12 -> m^4 // Inercia lateral del tablero (diafragma de concreto)
+Elat = 4700*sqrtMPa(28 MPa) // Módulo del concreto de la losa
+flat = pi/(2*L^2)*sqrt(Elat*Ilat*9.81 m/s^2/(nv*wv)) -> Hz // Frecuencia lateral fundamental
+check flat >= 1.3 Hz // f lateral ≥ 1.3 Hz (Guide Spec 6.2)
+"Frecuencias: vertical {fv}, lateral {flat}. Se recomienda verificar la aceleración vertical con el criterio de HIVOSS/Sétra si $f_v$ < 5 Hz.`),
+    summary(),
+  ],
+};
+
+export default [vigaT, presf, acero, estribo, pilar, neopreno, sismo, alcantarilla, peatonal];

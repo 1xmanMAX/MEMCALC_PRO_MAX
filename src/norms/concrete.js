@@ -129,7 +129,7 @@ export function lsE060(bar, fc, fy, clase = 2, psit = 1, psie = 1, lambda = 1) {
 export function lscE060(bar, fc, fy) {
   const db = barD(bar), y = kgcm(fy);
   let l = y <= 4200 ? 0.007 * y * db : (0.013 * y - 24) * db;
-  if (kgcm(fc) < 210) l *= 1.3;
+  if (kgcm(fc) < 210 - 0.5) l *= 1.3; // f'c < 21 MPa (≈ 210 kgf/cm², Anexo II)
   return mkUnit(Math.max(l, 30), 'cm');
 }
 // ACI 318-19 25.4.2.4 (SI): ld = fy ψt ψe ψs ψg / (1.1 λ √f'c ((cb+Ktr)/db)) db ≥ 300 mm

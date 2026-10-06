@@ -128,18 +128,19 @@ const HJIS = {
   250125: [250, 125, 6, 9, 8, 36.97, 3960, 317, 294, 2.82],
   300150: [300, 150, 6.5, 9, 13, 46.78, 7210, 481, 508, 3.29],
   350175: [350, 175, 7, 11, 13, 62.91, 13500, 771, 984, 3.95],
-  400200: [400, 200, 8, 13, 16, 83.37, 23500, 1170, 1740, 4.56],
-  450200: [450, 200, 9, 14, 18, 95.43, 32900, 1460, 1870, 4.43],
-  500200: [500, 200, 10, 16, 20, 112.2, 46800, 1870, 2140, 4.36],
-  600200: [600, 200, 11, 17, 22, 131.7, 75600, 2520, 2270, 4.15],
+  400200: [400, 200, 8, 13, 13, 83.37, 23500, 1170, 1740, 4.56],
+  450200: [450, 200, 9, 14, 13, 95.43, 32900, 1460, 1870, 4.43],
+  500200: [500, 200, 10, 16, 13, 112.2, 46800, 1870, 2140, 4.36],
+  600200: [600, 200, 11, 17, 13, 131.7, 75600, 2520, 2270, 4.15],
   300300: [300, 300, 10, 15, 13, 118.4, 20200, 1350, 6750, 7.55],
   400400: [400, 400, 13, 21, 22, 218.7, 66600, 3330, 22400, 10.1],
 };
 const H = (code) => { const s = HJIS[Math.round(n0(code))]; chk(s, 'Perfil H no tabulado: use p. ej. 400200 para H-400×200'); return s; };
 
 // ---------------------------------------------------------------------
-//  Puentes — JRA Specifications for Highway Bridges, Parte V (2012)
-//  Espectros estándar S0 en gal (cm/s²), amortiguamiento 5 %
+//  Puentes — JRA Specifications for Highway Bridges, Parte V (2012, H24)
+//  Espectros estándar S0 en gal (cm/s²), amortiguamiento 5 % (análisis dinámico, 4.2–4.3)
+//  y coeficientes sísmicos kh0 / khc0 del método estático (6.3–6.4)
 // ---------------------------------------------------------------------
 function jra(T, suelo, nivel) {
   const g = Math.round(suelo); chk(g >= 1 && g <= 3, 'Tipo de suelo JRA: 1, 2 o 3');
@@ -149,15 +150,33 @@ function jra(T, suelo, nivel) {
     if (g === 2) return T < 0.2 ? Math.max(427 * c(T), 200) : T <= 1.3 ? 250 : 325 / T;
     return T < 0.34 ? Math.max(430 * c(T), 240) : T <= 1.5 ? 300 : 450 / T;
   }
-  if (nivel === 21) { // Nivel 2, tipo I (subducción)
-    if (g === 1) return T <= 1.4 ? 700 : 980 / T;
-    if (g === 2) return T < 0.18 ? Math.max(1505 * c(T), 700) : T <= 1.6 ? 850 : 1360 / T;
-    return T < 0.29 ? Math.max(1511 * c(T), 700) : T <= 2.0 ? 1000 : 2000 / T;
+  if (nivel === 21) { // Nivel 2, tipo I (subducción) — espectro revisado en la edición 2012 (H24)
+    if (g === 1) return T < 0.16 ? 2580 * c(T) : T <= 0.6 ? 1400 : 840 / T;
+    if (g === 2) return T < 0.22 ? 2150 * c(T) : T <= 0.9 ? 1300 : 1170 / T;
+    return T < 0.34 ? 1720 * c(T) : T <= 1.4 ? 1200 : 1680 / T;
   }
   // Nivel 2, tipo II (cortical, tipo Kobe 1995)
   if (g === 1) return T < 0.3 ? 4463 * p23(T) : T <= 0.7 ? 2000 : 1104 / p53(T);
   if (g === 2) return T < 0.4 ? 3224 * p23(T) : T <= 1.2 ? 1750 : 2371 / p53(T);
   return T < 0.5 ? 2381 * p23(T) : T <= 1.5 ? 1500 : 2948 / p53(T);
+}
+// Coeficientes sísmicos horizontales estándar para el método estático (JRA 2012, Parte V 6.3 y 6.4)
+function kh0J(T, g) { // nivel 1: kh = cz·kh0 ≥ 0.1
+  const c = Math.cbrt(T), m23 = T ** (-2 / 3);
+  if (g === 1) return T < 0.1 ? Math.max(0.431 * c, 0.16) : T <= 1.1 ? 0.20 : 0.213 * m23;
+  if (g === 2) return T < 0.2 ? Math.max(0.427 * c, 0.20) : T <= 1.3 ? 0.25 : 0.298 * m23;
+  return T < 0.34 ? Math.max(0.430 * c, 0.24) : T <= 1.5 ? 0.30 : 0.393 * m23;
+}
+function khc0J(T, g, tipo) { // nivel 2: khc = cs·cz·khc0 ≥ 0.4·cz
+  const c = Math.cbrt(T), p23 = T ** (2 / 3), m23 = T ** (-2 / 3), m43 = T ** (-4 / 3);
+  if (tipo === 1) {
+    if (g === 1) return T < 0.16 ? 2.58 * c : T <= 0.6 ? 1.40 : 0.996 * m23;
+    if (g === 2) return T < 0.22 ? 2.15 * c : T <= 0.9 ? 1.30 : 1.21 * m23;
+    return T < 0.34 ? 1.72 * c : T <= 1.4 ? 1.20 : 1.50 * m23;
+  }
+  if (g === 1) return T < 0.3 ? 4.46 * p23 : T <= 0.7 ? 2.00 : 1.24 * m43;
+  if (g === 2) return T < 0.4 ? 3.22 * p23 : T <= 1.2 ? 1.75 : 2.23 * m43;
+  return T < 0.5 ? 2.38 * p23 : T <= 1.5 ? 1.50 : 2.57 * m43;
 }
 const Tpos = (T) => { const t = n0(T, 's'); chk(t >= 0, 'El periodo debe ser ≥ 0'); return Math.max(t, 1e-6); };
 
@@ -192,19 +211,23 @@ defineFns({
   ftAIJ: { fn: (g, p, d) => mkUnit(ftBar(n0(g), Math.round(n0(p)), d === undefined ? 25 : n0(d, 'mm')), 'N/mm^2'), tex: 'f_t', desc: 'Tracción admisible de barras SD (AIJ RC art. 6): largo plazo 195/215, corto plazo = F', args: 'grado, plazo, db' },
   wftAIJ: { fn: (g, p) => { const G = Math.round(n0(g)); return mkUnit(Math.round(n0(p)) === 2 ? Math.min(G, 390) : (G === 235 ? 155 : 195), 'N/mm^2'); }, tex: '{}_w f_t', desc: 'Tracción admisible del refuerzo transversal (AIJ RC art. 6)', args: 'grado, plazo' },
   nAIJ: { fn: (Fc) => { const F = n0(Fc, 'N/mm^2'); return F <= 27 ? 15 : F <= 36 ? 13 : F <= 48 ? 11 : 9; }, tex: 'n', desc: 'Relación de módulos de Young n (AIJ RC art. 5)', args: 'Fc' },
-  alphaAIJ: { fn: (M, Q, d, amax) => { const r = n0(M, 'N*mm') / (n0(Q, 'N') * n0(d, 'mm')); chk(r > 0, 'M/(Q·d) debe ser positivo'); return clamp(4 / (r + 1), 1, amax === undefined ? 2 : n0(amax)); }, tex: '\\alpha', desc: 'Factor de cortante α = 4/(M/(Q·d) + 1), 1 ≤ α ≤ αmax (AIJ RC art. 15)', args: 'M, Q, d, αmax' },
-  QaAIJ: { fn: (b, j, a, fs, wft, pw) => { const p = clamp(n0(pw), 0.002, 0.012); return mkUnit(n0(b, 'mm') * n0(j, 'mm') * (n0(a) * n0(fs, 'N/mm^2') + 0.5 * n0(wft, 'N/mm^2') * (p - 0.002)) / 1000, 'kN'); }, tex: 'Q_A', desc: 'Cortante admisible a corto plazo Q = b·j·(α·fs + 0.5·wft·(pw − 0.002)), 0.2 % ≤ pw ≤ 1.2 % (AIJ RC art. 15)', args: 'b, j, α, fs, wft, pw' },
+  alphaAIJ: { fn: (M, Q, d, amax) => { const r = n0(M, 'N*mm') / (n0(Q, 'N') * n0(d, 'mm')); chk(r > 0, 'M/(Q·d) debe ser positivo'); return clamp(4 / (r + 1), 1, amax === undefined ? 2 : n0(amax)); }, tex: '\\alpha', desc: 'Factor de cortante α = 4/(M/(Q·d) + 1), 1 ≤ α ≤ αmax (vigas 2, columnas 1.5) (AIJ RC art. 15)', args: 'M, Q, d, αmax' },
+  QaAIJ: { fn: (b, j, a, fs, wft, pw) => { const p = clamp(n0(pw), 0.002, 0.012), w = Math.min(n0(wft, 'N/mm^2'), 390); return mkUnit(n0(b, 'mm') * n0(j, 'mm') * (n0(a) * n0(fs, 'N/mm^2') + 0.5 * w * (p - 0.002)) / 1000, 'kN'); }, tex: 'Q_A', desc: 'Cortante admisible de corto plazo, verificación de seguridad: QA = b·j·(α·fs + 0.5·wft·(pw − 0.002)); vigas 1 ≤ α ≤ 2, columnas α = 1; 0.2 % ≤ pw ≤ 1.2 %, wft ≤ 390 (AIJ RC 2010 art. 15, ec. 15.5–15.6)', args: 'b, j, α, fs, wft, pw' },
+  QasAIJ: { fn: (b, j, a, fs, wft, pw) => { const p = clamp(n0(pw), 0.002, 0.012), w = Math.min(n0(wft, 'N/mm^2'), 390); return mkUnit(n0(b, 'mm') * n0(j, 'mm') * (2 / 3 * n0(a) * n0(fs, 'N/mm^2') + 0.5 * w * (p - 0.002)) / 1000, 'kN'); }, tex: 'Q_{AS}', desc: 'Cortante admisible de corto plazo, control de daño: QAS = b·j·((2/3)·α·fs + 0.5·wft·(pw − 0.002)); vigas 1 ≤ α ≤ 2, columnas 1 ≤ α ≤ 1.5 (AIJ RC 2010 art. 15, ec. 15.3)', args: 'b, j, α, fs, wft, pw' },
   QsuAIJ: { fn: (pt, Fc, MQd, pw, swy, s0, b, j) => {
+    // Fórmula de Arakawa, versión mínima («荒川min式»), unidades N y mm: coeficiente 0.053 (la versión media usa 0.068)
     const r = clamp(n0(MQd), 1, 3), p = Math.min(n0(pw), 0.012), F = n0(Fc, 'N/mm^2');
-    const tau = 0.068 * (100 * n0(pt)) ** 0.23 * (F + 18) / (r + 0.12) + 0.85 * Math.sqrt(p * n0(swy, 'N/mm^2')) + 0.1 * n0(s0, 'N/mm^2');
+    const tau = 0.053 * (100 * n0(pt)) ** 0.23 * (F + 18) / (r + 0.12) + 0.85 * Math.sqrt(p * n0(swy, 'N/mm^2')) + 0.1 * n0(s0, 'N/mm^2');
     return mkUnit(tau * n0(b, 'mm') * n0(j, 'mm') / 1000, 'kN');
-  }, tex: 'Q_{su}', desc: 'Resistencia última a cortante de Arakawa (mínima): [0.068·pt^0.23(Fc+18)/(M/Qd+0.12) + 0.85√(pw·σwy) + 0.1σ0]·b·j; pt y pw como fracción', args: 'pt, Fc, M/(Qd), pw, σwy, σ0, b, j' },
+  }, tex: 'Q_{su}', desc: 'Resistencia última a cortante de Arakawa (fórmula mínima): [0.053·pt^0.23(Fc+18)/(M/Qd+0.12) + 0.85√(pw·σwy) + 0.1σ0]·b·j; pt y pw como fracción, 1 ≤ M/Qd ≤ 3, pw ≤ 1.2 %', args: 'pt, Fc, M/(Qd), pw, σwy, σ0, b, j' },
   MuAIJ: { fn: (at, sy, d) => mkUnit(0.9 * n0(at, 'mm^2') * n0(sy, 'N/mm^2') * n0(d, 'mm') / 1e6, 'kN*m'), tex: 'M_u', desc: 'Momento último de viga Mu = 0.9·at·σy·d (Notif. 594 / AIJ)', args: 'at, σy, d' },
   MucAIJ: { fn: (at, sy, D, N, b, Fc) => {
-    const Dd = n0(D, 'mm'), Nn = n0(N, 'N'), Nb = 0.4 * n0(b, 'mm') * Dd * n0(Fc, 'N/mm^2');
-    chk(Nn <= Nb, 'MucAIJ válida para N ≤ 0.4·b·D·Fc');
-    return mkUnit((0.8 * n0(at, 'mm^2') * n0(sy, 'N/mm^2') * Dd + 0.5 * Nn * Dd * (1 - Nn / (n0(b, 'mm') * Dd * n0(Fc, 'N/mm^2')))) / 1e6, 'kN*m');
-  }, tex: 'M_u', desc: 'Momento último de columna (0 ≤ N ≤ 0.4bDFc): 0.8·at·σy·D + 0.5·N·D·(1 − N/(bDFc))', args: 'at, σy, D, N, b, Fc' },
+    const Dd = n0(D, 'mm'), Nn = n0(N, 'N'), bb = n0(b, 'mm'), F = n0(Fc, 'N/mm^2'), T0 = 0.8 * n0(at, 'mm^2') * n0(sy, 'N/mm^2') * Dd;
+    const Nmin = -2 * n0(at, 'mm^2') * n0(sy, 'N/mm^2'); // tracción pura: toda la armadura (2·at) en fluencia
+    chk(Nn <= 0.4 * bb * Dd * F, 'MucAIJ válida para N ≤ 0.4·b·D·Fc');
+    chk(Nn >= Nmin, 'La tracción axial supera la resistencia de la armadura (N < −2·at·σy)');
+    return mkUnit((Nn >= 0 ? T0 + 0.5 * Nn * Dd * (1 - Nn / (bb * Dd * F)) : T0 + 0.4 * Nn * Dd) / 1e6, 'kN*m');
+  }, tex: 'M_u', desc: 'Momento último de columna: 0.8·at·σy·D + 0.5·N·D·(1 − N/(bDFc)) para 0 ≤ N ≤ 0.4bDFc; 0.8·at·σy·D + 0.4·N·D para tracción (N < 0)', args: 'at, σy, D, N, b, Fc' },
   MaColAIJ: { fn: (N, b, D, at, dt, fc, ft, n) => mkUnit(colAllow(n0(N, 'N'), n0(b, 'mm'), n0(D, 'mm'), n0(at, 'mm^2'), n0(dt, 'mm'), n0(fc, 'N/mm^2'), n0(ft, 'N/mm^2'), n0(n)) / 1e6, 'kN*m'), tex: 'M_A', desc: 'Momento admisible de columna rectangular con armadura simétrica para N dado (sección fisurada, AIJ RC art. 14)', args: 'N, b, D, at, dt, fc, ft, n' },
   AbJIS: { fn: (d) => { const a = { 10: 71.33, 13: 126.7, 16: 198.6, 19: 286.5, 22: 387.1, 25: 506.7, 29: 642.4, 32: 794.2, 35: 956.6, 38: 1140, 41: 1340 }[Math.round(n0(d, 'mm'))]; chk(a, 'Barra corrugada JIS no tabulada: D10, D13, D16, D19, D22, D25, D29, D32, D35, D38, D41'); return mkUnit(a, 'mm^2'); }, tex: 'a_D', desc: 'Área nominal de barra corrugada JIS G 3112 (D10 … D41); argumento: diámetro nominal en mm', args: 'D' },
   // ----- Acero AIJ -----
@@ -239,10 +262,12 @@ defineFns({
   }, tex: 'c_w', desc: 'Longitud de muro requerida por sismo por m² de planta (Order Art. 46-4, tabla 2, versión previa a 2025)', args: 'techo, pisos, piso' },
   // ----- Puentes JRA -----
   SJRA1: { fn: (T, s) => jra(Tpos(T), n0(s), 1), tex: 'S_{0}', desc: 'Espectro estándar nivel 1 JRA [gal], suelo 1–3 (Parte V, 4.1)', args: 'T, suelo' },
-  SJRA2I: { fn: (T, s) => jra(Tpos(T), n0(s), 21), tex: 'S_{I0}', desc: 'Espectro estándar nivel 2 tipo I (subducción) JRA [gal]', args: 'T, suelo' },
+  SJRA2I: { fn: (T, s) => jra(Tpos(T), n0(s), 21), tex: 'S_{I0}', desc: 'Espectro estándar nivel 2 tipo I (subducción) JRA 2012 [gal] (revisado en 2012; se combina con el coef. regional cIz)', args: 'T, suelo' },
   SJRA2II: { fn: (T, s) => jra(Tpos(T), n0(s), 22), tex: 'S_{II0}', desc: 'Espectro estándar nivel 2 tipo II (cortical) JRA [gal]', args: 'T, suelo' },
+  kh0JRA: { fn: (T, s) => { const g = Math.round(n0(s)); chk(g >= 1 && g <= 3, 'Tipo de suelo JRA: 1, 2 o 3'); return kh0J(Tpos(T), g); }, tex: 'k_{h0}', desc: 'Coef. sísmico horizontal estándar nivel 1, método estático (JRA 2012 V 6.3): kh = cz·kh0 ≥ 0.1', args: 'T, suelo' },
+  khc0JRA: { fn: (T, s, tipo) => { const g = Math.round(n0(s)), t = Math.round(n0(tipo)); chk(g >= 1 && g <= 3, 'Tipo de suelo JRA: 1, 2 o 3'); chk(t === 1 || t === 2, 'Tipo de sismo de nivel 2: 1 (tipo I) o 2 (tipo II)'); return khc0J(Tpos(T), g, t); }, tex: 'k_{hc0}', desc: 'Coef. sísmico horizontal estándar nivel 2 (tipo I o II), método de capacidad horizontal (JRA 2012 V 6.4): khc = cs·cz·khc0 ≥ 0.4cz', args: 'T, suelo, tipo' },
   cDJRA: { fn: (h) => 1.5 / (40 * n0(h) + 1) + 0.5, tex: 'c_D', desc: 'Corrección por amortiguamiento cD = 1.5/(40h + 1) + 0.5 (JRA V)', args: 'h' },
-  czJRA: { fn: (z) => { const v = { 1: 1.0, 2: 0.85, 3: 0.7 }[Math.round(n0(z))]; chk(v, 'Zona JRA: 1 (A), 2 (B) o 3 (C)'); return v; }, tex: 'c_z', desc: 'Coef. de zona JRA: A = 1.0, B = 0.85, C = 0.7', args: 'zona' },
+  czJRA: { fn: (z) => { const v = { 1: 1.0, 2: 0.85, 3: 0.7 }[Math.round(n0(z))]; chk(v, 'Zona JRA: 1 (A), 2 (B) o 3 (C)'); return v; }, tex: 'c_z', desc: 'Coef. de zona JRA cz (nivel 1 y nivel 2 tipo II): A = 1.0, B = 0.85, C = 0.7. Para el tipo I la edición 2012 usa cIz = 1.2 / 1.0 / 0.8', args: 'zona' },
   sueloJRA: { fn: (TG) => { const t = n0(TG, 's'); return t < 0.2 ? 1 : t < 0.6 ? 2 : 3; }, tex: '\\mathrm{suelo}', desc: 'Tipo de suelo JRA según el periodo característico TG = 4ΣHi/Vsi', args: 'TG' },
 }, 'Japón');
 

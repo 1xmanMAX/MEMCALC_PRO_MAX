@@ -117,11 +117,11 @@ e0 = 0.90 // Relación de vacíos inicial
 gammac = 1.85 tonf/m^3 // Peso unitario saturado de la arcilla
 OCR = 1.5 // Razón de sobreconsolidación
 zc = Hs + Hc/2 // Profundidad del centro de la arcilla bajo la base
-sig0 = gamma1*Dw + (gammasat - gammaw)*(Df + Hs - Dw) + (gammac - gammaw)*Hc/2 -> tonf/m^2 // Esfuerzo efectivo inicial σ'0 en el centro
-sigc = OCR*sig0 // Presión de preconsolidación σ'c
+sigma0 = gamma1*Dw + (gammasat - gammaw)*(Df + Hs - Dw) + (gammac - gammaw)*Hc/2 -> tonf/m^2 // Esfuerzo efectivo inicial σ'0 en el centro
+sigmac = OCR*sigma0 // Presión de preconsolidación σ'c
 Iz = IzRect(B, L, zc) // Factor de influencia bajo el centro (Boussinesq–Newmark)
-dsig = qn*Iz -> tonf/m^2 // Incremento de esfuerzo Δσ
-Sc = ScCons(Cc, Cr, e0, Hc, sig0, dsig, sigc) -> mm // Cr·H/(1+e0)·log(σ'f/σ'0) si σ'f ≤ σ'c; si no, se agrega el tramo virgen con Cc
+sigmaz = qn*Iz -> tonf/m^2 // Incremento de esfuerzo Δσ
+Sc = ScCons(Cc, Cr, e0, Hc, sigma0, sigmaz, sigmac) -> mm // Cr·H/(1+e0)·log(σ'f/σ'0) si σ'f ≤ σ'c; si no, se agrega el tramo virgen con Cc
 ## Asentamiento total y distorsión angular
 St = Se + Sc -> mm // Asentamiento total
 check St <= Sadm // Asentamiento total ≤ asentamiento tolerable (Art. 19.1)
@@ -442,9 +442,9 @@ Lx = 13.0 m // Dimensión de la platea en x
 Ly = 13.0 m // Dimensión de la platea en y
 xc = [0.5, 6.5, 12.5, 0.5, 6.5, 12.5, 0.5, 6.5, 12.5] m // Coordenadas x de las columnas desde el borde
 yc = [0.5, 0.5, 0.5, 6.5, 6.5, 6.5, 12.5, 12.5, 12.5] m // Coordenadas y de las columnas
-Pc = [60, 100, 70, 95, 160, 110, 55, 90, 65] tonf // Cargas de servicio de las columnas
-qa = 1.5 kgf/cm^2 // Presión admisible (EMS)
-hpl = 0.70 m // Espesor de la losa
+Pc = [120, 200, 140, 190, 320, 220, 110, 180, 130] tonf // Cargas de servicio de las columnas
+qa = 1.2 kgf/cm^2 // Presión admisible (EMS)
+hpl = 0.90 m // Espesor de la losa
 hvp = 0.80 m // Peralte de la viga perimetral (E.050 Art. 26.3)
 c = 0.60 m // Lado de las columnas (cuadradas)
 fc = 280 kgf/cm^2 // Resistencia del concreto
@@ -452,10 +452,12 @@ fy = 4200 kgf/cm^2 // Fluencia del acero
 fu = 1.55 // Factor de carga promedio (1.4 CM + 1.7 CV)/(CM + CV)
 check hvp >= 0.40 m // Peralte mínimo de la viga perimetral (E.050 Art. 26.3)
 ## Resultante y excentricidades
+@modo corto
 Q = sum(Pc) // Carga total de servicio
 A = Lx*Ly // Área de la platea
 xb = sum(Pc.*xc)/Q -> m // Abscisa de la resultante
 yb = sum(Pc.*yc)/Q -> m // Ordenada de la resultante
+@modo completo
 ex = xb - Lx/2 -> m // Excentricidad en x
 ey = yb - Ly/2 -> m // Excentricidad en y
 Ix = Lx*Ly^3/12 // Inercia respecto al eje x
@@ -463,9 +465,11 @@ Iy = Ly*Lx^3/12 // Inercia respecto al eje y
 Mx = Q*ey -> tonf*m // Momento respecto al eje x
 My = Q*ex -> tonf*m // Momento respecto al eje y
 ## Presiones en las esquinas y bajo las columnas
+@modo corto
 xs = xc - Lx/2 // Coordenadas relativas al centroide
 ys = yc - Ly/2
 qcol = Q/A + My*xs/Iy + Mx*ys/Ix // Presión bajo cada columna
+@modo completo
 qA = Q/A - My*(Lx/2)/Iy - Mx*(Ly/2)/Ix -> tonf/m^2 // Esquina (0, 0)
 qB = Q/A + My*(Lx/2)/Iy - Mx*(Ly/2)/Ix -> tonf/m^2 // Esquina (Lx, 0)
 qC = Q/A + My*(Lx/2)/Iy + Mx*(Ly/2)/Ix -> tonf/m^2 // Esquina (Lx, Ly)
@@ -624,6 +628,7 @@ gammacc = 2.30 tonf/m^3 // Peso unitario del concreto ciclópeo
 fc = 100 kgf/cm^2 // Resistencia del concreto ciclópeo
 hc = 0.80 m // Peralte del cimiento
 check Df >= 0.80 m // Profundidad mínima (E.050 Art. 26.2)
+check bs >= tm // El sobrecimiento es al menos tan ancho como el muro
 ## Ancho del cimiento
 qn = qa - gammas*(Df - hc) - gammacc*hc -> tonf/m^2 // Presión neta (descuenta relleno y cimiento)
 w = wD + wL + gammacc*bs*hs // Carga de servicio más sobrecimiento
@@ -642,7 +647,7 @@ Vu = qu*max(v - hc, 0 m)*1 m -> tonf // Cortante a una distancia h de la cara
 phiVn = 0.65*0.35*sqrtfc(fc)*1 m*hc -> tonf // φVn = φ·(4/3)√f'c b h (psi) ≈ 0.35√f'c b h
 check Vu <= phiVn // Cortante en concreto simple
 check hc >= v // Proporción recomendada: peralte ≥ volado (ángulo de difusión ≥ 45°)`),
-      { type: 'footing', B: '1 m', L: 'Bc', hz: 'hc', c1: 'bs', c2: '1 m', Df: 'Df', q1: 'qs', acero: 'Concreto ciclópeo 1:10 + 30 % P.G. (sin refuerzo)', titulo: 'Cimiento corrido (tramo de 1 m) y presión de servicio en la base' },
+      { type: 'stripfooting', B: 'Bc', hc: 'hc', bs: 'bs', hs: 'hs', tm: 'tm', Df: 'Df', npt: '0.20 m', q: 'qs', material: 'Concreto ciclópeo 1:10 + 30 % P.G.', titulo: 'Sección del cimiento corrido y presión de servicio en la base' },
       summary(),
     ],
   },
@@ -668,9 +673,9 @@ H1 = 2.0 m // Arcilla sobre el NF
 H2 = 4.0 m // Arcilla bajo el NF
 cu1 = 3.0 tonf/m^2 // Resistencia no drenada de la arcilla 1
 cu2 = 3.0 tonf/m^2 // Resistencia no drenada de la arcilla 2
-gam1 = 1.75 tonf/m^3 // γ arcilla 1
-gam2 = 1.80 tonf/m^3 // γsat arcilla 2
-gam3 = 2.00 tonf/m^3 // γsat arena
+gammac1 = 1.75 tonf/m^3 // γ arcilla 1
+gammac2 = 1.80 tonf/m^3 // γsat arcilla 2
+gammas3 = 2.00 tonf/m^3 // γsat arena
 gammaw = 1.0 tonf/m^3 // Peso unitario del agua
 phis = 34 deg // φ' de la arena densa
 FSp = 2.0 // Factor de seguridad, pilote individual (E.050 Art. 32.3.4 c-1)
@@ -678,14 +683,14 @@ Ap = Dp^2 // Área de la punta
 per = 4*Dp // Perímetro
 Lb = Lpil - H1 - H2 // Empotramiento en la arena
 ## Esfuerzos efectivos
-sv1 = gam1*H1/2 -> tonf/m^2 // σ'v en el centro de la arcilla 1
-sv2 = gam1*H1 + (gam2 - gammaw)*H2/2 -> tonf/m^2 // σ'v en el centro de la arcilla 2
-sv3 = gam1*H1 + (gam2 - gammaw)*H2 + (gam3 - gammaw)*Lb/2 -> tonf/m^2 // σ'v en el centro del tramo en arena
-svp = gam1*H1 + (gam2 - gammaw)*H2 + (gam3 - gammaw)*Lb -> tonf/m^2 // σ'v en la punta (q')
+sigmav1 = gammac1*H1/2 -> tonf/m^2 // σ'v en el centro de la arcilla 1
+sigmav2 = gammac1*H1 + (gammac2 - gammaw)*H2/2 -> tonf/m^2 // σ'v en el centro de la arcilla 2
+sigmav3 = gammac1*H1 + (gammac2 - gammaw)*H2 + (gammas3 - gammaw)*Lb/2 -> tonf/m^2 // σ'v en el centro del tramo en arena
+sigmavp = gammac1*H1 + (gammac2 - gammaw)*H2 + (gammas3 - gammaw)*Lb -> tonf/m^2 // σ'v en la punta (q')
 # Resistencia por punta
 ## Meyerhof (1976) — teoría
 Nqs = NqMeyerhof(phis) // Nq* de Meyerhof (Das, Tabla 11.5)
-qp1 = svp*Nqs -> tonf/m^2 // q'·Nq*
+qp1 = sigmavp*Nqs -> tonf/m^2 // q'·Nq*
 ql = qlMeyerhof(Nqs, phis) -> tonf/m^2 // Resistencia de punta límite 0.5·pa·Nq*·tanφ
 qp_a = min(qp1, ql) -> tonf/m^2 // Punta unitaria (Meyerhof)
 ## Meyerhof (1976) — correlación SPT
@@ -695,13 +700,13 @@ qp = min(qp_a, qp_b) -> tonf/m^2 // Se adopta el menor
 Qp = qp*Ap -> tonf // Capacidad por punta
 # Resistencia por fricción lateral
 ## Arcilla — método α (API RP2A)
-alpha1 = alphaAPI(cu1, sv1) // α = 0.5ψ^(−0.5) (ψ ≤ 1) ó 0.5ψ^(−0.25) (ψ > 1)
-alpha2 = alphaAPI(cu2, sv2)
+alpha1 = alphaAPI(cu1, sigmav1) // α = 0.5ψ^(−0.5) (ψ ≤ 1) ó 0.5ψ^(−0.25) (ψ > 1)
+alpha2 = alphaAPI(cu2, sigmav2)
 Qs1 = alpha1*cu1*per*H1 -> tonf // Fricción en la arcilla 1
 Qs2 = alpha2*cu2*per*H2 -> tonf // Fricción en la arcilla 2
 ## Arena — método β y correlación SPT
 beta3 = betaBurland(phis, 1) // β = (1 − sinφ)·tanφ (arena NC)
-fs_a = beta3*sv3 -> tonf/m^2 // Fricción unitaria (β)
+fs_a = beta3*sigmav3 -> tonf/m^2 // Fricción unitaria (β)
 fs_b = fsMeyerhofSPT(N60p, 0.02) -> tonf/m^2 // 0.02·pa·N60 (pilote de gran desplazamiento)
 fs3 = min(fs_a, fs_b) -> tonf/m^2
 Qs3 = fs3*per*Lb -> tonf // Fricción en la arena
@@ -801,9 +806,9 @@ e0 = 0.95 // Relación de vacíos inicial
 OCR = 1.3 // Razón de sobreconsolidación (arcilla rígida)
 zeq = 2/3*Lp // Profundidad de la zapata equivalente
 zm = Hcl/2 // Profundidad del centro de la capa bajo la zapata equivalente
-sig0 = (gammac - gammaw)*(zeq + zm) -> tonf/m^2 // σ'0 en el centro de la capa
-dsig = (PD + PL)/((Lg + zm)*(Bg + zm)) -> tonf/m^2 // Δσ por el método 2:1 desde la zapata equivalente
-Scg = ScCons(Cc, Cr, e0, Hcl, sig0, dsig, OCR*sig0) -> mm // Consolidación primaria
+sigma0 = (gammac - gammaw)*(zeq + zm) -> tonf/m^2 // σ'0 en el centro de la capa
+sigmaz = (PD + PL)/((Lg + zm)*(Bg + zm)) -> tonf/m^2 // Δσ por el método 2:1 desde la zapata equivalente
+Scg = ScCons(Cc, Cr, e0, Hcl, sigma0, sigmaz, OCR*sigma0) -> mm // Consolidación primaria
 check Scg <= 50 mm // Asentamiento del grupo ≤ tolerable (EMS)`),
       { type: 'pilegroup', n1: 'n1', n2: 'n2', s: 'sp', D: 'Dp', borde: 'ed', hc: 'hc', Lp: 'Lp', c1: '0.70 m', c2: '0.70 m', d: 'hc - 15 cm', Df: '1.6 m', estratos: '22 Arcilla limosa rígida (cu = 6 t/m²)', titulo: 'Grupo de 3 × 3 pilotes y cabezal' },
       calc(`# Diseño del cabezal (E.060)
@@ -815,7 +820,7 @@ Pu = 1.4*PD + 1.7*PL // Carga última de la columna
 Pup = Pu/np + 1.5*(My*xmax/Sx2 + Mx*ymax/Sy2) // Reacción última del pilote más cargado (momentos de sismo/servicio × 1.5)
 ## Punzonamiento por la columna
 boc = 4*(cc + dc) // Perímetro crítico a d/2
-Vuc = Pu - 0*Pup -> tonf // Todos los pilotes quedan fuera del perímetro crítico (s − Dp/2 > (cc + d)/2)
+Vuc = Pu -> tonf // Cortante de punzonamiento: todos los pilotes quedan fuera del perímetro crítico
 check sp - Dp/2 >= (cc + dc)/2 // Los pilotes están fuera del perímetro crítico de la columna
 phiVcc = 0.85*1.06*sqrtfc(fc)*boc*dc -> tonf
 check Vuc <= phiVcc // Punzonamiento por la columna
@@ -858,7 +863,7 @@ Según la E.050 Art. 38.5.1 el potencial de licuación de suelos granulares sume
 amax = 0.30 // Aceleración máxima horizontal en la superficie amax/g (Art. 38.5.4)
 Mw = 8.0 // Magnitud momento del sismo de diseño
 Dw = 3.0 m // Profundidad del nivel freático (la del perfil)
-cat = 1.25 // FS_L mínimo según la categoría E.030 [1.25 : A (esencial)|1.15 : B (importante)|1.00 : C (común)]
+FSreq = 1.25 // FS_L mínimo según la categoría E.030 [1.25 : A (esencial)|1.15 : B (importante)|1.00 : C (común)]
 FC = [10, 10, 10, 8, 6, 6, 6, 18, 20, 20, 22, 22, 5, 5, 5] // Contenido de finos (% < 75 μm) por ensayo
 # Cálculo por profundidad
 z = zSPT // Profundidades de los ensayos
@@ -871,15 +876,17 @@ MSF = MSFYoud(Mw) // Factor de escala de magnitud 10^2.24/Mw^2.56
 CRRM = MSF*CRR // CRR_M = FSM × CRR7.5 (Art. 5.28)
 FSL = FSLiq(CRRM, CSR, z, Dw) // FS_L = CRR_M/CSR (Art. 38.5.8); 3 = no licuable / sobre el NF
 PL = PLCetin(N1, CSR, Mw, svpSPT, FC) // Probabilidad de licuación (Cetin et al. 2004)
+@modo corto
 PLs = PL.*(z >= Dw) // Solo estratos sumergidos (Art. 38.2 b)
+@modo completo
 # Verificaciones
 FSLmin = min(FSL) // FS_L mínimo del perfil
 PLmax = max(PLs) // Probabilidad máxima de licuación
-check FSLmin >= cat // FS_L ≥ mínimo de la Tabla 13A (E.050 Art. 38.5.8)
+check FSLmin >= FSreq // FS_L ≥ mínimo de la Tabla 13A (E.050 Art. 38.5.8)
 check PLmax <= 0.10 // P_L ≤ 10 %: potencial de licuación bajo, se permite cimentar (Art. 38.6.2, Tabla 13)
 "Clasificación del potencial de licuación (Tabla 13): $P_L$ máx = {100*PLmax} % → {si(PLmax > 0.5, 4, si(PLmax > 0.1, 3, si(PLmax > 0.05, 2, 1)))} (1 = muy baja, 2 = baja, 3 = moderada, 4 = alta).`),
-      { type: 'table', columnas: 'z [m] = z\nN = NSPT\n(N1)60 = N1\nFC [%] = FC\n(N1)60cs = Ncs\nrd = rd\nCSR = CSR\nCRR7.5 = CRR\nCRR_M = CRRM\nFS_L = FSL\nP_L = PL\nEstado = liqEstado(FSL, cat, z, Dw, Ncs)', dec: '3', titulo: 'Evaluación de licuación por ensayo SPT (FS_L = 3 indica no licuable o sobre el NF)' },
-      { type: 'liqchart', z: 'z', CSR: 'CSR', CRR: 'CRRM', FS: 'FSL', FSmin: 'cat', nf: 'Dw', titulo: 'CSR, CRR_M y factor de seguridad frente a licuación con la profundidad' },
+      { type: 'table', columnas: 'z [m] = z\nN = NSPT\n(N1)60 = N1\nFC [%] = FC\n(N1)60cs = Ncs\nrd = rd\nCSR = CSR\nCRR7.5 = CRR\nCRR_M = CRRM\nFS_L = FSL\nP_L = PL\nEstado = liqEstado(FSL, FSreq, z, Dw, Ncs)', dec: '3', titulo: 'Evaluación de licuación por ensayo SPT (FS_L = 3 indica no licuable o sobre el NF)' },
+      { type: 'liqchart', z: 'z', CSR: 'CSR', CRR: 'CRRM', FS: 'FSL', FSmin: 'FSreq', nf: 'Dw', titulo: 'CSR, CRR_M y factor de seguridad frente a licuación con la profundidad' },
       summary(),
     ],
   },
@@ -954,11 +961,11 @@ check pexp >= max(Df + 1.5*Bz, 3 m) // Profundidad mínima de exploración p = D
 check Df >= 0.80 m // Profundidad mínima de cimentación (Art. 26.2)
 ## Correlaciones en la zona activa (Df a Df + 1.5B)
 N60a = N60prom // N60 promedio en la zona activa (perfil)
-svpa = svp_ref + 1.75 tonf/m^3*0.75*Bz -> tonf/m^2 // σ'v a Df + 0.75B (centro de la zona activa, sobre el NF)
-N160a = CNLiao(svpa)*N60a // (N1)60 promedio
+sigmava = svp_ref + 1.75 tonf/m^3*0.75*Bz -> tonf/m^2 // σ'v a Df + 0.75B (centro de la zona activa, sobre el NF)
+N160a = CNLiao(sigmava)*N60a // (N1)60 promedio
 phiP = phiPeck(N60a) // φ' = 27.1 + 0.3N60 − 0.00054N60² (Peck et al.)
 phiH = phiHatanaka(N160a) // φ' = √(20(N1)60) + 20° (Hatanaka y Uchida)
-phiK = phiKulhawy(N60a, svpa) // φ' = atan[N60/(12.2 + 20.3σ'v/pa)]^0.34 (Kulhawy y Mayne)
+phiK = phiKulhawy(N60a, sigmava) // φ' = atan[N60/(12.2 + 20.3σ'v/pa)]^0.34 (Kulhawy y Mayne)
 phid = min(phiP, phiH, phiK) // Ángulo de fricción de diseño (menor valor)
 Dr = DrSPT(N160a) // Densidad relativa √((N1)60/46) (Idriss y Boulanger)
 Esa = EsSPT(N60a, 10) -> kgf/cm^2 // Es = 10·pa·N60 (Kulhawy y Mayne, arena NC)
