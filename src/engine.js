@@ -600,7 +600,7 @@ function checkUnitNames(node, S) {
     if (isU === undefined) { isU = math.Unit.isValuelessUnit(x.name); _ucache.set(x.name, isU); }
     if (isU) {
       let desc = ''; try { const u = math.unit(x.name).units[0]; desc = (u.prefix && u.prefix.name ? 'prefijo «' + u.prefix.name + '» + ' : '') + 'unidad «' + u.unit.name + '»'; } catch (e) { /* */ }
-      throw new Error('«' + x.name + '» no está definida como variable y math.js la interpretaría como una unidad (' + desc + '). Defínala antes o use otro nombre.');
+      throw new Error('«' + x.name + '» no está definida: defínala antes de usarla (con ese nombre se confundiría con la unidad ' + desc + '). Si es una variable nueva, use otro nombre.');
     }
   });
 }

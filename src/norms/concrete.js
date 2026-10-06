@@ -199,7 +199,7 @@ const T1 = (s) => s;
 defineFns({
   beta1E060: { fn: beta1E060, tex: '\\beta_1', desc: 'β1 del bloque de Whitney (E.060 10.2.7.3)', args: "f'c" },
   beta1ACI: { fn: beta1ACI, tex: '\\beta_1', desc: 'β1 (ACI 318-19 Tabla 22.2.2.4.3)', args: "f'c" },
-  asFlex: { fn: asFlex, tex: T1('A_{s}'), desc: 'As requerido en sección rectangular para Mu', args: 'Mu, b, d, fc, fy[, φ]' },
+  asFlex: { fn: asFlex, tex: T1('A_{s,req}'), desc: 'As requerido en sección rectangular para Mu', args: 'Mu, b, d, fc, fy[, φ]' },
   asFlexT: { fn: asFlexT, tex: 'A_{s,T}', desc: 'As requerido en viga T (ala en compresión)', args: 'Mu, bw, bf, hf, d, fc, fy[, φ]' },
   rhobE060: { fn: rhobE060, tex: '\\rho_b', desc: 'Cuantía balanceada (E.060 10.3.2)', args: 'fc, fy' },
   mnRect: { fn: mnRect, tex: 'M_n', desc: 'Mn de sección rectangular con As y A\'s (compatibilidad)', args: "As, b, d, fc, fy[, A's, d']" },

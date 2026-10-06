@@ -27,7 +27,7 @@ const voladizo = {
   titulo: 'Diseño de muro de contención en voladizo H = 5.00 m con sismo',
   validacion: {
     fuente: 'Control: Rankine (Das, Principios de Ing. de Cimentaciones, cap. 7) + AASHTO 11.6.5 + E.060; motor validado con Das Ej. 8.1 y Sağlam P1 (tests/walls.test.mjs)',
-    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Comprobados a mano: kh = 0.5·0.45·1.05, Ka = tan²(45° − 32°/2) y Ea = ½Ka·γ·H² + Ka·ws·H.',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Comprobados a mano: kh = 0.5·0.45·1.05, Ka = tan²(45° − 32°/2) y Pa = ½Ka·γ·H² + Ka·ws·H.',
     valores: [
       { var: 'kh', esperado: 0.23625, tol: 0.0005, desc: 'kh = 0.5·Z·S (AASHTO 11.6.5.2.2)' },
       { var: 'Ka', esperado: 0.30726, tol: 0.0005, desc: 'Ka de Rankine, φ = 32°' },
@@ -282,14 +282,18 @@ ft1e = ft(Mue(z1), z1) -> kgf/cm^2 // Esfuerzo en la cara posterior, sismo
 check ft1e <= ftadm // Tracción por flexión, sismo
 fc1 = fcm(z1) -> kgf/cm^2
 check fc1 <= fcadm // Compresión (E.060 22.5.3)
-Vu1 = max(1.7*Pz(z1)*cos(ang), 1.7*Pz(z1)*cos(ang) + (Kaes - Kas)*gammas*z1^2/2*cos(ang) + kh*Wz(z1)) -> tonf/m // Cortante último
+VE1 = 1.7*Pz(z1)*cos(ang) -> tonf/m // Cortante estático mayorado (1.7 CE)
+VS1 = (Kaes - Kas)*gammas*z1^2/2*cos(ang) + kh*Wz(z1) -> tonf/m // Incremento sísmico: ΔEae + inercia del cuerpo
+Vu1 = max(VE1, VE1 + VS1) -> tonf/m // Cortante último
 phiVn1 = 0.65*0.35*sqrtfc(fc)*bz1 -> tonf/m // φVn = φ·0.35√f'c·b·h (E.060 22.5.4)
 check Vu1 <= phiVn1 // Cortante en la sección 1
 ## Sección 2: mitad de la altura del cuerpo (z = hp/2)
 z2 = hp/2
 ft2 = max(ft(Mu(z2), z2), ft(Mue(z2), z2)) -> kgf/cm^2 // Máximo esfuerzo en la cara posterior
 check ft2 <= ftadm // Tracción por flexión en la sección 2
-Vu2 = max(1.7*Pz(z2)*cos(ang), 1.7*Pz(z2)*cos(ang) + (Kaes - Kas)*gammas*z2^2/2*cos(ang) + kh*Wz(z2)) -> tonf/m
+VE2 = 1.7*Pz(z2)*cos(ang) -> tonf/m // Cortante estático mayorado (1.7 CE)
+VS2 = (Kaes - Kas)*gammas*z2^2/2*cos(ang) + kh*Wz(z2) -> tonf/m // Incremento sísmico: ΔEae + inercia del cuerpo
+Vu2 = max(VE2, VE2 + VS2) -> tonf/m // Cortante último
 check Vu2 <= 0.65*0.35*sqrtfc(fc)*bz(z2) // Cortante en la sección 2
 ## Cimiento: tracción en la punta (voladizo de concreto simple)
 Mupt = 1.7*qtoe*Lp^2/2 - 0.9*gammac*hz*Lp^2/2 -> tonf*m/m // Momento en la cara del paramento (presión máxima, conservador)
@@ -777,14 +781,22 @@ PAE = 0.375*kh*gammaf*H^2 -> tonf/m // Incremento dinámico del relleno retenido
 Pdrve = F1 + 0.5*F2 + max(PIR + 0.5*PAE, 0.5*PIR + PAE) -> tonf/m // Envolvente de PIR + 50 % PAE (11.10.7.1) y PAE + 50 % PIR (11.6.5.1); γEQ = 0.5 para LS
 Rte = mub*V1 -> tonf/m // φ = 1.0 en Evento Extremo (11.5.8)
 check Pdrve <= Rte // Deslizamiento sísmico
-ebe = (F1*H/3 + 0.5*F2*H/2 + max(PIR*H/2 + 0.5*PAE*0.6*H, 0.5*PIR*H/2 + PAE*0.6*H))/V1 -> m // Envolvente de ambas combinaciones
+MoEs = F1*H/3 + 0.5*F2*H/2 -> tonf*m/m // Momento de vuelco de los empujes estáticos (EH a H/3, LS al 50 % a H/2)
+MoEq = max(PIR*H/2 + 0.5*PAE*0.6*H, 0.5*PIR*H/2 + PAE*0.6*H) -> tonf*m/m // Momento sísmico: envolvente de PIR + 0.5 PAE y 0.5 PIR + PAE (PIR a H/2, PAE a 0.6H)
+ebe = (MoEs + MoEq)/V1 -> m // Excentricidad con sismo (envolvente de ambas combinaciones)
 check ebe <= 0.4*L // Excentricidad sísmica: 8/10 centrales (11.6.5.1)
 # Estabilidad interna (11.10.6)
 Kar = KaRankine(phir) // Ka del relleno reforzado
 KrKa = KrKaAASHTO(0 m, 3) // Kr/Ka = 1 para geosintéticos (Fig. 11.10.6.2.1-3)
 Kr = KrKa*Kar
+zn = zr[nr] // Profundidad de la capa inferior (la más cargada)
+sigHn = Kr*(1.35*gammar*zn + 1.75*ws) -> tonf/m^2 // Esfuerzo horizontal mayorado en la capa inferior (11.10.6.2.1-1)
+Tmaxn = sigHn*Sv -> tonf/m // Tracción máxima en la capa inferior (11.10.6.2.1-2, Rc = 1)
+"Las mismas expresiones se aplican a cada capa $i$ con su profundidad $z_i$; los valores de todas las capas ($\\sigma_H$, $T_{max}$, $L_a$, $L_e$, $P_r$ y las relaciones D/C) se resumen en la tabla de estabilidad interna.
+@ocultar
 sigH = Kr*(1.35*gammar*zr + 1.75*ws) // Esfuerzo horizontal mayorado en cada capa (11.10.6.2.1-1)
 Tmax = sigH*Sv -> tonf/m // Tracción máxima por metro de muro (11.10.6.2.1-2, Rc = 1)
+@mostrar
 ## Rotura del refuerzo (11.10.6.4)
 Tal = Tult/(RFID*RFCR*RFD) -> tonf/m // Resistencia de diseño a largo plazo
 DCr = Tmax/(0.90*Tal) // Demanda/capacidad por capa
@@ -794,7 +806,10 @@ La = (H - zr)*tan(45 deg - phir/2) // Longitud en la zona activa (superficie de 
 Le = (L - La + 0.01 m + abs(L - La - 0.01 m))/2 // Longitud de anclaje en la zona resistente, max(L − La, 0.01 m) capa a capa
 check min(Le) >= 0.90 m // Longitud de anclaje mínima (11.10.6.3.2)
 Fst = FstarAASHTO(0 m, phir, 3) // F* = 0.67 tan φr para geosintéticos
+Pr1 = Fst*alphar*gammar*zr[1]*Cr*Le[1] -> tonf/m // Resistencia al arranque de la capa superior (sin sobrecarga viva; demás capas en la tabla)
+@ocultar
 Pr = Fst*alphar*gammar*zr*Cr .* Le -> tonf/m // Resistencia al arranque (sin sobrecarga viva)
+@mostrar
 DCp = Tmax ./ (0.90*Pr) // Demanda/capacidad por capa
 check max(DCp) <= 1 // Arranque de la geomalla (capa crítica)`),
     { type: 'table', columnas: 'Capa = 1:nr\nz [m] = zr\nσH [t/m²] = sigH\nTmax [t/m] = Tmax\nD/C rotura = DCr\nLa [m] = La\nLe [m] = Le\nPr [t/m] = Pr\nD/C arranque = DCp', titulo: 'Estabilidad interna por capa (rotura y arranque)', dec: '2' },

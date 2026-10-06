@@ -853,7 +853,9 @@ Rta = 0.80*Va*tan(phif) // Resistencia al deslizamiento, φτ = 0.80 (Tabla 10.5
 check Ha <= Rta // Deslizamiento (10.6.3.4)
 ## Resistencia Ib (cargas verticales máximas)
 Vb = 1.25*(WDC + PDC) + 1.50*PDW + 1.35*WEV + 1.75*(PLL + LSv) // EV = 1.35 (Tabla 3.4.1-2)
-Mrb = 1.25*(MDCr + PDC*xR) + 1.50*PDW*xR + 1.35*MEVr + 1.75*(PLL*xR + LSv*x4)
+MPb = 1.25*(MDCr + PDC*xR) + 1.50*PDW*xR + 1.35*MEVr // Momento de las cargas permanentes respecto a la punta (γ máximos)
+MLb = 1.75*(PLL*xR + LSv*x4) // Momento de la carga viva y de la sobrecarga LS
+Mrb = MPb + MLb // Momento de las cargas verticales
 eb = B/2 - (Mrb - Mva)/Vb
 check abs(eb) <= B/3 // Excentricidad
 qb = Vb/((B - 2*eb)*1 m) -> tonf/m^2 // Presión uniforme sobre B' (10.6.3.1.5)
@@ -1395,7 +1397,8 @@ check Mu3 <= phiM3 // Flexión en la losa inferior
 ## Muros — media altura (acero interior)
 Mu4 = max(Mw1, Mw2, 0.1 tonf*m) -> tonf*m
 dws = tw - rec - db(bar)/2
-As4 = max(0.85*fc*100 cm/fy*(dws - sqrt(max(dws^2 - 2*Mu4/(0.85*phif*fc*100 cm), 0 cm^2))), 0.0015*100 cm*tw)
+As4f = 0.85*fc*100 cm/fy*(dws - sqrt(max(dws^2 - 2*Mu4/(0.85*phif*fc*100 cm), 0 cm^2))) // Acero por flexión
+As4 = max(As4f, 0.0015*100 cm*tw) // Con el mínimo de muros 0.0015·b·tw
 s4 = max(rounddown(min(Ab(bar)*100 cm/As4, 45 cm), 2.5 cm), 5 cm)
 phiM4 = phif*Ab(bar)*100 cm/s4*fy*(dws - Ab(bar)*100 cm/s4*fy/(2*0.85*fc*100 cm)) -> tonf*m
 check Mu4 <= phiM4 // Flexión en los muros (se desprecia la compresión axial, conservador)
@@ -1409,7 +1412,8 @@ check phiM3 >= min(1.6*0.67*frLRFD(fc)*100 cm*tb^2/6, 1.33*Mu3) // Mínimo, losa
 dv = max(0.9*dts, 0.72*tt)
 Vu = (1.25*wtop + 1.30*pEV)*(Bi/2 - dv) + 1.75*pLL*min(cL/2, Bi/2 - dv) -> tonf // Resistencia I
 Mux = max(abs(MA2), Vu*dts) // Momento concomitante
-Vc = min((0.178*sqrtMPa(fc) + 32*Ab(bar)/(s1*dts)*min(Vu*dts/Mux, 1)*1 MPa)*100 cm*dts, 0.332*sqrtMPa(fc)*100 cm*dts) -> tonf // Losas de alcantarillas monolíticas (5.12.7.3-1, SI)
+vcs = 0.178*sqrtMPa(fc) + 32*Ab(bar)/(s1*dts)*min(Vu*dts/Mux, 1)*1 MPa // Esfuerzo resistente de losas de alcantarillas monolíticas (5.12.7.3-1, SI)
+Vc = min(vcs, 0.332*sqrtMPa(fc))*100 cm*dts -> tonf // Con el límite 0.332√f'c (5.12.7.3)
 phiv = 0.85 // Cortante en alcantarillas cajón vaciadas in situ (Tabla 12.5.5-1)
 check Vu <= phiv*Vc // Cortante sin estribos
 ## Servicio I — fisuración en el centro de la losa superior (5.6.7)

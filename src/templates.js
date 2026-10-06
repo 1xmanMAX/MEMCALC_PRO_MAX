@@ -576,7 +576,10 @@ W4 = gammas*Lt*hp -> tonf/m // Relleno sobre el talón
 W5 = ws*Lt -> tonf/m // Sobrecarga sobre el talón
 SW = W1 + W2 + W3 + W4 + W5 // Fuerza vertical total
 SWr = W1 + W2 + W3 + W4 // Fuerza vertical estabilizante (sin sobrecarga, conservador)
-Mr = W1*(Lp + t2 - t1/2) + W2*(Lp + 2/3*(t2 - t1)) + W3*B/2 + W4*(Lp + t2 + Lt/2) -> tonf*m/m // Momento resistente (sin sobrecarga)
+xW1 = Lp + t2 - t1/2 // Brazo de W1 respecto a la punta
+xW2 = Lp + 2/3*(t2 - t1) // Brazo de W2 (centroide del triángulo)
+xW4 = Lp + t2 + Lt/2 // Brazo de W4
+Mr = W1*xW1 + W2*xW2 + W3*B/2 + W4*xW4 -> tonf*m/m // Momento resistente (sin sobrecarga)
 ## Estabilidad
 FSv = Mr/Ma // Factor de seguridad al volteo
 check FSv >= FSv_min // Volteo (E.050 39.13.6: FS ≥ 1.5)
