@@ -10,13 +10,15 @@
 // =====================================================================
 import { registerBlock, F } from '../blockreg.js';
 import { evalParam, esc, math, K, settings, BARS } from '../engine.js';
-import { C, T as TX, Lne, svgWrap, niceTicks, caption, setVar, f2 } from '../blocks.js';
+import { C, Lne, svgWrap, niceTicks, caption, setVar, f2 } from '../blocks.js';
 import {
   G, pwExact, newmarkLin, newmarkNL, njCoefs, spectrumNJ, logPeriods, recordParams, shearModes, rhoCQCw, combCQC, combSRSS,
   rayleighCoef, pushoverShear, n2Method, atc40CSM, fema440ELM, coefMethod, reducedSa, momentCurvature, manderCurve, simqke, elCentro,
 } from '../norms/dynamics.js';
 
 const PI2 = 2 * Math.PI;
+// texto SVG con halo blanco (legible sobre las curvas)
+const TX = (x, y, s, o = {}) => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${o.fs || 11}" fill="${o.c || C.ink}" text-anchor="${o.a || 'middle'}"${o.b ? ' font-weight="600"' : ''}${o.r ? ` transform="rotate(${o.r} ${x.toFixed(1)} ${y.toFixed(1)})"` : ''} font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="2.6" paint-order="stroke" stroke-linejoin="round">${esc(s)}</text>`;
 const COLS = [C.blue, C.red, C.green, C.orange, '#8250df', '#0a7e8c', '#9a6700', '#6e7781'];
 // ---------- unidades de presentación según el sistema de la memoria ----------
 const sys = () => settings.sys || 'tec';
@@ -69,6 +71,7 @@ function tableHtml(ctx, title, heads, rows) {
   return `<div class="figure"><div class="cap">Tabla ${ctx.tab}${title ? ': ' + esc(title) : ''}</div>${h}</tbody></table></div>`;
 }
 const txt = (h) => `<div class="txt">${h}</div>`;
+const sg = (x, p = 4) => (Math.abs(x) < 1e-14 ? '0' : String(+x.toPrecision(p)));
 const fe = (x, d = 3) => (Math.abs(x) >= 1e4 || (Math.abs(x) < 1e-3 && x !== 0) ? x.toExponential(d) : f2(x, d));
 // ---------- memoización de cálculos pesados ----------
 const MEMO = new Map();
@@ -163,7 +166,7 @@ const mark = (x, y, c, shape = 'o', r = 4) => {
   if (shape === 't') return `<path d="M${x.toFixed(1)},${(y - r - 1).toFixed(1)} l${r + 1},${2 * r + 1} h${-2 * r - 2} z" fill="${c}" stroke="#fff" stroke-width="0.8"/>`;
   return dot(x, y, c, r);
 };
-const legend = (x, y, items) => items.map(([lbl, c, dash], i) => Lne(x, y + i * 13, x + 18, y + i * 13, c, 2, dash || '') + TX(x + 22, y + i * 13 + 3, lbl, { fs: 9, a: 'start' })).join('');
+const legend = (x, y, items) => (items.length ? `<rect x="${x - 4}" y="${y - 8}" width="${Math.max(...items.map(it => String(it[0]).length)) * 5.2 + 34}" height="${items.length * 13 + 3}" fill="#fff" fill-opacity="0.88" rx="2"/>` : '') + items.map(([lbl, c, dash], i) => Lne(x, y + i * 13, x + 18, y + i * 13, c, 2, dash || '') + TX(x + 22, y + i * 13 + 3, lbl, { fs: 9, a: 'start' })).join('');
 const peakAt = (a) => { let m = 0, i0 = 0; for (let i = 0; i < a.length; i++) { const v = Math.abs(a[i]); if (v > m) { m = v; i0 = i; } } return { v: m, i: i0, s: Math.sign(a[i0]) || 1 }; };
 
 // =====================================================================
@@ -254,7 +257,7 @@ registerBlock('thsdof', {
       const c = njCoefs(w, z, dt);
       if (met === 'nj') h += txt(`Recurrencia exacta ${K('u_{i+1} = A u_i + B\\dot u_i + C p_i + D p_{i+1}')}, ${K("\\dot u_{i+1} = A' u_i + B'\\dot u_i + C' p_i + D' p_{i+1}")} con ${K('p = -\\ddot u_g')}: ${K(`A = ${fe(c.A, 5)},\\; B = ${fe(c.B, 5)},\\; C = ${fe(c.C, 5)},\\; D = ${fe(c.D, 5)}`)}; ${K(`A' = ${fe(c.Ap, 5)},\\; B' = ${fe(c.Bp, 5)},\\; C' = ${fe(c.Cp, 5)},\\; D' = ${fe(c.Dp, 5)}`)} (unidades SI).`);
     }
-    const rows = []; for (let i = 0; i <= Math.min(6, N - 1); i++) rows.push([String(i), f2(i * dt, 2), f2(rec.ag[i] / G, 5), fe(nL(R.u[i]), 4), fe(nV(R.v[i]), 4), f2(R.at[i] / G, 5)]);
+    const rows = []; for (let i = 0; i <= Math.min(6, N - 1); i++) rows.push([String(i), f2(i * dt, 2), sg(rec.ag[i] / G), sg(nL(R.u[i])), sg(nV(R.v[i])), sg(R.at[i] / G)]);
     h += tableHtml(ctx, 'Primeros pasos de la integración (para revisión manual)', ['i', K('t_i') + ' [s]', K('\\ddot u_g/g'), K('u_i') + ` [${UL()}]`, K('\\dot u_i') + ` [${lab(UV())}]`, K('\\ddot u^t_i/g')], rows);
     const res = [
       ['Desplazamiento máximo', K('D = u_{max}'), `${f2(nL(umax), 3)} ${UL()}`, `t = ${f2(pu.i * dt, 2)} s`],
@@ -443,12 +446,12 @@ registerBlock('thmdof', {
     { const s = nF(1); const fr = frame(x0, y, pw, ph, [0, dur], sym(Array.from(R.V[0], v => v * s)), { title: 'Cortante basal Vb(t)', ta: 'start', yl: `Vb [${lab(UF())}]`, xl: 'Tiempo t [s]' });
       g += fr.g + P(pathTS(R.V[0], dt, fr, x0, pw, s), C.green, 1) + dot(fr.X(base.i * dt), fr.Y(base.s * base.v * s), C.red) + TX(fr.X(base.i * dt) + 6, fr.Y(base.s * base.v * s) + (base.s > 0 ? 10 : -4), `${f2(base.v * s, 2)} ${lab(UF())} (t = ${f2(base.i * dt, 2)} s)`, { fs: 9, a: 'start', c: C.red }); }
     y += ph + 52;
-    const Hm = H[n - 1], eh = 170, ew = 170;
+    const hu = sys() === 'us' ? 'ft' : 'm', Hd = H.map(x => conv(x, 'm', hu)), Hm = Hd[n - 1], eh = 170, ew = 170;
     const env = (xx, title, xl, th, rs, dd, xf) => {
       const xm = Math.max(...th, ...rs, ...(dd || [])) * 1.15 || 1;
-      const fr = frame(xx, y, ew, eh, [0, xm], [0, Hm], { title, xl, yl: xx < 100 ? 'Altura [' + (sys() === 'us' ? 'ft' : 'm') + ']' : '', nx: 4, xf, yf: (t) => f2(sys() === 'us' ? t / 0.3048 : t, 1) });
-      const stair = (v) => { let d = `M${fr.X(0).toFixed(1)},${fr.Y(0).toFixed(1)}`; for (let i = 0; i < n; i++) d += `L${fr.X(v[i]).toFixed(1)},${fr.Y(i ? H[i - 1] : 0).toFixed(1)}L${fr.X(v[i]).toFixed(1)},${fr.Y(H[i]).toFixed(1)}`; return d; };
-      const line = (v) => [[0, 0], ...v.map((x, i) => [x, H[i]])].map((p, i) => (i ? 'L' : 'M') + fr.X(p[0]).toFixed(1) + ',' + fr.Y(p[1]).toFixed(1)).join('');
+      const fr = frame(xx, y, ew, eh, [0, xm], [0, Hm], { title, xl, yl: xx < 100 ? 'Altura [' + hu + ']' : '', nx: 4, xf, yt: [0, ...Hd], yf: (t) => f2(t, 1) });
+      const stair = (v) => { let d = `M${fr.X(0).toFixed(1)},${fr.Y(0).toFixed(1)}`; for (let i = 0; i < n; i++) d += `L${fr.X(v[i]).toFixed(1)},${fr.Y(i ? Hd[i - 1] : 0).toFixed(1)}L${fr.X(v[i]).toFixed(1)},${fr.Y(Hd[i]).toFixed(1)}`; return d; };
+      const line = (v) => [[0, 0], ...v.map((x, i) => [x, Hd[i]])].map((p, i) => (i ? 'L' : 'M') + fr.X(p[0]).toFixed(1) + ',' + fr.Y(p[1]).toFixed(1)).join('');
       const draw = title.startsWith('Desplaz') ? line : stair;
       let s = fr.g + P(draw(th), C.blue, 2) + P(draw(rs), C.red, 1.5, '5 3');
       if (dd) s += P(draw(dd), C.ink, 1.2, '2 2');
@@ -465,12 +468,12 @@ registerBlock('thmdof', {
     h += txt(`Modos de ${K('\\mathbf K\\boldsymbol\\phi = \\omega^2\\mathbf M\\boldsymbol\\phi')} por Jacobi; factores ${K('\\Gamma_n = L_n/M_n')}, ${K('L_n = \\boldsymbol\\phi_n^T\\mathbf M\\boldsymbol\\iota')}. Cada coordenada modal ${K('D_n(t)')} es la respuesta de un 1 GDL ${K('(\\omega_n, \\zeta_n)')} a ${K('-\\ddot u_g')}, integrada exactamente (Nigam-Jennings); ${K('\\mathbf u(t) = \\sum_n \\Gamma_n\\boldsymbol\\phi_n D_n(t)')}, ${K('V_i(t) = k_i\\Delta_i(t)')} y ${K('M_b(t) = \\sum_j f_j(t) H_j')} (Chopra §13.1–13.2). ` + (ray ? `Amortiguamiento de Rayleigh ${K('\\mathbf C = a_0\\mathbf M + a_1\\mathbf K')} con ζ = ${f2(z0 * 100, 1)} % en los modos ${ray.i} y ${ray.j}: ${K(`a_0 = ${fe(ray.a0, 4)}\\;\\mathrm{s^{-1}},\\; a_1 = ${fe(ray.a1, 4)}\\;\\mathrm{s}`)}, ${K('\\zeta_n = a_0/(2\\omega_n) + a_1\\omega_n/2')}.` : `Amortiguamiento modal ζn = ${f2(z0 * 100, 1)} % en todos los modos.`));
     const rows1 = modes.map((md, r) => [String(r + 1) + (r < nm ? '' : ' *'), f2(md.T, 4), f2(md.w, 3), f2(md.Gam, 4), f2(md.ratio * 100, 2), f2(zn[r] * 100, 2), r < nm ? f2(nL(spR[r].D), 3) : '—', r < nm ? f2(spR[r].PSA / G, 4) : '—', r < nm ? f2(nL(pk(R.Dn[r]).v * md.Gam), 3) : '—']);
     h += tableHtml(ctx, 'Propiedades modales (φ normalizada al techo) y respuesta espectral del registro', ['Modo', K('T_n') + ' [s]', K('\\omega_n') + ' [rad/s]', K('\\Gamma_n'), K('M^*_n/M') + ' [%]', K('\\zeta_n') + ' [%]', K('D_n') + ` [${UL()}]`, K('A_n/g'), K('\\max|u_{techo,n}|') + ` [${UL()}]`], rows1);
-    const rows2 = []; for (let i = n - 1; i >= 0; i--) rows2.push([String(i + 1), f2(nL(uE[i]), 3), f2(nL(RS.u[i]), 3), f2(dE[i] / he[i], 5), f2(RS.d[i] / he[i], 5), f2(nF(VE[i]), 2), f2(nF(RS.V[i]), 2), ...(RD ? [f2(nF(RD.V[i]), 2)] : [])]);
+    const rows2 = []; for (let i = n - 1; i >= 0; i--) rows2.push([String(i + 1), f2(nL(uE[i]), 3), f2(nL(RS.u[i]), 3), sg(dE[i] / he[i], 4), sg(RS.d[i] / he[i], 4), f2(nF(VE[i]), 2), f2(nF(RS.V[i]), 2), ...(RD ? [f2(nF(RD.V[i]), 2)] : [])]);
     h += tableHtml(ctx, `Envolventes por nivel: tiempo-historia (TH) vs espectral ${b.comb === 'SRSS' ? 'SRSS' : 'CQC'} (RSA)`, ['Nivel', K('u_{TH}') + ` [${UL()}]`, K('u_{RSA}') + ` [${UL()}]`, K('(\\Delta/h)_{TH}'), K('(\\Delta/h)_{RSA}'), K('V_{TH}') + ` [${lab(UF())}]`, K('V_{RSA}') + ` [${lab(UF())}]`, ...(RD ? [K('V_{dis}') + ` [${lab(UF())}]`] : [])], rows2);
     h += txt(`Picos: techo ${K(`u_{${n},max} = ${f2(nL(roof.v), 3)}\\;\\mathrm{${UL()}}`)} en t = ${f2(roof.i * rec.dt, 2)} s (RSA: ${f2(nL(RS.u[n - 1]), 3)}, razón ${f2(RS.u[n - 1] / roof.v, 3)}); cortante basal ${K(`V_{b,max} = ${f2(nF(base.v), 2)}\\;\\mathrm{${lab(UF())}}`)} = ${f2(base.v / Wt, 4)}·W en t = ${f2(base.i * rec.dt, 2)} s (RSA: ${f2(nF(RS.Vb), 2)}, razón ${f2(RS.Vb / base.v, 3)}); momento de volteo ${K(`M_{b,max} = ${f2(nM(mb.v), 1)}\\;\\mathrm{${lab(UM())}}`)}.` + (RD ? ` Con el espectro de diseño: ${K(`u_{techo} = ${f2(nL(RD.u[n - 1]), 3)}\\;\\mathrm{${UL()}}`)}, ${K(`V_b = ${f2(nF(RD.Vb), 2)}\\;\\mathrm{${lab(UF())}}`)}.` : ''));
     const mp = sum(modes.slice(0, nm).map(x => x.ratio));
     if (nm < n) h += chkLine(ctx, mp >= 0.9 - 1e-9, `\\sum M^*_n/M = ${f2(mp * 100, 2)}\\,\\% \\ge 90\\,\\%`, `Masa participativa de los ${nm} modos superpuestos`, 0.9 / mp);
-    if (dl > 0) h += chkLine(ctx, drMax <= dl, `(\\Delta/h)_{max} = ${f2(drMax, 5)} \\le ${f2(dl, 4)}`, 'Deriva máxima de entrepiso (tiempo-historia)', drMax / dl);
+    if (dl > 0) h += chkLine(ctx, drMax <= dl, `(\\Delta/h)_{max} = ${sg(drMax, 4)} \\le ${f2(dl, 4)}`, 'Deriva máxima de entrepiso (tiempo-historia)', drMax / dl);
     return h;
   },
 });
@@ -556,7 +559,7 @@ registerBlock('pushover', {
       const xm = Math.max(xs[xs.length - 1], ...Object.values(res).filter(isFinite).map(nL)) * 1.05;
       const fr = frame(56, top, pw, ph, [0, xm], [0, Math.max(...ys) * 1.15], { title: 'Curva de capacidad Vb – u techo', xl: `u techo [${UL()}]`, yl: `Vb [${lab(UF())}]`, nx: 5, ny: 5, yf: t => f2(t, 0) });
       g += fr.g + P(pathXY(xs, ys, fr), C.blue, 2);
-      po.ev.filter(e => e.d <= dEnd).forEach(e => { g += dot(fr.X(nL(e.d)), fr.Y(nF(e.Vb)), e.tipo === 'fluencia' ? C.ink : C.axis, 2.6) + TX(fr.X(nL(e.d)) + 4, fr.Y(nF(e.Vb)) + 11, (e.tipo === 'fluencia' ? 'y' : 'cr') + (e.i + 1), { fs: 8, a: 'start', c: C.axis }); });
+      po.ev.filter(e => e.d <= dEnd).forEach(e => { g += dot(fr.X(nL(e.d)), fr.Y(nF(e.Vb)), e.tipo === 'fluencia' ? C.ink : C.axis, 2.6) + (e.tipo === 'fluencia' ? TX(fr.X(nL(e.d)) + 4, fr.Y(nF(e.Vb)) + 11, 'y' + (e.i + 1), { fs: 8, a: 'start', c: C.axis }) : ''); });
       // bilineal N2 equivalente (sistema MDOF)
       g += P(`M${fr.X(0)},${fr.Y(0)}L${fr.X(nL(dyRoof)).toFixed(1)},${fr.Y(nF(n2.Fy * ms * Gm)).toFixed(1)}L${fr.X(nL(Math.min(n2.dt, cap[cap.length - 1][0]) * Gm)).toFixed(1)},${fr.Y(nF(n2.Fy * ms * Gm)).toFixed(1)}`, C.red, 1, '4 3');
       Object.entries(res).forEach(([kk, d]) => { if (!isFinite(d)) return; const st = stAt(d); g += mark(fr.X(nL(d)), fr.Y(nF(st.Vb)), shapes[kk][1], shapes[kk][0], kk === met ? 5 : 3.6); });
@@ -600,11 +603,11 @@ registerBlock('pushover', {
     h += tableHtml(ctx, 'Desplazamiento objetivo del techo por método', ['Método', 'Parámetros', K('u_{t}') + ` [${UL()}]`], mrows.map(r => [(r[0].startsWith(mlbl[met]) || (met === 'ATC40' && r[0].startsWith('ATC')) || (met === 'ASCE41' && r[0].startsWith('ASCE')) ? '<b>' + r[0] + '</b>' : r[0]), r[1], r[2]]));
     // estado por entrepiso
     const lvlOf = (d) => { const L = levels.find(l => d <= l.lim); return L ? L.id : '> ' + (levels[levels.length - 1] || { id: '' }).id; };
-    const rows = []; for (let i = n - 1; i >= 0; i--) { const Vi = obj.Vb * po.Sx[i], dy = Vy[i] / k[i] * (fcr > 0 ? (fcr + (1 - fcr) / r2) : 1); rows.push([String(i + 1), f2(nF(Vi), 1), f2(nF(Vy[i]), 1), f2(Vi / Vy[i], 3), f2(nL(obj.dr[i]), 2), f2(obj.dr[i] / dy, 2), f2(drr[i], 5), lvlOf(drr[i])]); }
+    const rows = []; for (let i = n - 1; i >= 0; i--) { const Vi = obj.Vb * po.Sx[i], dy = Vy[i] / k[i] * (fcr > 0 ? (fcr + (1 - fcr) / r2) : 1); rows.push([String(i + 1), f2(nF(Vi), 1), f2(nF(Vy[i]), 1), f2(Vi / Vy[i], 3), f2(nL(obj.dr[i]), 2), f2(obj.dr[i] / dy, 2), sg(drr[i], 3), lvlOf(drr[i])]); }
     h += tableHtml(ctx, `Estado de los entrepisos en el desplazamiento objetivo (${mlbl[met]}: ${f2(nL(dobj), 2)} ${UL()}, Vb = ${f2(nF(obj.Vb), 1)} ${lab(UF())})`, ['Entrepiso', K('V_i') + ` [${lab(UF())}]`, K('V_{y,i}') + ` [${lab(UF())}]`, K('V_i/V_{y,i}'), K('\\delta_i') + ` [${UL()}]`, K('\\mu_i = \\delta_i/\\delta_{y,i}'), K('\\delta_i/h_i'), 'Nivel'], rows);
-    h += txt(`Ductilidad global ${K(`\\mu = u_t/(\\Gamma d_y^*) = ${f2(nL(dobj), 2)}/${f2(nL(dyRoof), 2)} = ${f2(mu, 2)}`)}; deriva máxima ${K(`(\\delta/h)_{max} = ${f2(drMax, 5)}`)} → nivel alcanzado: <b>${reached ? esc(reached.id + (reached.d ? ' — ' + reached.d : '')) : 'más allá de ' + esc((levels[levels.length - 1] || { id: '' }).id)}</b>. Niveles: ${levels.map(l => `${esc(l.id)} ${f2(l.lim * 100, 2)} %`).join(' · ')}.`);
+    h += txt(`Ductilidad global ${K(`\\mu = u_t/(\\Gamma d_y^*) = ${f2(nL(dobj), 2)}/${f2(nL(dyRoof), 2)} = ${f2(mu, 2)}`)}; deriva máxima ${K(`(\\delta/h)_{max} = ${sg(drMax, 4)}`)} → nivel alcanzado: <b>${reached ? esc(reached.id + (reached.d ? ' — ' + reached.d : '')) : 'más allá de ' + esc((levels[levels.length - 1] || { id: '' }).id)}</b>. Niveles: ${levels.map(l => `${esc(l.id)} ${f2(l.lim * 100, 2)} %`).join(' · ')}.`);
     h += chkLine(ctx, within, `u_t = ${f2(nL(dobj), 2)} \\le u_{cap} = ${f2(nL(dEnd), 2)}\\;\\mathrm{${UL()}}`, `Desplazamiento objetivo (${mlbl[met]}) dentro de la capacidad de la curva`, dobj / dEnd);
-    if (lvl) h += chkLine(ctx, drMax <= lvl.lim, `(\\delta/h)_{max} = ${f2(drMax, 5)} \\le ${f2(lvl.lim, 4)}`, `Deriva en el punto de desempeño ≤ límite del nivel ${lvl.id}${lvl.d ? ' (' + lvl.d + ')' : ''}`, drMax / lvl.lim);
+    if (lvl) h += chkLine(ctx, drMax <= lvl.lim, `(\\delta/h)_{max} = ${sg(drMax, 4)} \\le ${f2(lvl.lim, 4)}`, `Deriva en el punto de desempeño ≤ límite del nivel ${lvl.id}${lvl.d ? ' (' + lvl.d + ')' : ''}`, drMax / lvl.lim);
     return h;
   },
 });
@@ -698,7 +701,7 @@ registerBlock('momcurv', {
       g += TX(ux + uw / 2, top - 7, 'ε (última)', { fs: 10.5, b: 1 }) + TX(Xe(e1), sy - 2 + 12, f2(e1 * 1000, 2) + '‰', { fs: 8.5, c: C.red }) + TX(Xe(e2), sy + wh + 12, f2(e2 * 1000, 1) + '‰', { fs: 8.5, c: C.red });
     }
     { // materiales
-      const yy = top + 268, fr1 = frame(62, yy, 290, 130, [0, Math.max(R.ecuLim * 1.15, 0.006)], [0, (conc === 'mander' ? R.conf.fcc : fc) * 1.15], { title: 'Concreto σ–ε (compresión)', xl: 'ε', yl: 'σ [MPa]', nx: 5, ny: 4, xf: t => f2(t, 3) });
+      const yy = top + 300, fr1 = frame(62, yy, 290, 130, [0, Math.max(R.ecuLim * 1.15, 0.006)], [0, (conc === 'mander' ? R.conf.fcc : fc) * 1.15], { title: 'Concreto σ–ε (compresión)', xl: 'ε', yl: 'σ [MPa]', nx: 5, ny: 4, xf: t => f2(t, 3) });
       const es = Array.from({ length: 121 }, (_, i) => i * R.ecuLim * 1.1 / 120);
       g += fr1.g + P(pathXY(es, es.map(R.sCore), fr1), C.blue, 1.8) + (conc === 'mander' ? P(pathXY(es, es.map(R.sCov), fr1), C.axis, 1.4, '4 3') + Lne(fr1.X(R.ecuLim), yy, fr1.X(R.ecuLim), yy + 130, C.red, 0.8, '3 3') + TX(fr1.X(R.ecuLim) - 3, yy + 12, 'εcu', { fs: 8.5, a: 'end', c: C.red }) : '');
       g += legend(200, yy + 14, conc === 'mander' ? [['confinado (Mander)', C.blue], ['no confinado', C.axis, '4 3']] : [['Hognestad', C.blue]]);
@@ -706,7 +709,7 @@ registerBlock('momcurv', {
       const e2s = Array.from({ length: 151 }, (_, i) => i * esu / 150);
       g += fr2.g + P(pathXY(e2s, e2s.map(R.ss), fr2), C.ink, 1.8);
     }
-    let h = `<div class="figure">${svgWrap(W, top + 268 + 170, g)}${caption(ctx, b.titulo || `Momento–curvatura por fibras de la sección ${f2(bb / 10, 0)} × ${f2(hh / 10, 0)} cm (P = ${f2(nF(Pn), 1)} ${lab(UF())})`)}</div>`;
+    let h = `<div class="figure">${svgWrap(W, top + 300 + 170, g)}${caption(ctx, b.titulo || `Momento–curvatura por fibras de la sección ${f2(bb / 10, 0)} × ${f2(hh / 10, 0)} cm (P = ${f2(nF(Pn), 1)} ${lab(UF())})`)}</div>`;
     const As = layers.reduce((a, l) => a + l.As, 0);
     if (conc === 'mander') {
       const c = R.conf;

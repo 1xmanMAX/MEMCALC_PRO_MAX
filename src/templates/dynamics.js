@@ -67,8 +67,8 @@ Ry = 4 // Factor de reducción de resistencia
 mu_disp = 6 // Ductilidad disponible supuesta (sistema dúctil)`),
       { type: 'thsdof', registro: 'elcentro', T: 'Tn_a', zeta: 'zetaP', modelo: 'bilineal', metodo: 'avg', Ry: 'Ry', alpha: '0', mucap: 'mu_disp', sufijo: 'p', escala: '1', titulo: 'Sistema elastoplástico (Tn = 0.5 s, ζ = 5 %, Ry = 4): üg(t), u(t) y lazo fS–u' },
       calc(`## Resultados del sistema inelástico
-Cy_p -> 1 // Coeficiente de fluencia fy/(m·g)
-mu_p -> 1 // Ductilidad de desplazamiento μ = um/uy
+Cy_p // Coeficiente de fluencia fy/(m·g)
+mu_p // Ductilidad de desplazamiento μ = um/uy
 "Con Ry = 4 la ductilidad demandada es μ = {mu_p}; la regla de igual desplazamiento ($\\mu \\approx R_y$) no se cumple exactamente para Tn = 0.5 s (zona sensible a la velocidad, Chopra Fig. 7.5.3).`),
       summary(),
     ],
@@ -180,8 +180,8 @@ Cm = 0.9 // Factor de masa efectiva (ASCE 41-17 Tabla 7-4, pórtico de concreto 
       calc(`# Resultados del desempeño
 Te = Tpo1 // Periodo elástico fundamental
 "Desplazamiento objetivo del techo (N2): $u_t$ = {dN2}; ATC-40: {dATC}; FEMA 440: {dFEMA}; ASCE 41: {dC}.
-mu -> 1 // Ductilidad global μ = ut/(Γ·dy*)
-derivamax -> 1 // Deriva máxima de entrepiso en el punto de desempeño
+mu // Ductilidad global μ = ut/(Γ·dy*)
+derivamax // Deriva máxima de entrepiso en el punto de desempeño
 check derivamax <= 0.020 // Seguridad de vida: δ/h ≤ 2 % (FEMA 356 Tabla C1-3, pórticos de concreto)
 check mu <= 4 // Demanda de ductilidad global compatible con pórticos de concreto (R0 = 8 → ductilidad moderada)
 rN2C = dN2/dC // Razón N2 / método de coeficientes
@@ -226,10 +226,10 @@ muD_req = 4 // Ductilidad de desplazamiento requerida (pórtico dúctil, R0 = 8)
       calc(`# Resultados
 Mn -> kN*m // Momento nominal (εc = 0.004 o εs = 0.015)
 Mu -> kN*m // Momento último
-muphi -> 1 // Ductilidad de curvatura μφ = φu/φy
+muphi // Ductilidad de curvatura μφ = φu/φy
 fcc -> MPa // Resistencia del concreto confinado
 Lp -> cm // Longitud de rótula plástica
-thetap -> 1 // Rotación plástica disponible (rad)
+thetap // Rotación plástica disponible (rad)
 check muD >= muD_req // Ductilidad de desplazamiento del voladizo equivalente ≥ requerida
 check Mu >= 0.8*Mn // Sin pérdida excesiva de resistencia en la última (≤ 20 %)
 check thetap >= 0.02 // Capacidad de rotación plástica ≥ 0.02 rad (ASCE 41-17 Tabla 10-8, columna condición i, LS)

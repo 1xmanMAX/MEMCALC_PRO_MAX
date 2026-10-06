@@ -598,9 +598,9 @@ const n0 = (x, u) => toNum(x, u);
 const zeta = (z) => { const v = n0(z); return v >= 1 ? v / 100 : v; };
 const accG = (x) => (math.isUnit(x) ? x.toNumber('m/s^2') / G : n0(x));   // aceleración → g
 defineFns({
-  rayleighA0: { fn: (Ti, Tj, z) => mkUnit(rayleighCoef(n0(Ti, 's'), n0(Tj, 's'), zeta(z)).a0, '1/s'), tex: 'a_0', desc: 'Coeficiente de Rayleigh a0 (C = a0·M + a1·K) para ζ en los periodos Ti y Tj: a0 = 2ζωiωj/(ωi+ωj) (Chopra §11.4)', args: 'Ti, Tj, ζ' },
+  rayleighA0: { fn: (Ti, Tj, z) => mkUnit(rayleighCoef(n0(Ti, 's'), n0(Tj, 's'), zeta(z)).a0, 's^-1'), tex: 'a_0', desc: 'Coeficiente de Rayleigh a0 (C = a0·M + a1·K) para ζ en los periodos Ti y Tj: a0 = 2ζωiωj/(ωi+ωj) (Chopra §11.4)', args: 'Ti, Tj, ζ' },
   rayleighA1: { fn: (Ti, Tj, z) => mkUnit(rayleighCoef(n0(Ti, 's'), n0(Tj, 's'), zeta(z)).a1, 's'), tex: 'a_1', desc: 'Coeficiente de Rayleigh a1 = 2ζ/(ωi+ωj) (Chopra Ec. 11.4.9)', args: 'Ti, Tj, ζ' },
-  zetaRayleigh: { fn: (T, a0, a1) => { const w = PI2 / n0(T, 's'); return n0(a0, '1/s') / (2 * w) + n0(a1, 's') * w / 2; }, tex: '\\zeta_n', desc: 'Amortiguamiento modal de Rayleigh ζ(T) = a0/(2ω) + a1·ω/2 (Chopra Ec. 11.4.8)', args: 'T, a0, a1' },
+  zetaRayleigh: { fn: (T, a0, a1) => { const w = PI2 / n0(T, 's'); return n0(a0, 's^-1') / (2 * w) + n0(a1, 's') * w / 2; }, tex: '\\zeta_n', desc: 'Amortiguamiento modal de Rayleigh ζ(T) = a0/(2ω) + a1·ω/2 (Chopra Ec. 11.4.8)', args: 'T, a0, a1' },
   rhoCQC: { fn: (Ti, Tj, zi, zj) => { const z1 = zeta(zi), z2 = zj === undefined ? z1 : zeta(zj); return rhoCQCw(PI2 / n0(Ti, 's'), PI2 / n0(Tj, 's'), z1, z2); }, tex: '\\rho_{ij}', desc: 'Coeficiente de correlación CQC de Der Kiureghian (1981) entre los modos de periodos Ti y Tj (ζj opcional)', args: 'Ti, Tj, ζi, ζj' },
   SdSa: { fn: (Sa, T) => mkUnit(accG(Sa) * G * (n0(T, 's') / PI2) ** 2, 'm'), tex: 'S_d', desc: 'Desplazamiento espectral Sd = Sa·T²/(4π²); Sa en g (número) o aceleración', args: 'Sa, T' },
   SaSd: { fn: (Sd, T) => n0(Sd, 'm') * (PI2 / n0(T, 's')) ** 2 / G, tex: 'S_a/g', desc: 'Pseudo-aceleración Sa/g = (2π/T)²·Sd/g', args: 'Sd, T' },

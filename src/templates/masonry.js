@@ -38,7 +38,7 @@ ra${D} = max(sigma${D} ./ Fa${D}) // Relación máxima σm/Fa
 check ra${D} <= 1 // Esfuerzo axial máximo, dirección ${D} (Art. 19.1.b)`;
 
 const dirSeis = (D) => `## Fuerzas del sismo moderado y resistencia al corte — dirección ${D}
-Ve${D} = r${D}*Ve1 // Cortante por muro: Ve = (k/Σk + torsión)·V (Art. 24.5 y E.030 Art. 28.5)
+Ve${D} = r${D}*Ve1 // Cortante por muro: Ve = (k/Σk + torsión)·V (Art. 24.5 y E.030 Art. 37)
 Me${D} = Ve${D}*hM // Momento flector del muro (voladizo): Me = Ve·(M1/V1)
 alpha${D} = alphaE070(Ve${D}, L${D}, Me${D}) // α = Ve·L/Me, 1/3 ≤ α ≤ 1 (Art. 26.3)
 Vm${D} = VmE070(vm, alpha${D}, t${D}, L${D}, Pg${D}, matE070(uni)) // Vm = 0.5 v'm α t L + 0.23 Pg (Art. 26.3)
@@ -65,14 +65,14 @@ export default [
   // ===================================================================
   {
     id: 'ma-edificio', pais: 'PE', cat: 'Albañilería', icon: 'grid',
-    name: 'Edificio de albañilería confinada (E.070)', normas: 'RNE — NTE E.070 Albañilería (2006), E.030 Diseño Sismorresistente (2018), E.060, E.020',
+    name: 'Edificio de albañilería confinada (E.070)', normas: 'RNE — NTE E.070 Albañilería (2006), E.030 Diseño Sismorresistente (2018, mod. RM 183-2026-VIVIENDA), E.060, E.020',
     desc: 'Edificio de 4 pisos: densidad y planta de muros (CM/CR), cargas axiales, sismo por muro según rigidez con torsión, fisuración, resistencia global y diseño de columnas y soleras (Art. 27).',
     titulo: 'Memoria de cálculo — Edificio multifamiliar de albañilería confinada de 4 pisos',
     blocks: [
       text(`# Generalidades
 La presente memoria desarrolla el diseño estructural de un **edificio multifamiliar de cuatro pisos** de albañilería confinada (ladrillo de arcilla King Kong industrial, losas aligeradas de 20 cm que conforman diafragmas rígidos), siguiendo el método de diseño por desempeño de la **NTE E.070 Albañilería** (2006): el sismo moderado ($R = 6$) no debe fisurar ningún muro y la resistencia al corte del edificio debe superar la demanda del sismo severo ($R = 3$).
 
-**Normas:** RNE — E.020 Cargas, E.030 Diseño Sismorresistente (2018), E.060 Concreto Armado, E.070 Albañilería. **Referencia:** A. San Bartolomé, D. Quiun y W. Silva, *Diseño y construcción de estructuras sismorresistentes de albañilería* (Fondo Editorial PUCP), Cap. «Ejemplo de diseño de un edificio de albañilería confinada».
+**Normas:** RNE — E.020 Cargas, E.030 Diseño Sismorresistente (2018, modificada por la RM 183-2026-VIVIENDA), E.060 Concreto Armado, E.070 Albañilería. **Referencia:** A. San Bartolomé, D. Quiun y W. Silva, *Diseño y construcción de estructuras sismorresistentes de albañilería* (Fondo Editorial PUCP), Cap. «Ejemplo de diseño de un edificio de albañilería confinada».
 
 **Hipótesis:** muros en voladizo por entrepiso para la distribución del cortante (Art. 24.5), centro de masas en el centroide de la planta típica, cargas de gravedad por área tributaria (Pg con 25 % de sobrecarga y Pm con 100 %, Art. 26.3 y 19.1.b). El análisis estático es válido para edificios regulares de hasta 15 m de altura (E.030 Art. 28).`),
       calc(`# Materiales
@@ -87,30 +87,30 @@ fy = 4200 kgf/cm^2 // Acero corrugado ASTM A615 grado 60
 N = 4 // Número de pisos (E.070 Art. 27 a: hasta 5 pisos o 15 m)
 h1 = 2.60 m // Altura de entrepiso (piso a piso)
 hl = 2.40 m // Altura libre del muro (Art. 19.1.a)
-wp = 0.90 tonf/m^2 // Peso sísmico por m² de planta (CM + 25 % CV, E.030 Art. 26)
-Z = 0.45 // Factor de zona (E.030 Tabla 1) ${ZONA}
-U = 1.0 // Factor de uso — vivienda, categoría C (E.030 Tabla 5) [1.0|1.3|1.5]
-S = 1.05 // Factor de suelo (E.030 Tabla 3) ${SUELO}
-Tp = 0.6 s // Periodo TP (E.030 Tabla 4) ${TP}
-Tl = 2.0 s // Periodo TL (E.030 Tabla 4) ${TL}`),
+wp = 0.90 tonf/m^2 // Peso sísmico por m² de planta (CM + 25 % CV, E.030 Art. 31)
+Z = 0.45 // Factor de zona (E.030 Tabla N° 1) ${ZONA}
+U = 1.0 // Factor de uso — vivienda, categoría C (E.030 Tabla N° 7) [1.0|1.3|1.5]
+S = 1.05 // Factor de suelo (E.030 Tabla N° 4) ${SUELO}
+Tp = 0.6 s // Periodo TP (E.030 Tabla N° 5) ${TP}
+Tl = 2.0 s // Periodo TL (E.030 Tabla N° 5) ${TL}`),
       { type: 'wallplan', muros: MUROS_EDIF, planta: '0 0 10 15', Ap: '', cm: '', Z: 'Z', U: 'U', S: 'S', N: 'N', h: 'h1', hl: 'hl', apoyo: 'voladizo', ea: '0.05', titulo: 'Planta típica de muros (muros de soga t = 13 cm y de cabeza t = 23 cm), CM y CR' },
-      calc(`# Análisis sísmico (E.030 Art. 28 — fuerzas estáticas equivalentes)
+      calc(`# Análisis sísmico (E.030 Art. 33 a 36 — fuerzas estáticas equivalentes)
 hn = N*h1 // Altura total de la edificación
 check N <= 5 // Albañilería confinada: hasta 5 pisos (E.070 Art. 27 a)
 check hn <= 15 m // Albañilería confinada: altura total ≤ 15 m (E.070 Art. 27 a)
-CT = 60 m/s // Coeficiente CT para albañilería (E.030 Art. 28.4.1)
+CT = 60 m/s // Coeficiente CT para albañilería (E.030 Art. 36.1)
 Te = hn/CT -> s // Periodo fundamental T = hn/CT
-Cs = CE030(Te, Tp, Tl) // Factor de amplificación sísmica (E.030 Art. 14)
-P = N*wp*Ap -> tonf // Peso sísmico de la edificación (E.030 Art. 26)
+Cs = CE030(Te, Tp, Tl) // Factor de amplificación sísmica (E.030 Art. 18, Tabla N° 6)
+P = N*wp*Ap -> tonf // Peso sísmico de la edificación (E.030 Art. 31)
 VE = Z*U*Cs*S/3*P -> tonf // Cortante basal del sismo severo, R = 3 (E.070 Art. 22)
 Ve1 = VE/2 -> tonf // Cortante basal del sismo moderado = ½ sismo severo (E.070 Art. 22)
 ## Distribución en altura (pisos de igual peso, T < 0.5 s → k = 1)
 hi = (1:N)*h1 // Altura de cada nivel sobre la base
-Fi = Ve1*hi/sum(hi) // Fuerzas por nivel Fi = αi·V con αi = Pi hi/Σ Pj hj (E.030 Art. 28.3)
+Fi = Ve1*hi/sum(hi) // Fuerzas por nivel Fi = αi·V con αi = Pi hi/Σ Pj hj (E.030 Art. 35)
 M1 = sum(Fi .* hi) -> tonf*m // Momento de volteo en la base (sismo moderado)
 hM = M1/Ve1 -> m // Brazo del momento Me/Ve para los muros del primer piso
-"Momento de cada muro $M_e = V_e\,(M_1/V_1)$: reparto del momento de volteo en proporción al cortante (muros en voladizo, Art. 24.5). Es conservador para $\alpha$ y para $M_u$ de las columnas; si los muros están acoplados por vigas o losas, use los $M_e$ de un modelo elástico.
-"Excentricidad accidental 0.05 B en cada dirección (E.030 Art. 28.5) incluida en el reparto de la planta: los factores $r$ suman {sum(rX)} en X y {sum(rY)} en Y (no se reducen fuerzas por torsión).`),
+"Momento de cada muro $M_e = V_e\\,(M_1/V_1)$: reparto del momento de volteo en proporción al cortante (muros en voladizo, Art. 24.5). Es conservador para $\\alpha$ y para $M_u$ de las columnas; si los muros están acoplados por vigas o losas, use los $M_e$ de un modelo elástico.
+"Excentricidad accidental 0.05 B en cada dirección (E.030 Art. 37) incluida en el reparto de la planta: los factores $r$ suman {sum(rX)} en X y {sum(rY)} en Y (no se reducen fuerzas por torsión).`),
       calc(`# Muros de la dirección X\n` + dirAxial('X')),
       tabAxial('X'),
       calc(dirSeis('X')),
@@ -273,7 +273,7 @@ Cerco perimétrico de ladrillo King Kong industrial en aparejo de soga, arriostr
       calc(`# Datos
 Z = 0.45 // Factor de zona ${ZONA}
 U = 1.0 // Factor de uso [1.0|1.3|1.5]
-S = 1.05 // Factor de suelo (E.030-2018 Tabla 3) ${SUELO}
+S = 1.05 // Factor de suelo (E.030 Tabla N° 4) ${SUELO}
 C1 = C1E030a(4) // C1 = 0.6 para cercos (E.030-2003 Tabla N° 9, a la que remite E.070 Art. 29.6)
 gm = 1.8 tonf/m^3 // Peso volumétrico de la albañilería con tarrajeo
 t = 13 cm // Espesor efectivo (soga)
@@ -283,7 +283,7 @@ bp = 3.00 m // Distancia entre columnas de arriostre
 caso = 1 // Caso de la Tabla 12 [1 : 4 bordes arriostrados|2 : 3 bordes (sin solera)|3 : bordes horizontales|4 : voladizo]
 # Carga sísmica y momento en el paño (Art. 29.6 y 29.7)
 w070 = 0.8*Z*U*C1*gm*esp -> kgf/m^2 // w = 0.8 Z U C1 γ e (E.070 Art. 29.6, esfuerzos admisibles)
-w030 = 0.8*0.5*Z*U*S*gm*esp -> kgf/m^2 // E.030-2018: F = 0.5 Z U S Pe para cercos (Art. 41), × 0.8 en esfuerzos admisibles (Art. 43)
+w030 = 0.8*0.5*Z*U*S*gm*esp -> kgf/m^2 // E.030 vigente: F = 0.5 Z U S Pe para cercos (Art. 60; Art. 41 en 2018), × 0.8 en esfuerzos admisibles (Art. 29; Art. 43 en 2018)
 w = max(w070, w030) // Carga de diseño: la mayor (la E.070 remite al C1 de la E.030-2003, ya derogada)
 a = si(caso == 1, min(ha, bp), si(caso == 2, bp, ha)) // Dimensión crítica a (Tabla 12)
 bt = si(caso == 1, max(ha, bp), ha) // Otra dimensión b
@@ -297,7 +297,7 @@ check t >= treq // Espesor efectivo del cerco
 # Diseño de la columna de arriostre (Art. 29.9 y 31.5)
 fcc = 175 kgf/cm^2 // Concreto de columnas y soleras
 fy = 4200 kgf/cm^2
-fu = 1.25 // Paso de cargas de servicio a rotura de los arriostres: 1/0.8 (E.030-2018 Art. 43)
+fu = 1.25 // Paso de cargas de servicio a rotura de los arriostres: 1/0.8 (E.030 Art. 29)
 bcol = t // Ancho de la columna (= espesor del muro)
 hcol = 25 cm // Peralte de la columna (perpendicular al muro)
 Mcol = fu*w*bp*ha^2/2 -> tonf*m // Voladizo con la carga del paño tributario
@@ -618,7 +618,7 @@ check Ndt/(0.85*b3*d3) <= ft // Tracción en montantes y diagonales
     titulo: 'Diseño estructural de reservorio circular apoyado de concreto armado — 250 m³',
     blocks: [
       text(`# Generalidades
-Reservorio cilíndrico apoyado de concreto armado, con pared empotrada en la losa de fondo y cubierta de losa maciza. El análisis hidrostático usa la solución de la **cáscara cilíndrica** (Timoshenko, ν = 0.2), equivalente a las Tablas A-1, A-2 y A-12 del PCA *Circular Concrete Tanks without Prestressing*; el refuerzo se dimensiona por resistencia con el **factor de durabilidad ambiental** $S_d = \phi f_y/(\gamma f_s)$ de ACI 350-06 (9.2.6), o —a elección— con los coeficientes sanitarios del PCA/ACI 350R-89 (1.7 × 1.65 en tracción anular y 1.7 × 1.30 en flexión), que dan resultados similares. El análisis sísmico sigue **ACI 350.3-06** (modelo de Housner) con el espectro de la NTE E.030 ($S_{DS} = 2.5ZS$, $T_S = T_P$). Si el oleaje $d_{max}$ supera el borde libre, la cubierta restringe la masa convectiva: se trata como impulsiva (Malhotra, 2005) y se verifica el anclaje de la cubierta al empuje ascendente.`),
+Reservorio cilíndrico apoyado de concreto armado, con pared empotrada en la losa de fondo y cubierta de losa maciza. El análisis hidrostático usa la solución de la **cáscara cilíndrica** (Timoshenko, ν = 0.2), equivalente a las Tablas A-1, A-2 y A-12 del PCA *Circular Concrete Tanks without Prestressing*; el refuerzo se dimensiona por resistencia con el **factor de durabilidad ambiental** $S_d = \\phi f_y/(\\gamma f_s)$ de ACI 350-06 (9.2.6), o —a elección— con los coeficientes sanitarios del PCA/ACI 350R-89 (1.7 × 1.65 en tracción anular y 1.7 × 1.30 en flexión), que dan resultados similares. El análisis sísmico sigue **ACI 350.3-06** (modelo de Housner) con el espectro de la NTE E.030 ($S_{DS} = 2.5ZS$, $T_S = T_P$). Si el oleaje $d_{max}$ supera el borde libre, la cubierta restringe la masa convectiva: se trata como impulsiva (Malhotra, 2005) y se verifica el anclaje de la cubierta al empuje ascendente.`),
       calc(`# Datos
 D = 9.00 m // Diámetro interior
 HL = 4.00 m // Altura de agua (nivel de rebose)
@@ -642,7 +642,9 @@ Sdh = max(0.9*fy/(1.4*fsh), 1) // Sd en tracción anular, γ = 1.4 (U = 1.4 F)
 Sdf = max(0.9*fy/(1.4*fsf), 1) // Sd en flexión
 fach = si(metodo == 1, 1.7*1.65, 1.4*Sdh) // Factor total en tracción anular
 facf = si(metodo == 1, 1.7*1.30, 1.4*Sdf) // Factor total en flexión
-facv = si(metodo == 1, 1.7, 1.4*max(0.75*fy/(1.4*1700 kgf/cm^2), 1)) // Factor en cortante (fs = 24 ksi en el refuerzo de corte, 9.2.6.4)
+fsv = 1700 kgf/cm^2 // fs en el refuerzo de corte: 24 ksi (9.2.6.4)
+Sdv = max(0.75*fy/(1.4*fsv), 1) // Sd en cortante (φ = 0.75); aplicado también a Vc (conservador)
+facv = si(metodo == 1, 1.7, 1.4*Sdv) // Factor total en cortante
 # Análisis hidrostático de la pared (PCA)`),
       { type: 'cilindro', H: 'HL', D: 'D', t: 'tw', w: 'gw', base: 'empotrada', titulo: '' },
       calc(`## Refuerzo anular (horizontal)
@@ -680,7 +682,7 @@ check Vu <= phiVc // Cortante en la unión pared–losa de fondo
 Z = 0.45 // Factor de zona ${ZONA}
 S = 1.05 // Factor de suelo ${SUELO}
 Tp = 0.6 s // Periodo TP ${TP}
-I = 1.5 // Importancia: ACI 350.3 Tabla 4.1.1(a) da 1.25 (servicio de emergencia/línea vital); se adopta U = 1.5 de la E.030 (categoría A) [1.0|1.25|1.5]
+I = 1.5 // Importancia: ACI 350.3 Tabla 4.1.1(a) da 1.25 (línea vital); se adopta U = 1.5 (reservorios: categoría A2, E.030 Tabla N° 7 y Art. 7.3) [1.0|1.25|1.5]
 Ri = 2.0 // Factor de modificación impulsivo: base empotrada, sobre el terreno (ACI 350.3 Tabla 4.1.1(b))
 Rc = 1.0 // Factor de modificación convectivo
 SDS = 2.5*Z*S // Aceleración espectral de diseño en periodos cortos (meseta E.030)
@@ -721,7 +723,7 @@ hie = (Wi*hi + Wcr*hc)/(Wi + Wcr) // Altura de la masa impulsiva equivalente (EB
 hiep = (Wi*hip + Wcr*hcp)/(Wi + Wcr) // Ídem con presión en el fondo (IBP)
 Mb = sqrt((Pi*hie + Pw*hw + Pr*hr)^2 + (Pc*hc)^2) -> tonf*m // Momento en la base de la pared (Ec. 4-10)
 Mo = sqrt((Pi*hiep + Pw*hw + Pr*hr)^2 + (Pc*hcp)^2) -> tonf*m // Momento de volteo (Ec. 4-13)`),
-      { type: 'tanque', forma: 'circular', tipo: 'apoyado', D: 'D', HL: 'HL', Hw: 'Hw', tw: 'tw', Pi: 'Pi', Pc: 'Pc', dmax: 'dmax', titulo: '' },
+      { type: 'tanque', forma: 'circular', tipo: 'apoyado', D: 'D', HL: 'HL', Hw: 'Hw', tw: 'tw', Pi: 'Pi', Pc: 'Pc', dmax: 'dmax', cubierta: 'sí', titulo: '' },
       calc(`## Tensión anular sísmica (ACI 350.3 Cap. 5 y 6.2)
 yb = HL - yTmax // Nivel de la tensión anular hidrostática máxima, desde la base
 Piy = Pi/2*(4*HL - 6*hie - (6*HL - 12*hie)*yb/HL)/HL^2 -> tonf/m // Fuerza impulsiva por unidad de altura (R5.3.3, media circunferencia)
@@ -843,7 +845,7 @@ check qs <= qadm // Presión de contacto (E.050)`),
   // ===================================================================
   {
     id: 'ma-elevado', pais: 'PE', cat: 'Estructuras especiales', icon: 'column',
-    name: 'Tanque elevado de fuste (Housner / ACI 350.3 + E.030)', normas: 'ACI 350.3-06, ACI 350-06; RNE E.030 (2018), E.060',
+    name: 'Tanque elevado de fuste (Housner / ACI 350.3 + E.030)', normas: 'ACI 350.3-06, ACI 350-06, ACI 371R; RNE E.030 (2018, mod. 2026), E.060',
     desc: 'Tanque elevado de 85 m³ sobre fuste cilíndrico: modelo de dos masas (impulsiva + estructura y convectiva), periodos, espectro E.030, fuerzas, momento de volteo, oleaje y resistencia del fuste.',
     titulo: 'Análisis sísmico y diseño del fuste de tanque elevado de concreto armado — 85 m³',
     blocks: [
@@ -864,7 +866,7 @@ gc = 2.4 tonf/m^3
 fc = 280 kgf/cm^2
 fy = 4200 kgf/cm^2
 Z = 0.45 // Factor de zona ${ZONA}
-U = 1.5 // Factor de uso: reservorio de agua, categoría A (E.030 Tabla 5)
+U = 1.5 // Factor de uso: reservorio de agua, categoría A2 (E.030 Tabla N° 7; Art. 7.3)
 S = 1.05 // Factor de suelo ${SUELO}
 Tp = 0.6 s // ${TP}
 Tl = 2.0 s // ${TL}

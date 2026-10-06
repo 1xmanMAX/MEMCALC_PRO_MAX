@@ -576,6 +576,28 @@ export function errEs(e) {
   return m;
 }
 
+// Unidades aceptadas literalmente; cualquier otro nombre que math.js reconozca como unidad
+// (p. ej. Cs = centisegundo, Ts = terasegundo) y no esté definido como variable es casi
+// seguro un error de tipeo o una variable no definida: se avisa en lugar de calcular en silencio.
+const UNIT_OK = new Set(('m cm mm km um in inch ft yd mi s ms min h hr hour day week year kg g mg t tonne tonf tf kgf gf N kN MN daN lbf kip kipf lb lbm ' +
+  'Pa kPa MPa GPa hPa bar mbar atm psi ksi deg rad grad Hz kHz W kW MW J kJ L l mL ml gal liter litre K degC degF celsius ' +
+  'kWh Wh rpm cc cm3 m3 mm3 m2 cm2 mm2 ton').split(' '));
+const _ucache = new Map();
+function checkUnitNames(node, S) {
+  const params = new Set();
+  node.traverse(x => { if (x.type === 'FunctionAssignmentNode') x.params.forEach(p => params.add(p)); });
+  node.traverse((x, path, parent) => {
+    if (x.type !== 'SymbolNode' || S.has(x.name) || UNIT_OK.has(x.name) || params.has(x.name)) return;
+    if (parent && parent.type === 'FunctionNode' && parent.fn === x) return;
+    if (parent && parent.type === 'AssignmentNode' && parent.object === x) return;
+    let isU = _ucache.get(x.name);
+    if (isU === undefined) { isU = math.Unit.isValuelessUnit(x.name); _ucache.set(x.name, isU); }
+    if (isU) {
+      let desc = ''; try { const u = math.unit(x.name).units[0]; desc = (u.prefix && u.prefix.name ? 'prefijo «' + u.prefix.name + '» + ' : '') + 'unidad «' + u.unit.name + '»'; } catch (e) { /* */ }
+      throw new Error('«' + x.name + '» no está definida como variable y math.js la interpretaría como una unidad (' + desc + '). Defínala antes o use otro nombre.');
+    }
+  });
+}
 const _pcache = new Map();
 function parseCached(code) {
   let r = _pcache.get(code);
@@ -664,6 +686,7 @@ export function runCalc(src, ctx) {
 
       const pc = parseCached(code);
       const node = pc.node;
+      checkUnitNames(node, S);
       let value = pc.code.evaluate(S);
       if (target && typeof value === 'number' && /^(deg|grados)$/.test(target)) {
         value = math.unit(value, 'rad').to('deg'); fixedUnits.set(value, 'deg');
