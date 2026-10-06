@@ -286,9 +286,9 @@ registerBlock('boltgroup', {
     const xsA = F.map(f => f.x).concat([ex]), ysA = F.map(f => f.y).concat([ey]);
     const db = evalParam(b.db, S, LU, 0.019);
     const minx = Math.min(...xsA) - 2.5 * db, maxx = Math.max(...xsA) + 2.5 * db, miny = Math.min(...ysA) - 2.5 * db, maxy = Math.max(...ysA) + 2.5 * db;
-    const sc = Math.min(330 / Math.max(maxx - minx, 1e-9), 260 / Math.max(maxy - miny, 1e-9));
+    const sc = Math.min(290 / Math.max(maxx - minx, 1e-9), 260 / Math.max(maxy - miny, 1e-9));
     const H = Math.max(230, (maxy - miny) * sc + 150);
-    const ox = 200 - (minx + maxx) / 2 * sc, oy = H / 2 + (miny + maxy) / 2 * sc;
+    const ox = 250 - (minx + maxx) / 2 * sc, oy = H / 2 + (miny + maxy) / 2 * sc;
     const X = (x) => ox + x * sc, Y = (y) => oy - y * sc;
     let g = arrowDefs;
     const bx = F.map(f => f.x), by = F.map(f => f.y), pad = 2 * db;

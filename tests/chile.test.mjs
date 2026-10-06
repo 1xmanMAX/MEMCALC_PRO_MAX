@@ -127,6 +127,7 @@ Zk = 2.5 m*(1:5)
 c4 = min(max(CNCh433(0.08 s, S, TpNCh433(4), nNCh433(4), Ao, 4), CminNCh433(S, Ao)), CmaxNCh433(4, S, Ao))
 c7 = min(max(CNCh433(0.08 s, S, TpNCh433(4), nNCh433(4), Ao, 7), CminNCh433(S, Ao)), CmaxNCh433(7, S, Ao))
 cmin = CminNCh433(S, Ao)
+cy = CNCh433(0.12 s, S, TpNCh433(4), nNCh433(4), Ao, 4)
 Q4 = c4*INCh433(2)*P
 Q7 = c7*INCh433(2)*P
 Ak = AkNCh433(Zk)
@@ -136,6 +137,7 @@ Mt = F4 .* ex`);
   near('Meriño: Cmáx (R = 4, suelo D, zona 3) = 0,264', g('c4'), 0.264, 0.002);
   near('Meriño: Cmáx (R = 7) = 0,168', g('c7'), 0.168, 0.002);
   near('Meriño: Cmín = 0,080', g('cmin'), 0.080, 0.002);
+  near('Meriño: CY sin límites (T*y = 0,12 s, R = 4) = 11,193 (ec. 6-2)', g('cy'), 11.193, 0.001);
   near('Meriño: Qbx (R = 4) = 241,45 tonf', g('Q4', 'tonf'), 241.45, 0.001);
   near('Meriño: Qbx (R = 7) = 153,65 tonf', g('Q7', 'tonf'), 153.65, 0.001);
   const Ak = g('Ak').toArray(), F = g('F4').toArray().map(u => u.toNumber('tonf')), Mt = g('Mt').toArray().map(u => u.toNumber('tonf*m'));
