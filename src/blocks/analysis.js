@@ -1034,7 +1034,7 @@ function drawDiagram(md, sets, key, W, opts = {}) {
   md.nodes.forEach(n => { const [x, y] = P(v, n); lb.add(x, y, 8, 8); });
   g += membersLine(md, v, '#c3ccd5', 1.4);
   md.nodes.forEach((n, i) => { g += supportGlyph(md, i, v, '#9aa5b1'); });
-  const labels = [];
+  const labels = [], dense = md.mems.length * sets.length > 36;
   sets.forEach((set, si) => {
     md.mems.forEach((m, mi) => {
       const vals = set.mf[mi][key];
@@ -1046,10 +1046,16 @@ function drawDiagram(md, sets, key, W, opts = {}) {
       const d = `M${a[0].toFixed(1)},${a[1].toFixed(1)} ` + pts.map(q => 'L' + q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' ') + ` L${b[0].toFixed(1)},${b[1].toFixed(1)} Z`;
       if (vals.some(x => Math.abs(x) > amax * 1e-4)) g += `<path d="${d}" fill="${fill}" stroke="${col}" stroke-width="1.3" stroke-linejoin="round"${si ? ' stroke-dasharray="4 2.5"' : ''}/>`;
       // valores rotulados: extremos de barra y extremo interior
-      const idx = new Set([0, vals.length - 1]);
-      let imax = 0, imin = 0; vals.forEach((x, p) => { if (x > vals[imax]) imax = p; if (x < vals[imin]) imin = p; });
-      const endMax = Math.max(Math.abs(vals[0]), Math.abs(vals[vals.length - 1]));
-      for (const p of [imax, imin]) if (p > 0 && p < vals.length - 1 && Math.abs(vals[p]) > 1.03 * Math.abs(vals[0] + (vals[vals.length - 1] - vals[0]) * m.st[p][0] / m.L) && Math.abs(vals[p]) > 0.05 * amax) idx.add(p);
+      // extremos rotulados: caras de los nudos si hay zonas rígidas
+      let e0 = 0, e1 = vals.length - 1;
+      while (e0 < e1 && m.st[e0][0] < (m.zi || 0) - 1e-9) e0++;
+      while (e1 > e0 && m.st[e1][0] > m.L - (m.zj || 0) + 1e-9) e1--;
+      const idx = new Set([e0, e1]);
+      let imax = e0, imin = e0; for (let p = e0; p <= e1; p++) { if (vals[p] > vals[imax]) imax = p; if (vals[p] < vals[imin]) imin = p; }
+      const endMax = Math.max(Math.abs(vals[e0]), Math.abs(vals[e1]));
+      for (const p of [imax, imin]) if (p > e0 && p < e1 && Math.abs(vals[p]) > 1.03 * Math.abs(vals[e0] + (vals[e1] - vals[e0]) * (m.st[p][0] - m.st[e0][0]) / Math.max(1e-9, m.st[e1][0] - m.st[e0][0])) && Math.abs(vals[p]) > 0.05 * amax) idx.add(p);
+      // pórticos grandes: solo el valor gobernante de cada barra
+      if (dense && key !== 'N') { const pg = Math.abs(vals[imax]) >= Math.abs(vals[imin]) ? imax : imin; idx.clear(); idx.add(pg); }
       let nLab = 0;
       // N: un solo rótulo por barra (valor de mayor magnitud, al centro); V constante: al centro
       if (key === 'N') { let ib = 0; vals.forEach((x, p) => { if (Math.abs(x) > Math.abs(vals[ib])) ib = p; }); idx.clear(); idx.add(Math.floor(vals.length / 2)); nLab = vals[ib]; }
@@ -1057,9 +1063,9 @@ function drawDiagram(md, sets, key, W, opts = {}) {
       for (const p of idx) {
         const val = key === 'N' ? nLab : vals[p];
         // rótulos de extremo pequeños (< 6 % del máximo) se omiten si no son el valor gobernante de la barra
-        if (Math.abs(val) < 0.004 * amax || ((p === 0 || p === vals.length - 1) && key !== 'N' && Math.abs(val) < 0.06 * amax && Math.abs(val) < 0.999 * endMax)) continue;
+        if (Math.abs(val) < 0.004 * amax || ((p === e0 || p === e1) && key !== 'N' && Math.abs(val) < 0.06 * amax && Math.abs(val) < 0.999 * endMax)) continue;
         const q = pts[p], sg = val >= 0 ? 1 : -1;
-        labels.push({ x: q[0], y: q[1], nx: ny[0] * sg, ny: ny[1] * sg, val, end: p === 0 || p === vals.length - 1, mem: mi, tx: m.st[p][0] / m.L, ex, ey });
+        labels.push({ x: q[0], y: q[1], nx: ny[0] * sg, ny: ny[1] * sg, val, end: p === e0 || p === e1, mem: mi, tx: m.st[p][0] / m.L, ex, ey });
       }
     });
   });
@@ -1154,7 +1160,7 @@ function drawModes(md, modal, W) {
     let rh = 0; const row = [];
     ms.slice(r * cols, r * cols + cols).forEach((q, k) => {
       const v = makeView(md.nodes, pw, { pl: 26, pr: 26, pt: 40, pb: 22, maxH: 300, minH: 120 });
-      const amp = 0.12 * v.span;
+      const amp = 0.08 * v.span;
       let p = membersLine(md, v, '#c3ccd5', 1.1).replace(/\/>/g, ' stroke-dasharray="3 3"/>');
       md.nodes.forEach((n, i) => { p += supportGlyph(md, i, v, '#9aa5b1'); });
       for (const m of md.mems) {
@@ -1234,8 +1240,15 @@ export function analyzeFrame(b, S) {
   sol.res.forEach(r => sets.set(r.name, { name: r.name, u: r.u, R: r.R, mf: r.mf, eq: r.eq, kind: 'caso' }));
   const mk = (f, name, txt) => {
     let r;
-    if (md.pdelta) { r = solveFrame(md, 40, { cases: [comboCase(md, f, name)], pdelta: true }).res[0]; }
-    else { r = combine(sol, f, name, md); r.eq = [0, 1, 2].map(d => sol.res.reduce((t, q) => t + (f[q.name] || 0) * q.eq[d], 0)); }
+    const lin = () => { const q = combine(sol, f, name, md); q.eq = [0, 1, 2].map(d => sol.res.reduce((t, c) => t + (f[c.name] || 0) * c.eq[d], 0)); return q; };
+    if (md.pdelta) {
+      try { r = solveFrame(md, 40, { cases: [comboCase(md, f, name)], pdelta: true }).res[0]; } catch (e) {
+        // inestabilidad de 2.º orden: se informa como verificación que no cumple y se conservan los resultados de 1.er orden
+        if (!/P-Δ/.test(e.message)) throw e;
+        r = lin(); const ux1 = Math.max(...md.nodes.map((n, i) => Math.abs(r.u[3 * i])));
+        r.pd = { it: 0, ux1, ux2: NaN, amp: 99, fail: e.message };
+      }
+    } else r = lin();
     r.kind = 'comb'; r.txt = txt; return r;
   };
   let combos = md.combos;
@@ -1482,9 +1495,14 @@ function renderFrame(b, ctx) {
   if (md.pdelta) {
     const pr = combSets.filter(q => q.pd);
     html += `<div class="dt">Análisis de segundo orden P-Δ (matriz geométrica, iterativo)</div><table class="tbl"><thead><tr><th>Combinación</th><th>Iteraciones</th><th>|ux| máx. 1.er orden [mm]</th><th>|ux| máx. P-Δ [mm]</th><th>Amplificación</th></tr></thead><tbody>` +
-      pr.map(q => `<tr><td>${esc(q.name)}</td><td>${q.pd.it}</td><td>${fx(q.pd.ux1 * 1000, 3)}</td><td>${fx(q.pd.ux2 * 1000, 3)}</td><td>${f2(q.pd.amp, 3)}</td></tr>`).join('') + '</tbody></table>';
+      pr.map(q => `<tr><td>${esc(q.name)}</td><td>${q.pd.fail ? '—' : q.pd.it}</td><td>${fx(q.pd.ux1 * 1000, 3)}</td><td>${q.pd.fail ? '<span class="bad">inestable</span>' : fx(q.pd.ux2 * 1000, 3)}</td><td>${q.pd.fail ? '<span class="bad">✘ P ≥ P<sub>cr</sub></span>' : f2(q.pd.amp, 3)}</td></tr>`).join('') + '</tbody></table>';
     const amp = Math.max(1, ...pr.map(q => q.pd.amp));
     setVar(ctx, 'ampPD' + sfx, amp);
+    const fl = pr.filter(q => q.pd.fail);
+    if (fl.length) {
+      ctx.checks.push({ ok: false, label: 'Estabilidad de 2.º orden (P-Δ): las combinaciones ' + fl.map(q => q.name).join(', ') + ' superan la carga crítica (se muestran sus resultados de 1.er orden)', ratio: 99, block: ctx.blockId });
+      html += `<div class="ln chk cbad"><div class="cm"><span class="bad">✘ ${esc(fl[0].pd.fail)}</span></div></div>`;
+    }
   }
   // análisis modal
   if (modal) {

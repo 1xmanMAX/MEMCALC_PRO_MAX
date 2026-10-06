@@ -793,8 +793,9 @@ qst = Ko*ws -> tonf/m^2 // Presión de la sobrecarga
       calc(`# Diseño de las paredes (por metro)
 bar = 4 // Varilla [3 : 3/8"|4 : 1/2"|5 : 5/8"]
 d = tw - rec - db(bar)/2 // Peralte efectivo
-fs = 1.3*1.7 // Coeficiente sanitario × factor de carga
-As(Mx) = 0.85*fc/fy*(1 - sqrt(1 - 2*(fs*Mx*1 m/(0.9*100 cm*d^2))/(0.85*fc)))*100 cm*d/(1 m) // Acero requerido para un momento por metro
+fs = 1.3*1.7 // Factor total en flexión: PCA 1.7 × 1.30 (≈ ACI 350-06: 1.4 × Sd ≈ 1.4 × 1.5)
+As(Mx) = 0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*(fs*Mx*1 m/(0.9*100 cm*d^2))/(0.85*fc))))*100 cm*d/(1 m) // Acero requerido para un momento por metro
+rhomax = 0.75*0.85*0.85*fc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy) // Cuantía máxima 0.75 ρb (β1 = 0.85)
 ## Refuerzo vertical
 Mvi = max(MyNa, MyPs) -> tonf*m/m // Cara interior: base con agua / tramo con suelo
 Mve = max(MyPa, MyNs) -> tonf*m/m // Cara exterior: tramo con agua / base con suelo
@@ -810,6 +811,7 @@ Mhi = max(MxNa, MxNc, MxPs) -> tonf*m/m // Cara interior: esquinas con agua / tr
 Mhe = max(MxPa, MxPc, MxNs) -> tonf*m/m // Cara exterior: tramo con agua / esquinas con suelo
 Ashi = As(Mhi) -> cm^2/m
 Ashe = As(Mhe) -> cm^2/m
+check max(Asvi, Asve, Ashi, Ashe) <= rhomax*100 cm*d/(1 m) // Espesor de pared suficiente: ρ ≤ 0.75 ρb
 check Asp >= max(Ashi, Asmin) // Refuerzo horizontal, cara interior
 check Asp >= max(Ashe, Asmin) // Refuerzo horizontal, cara exterior
 ## Cortante en la base de la pared
@@ -822,7 +824,8 @@ wlt = 0.25 tonf/m^2 // Sobrecarga del techo (E.020)
 wu = 1.4*wt + 1.7*wlt -> tonf/m^2 // Carga última (E.060 9.2)`),
       { type: 'tankwall', a: 'Li + tw', b: 'Bi + tw', inf: 'articulado', sup: 'articulado', lat: 'articulado', qb: 'wu', qs: 'wu', hq: '', nu: '0.2', ndiv: '20', sufijo: 't', titulo: 'Losa de techo con carga última uniforme (momentos en la luz menor = My)' },
       calc(`dt = tt - 3 cm // Peralte efectivo de la losa de techo
-Ast = (0.85*fc/fy*(1 - sqrt(1 - 2*(MyPt*1 m/(0.9*100 cm*dt^2))/(0.85*fc)))*100 cm*dt)/(1 m) -> cm^2/m // Ya incluye factores de carga
+Ast = (0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*(MyPt*1 m/(0.9*100 cm*dt^2))/(0.85*fc))))*100 cm*dt)/(1 m) -> cm^2/m // Ya incluye factores de carga
+check Ast <= rhomax*100 cm*dt/(1 m) // Espesor de la losa de techo suficiente
 Asmt = 0.0018*tt*1 m/m -> cm^2/m // Mínimo por temperatura (E.060 9.7.2)
 Astc = Ab(3)/(20 cm) -> cm^2/m // φ 3/8" @ 20 cm en ambas direcciones
 check Astc >= max(Ast, Asmt) // Refuerzo de la losa de techo

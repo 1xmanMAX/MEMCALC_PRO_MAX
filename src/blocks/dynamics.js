@@ -24,7 +24,8 @@ const UL = () => ({ tec: 'cm', si: 'mm', us: 'in' }[sys()] || 'cm');
 const UF = () => ({ tec: 'tonf', si: 'kN', us: 'kip' }[sys()] || 'tonf');
 const UM = () => ({ tec: 'tonf*m', si: 'kN*m', us: 'kip*ft' }[sys()] || 'tonf*m');
 const UV = () => ({ tec: 'cm/s', si: 'mm/s', us: 'in/s' }[sys()] || 'cm/s');
-const UPHI = () => ({ tec: '1/m', si: '1/m', us: '1/in' }[sys()] || '1/m');
+const UPHI = () => ({ tec: 'm^-1', si: 'm^-1', us: 'in^-1' }[sys()] || 'm^-1');
+const LPHI = () => (sys() === 'us' ? '1/in' : '1/m');
 const conv = (v, from, to) => v / math.unit(1, to).toNumber(from);
 const nL = (m) => conv(m, 'm', UL()), nF = (N) => conv(N, 'N', UF()), nM = (Nm) => conv(Nm, 'N*m', UM()), nV = (v) => conv(v, 'm/s', UV());
 const lab = (u) => u.replace('*', '·');
@@ -203,7 +204,7 @@ registerBlock('thsdof', {
       const u0 = peakAt(lin.u).v;
       if (!nl) return { ...lin, u0 };
       const fy = CyIn > 0 ? CyIn * G : w * w * u0 / RyIn;
-      const r = newmarkNL(rec.ag, rec.dt, w, z, fy, alpha);
+      const r = newmarkNL(rec.ag, rec.dt, w, z, fy, alpha, met === 'lin' ? 1 / 6 : 0.25);
       return { ...r, u0, fy, lin };
     });
     const dt = rec.dt, N = rec.ag.length, dur = (N - 1) * dt;
@@ -336,8 +337,8 @@ registerBlock('respspec', {
       sp.forEach((s, j) => { g += P(pathXY(Ts, [pn.z0, ...s.map(pn.f)], fr), COLS[j % COLS.length], 1.4); });
       if (Tref > 0 && Tref <= Tmax) { g += Lne(fr.X(Tref), top, fr.X(Tref), top + ph, C.orange, 0.9, '3 3'); g += dot(fr.X(Tref), fr.Y(pn.f(rT[i5])), C.orange); }
     });
-    g += legend(60, top + ph + 42, [...zs.map((z, j) => [`ζ = ${f2(z * 100, 1)} %`, COLS[j % COLS.length]]), ...(hasDis ? [['Espectro de diseño (expresión)', C.ink, '6 3']] : []), ...(Tref > 0 ? [[`T1 = ${f2(Tref, 3)} s`, C.orange, '3 3']] : [])].slice(0, 6).map((x, i, a) => x).slice(0, 3));
-    if (zs.length + (hasDis ? 1 : 0) + (Tref > 0 ? 1 : 0) > 3) g += legend(300, top + ph + 42, [...zs.map((z, j) => [`ζ = ${f2(z * 100, 1)} %`, COLS[j % COLS.length]]), ...(hasDis ? [['Espectro de diseño (expresión)', C.ink, '6 3']] : []), ...(Tref > 0 ? [[`T1 = ${f2(Tref, 3)} s`, C.orange, '3 3']] : [])].slice(3, 6));
+    const items = [...zs.map((z, j) => [`ζ = ${f2(z * 100, 1)} %`, COLS[j % COLS.length]]), ...(hasDis ? [['Espectro de diseño', C.ink, '6 3']] : []), ...(Tref > 0 ? [[`T1 = ${f2(Tref, 3)} s`, C.orange, '3 3']] : [])];
+    for (let c = 0; c * 3 < items.length; c++) g += legend(60 + c * 220, top + ph + 42, items.slice(c * 3, c * 3 + 3));
     const Hh = top + ph + 42 + 3 * 13 + 4;
     let h = `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || `Espectros de respuesta de ${rec.name}` + (hasDis ? ' y espectro de diseño' : ''))}</div>`;
     h += txt(`Para cada periodo ${K('T_n')} se integra ${K('\\ddot u + 2\\zeta\\omega_n\\dot u + \\omega_n^2 u = -\\ddot u_g(t)')} con la recurrencia exacta de Nigam-Jennings (excitación lineal por tramos, ${K(`\\Delta t = ${f2(rec.dt, 4)}`)} s) incluyendo ${K('\\approx T_n')} de vibración libre después del registro; ${K('S_d = D = \\max|u|')}, ${K('S_v = \\omega_n D')}, ${K('S_a = \\omega_n^2 D')} (Chopra §6.6). Rejilla logarítmica de ${per.length} periodos entre 0.02 y ${f2(Tmax, 2)} s.`);
@@ -600,9 +601,7 @@ registerBlock('pushover', {
     // estado por entrepiso
     const lvlOf = (d) => { const L = levels.find(l => d <= l.lim); return L ? L.id : '> ' + (levels[levels.length - 1] || { id: '' }).id; };
     const rows = []; for (let i = n - 1; i >= 0; i--) { const Vi = obj.Vb * po.Sx[i], dy = Vy[i] / k[i] * (fcr > 0 ? (fcr + (1 - fcr) / r2) : 1); rows.push([String(i + 1), f2(nF(Vi), 1), f2(nF(Vy[i]), 1), f2(Vi / Vy[i], 3), f2(nL(obj.dr[i]), 2), f2(obj.dr[i] / dy, 2), f2(drr[i], 5), lvlOf(drr[i])]); }
-    h += tableHtml(ctx, `Estado de los entrepisos en el desplazamiento objetivo (${mlbl[met]}: ${f2(nL(dobj), 2)} ${UL()}, Vb = ${f2(nF(obj.Vb), 1)} ${lab(UF())})`, ['Entrepiso', K('V_i') + ` [${lab(UF())}]`, K('V_{y,i}') + ` [${lab(UF())}]`, K('V_i/V_{y,i}'), K('\\delta_i') + ` [${UL()}]`, K('\\mu_i = \\delta_i/\\delta_{y,i}'), K('\\delta_i/h_i'), 'Nivel']);
-    h = h.replace(/<\/tbody><\/table><\/div>$/, '') ; // (se cierra abajo)
-    h += rows.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>';
+    h += tableHtml(ctx, `Estado de los entrepisos en el desplazamiento objetivo (${mlbl[met]}: ${f2(nL(dobj), 2)} ${UL()}, Vb = ${f2(nF(obj.Vb), 1)} ${lab(UF())})`, ['Entrepiso', K('V_i') + ` [${lab(UF())}]`, K('V_{y,i}') + ` [${lab(UF())}]`, K('V_i/V_{y,i}'), K('\\delta_i') + ` [${UL()}]`, K('\\mu_i = \\delta_i/\\delta_{y,i}'), K('\\delta_i/h_i'), 'Nivel'], rows);
     h += txt(`Ductilidad global ${K(`\\mu = u_t/(\\Gamma d_y^*) = ${f2(nL(dobj), 2)}/${f2(nL(dyRoof), 2)} = ${f2(mu, 2)}`)}; deriva máxima ${K(`(\\delta/h)_{max} = ${f2(drMax, 5)}`)} → nivel alcanzado: <b>${reached ? esc(reached.id + (reached.d ? ' — ' + reached.d : '')) : 'más allá de ' + esc((levels[levels.length - 1] || { id: '' }).id)}</b>. Niveles: ${levels.map(l => `${esc(l.id)} ${f2(l.lim * 100, 2)} %`).join(' · ')}.`);
     h += chkLine(ctx, within, `u_t = ${f2(nL(dobj), 2)} \\le u_{cap} = ${f2(nL(dEnd), 2)}\\;\\mathrm{${UL()}}`, `Desplazamiento objetivo (${mlbl[met]}) dentro de la capacidad de la curva`, dobj / dEnd);
     if (lvl) h += chkLine(ctx, drMax <= lvl.lim, `(\\delta/h)_{max} = ${f2(drMax, 5)} \\le ${f2(lvl.lim, 4)}`, `Deriva en el punto de desempeño ≤ límite del nivel ${lvl.id}${lvl.d ? ' (' + lvl.d + ')' : ''}`, drMax / lvl.lim);
@@ -665,7 +664,7 @@ registerBlock('momcurv', {
     const phiY = R.phiY, phiU = R.ult.phi, muphi = phiU / phiY, thp = (phiU - phiY) * Lp;
     const Dy = phiY * Lmm * Lmm / 3, Dp = thp * (Lmm - Lp / 2), muD = 1 + Dp / Dy;
     // unidades de salida
-    const UMm = UM(), Mout = (Nmm) => conv(Nmm / 1000, 'N*m', UMm), phiOut = (pm) => conv(pm * 1000, '1/m', UPHI());
+    const UMm = UM(), Mout = (Nmm) => conv(Nmm / 1000, 'N*m', UMm), phiOut = (pm) => conv(pm * 1000, 'm^-1', UPHI());
     const ex = (n, v) => setVar(ctx, n + sf, v);
     const uMom = (Nmm) => math.unit(Mout(Nmm), UMm), uPhi = (pm) => math.unit(phiOut(pm), UPHI());
     if (R.cr) { ex('Mcr', uMom(R.cr.M)); ex('phicr', uPhi(R.cr.phi)); }
@@ -676,7 +675,7 @@ registerBlock('momcurv', {
     const W = 720, top = 26;
     let g = '';
     const xs = R.pts.map(q => phiOut(q.phi)), ys = R.pts.map(q => Mout(q.M));
-    { const fr = frame(62, top, 330, 230, [0, Math.max(...xs) * 1.05], [0, Math.max(...ys) * 1.18], { title: 'Diagrama momento–curvatura', xl: `φ [${UPHI()}]`, yl: `M [${lab(UMm)}]`, nx: 5, ny: 5, xf: t => fe(t, 2), yf: t => f2(t, 0) });
+    { const fr = frame(62, top, 330, 230, [0, Math.max(...xs) * 1.05], [0, Math.max(...ys) * 1.18], { title: 'Diagrama momento–curvatura', xl: `φ [${LPHI()}]`, yl: `M [${lab(UMm)}]`, nx: 5, ny: 5, xf: t => fe(t, 2), yf: t => f2(t, 0) });
       g += fr.g + P(pathXY(xs, ys, fr), C.blue, 2);
       g += P(`M${fr.X(0)},${fr.Y(0)}L${fr.X(phiOut(phiY)).toFixed(1)},${fr.Y(Mout(R.Mn.M)).toFixed(1)}L${fr.X(phiOut(phiU)).toFixed(1)},${fr.Y(Mout(R.ult.M)).toFixed(1)}`, C.red, 1.2, '5 3');
       const pt = (q, lbl, c, dy0 = -8) => q ? dot(fr.X(phiOut(q.phi)), fr.Y(Mout(q.M)), c) + TX(fr.X(phiOut(q.phi)) + 5, fr.Y(Mout(q.M)) + dy0, lbl, { fs: 9, a: 'start', c }) : '';
@@ -721,7 +720,7 @@ registerBlock('momcurv', {
     rows.push(['Nominal', K('M_n'), fmtM(R.Mn.M), fmtP(R.Mn.phi), 'εc = 0.004 o εs = 0.015']);
     rows.push(['Fluencia equivalente', K("\\varphi_y = \\varphi'_y M_n/M'_y"), fmtM(R.Mn.M), fmtP(phiY), 'bilineal de Priestley']);
     rows.push(['Última', K('M_u,\\;\\varphi_u'), fmtM(R.ult.M), fmtP(phiU), R.fail || '']);
-    h += tableHtml(ctx, 'Puntos característicos del diagrama M–φ', ['Estado', 'Símbolo', `M [${lab(UMm)}]`, `φ [${UPHI()}]`, 'Criterio'], rows);
+    h += tableHtml(ctx, 'Puntos característicos del diagrama M–φ', ['Estado', 'Símbolo', `M [${lab(UMm)}]`, `φ [${LPHI()}]`, 'Criterio'], rows);
     h += txt(`Ductilidad de curvatura ${K(`\\mu_\\varphi = \\varphi_u/\\varphi_y = ${f2(muphi, 2)}`)}. Longitud de rótula plástica (Paulay y Priestley 1992) ${K(`L_p = 0.08L + 0.022d_bf_y = 0.08(${f2(Lmm, 0)}) + 0.022(${f2(dbl, 1)})(${f2(fy, 0)}) = ${f2(Lp, 0)}\\;\\mathrm{mm}`)} ${K('\\ge 0.044d_bf_y')}; rotación plástica ${K(`\\theta_p = (\\varphi_u - \\varphi_y)L_p = ${f2(thp, 4)}\\;\\mathrm{rad}`)}; voladizo equivalente: ${K(`\\Delta_y = \\varphi_yL^2/3 = ${f2(nL(Dy / 1000), 2)}\\;\\mathrm{${UL()}}`)}, ${K(`\\Delta_p = \\theta_p(L - L_p/2) = ${f2(nL(Dp / 1000), 2)}\\;\\mathrm{${UL()}}`)}, ${K(`\\mu_\\Delta = 1 + \\Delta_p/\\Delta_y = ${f2(muD, 2)}`)}.`);
     const mureq = String(b.mureq || '').trim() ? scal(b.mureq, S) : 0;
     if (mureq > 0) h += chkLine(ctx, muphi >= mureq, `\\mu_\\varphi = ${f2(muphi, 2)} \\ge ${f2(mureq, 2)}`, 'Ductilidad de curvatura disponible ≥ requerida', mureq / muphi);

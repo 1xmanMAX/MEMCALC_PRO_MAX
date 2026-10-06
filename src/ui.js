@@ -214,13 +214,13 @@ function newDoc(tpl) {
   const prev = doc && doc.meta ? doc.meta : loadMetaDefaults();
   return {
     id: uid(), v: 1, created: Date.now(), updated: Date.now(),
-    meta: { titulo: t.titulo, proyecto: prev.proyecto || '', cliente: prev.cliente || '', ubicacion: prev.ubicacion || '', autor: prev.autor || '', cip: prev.cip || '', revisor: prev.revisor || '', empresa: prev.empresa || '', normas: t.normas || 'RNE — NTE E.020, E.060', fecha: today, rev: '0', logo: prev.logo || '' },
+    meta: { titulo: t.titulo, proyecto: prev.proyecto || '', cliente: prev.cliente || '', ubicacion: prev.ubicacion || '', autor: prev.autor || '', cip: prev.cip || '', revisor: prev.revisor || '', aprobador: prev.aprobador || '', cipaprob: prev.cipaprob || '', empresa: prev.empresa || '', normas: t.normas || 'RNE — NTE E.020, E.060', fecha: today, rev: '0', logo: prev.logo || '' },
     settings: { ...DEF_SETTINGS, ...(t.settings || {}) },
     blocks: JSON.parse(JSON.stringify(t.blocks)).map(b => ({ ...b, id: uid() })),
   };
 }
 function loadMetaDefaults() { try { return JSON.parse(localStorage.getItem('mc_meta') || '{}'); } catch (e) { return {}; } }
-function saveMetaDefaults() { try { const m = doc.meta; localStorage.setItem('mc_meta', JSON.stringify({ proyecto: m.proyecto, cliente: m.cliente, ubicacion: m.ubicacion, autor: m.autor, cip: m.cip, revisor: m.revisor, empresa: m.empresa, logo: m.logo })); } catch (e) { /* cuota */ } }
+function saveMetaDefaults() { try { const m = doc.meta; localStorage.setItem('mc_meta', JSON.stringify({ proyecto: m.proyecto, cliente: m.cliente, ubicacion: m.ubicacion, autor: m.autor, cip: m.cip, revisor: m.revisor, aprobador: m.aprobador, cipaprob: m.cipaprob, empresa: m.empresa, logo: m.logo })); } catch (e) { /* cuota */ } }
 
 // ---------------- Almacenamiento (IndexedDB) ----------------
 let dbp = null;
@@ -1035,6 +1035,7 @@ function renderProject() {
     <div class="sec" style="margin-top:0">Datos del proyecto (portada y encabezado)</div>
     ${inp('titulo', 'Título de la memoria', 1)}${inp('proyecto', 'Proyecto', 1)}${inp('cliente', 'Cliente / Entidad')}${inp('ubicacion', 'Ubicación')}
     ${inp('autor', 'Elaborado por')}${inp('cip', 'Reg. CIP')}${inp('revisor', 'Revisado por')}${inp('empresa', 'Empresa / Consultora')}
+    ${inp('aprobador', 'Aprobado por')}${inp('cipaprob', 'Reg. CIP (aprobador)')}
     ${inp('fecha', 'Fecha')}${inp('rev', 'Revisión')}${inp('normas', 'Normativa aplicada', 1)}
     <label class="w">Logo<div class="logo-p">${m.logo ? `<img src="${m.logo}" alt="">` : ''}<button class="btn" data-logo>${m.logo ? 'Cambiar' : 'Cargar logo'}</button>${m.logo ? '<button class="btn ghost" data-nologo>Quitar</button>' : ''}</div></label>
     <div class="sec">Presentación</div>

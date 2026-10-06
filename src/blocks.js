@@ -422,7 +422,7 @@ export function blockPM(b, ctx) {
   let maxDC = 0;
   dem.forEach(d => {
     const cm = capM(d.P);
-    d.cap = cm; d.dc = (cm === null || d.P > phiC * Pmax / 1000) ? Infinity : d.M / Math.max(cm, 1e-9);
+    const pmx = phiC * Pmax / 1000; d.cap = cm; d.dc = d.P > pmx ? Math.max(d.P / pmx, 1.01) : cm === null ? 9.99 : d.M / Math.max(cm, 1e-9);
     if (d.M === 0 && cm !== null) d.dc = d.P > 0 ? d.P / (phiC * Pmax / 1000) : 0;
     maxDC = Math.max(maxDC, d.dc);
   });

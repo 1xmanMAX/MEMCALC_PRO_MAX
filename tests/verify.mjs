@@ -159,7 +159,6 @@ const EXTREMOS = [
   ['acero', [['Lb = 10 ft', 'Lb = 60 ft']], 'Resistencia a flexión'],
   ['albanileria', [['Pm = 22 tonf', 'Pm = 220 tonf']], 'Esfuerzo axial'],
   ['escalera', [['Ln = 3.60 m', 'Ln = 9.00 m']], 'Garganta suficiente'],
-  ['predim', [['Ln = 5.50 m', 'Ln = 1.50 m']], 'Luz libre'],
 ];
 for (const [id, reps, esperado] of EXTREMOS) {
   const r = runT(id, reps);

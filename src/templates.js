@@ -162,7 +162,7 @@ Ast = (2*nx + 2*ny)*Ab(bar) // Acero longitudinal total
 rhog = Ast/Ag // Cuantía
 check rhog >= 0.01 // Cuantía mínima (E.060 10.9.1 y 21.6.3.1)
 check rhog <= 0.06 // Cuantía máxima (E.060 10.9.1 y 21.6.3.1)
-check DCpm <= 1.0 // Todas las combinaciones dentro del diagrama
+check min(DCpm, 99) <= 1.0 // Todas las combinaciones dentro del diagrama (D/C = 99 si alguna Pu excede φPn,máx)
 check min(b, h) >= 25 cm // Dimensión menor de la sección ≥ 250 mm (E.060 21.6.1.2)
 check min(b, h)/max(b, h) >= 0.25 // Relación entre dimensiones ≥ 0.25 (E.060 21.6.1.3)
 ## Confinamiento sísmico — pórticos y dual tipo II (E.060 Art. 21.6.4)

@@ -109,7 +109,9 @@ Mp = Fy*Zx -> kip*ft // Momento plástico (F2-1)
 Lp = 1.76*ry*sqrt(E/Fy) -> ft // Longitud límite plástica (F2-5)
 Lr = 1.95*rts*E/(0.7*Fy)*sqrt(J/(Sx*ho) + sqrt((J/(Sx*ho))^2 + 6.76*(0.7*Fy/E)^2)) -> ft // Longitud límite inelástica, c = 1 (F2-6)
 Fcrb = Cb*pi^2*E/(L/rts)^2*sqrt(1 + 0.078*J/(Sx*ho)*(L/rts)^2) -> ksi // Esfuerzo crítico de PLT elástico (F2-4)
-Mltb = si(L <= Lp, Mp, si(L <= Lr, min(Cb*(Mp - (Mp - 0.7*Fy*Sx)*(L - Lp)/(Lr - Lp)), Mp), min(Fcrb*Sx, Mp))) -> kip*ft // Pandeo lateral-torsional (F2-1 a F2-3)
+Minel = min(Cb*(Mp - (Mp - 0.7*Fy*Sx)*(L - Lp)/(Lr - Lp)), Mp) -> kip*ft // PLT inelástico, Lp < Lb ≤ Lr (F2-2)
+Mel = min(Fcrb*Sx, Mp) -> kip*ft // PLT elástico, Lb > Lr (F2-3)
+Mltb = si(L <= Lp, Mp, si(L <= Lr, Minel, Mel)) -> kip*ft // Pandeo lateral-torsional (F2-1 a F2-3)
 Mflb = si(lambdaf <= lambdapf, Mp, Mp - (Mp - 0.7*Fy*Sx)*(lambdaf - lambdapf)/(lambdarf - lambdapf)) -> kip*ft // Pandeo local del ala (F3-1)
 phiMnx = 0.90*min(Mltb, Mflb) -> kip*ft // Resistencia de diseño eje mayor (F1)
 # Flexión respecto al eje menor (F6)
@@ -120,7 +122,10 @@ phiMny = 0.90*Mny -> kip*ft // Resistencia de diseño eje menor
 Pr_Pc = Pu/phiPn // Relación de carga axial
 ratio = si(Pr_Pc >= 0.2, Pr_Pc + 8/9*(Mux/phiMnx + Muy/phiMny), Pr_Pc/2 + Mux/phiMnx + Muy/phiMny) // H1-1a si Pr/Pc ≥ 0.2; si no H1-1b
 check ratio <= 1.0 // Ecuación de interacción H1-1
-ratio_lib = H1(Pu, 0.9*PnE3(perfil, Fy, Lc, Lc, E), Mux, 0.9*MnW(perfil, Fy, L, Cb, E), Muy, 0.9*MnyW(perfil, Fy, E)) // Control con funciones de librería
+phiPn_l = 0.9*PnE3(perfil, Fy, Lc, Lc, E) -> kip // Control: φPn con la función de librería (E3/E7)
+phiMx_l = 0.9*MnW(perfil, Fy, L, Cb, E) -> kip*ft // Control: φMnx (F2/F3)
+phiMy_l = 0.9*MnyW(perfil, Fy, E) -> kip*ft // Control: φMny (F6)
+ratio_lib = H1(Pu, phiPn_l, Mux, phiMx_l, Muy, phiMy_l) // Control con funciones de librería
 "Referencia AISC H.1A (con valores de tablas redondeados φPn = 1130 kip, φMnx = 642 kip·ft, φMny = 311 kip·ft): relación = 0.928.`),
       summary(),
     ],
@@ -466,7 +471,10 @@ check Mup <= phiMnu // Flexión por levante 0.9D − 1.3W
 # Cortante (AISI S100-16 G2.1)
 kv = 5.34 // Alma sin atiesadores
 ht = (d - 2*t)/t // Esbeltez del alma
-Fv = si(ht <= sqrt(E*kv/Fy), 0.6*Fy, si(ht <= 1.51*sqrt(E*kv/Fy), 0.6*sqrt(E*kv*Fy)/ht, 0.904*E*kv/ht^2)) // Esfuerzo nominal de corte (G2.1-2 a G2.1-4)
+lv = sqrt(E*kv/Fy) // Límite de esbeltez del alma √(Ekv/Fy)
+Fv2 = 0.6*sqrt(E*kv*Fy)/ht // Pandeo inelástico (G2.1-3)
+Fv3 = 0.904*E*kv/ht^2 // Pandeo elástico (G2.1-4)
+Fv = si(ht <= lv, 0.6*Fy, si(ht <= 1.51*lv, Fv2, Fv3)) // Esfuerzo nominal de corte (G2.1-2 a G2.1-4)
 phiVn = 0.95*(d - 2*t)*t*Fv -> kgf // φv = 0.95
 check Vu <= phiVn // Resistencia a cortante
 check (Vu/phiVn)^2 + (Mux/phiMnx)^2 <= 1 // Flexión + cortante (H2-1)
@@ -876,7 +884,9 @@ Mp = Fy*Zx -> tonf*m // Momento plástico (F2-1)
 Lp = 1.76*ry*sqrt(E/Fy) -> m // F2-5
 Lr = 1.95*rts*E/(0.7*Fy)*sqrt(J/(Sx*ho) + sqrt((J/(Sx*ho))^2 + 6.76*(0.7*Fy/E)^2)) -> m // F2-6
 Fcr = Cb*pi^2*E/(Lb/rts)^2*sqrt(1 + 0.078*J/(Sx*ho)*(Lb/rts)^2) // F2-4
-Mn = si(Lb <= Lp, Mp, si(Lb <= Lr, min(Cb*(Mp - (Mp - 0.7*Fy*Sx)*(Lb - Lp)/(Lr - Lp)), Mp), min(Fcr*Sx, Mp))) -> tonf*m // F2-1 a F2-3
+Minel = min(Cb*(Mp - (Mp - 0.7*Fy*Sx)*(Lb - Lp)/(Lr - Lp)), Mp) -> tonf*m // PLT inelástico (F2-2)
+Mel = min(Fcr*Sx, Mp) -> tonf*m // PLT elástico (F2-3)
+Mn = si(Lb <= Lp, Mp, si(Lb <= Lr, Minel, Mel)) -> tonf*m // F2-1 a F2-3
 phiMn = 0.90*Mn -> tonf*m
 check Mu <= phiMn // Flexión AISC 360 (F1)
 # Flexión — NTE E.090 (F1.1, perfiles compactos)

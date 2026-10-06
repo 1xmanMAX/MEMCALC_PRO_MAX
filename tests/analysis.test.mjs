@@ -102,9 +102,9 @@ section('frame2d — segundo orden P-Δ (soluciones cerradas)');
   const gp = block('frame2d', { nudos: nod, secciones: 'C 2e6 1000 0.002', barras: bar, apoyos: '1 E', cargas: `N ${n + 1} ${Hc} ${-Pc}`, combinaciones: 'U = CM', pdelta: true, servicio: 'U' });
   near('Voladizo P-Δ (P = 0.4 Pcr): δ = H(tan kL − kL)/(Pk)', gp('deltax_' + (n + 1), 'm'), Hc * (Math.tan(kc * Lc) - kc * Lc) / (Pc * kc), 0.002);
   near('Voladizo P-Δ: M base = H·tan(kL)/k', Math.abs(gp('R1m', 'tonf*m')), Hc * Math.tan(kc * Lc) / kc, 0.002);
-  near('Amplificación ≈ 1/(1 − P/Pcr) (P = 0.4 Pcr)', gp('ampPD'), Hc * (Math.tan(kc * Lc) - kc * Lc) / (Pc * kc) / (Hc * Lc ** 3 / (3 * EIc)), 0.003);
-  let err = ''; try { block('frame2d', { nudos: nod, secciones: 'C 2e6 1000 0.002', barras: bar, apoyos: '1 E', cargas: `N ${n + 1} ${Hc} ${-1.2 * Math.PI ** 2 * EIc / (4 * Lc * Lc)}`, combinaciones: 'U = CM', pdelta: true }); } catch (e) { err = e.message; }
-  truthy('P > Pcr: error claro de pandeo (sin NaN)', /P-Δ/.test(err) && /pandeo/.test(err), err.slice(0, 90));
+  near('Amplificación δ(P-Δ)/δ(1.er orden) exacta (P = 0.4 Pcr, ≈ 1/(1 − P/Pcr))', gp('ampPD'), Hc * (Math.tan(kc * Lc) - kc * Lc) / (Pc * kc) / (Hc * Lc ** 3 / (3 * EIc)), 0.003);
+  const gx = block('frame2d', { nudos: nod, secciones: 'C 2e6 1000 0.002', barras: bar, apoyos: '1 E', cargas: `N ${n + 1} ${Hc} ${-1.2 * Math.PI ** 2 * EIc / (4 * Lc * Lc)}`, combinaciones: 'U = CM', pdelta: true });
+  truthy('P > Pcr: verificación «Estabilidad de 2.º orden» NO CUMPLE, mensaje de pandeo y sin NaN', gx.ctx.checks.some(c => !c.ok && /P-Δ/.test(c.label)) && /pandeo/.test(gx.html) && gx('ampPD') === 99 && !/NaN/.test(gx.html.replace(/<[^>]+>/g, '')));
   // pórtico: los casos se mantienen lineales; las combinaciones se amplifican
   const gq = block('frame2d', { nudos: '1 0 0\n2 0 4\n3 6 4\n4 6 0', secciones: 'C rect 0.3 0.3 2e6\nV rect 0.3 0.5 2e6', barras: '1 1 2 C\n2 2 3 V\n3 4 3 C', apoyos: '1,4 A', cargas: 'CM: N 2,3 0 -60\nCS: N 2 2 0', combinaciones: 'U = CM + CS', pdelta: true });
   const gl = block('frame2d', { nudos: '1 0 0\n2 0 4\n3 6 4\n4 6 0', secciones: 'C rect 0.3 0.3 2e6\nV rect 0.3 0.5 2e6', barras: '1 1 2 C\n2 2 3 V\n3 4 3 C', apoyos: '1,4 A', cargas: 'CM: N 2,3 0 -60\nCS: N 2 2 0', combinaciones: 'U = CM + CS' });
@@ -265,5 +265,12 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('an-'))) {
   truthy('Pórtico C°A°: momentos exportados a la memoria (Mneg_7 < 0 < Mpos_7)', p('Mneg_7', 'tonf*m') < 0 && p('Mpos_7', 'tonf*m') > 0);
   const bad = runTemplate('an-portico-ca', d => { d.blocks[1].src = d.blocks[1].src.replace('hc = 40 cm', 'hc = 25 cm').replace('bc = 40 cm', 'bc = 25 cm'); });
   truthy('Pórtico con columnas 25×25: la deriva NO cumple', bad.res.ctx.checks.some(c => !c.ok && /Deriva/.test(c.label)));
+  const big = runTemplate('an-portico-ca', d => { d.blocks[1].src = d.blocks[1].src.replace('wlosa = 0.30', 'wlosa = 3.0'); });
+  truthy('Pórtico con cargas ×10: NO CUMPLE sin errores ni NaN (sección insuficiente)', big.res.ctx.errors.length === 0 && big.res.ctx.checks.some(c => !c.ok));
+  const mp = runTemplate('an-modal-pdelta');
+  truthy('Modal + P-Δ: T₁ del modelo plausible (0.3–0.6 s ≈ hn/CT = 0.37 s) y Σ masa efectiva ≥ 90 %', mp('T1_M', 's') > 0.3 && mp('T1_M', 's') < 0.6 && mp('SMPx_M') > 0.9);
+  near('Modal + P-Δ: amplificación del análisis ≈ 1/(1 − Q) (Q con CM + 0.25CV; U2 con más gravedad)', mp('ampPD'), mp('B2'), 0.01);
+  const mpb = runTemplate('an-modal-pdelta', d => { d.blocks[1].src = d.blocks[1].src.replace('bc = 60 cm', 'bc = 30 cm').replace('hc = 60 cm', 'hc = 30 cm'); });
+  truthy('Modal + P-Δ con columnas 30×30: derivas NO CUMPLEN, sin errores', mpb.res.ctx.errors.length === 0 && mpb.res.ctx.checks.some(c => !c.ok && /Deriva/.test(c.label)), mpb.res.ctx.errors.map(e => e.msg).join('; '));
 }
 done();
