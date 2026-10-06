@@ -252,6 +252,11 @@ near('MEP puntual Pa²b/L²', v('M2', 'tonf*m'), 10 * 4 * 4 / 36);
 near('deltaVp = PL³/3EI', v('d', 'mm'), 2 * 64 / (3 * 2.17e6 * 0.0054) * 1000);
 near('Coef. de Muto a = k/(2+k)', v('a'), 1.5 / 3.5);
 near('bloque(K, 2, 2, 2) y comp', v('c'), 15);
+const v2 = calc('W = 50 tonf\nk = 2000 tonf/m\nT = TSdof(W, k)\nPe = PeEuler(2e6 tonf/m^2, 0.002 m^4, 4 m)\nb1 = B1AISC(1.0, 1000 tonf, Pe)\nb2 = B2Q(0.08)');
+near('TSdof = 2π√(W/gk)', v2('T', 's'), 2 * Math.PI * Math.sqrt(50 / 9.80665 / 2000));
+near('PeEuler = π²EI/(KL)²', v2('Pe', 'tonf'), Math.PI ** 2 * 2e6 * 0.002 / 16);
+near('B1AISC = Cm/(1 − P/Pe)', v2('b1'), 1 / (1 - 1000 / (Math.PI ** 2 * 2e6 * 0.002 / 16)));
+near('B2Q = 1/(1 − Q)', v2('b2'), 1 / 0.92);
 
 section('Plantillas del módulo');
 for (const t of TEMPLATES.filter(x => x.id.startsWith('an-'))) {

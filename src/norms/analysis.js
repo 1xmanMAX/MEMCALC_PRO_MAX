@@ -40,6 +40,11 @@ defineFns({
   // ---------- momentos máximos ----------
   MSAu: { fn: (w, L) => div(mul(w, pw(L, 2)), 8), tex: 'M_{max}', desc: 'Momento máx. simplemente apoyada uniforme wL²/8', args: 'w, L' },
   MSAp: { fn: (P, a, L) => div(mul(P, a, L_(L, a)), L), tex: 'M_{max}', desc: 'Momento máx. simplemente apoyada puntual Pab/L', args: 'P, a, L' },
+  // ---------- estabilidad y dinámica ----------
+  PeEuler: { fn: (E, I, KL) => div(mul(Math.PI ** 2, E, I), pw(KL, 2)), tex: 'P_e', desc: 'Carga crítica de Euler π²EI/(KL)²', args: 'E, I, KL' },
+  B1AISC: { fn: (Cm, P, Pe) => { const r = toNum(div(P, Pe)); if (r >= 1) throw new Error('B1AISC: P ≥ Pe (miembro inestable)'); return Math.max(1, toNum(Cm) / (1 - r)); }, tex: 'B_1', desc: 'Amplificación P-δ AISC 360-16 Anexo 8: Cm/(1 − αPr/Pe1) ≥ 1 (α = 1, LRFD)', args: 'Cm, Pr, Pe1' },
+  B2Q: { fn: (Q) => { const q = toNum(Q); if (q >= 1) throw new Error('B2Q: Q ≥ 1 (estructura inestable)'); return 1 / (1 - q); }, tex: 'B_2', desc: 'Amplificación P-Δ aproximada 1/(1 − Q) con el índice de estabilidad Q', args: 'Q' },
+  TSdof: { fn: (W, k) => mul(2 * Math.PI, math.sqrt(div(W, mul(math.unit(9.80665, 'm/s^2'), k)))), tex: 'T', desc: 'Periodo de un oscilador de 1 GDL 2π√(W/(g·k))', args: 'W, k' },
   // ---------- utilidades de análisis matricial ----------
   bloque: { fn: (K, i, j, n) => { const m = n === undefined ? 3 : toNum(n); const a = math.isMatrix(K) ? K.toArray() : K; const r0 = (toNum(i) - 1) * m, c0 = (toNum(j) - 1) * m; if (!a[r0 + m - 1] || a[0].length < c0 + m) throw new Error('bloque: índice fuera de la matriz'); return math.matrix(a.slice(r0, r0 + m).map(r => r.slice(c0, c0 + m))); }, tex: '\\mathrm{bloque}', desc: 'Submatriz (i, j) de tamaño n×n (n = 3 por defecto) de una matriz de rigidez', args: 'K, i, j, n' },
   comp: { fn: (v, i, j) => { const a = math.isMatrix(v) ? v.toArray() : v; const r = a[toNum(i) - 1]; if (r === undefined) throw new Error('comp: índice fuera del vector'); return Array.isArray(r) ? r[j === undefined ? 0 : toNum(j) - 1] : r; }, tex: '\\mathrm{comp}', desc: 'Componente i de un vector (o elemento i, j de una matriz)', args: 'v, i, j' },
