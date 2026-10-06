@@ -874,7 +874,7 @@ Ri = 2.0 // Tanque sobre pedestal (ACI 350.3 Tabla 4.1.1(b))
 Rc = 1.0
 grav = 9.81 m/s^2
 check tw >= si(Hw >= 3.05 m, 30 cm, 20 cm) // Espesor mínimo de la pared en contacto con líquido (ACI 350-06 14.6.2)
-check tf >= 20 cm // Espesor mínimo del fuste: 8 in (ACI 371R, pedestales de tanques elevados)
+check tf >= 20 cm // Espesor mínimo del fuste: 20 cm (criterio de esta memoria; ACI 371R recomienda 8 in para pedestales)
 # Pesos y masas
 WL = gw*pi*D^2/4*HL -> tonf // Peso del agua
 rD = D/HL

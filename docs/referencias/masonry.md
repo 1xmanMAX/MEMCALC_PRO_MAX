@@ -12,22 +12,31 @@ contenedoras de líquidos (ACI 350-06, ACI 350.3-06, PCA). Archivos:
 
 ## 1. Fuentes consultadas
 
-1. **NTE E.070 Albañilería** (DS 011-2006-VIVIENDA; texto SENCICO con numeración 1.x–10.x). Se usó la versión
-   publicada (https://jjlsac.com/rnc/Albanileria.pdf). Correspondencia de numeración usada en las plantillas
-   (numeración del RNE entre paréntesis la del texto SENCICO): Art. 19 (7.1), 20 (7.2), 24 (8.3), 26 (8.5),
-   27 (8.6), 28 (8.7), 29 (9.1), 30 (9.2), 31 (9.3).
+1. **NTE E.070 Albañilería** (DS 011-2006-VIVIENDA, *El Peruano* 10/06/2006, Artículos 1–33:
+   https://waltervillavicencio.com/wp-content/uploads/2019/10/E.070.pdf). Las plantillas citan esta numeración
+   oficial. El texto SENCICO (https://jjlsac.com/rnc/Albanileria.pdf) numera por secciones; correspondencia:
+   Art. 17 (6.4), 19 (7.1), 20 (7.2), 22 (8.1), 24 (8.3), 26 (8.5), 27 (8.6), 28 (8.7), 29 (9.1), 30 (9.2), 31 (9.3).
 2. **San Bartolomé, A.**, *Comentarios a la Norma E.070* y «Ejemplo de aplicación de la Norma E.070 en el diseño de
    un edificio de albañilería confinada» (edificio de 4 pisos, PUCP; blog http://blog.pucp.edu.pe/blog/albanileria).
    San Bartolomé, Quiun y Silva, *Diseño y construcción de estructuras sismorresistentes de albañilería*, Fondo
    Editorial PUCP.
 3. **NTE E.080 Diseño y construcción con tierra reforzada** (RM 121-2017-VIVIENDA, El Peruano 07/04/2017).
-4. **NTE E.010 Madera** (DS 005-2014-VIVIENDA) y **Manual de Diseño para Maderas del Grupo Andino** (JUNAC, 1984).
+4. **NTE E.010 Madera**, texto vigente publicado en gob.pe (firmado el 11/08/2021; reemplaza al DS 005-2014-VIVIENDA):
+   https://cdn.www.gob.pe/uploads/document/file/2079964/ — Art. 16–20 (flexión), 23 (tracción), 27–31 (columnas),
+   41–44 (armaduras); Tablas 3, 5, 8 y 9 (agrega el grupo D). **Manual de Diseño para Maderas del Grupo Andino** (JUNAC, 1984).
 5. **ACI 350.3-06** *Seismic Design of Liquid-Containing Concrete Structures and Commentary* y **ACI 350-06**.
 6. **PCA**, *Circular Concrete Tanks without Prestressing* (IS072) y *Rectangular Concrete Tanks* (IS003);
    ejemplo resuelto «A Design Example for a Circular Concrete Tank — PCA Design Method» (U. de Colorado, CVEN 4830,
    2008), que transcribe los coeficientes de las Tablas A-1, A-2, A-5 y A-12 para H²/Dt = 3 y 0.4.
 7. Timoshenko & Woinowsky-Krieger, *Theory of Plates and Shells* (cáscara cilíndrica, §114–117; placas, Cap. 5–6).
-8. E.030-2003 Tabla 12 (C1 = 1.3 / 0.9 / 0.6 citado por E.070 Art. 29.6).
+8. E.030-2003 Art. 23, **Tabla N° 9** (C1 = 1.3 / 0.9 / 0.6), a la que remite E.070 Art. 29.6. La E.030 vigente
+   (2018 modificada por la RM 183-2026-VIVIENDA) usa otra escala de C1 (Tabla N° 15: 3.0 / 2.0 / 1.5) y para cercos
+   F = 0.5·Z·U·S·Pe (Art. 60; Art. 41 en 2018), × 0.8 en esfuerzos admisibles (Art. 29).
+9. San Bartolomé, A. (2006), *Ejemplo de aplicación de la Norma E.070 en el diseño de un edificio de albañilería
+   confinada* (PUCP, 38 p.): Tablas 8, 16 y 21 transcritas en las pruebas.
+10. Universidad de Colorado (2008), *A Design Example for a Circular Concrete Tank — PCA Design Method* y
+    *A Concise Structural Design Procedure of a Multi-Cell-Tank* (An-Najah National University, https://staff-old.najah.edu/sites/default/files/tank%20paperf.pdf), ejemplo ACI 350.3 rectangular.
+11. Malhotra, P. K. (2005), «Sloshing loads in liquid-storage tanks with insufficient freeboard», *Earthquake Spectra* 21(4).
 
 ## 2. NTE E.070 — fórmulas implementadas
 
@@ -38,11 +47,11 @@ contenedoras de líquidos (ACI 350-06, ACI 350.3-06, PCA). Archivos:
 | `FaE070(fm, h, t)` | Fa = 0.2 f'm [1 − (h/35t)²] ≤ 0.15 f'm (acepta vectores) | Art. 19.1.b |
 | `alphaE070(Ve, L, Me)` | α = Ve L/Me, 1/3 ≤ α ≤ 1 | Art. 26.3 |
 | `VmE070(vm, α, t, L, Pg, mat)` | Vm = 0.5 v'm α t L + 0.23 Pg (0.35 v'm para sílice-cal) | Art. 26.3 |
-| `factE070(Vm1, Ve1)` | 2 ≤ Vm1/Ve1 ≤ 3 | Art. 27 (8.6) |
+| `factE070(Vm1, Ve1)` | 2 ≤ Vm1/Ve1 ≤ 3 (no existe el límite 1.25 en la E.070-2006) | Art. 27 c |
 | `dminE070(Z,U,S,N)` | ΣLt/Ap ≥ ZUSN/56 | Art. 19.2.b |
 | `mE070(caso, b/a)` | Tabla 12 (caso 1: 0.0479…0.125; caso 2: 0.060…0.133; caso 3: 0.125; caso 4: 0.5), interpolación lineal y en a/b hacia ∞ | Art. 29.7 |
 | `ftE070(tipo)` | f't = 1.5 kg/cm² (simple), 3.0 kg/cm² (armada rellena) | Art. 29.8 |
-| `C1E030a(tipo)` | 1.3 (precipitarse fuera / peligro), 0.9 (muros interiores, tanques), 0.6 (cercos, diafragmas) | E.030-2003 Tabla 12 |
+| `C1E030a(tipo)` | 1.3 (precipitarse fuera / peligro), 0.9 (muros interiores, tanques), 0.6 (cercos, diafragmas) | E.030-2003 Tabla N° 9 |
 
 Otras expresiones usadas directamente en las plantillas:
 - Sismo severo R = 3 y moderado = ½ severo (Art. 23).  Fisuración Ve ≤ 0.55 Vm (Art. 26.2).  ΣVm ≥ VE (Art. 26.4).
@@ -51,9 +60,12 @@ Otras expresiones usadas directamente en las plantillas:
   As ≥ 0.1 f'c Ac/fy; An = As + (C/φ − As fy)/(0.85 δ f'c), φ = 0.7; s1 = Av fy/(0.3 tn f'c (Ac/An − 1)),
   s2 = Av fy/(0.12 tn f'c), s3 = d/4 ≥ 5 cm, s4 = 10 cm; solera Ts = Vm1 Lm/(2L), As = Ts/(0.9 fy) ≥ 0.1 f'c Acs/fy.
 - Armada (Art. 28): Mu = 1.25 Me, Vu = 1.25 Ve; φ = 0.85 − 0.2 Pu/Po (0.65–0.85), Po = 0.1 f'm t L;
-  Mn = As fy D + Pu L/2 (D = 0.8L); Vuf1 = 1.25 Vu1 (Mn1/Mu1) ≥ Vm1; vi ≤ 0.10 f'm; Ash = Vuf s/(fy D);
+  Mn = As fy D + Pu L/2 (D = 0.8L) **con Pu = 0.9 Pg para la verificación φMn ≥ Mu** (28.3 b) y Mn1 con Pu = 1.25 Pm
+  solo para el cortante por capacidad (28.3 f); Vuf1 = 1.25 Vu1 (Mn1/Mu1) ≥ Vm1; vi ≤ 0.10 f'm; Ash = Vuf s/(fy D);
   σu = Pu/A + Mu y/I ≥ 0.3 f'm → confinar bordes.
-- Cargas ortogonales (Art. 29–31): w = 0.8 Z U C1 γ e; Ms = m w a²; fm = 6Ms/t² ≤ f't; FS volteo ≥ 2, deslizamiento ≥ 1.5.
+- Cargas ortogonales (Art. 29–31): w = 0.8 Z U C1 γ e (se compara con 0.8·0.5·Z·U·S·γ·e de la E.030 vigente y se
+  usa el mayor); Ms = m w a²; fm = 6Ms/t² ≤ f't; FS volteo ≥ 2, deslizamiento ≥ 1.5.
+- Edificio confinado: límites del Art. 27 a (N ≤ 5, hn ≤ 15 m); Ast = max(T, 0)/(φ fy).
 
 ### Validación — ejemplo de San Bartolomé (edificio de 4 pisos, muro X1, primer piso)
 Datos del ejemplo: f'm = 65, v'm = 8.1 kg/cm², t = 0.13 m, h = 2.40 m, Z = 0.4, U = S = 1, N = 4, f'c = 175.
@@ -79,10 +91,15 @@ Datos del ejemplo: f'm = 65, v'm = 8.1 kg/cm², t = 0.13 m, h = 2.40 m, Z = 0.4,
 | B | 75 000 | 100 000 | 150 | 110 | 28 | 105 | 12 | 18.34 |
 | C | 55 000 | 90 000 | 100 | 80 | 15 | 75 | 8 | 18.42 |
 
+| D (2021) | 45 000 | 65 000 | 70 | 63 | 13 | 60 | 6 | 18.77 |
+
 (kg/cm², madera con CH ≤ 22 %). Columnas: λ < 10 → Nadm = fc A; 10 ≤ λ ≤ Ck → Nadm = fc A [1 − ⅓(λ/Ck)⁴];
-Ck < λ ≤ 50 → Nadm = 0.329 E A/λ²; flexocompresión N/Nadm + km|M|/(Z fm) < 1, km = 1/(1 − 1.5 N/Ncr),
-Ncr = π² E I/lef². Vigas: deflexión con 1.8 wD + wL (deformaciones diferidas), L/300 con cielo raso de yeso,
-L/250 sin él; corte a una distancia h del apoyo τ = 1.5 V/(bh). Validación: los Ck tabulados por JUNAC (17.98,
+Ck < λ ≤ 50 → Nadm = 0.329 E A/λ² (circulares: λ < 9, 0.2467 E A/λ², λ ≤ 43, Ck = 0.6077√(E/fc)); flexocompresión N/Nadm + km|M|/(Z fm) < 1, km = 1/(1 − 1.5 N/Ncr),
+Ncr = π² E I/lef². Vigas: deflexión con 1.8 wD + wL (deformaciones diferidas, Art. 18.3), L/300 con cielo raso de yeso,
+L/250 sin él, y por carga viva sola L/350 ≤ 13 mm (Art. 18.2 b); +10 % de esfuerzos con acción de conjunto a ≤ 60 cm
+(Art. 16.3); h/b ≤ 5 (Art. 20.2); corte a una distancia h del apoyo τ = 1.5 V/(bh). Armaduras: lef = 0.9 l en el plano
+(Art. 43.2), λ ≤ 50 en compresión y ≤ 80 en tracción (43.5), correas con λfuera ≤ λplano (43.4), contraflecha L/300
+para L > 8 m (42.3). Validación: los Ck tabulados por JUNAC (17.98,
 18.34, 18.42) y la continuidad Nadm(λ = Ck) = ⅔ fc A entre columna intermedia y larga.
 
 ## 4. NTE E.080 (2017)
@@ -94,7 +111,7 @@ L/250 sin él; corte a una distancia h del apoyo τ = 1.5 V/(bh). Validación: l
 | C (Tabla 3) | zona 4: 0.25; 3: 0.20; 2: 0.15; 1: 0.10 | 6.8 |
 | H = S U C P | P = peso total con 50 % de CV | 6.8 |
 | fo ≥ 1.0 MPa (10.2 kg/cm²) cubos; f'm ≥ 0.6 MPa (6.12) muretes; f't ≥ 0.025 MPa (0.25) | resistencias últimas mínimas | 8.1, 8.4, 8.5 |
-| fm = 0.40 f'm; aplastamiento 1.25 fm; vm = 0.40 f't; tracción por flexión 0.14 MPa (1.42 kg/cm²) última | admisibles (FS 2.5; 3 sin ensayos) | 8.4–8.6, 9 |
+| fm = f'm/FS; aplastamiento 1.25 fm; vm = f't/FS; tracción por flexión 0.14 MPa (1.42 kg/cm²)/FS | admisibles: FS = 2.5 con ensayos (0.40), 3 sin ensayos | 8.4–8.6, 9 |
 | Límites: e ≥ 0.40 m; a ≤ L/3; 3e ≤ b ≤ 5e; L + 1.25H ≤ 17.5e; H/e ≤ 6 (8 con IV); L/e ≤ 10 | Fig. 2 | 6.1, 6.6 |
 | Pisos: 1 en zonas 3 y 4; hasta 2 en zonas 1 y 2 | | 4.2 |
 
@@ -107,7 +124,10 @@ Tc = 2π√(D/(3.68 g tanh(3.68 HL/D))); ωi = Cl √(Ec g/γc)/HL con Cl = 10 C
 Fig. 9.3.4(a); ε = 0.0151r² − 0.1908r + 1.021 ≤ 1. Rectangular (r = L/HL): coeficientes 0.264 y 3.16.
 Ci = SDS (Ti ≤ Ts) o SD1/Ti ≤ SDS; Cc = 1.5 SD1/Tc ≤ 1.5 SDS (Tc ≤ 1.6/Ts) o 2.4 SDS/Tc²;
 Pw = Ci I ε Ww/Ri, Pr = Ci I Wr/Ri, Pi = Ci I Wi/Ri, Pc = Cc I Wc/Rc; V = √((Pi + Pw + Pr)² + Pc²);
-dmax = (D/2) Cc I. Ri = 2.0 (base fija o articulada, sobre el terreno; también pedestal), 3.25 (anclado flexible),
+dmax = (D/2) Cc I; Tv = 2π√(γL D HL²/(2 g tw Ec)) (SI); Ct = SDS (Tv ≤ Ts) o SD1/Tv, 0.4 SDS en rectangulares;
+üv = Ct I b/Ri ≥ 0.2 SDS (b = 2/3); hoop: Niy = 2Piy/π, **Ncy = 16Pcy/(9π)**, Nwy = Pwy/π, Nhy = üv qhy r,
+Ny = √((Niy + Nwy)² + Ncy² + Nhy²) (Ec. 6-1). Si dmax > borde libre, Wc se suma a la masa impulsiva (cota
+superior de Malhotra 2005) y se verifica el anclaje de la cubierta a pup = γ(dmax − borde libre). Ri = 2.0 (base fija o articulada, sobre el terreno; también pedestal), 3.25 (anclado flexible),
 1.5 (no anclado); Rc = 1.0. Distribución vertical (Cap. 5): Piy = (Pi/2)[4HL − 6hi − (6HL − 12hi) y/HL]/HL².
 
 Validación (`tests/masonry.test.mjs`): Wi/WL(D/HL = 3) = 0.3807, Wc/WL = 0.5808, valores de la Fig. 9.3.1;
@@ -155,8 +175,12 @@ tres bordes apoyados y uno libre (E.070 Tabla 12 caso 2): b/a = 0.5 → 0.0601 (
 - El modelo del tanque elevado usa una masa equivalente del fuste de ¼ de su peso y la rigidez de un voladizo; no
   considera la flexibilidad de la cimentación ni efectos P-Δ. La resistencia del fuste se estima con la fórmula plástica
   de anillo delgado (válida para compresión axial baja).
-- El diseño de refuerzo de tanques usa los coeficientes sanitarios del PCA/ACI 350R (1.65 y 1.30); ACI 350-06
-  los sustituye por el factor de durabilidad Sd, que puede adoptarse editando las líneas correspondientes.
+- Refuerzo de tanques: el reservorio permite elegir ACI 350-06 (1.4 F × Sd, Sd = φfy/(γ fs), fs = 20 ksi en
+  tracción anular, Ec. 10-4 en flexión, 24 ksi en corte) o los coeficientes sanitarios PCA/ACI 350R-89
+  (1.7 × 1.65 / 1.7 × 1.30); ambos dan factores totales parecidos (2.70 vs 2.81 y 2.11 vs 2.21). La cisterna usa
+  1.7 × 1.30. Espesor mínimo de 30 cm para muros de 3 m o más (ACI 350-06 14.6.2).
+- La presión ascendente del oleaje sobre la cubierta es una estimación simplificada (columna de agua no acomodada);
+  para un diseño definitivo de la losa de cubierta use Malhotra (2005) o el capítulo 15 de ASCE 7 (tanques con borde libre insuficiente).
 - No se transcribieron literalmente las tablas PCA de tanques rectangulares: los coeficientes se calculan
   numéricamente para la geometría y bordes del caso.
 - En E.080 la verificación de corte usa el área de muros + 20 % (Art. 7.3.1.a.iii) y el peso total del muro; con los
