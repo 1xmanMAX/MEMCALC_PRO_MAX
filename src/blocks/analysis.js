@@ -608,7 +608,7 @@ function buildSystem(md, cases, LL, Ns) {
   return { K, restr, auto, free, fixd, fac, incl, bw };
 }
 // resuelve los casos con un sistema ya ensamblado
-function solveCases(md, sys, cases, LL, pd) {
+function solveCases(md, sys, cases, LL, pd, endOnly) {
   const { nodes, mems, sup } = md, nN = nodes.length, nD = 3 * nN;
   const { K, restr, auto, free, fixd, fac, incl } = sys;
   const res = cases.map((c, ci) => {
@@ -634,6 +634,7 @@ function solveCases(md, sys, cases, LL, pd) {
     for (const [n, cs, sn] of incl) { rotV(u, n, cs, sn, true); rotV(R, n, cs, sn, true); }
     sup.forEach((s, n) => s.k.forEach((k, d) => { if (k && !restr[3 * n + d]) R[3 * n + d] = -k * u[3 * n + d]; }));
     auto.forEach(d => { R[d] = 0; });
+    if (endOnly) return { u, N: mems.map(m => { const ul = mulMV(m.T, m.dofs.map(d => u[d])), ff = mulMV(m.kc, Hv(ul, m.zi || 0, m.zj || 0)).map((v, p) => v + m.qc[ci][p]), f = HtV(ff, m.zi || 0, m.zj || 0).map((v, p) => v + m.qrig[ci][p]); return (-f[0] + f[3]) / 2; }) };
     const mf = mems.map((m, k) => recoverMember(md, m, k, u, ci, LL[ci][k], pd));
     // equilibrio global: Σ cargas + Σ reacciones (x, y, momento respecto del origen)
     let sx = 0, sy = 0, sm = 0;
@@ -698,21 +699,22 @@ export function solveFrame(md, nseg = 40, opts = {}) {
   // ---- 2.º orden (P-Δ): un sistema por caso, iteración sobre las fuerzas axiales ----
   let last = null;
   const res = cases.map((c, ci) => {
-    const L1 = [LL[ci]]; let Ns = null, prev = null, r = null, it = 0, r1 = null;
+    const L1 = [LL[ci]]; let Ns = null, prev = null, r = null, it = 0, r1 = null, sys = null;
+    const amax = (v) => { let a = 1e-12; for (const x of v) if (Math.abs(x) > a) a = Math.abs(x); return a; };
     for (it = 1; it <= 40; it++) {
-      let sys;
       try { sys = buildSystem(md, [c], L1, Ns); } catch (e) {
         if (e.message === 'pandeo') throw new Error('Análisis P-Δ (' + c.name + '): la rigidez lateral se anula (carga axial ≥ carga crítica de pandeo) cerca del nudo ' + e.node + '. Aumente secciones o reduzca cargas.');
         throw e;
       }
-      r = solveCases(md, sys, [c], L1, true)[0]; last = sys;
+      r = solveCases(md, sys, [c], L1, true, true)[0]; last = sys;
       if (it === 1) r1 = r;
-      const umax = Math.max(1e-12, ...r.u.map(Math.abs));
-      if (prev && Math.max(...r.u.map((v, i) => Math.abs(v - prev[i]))) <= 1e-7 * umax) break;
-      if (it > 2 && prev && Math.max(...r.u.map(Math.abs)) > 1e3 * Math.max(1e-12, ...prev.map(Math.abs))) it = 41;
-      prev = r.u; Ns = r.mf.map(q => (-q.f[0] + q.f[3]) / 2);
+      const um = amax(r.u);
+      if (prev && amax(r.u.map((v, i) => v - prev[i])) <= 1e-7 * um) break;
+      if (it > 2 && prev && um > 1e3 * amax(prev)) { it = 41; break; }
+      prev = r.u; Ns = r.N;
     }
     if (it > 40) throw new Error('Análisis P-Δ (' + c.name + '): la iteración no converge (la carga axial se aproxima a la carga crítica de pandeo)');
+    r = solveCases(md, sys, [c], L1, true)[0];
     const ux1 = Math.max(...md.nodes.map((n, i) => Math.abs(r1.u[3 * i]))), ux2 = Math.max(...md.nodes.map((n, i) => Math.abs(r.u[3 * i])));
     r.pd = { it, ux1, ux2, amp: ux1 > 1e-12 ? ux2 / ux1 : 1 };
     return r;
