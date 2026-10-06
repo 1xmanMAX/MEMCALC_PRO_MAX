@@ -1,6 +1,6 @@
 // Pruebas del módulo «analysis»: frame2d, beamcase, influence, cross y plantillas
 import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES } from './helpers.mjs';
-import { beamFormulas, beamCaseSolve, influenceLine, hardyCross } from '../src/blocks/analysis.js';
+import { beamFormulas, beamCaseSolve, influenceLine, hardyCross, analyzeFrame } from '../src/blocks/analysis.js';
 
 const E = 2e6, I = 0.001, EI = E * I;
 const sec = `S ${E} 1000 ${I}`; // A grande: sin deformación axial apreciable
@@ -72,6 +72,115 @@ near('Triángulo: diagonales C = P/(2 senθ)', g('Nc_2', 'tonf'), 10 / (2 * 3 / 
 }
 { let err = ''; try { block('frame2d', { tipo: 'armadura', nudos: '1 0 0\n2 4 0\n3 4 3\n4 0 3', secciones: 'S 2e7 0.001', barras: '1 1 2\n2 2 3\n3 3 4\n4 4 1', apoyos: '1 A\n2 Ry', cargas: 'N 3 1 0' }); } catch (e) { err = e.message; }
   truthy('Mecanismo (cuadrilátero sin diagonal) detectado como inestable', /inestable/i.test(err), err.slice(0, 60)); }
+
+section('frame2d — contraste con PyNite 3.2 (FEModel3D, restringido al plano; modelos aleatorios)');
+{
+  // Referencias generadas con PyNiteFEA 3.2 (analyze_linear / analyze_PDelta): pórtico de 3 pisos con rótulas,
+  // cargas parciales, trapezoidales, puntuales y perpendiculares; pórtico a dos aguas; armadura; viga continua
+  // con resorte rotacional y asentamiento. Tolerancia 0.1 % (datos redondeados a 6 cifras).
+  const REF = [{"n":"frame1","m":{"tipo":"portico","nudos":"n0x0 0 0\nn0x1 5 0\nn0x2 9 0\nn0x3 15 0\nn1x0 0 3\nn1x1 5 3\nn1x2 9 3\nn1x3 15 3\nn2x0 0 6.5\nn2x1 5 6.5\nn2x2 9 6.5\nn2x3 15 6.5\nn3x0 0 10\nn3x1 5 10\nn3x2 9 10\nn3x3 15 10","secciones":"C 2200000.0 0.207225 0.00313885\nV 2200000.0 0.18 0.0054","barras":"1 n0x0 n1x0 C\n2 n0x1 n1x1 C\n3 n0x2 n1x2 C\n4 n0x3 n1x3 C\n5 n1x0 n2x0 C\n6 n1x1 n2x1 C\n7 n1x2 n2x2 C\n8 n1x3 n2x3 C\n9 n2x0 n3x0 C\n10 n2x1 n3x1 C\n11 n2x2 n3x2 C\n12 n2x3 n3x3 C\n13 n1x0 n1x1 V\n14 n1x1 n1x2 V\n15 n1x2 n1x3 V ri\n16 n2x0 n2x1 V\n17 n2x1 n2x2 V\n18 n2x2 n2x3 V\n19 n3x0 n3x1 V\n20 n3x1 n3x2 V\n21 n3x2 n3x3 V","apoyos":"n0x0 110\nn0x1 111\nn0x2 111\nn0x3 110","cargas":"T 13 -1.77962 -1.60744 0 5 perp\nT 14 3.60365 3.18231 0 4\nT 15 2.04464 3.29909 0 6\nN n1x0 1.02761 -1.76247 0\nP 16 5.63815 3.8185\nT 17 3.3537 3.5219 0 4\nT 18 3.76657 0.300001 2.74881 4.79496\nN n2x0 3.17092 -0.592781 0\nT 19 -2.0016 -1.96721 0 5 perp\nT 20 2.56832 3.9469 0 4\nT 21 3.70658 2.96045 0 6\nN n3x0 3.23119 -0.808576 0"},"pd":false,"R":{"n0x0":[-0.0412902,10.1255,0.0],"n0x1":[-2.74235,33.203,4.61412],"n0x2":[-3.01622,41.4607,4.88714],"n0x3":[-1.62987,22.9488,0.0]},"u":{"n3x2":[0.00333412,-0.000632317],"n3x1":[0.00336243,-0.00046716],"n3x3":[0.00329295,-0.000318153]},"M":{"15":10.5688,"21":9.06622,"20":8.44433,"14":7.39002},"N":{"1":10.1255,"2":33.203,"3":41.4607,"4":22.9488}},{"n":"frame1-PΔ","m":{"tipo":"portico","nudos":"n0x0 0 0\nn0x1 5 0\nn0x2 9 0\nn0x3 15 0\nn1x0 0 3\nn1x1 5 3\nn1x2 9 3\nn1x3 15 3\nn2x0 0 6.5\nn2x1 5 6.5\nn2x2 9 6.5\nn2x3 15 6.5\nn3x0 0 10\nn3x1 5 10\nn3x2 9 10\nn3x3 15 10","secciones":"C 2200000.0 0.207225 0.00313885\nV 2200000.0 0.18 0.0054","barras":"1 n0x0 n1x0 C\n2 n0x1 n1x1 C\n3 n0x2 n1x2 C\n4 n0x3 n1x3 C\n5 n1x0 n2x0 C\n6 n1x1 n2x1 C\n7 n1x2 n2x2 C\n8 n1x3 n2x3 C\n9 n2x0 n3x0 C\n10 n2x1 n3x1 C\n11 n2x2 n3x2 C\n12 n2x3 n3x3 C\n13 n1x0 n1x1 V\n14 n1x1 n1x2 V\n15 n1x2 n1x3 V ri\n16 n2x0 n2x1 V\n17 n2x1 n2x2 V\n18 n2x2 n2x3 V\n19 n3x0 n3x1 V\n20 n3x1 n3x2 V\n21 n3x2 n3x3 V","apoyos":"n0x0 110\nn0x1 111\nn0x2 111\nn0x3 110","cargas":"T 13 -1.77962 -1.60744 0 5 perp\nT 14 3.60365 3.18231 0 4\nT 15 2.04464 3.29909 0 6\nN n1x0 1.02761 -1.76247 0\nP 16 5.63815 3.8185\nT 17 3.3537 3.5219 0 4\nT 18 3.76657 0.300001 2.74881 4.79496\nN n2x0 3.17092 -0.592781 0\nT 19 -2.0016 -1.96721 0 5 perp\nT 20 2.56832 3.9469 0 4\nT 21 3.70658 2.96045 0 6\nN n3x0 3.23119 -0.808576 0"},"pd":true,"R":{"n0x0":[-0.0407091,10.1105,0.0],"n0x1":[-2.75091,33.1964,4.64847],"n0x2":[-3.01689,41.4763,4.91681],"n0x3":[-1.62121,22.9547,0.0]},"u":{"n3x2":[0.00335566,-0.000632495],"n3x1":[0.00338396,-0.000467137],"n3x3":[0.00331451,-0.000318243]},"M":{"15":10.5777,"21":9.06367,"20":8.44965,"14":7.42179},"N":{"1":10.1105,"2":33.1964,"3":41.4763,"4":22.9547}},{"n":"gable","m":{"tipo":"portico","nudos":"n0x0 0 0\nn0x1 7.5 0\nn0x2 15 0\nn1x0 0 3.5\nn1x1 7.5 5\nn1x2 15 3.5","secciones":"C 2200000.0 0.210784 0.00376215\nV 2200000.0 0.18 0.0054","barras":"1 n0x0 n1x0 C\n2 n0x1 n1x1 C\n3 n0x2 n1x2 C\n4 n1x0 n1x1 V\n5 n1x1 n1x2 V rj","apoyos":"n0x0 110\nn0x1 110\nn0x2 110","cargas":"P 4 6.96488 0.719906\nT 5 -2.38688 -1.04188 0 7.64853 perp\nN n1x0 3.94658 -1.92952 0"},"pd":false,"R":{"n0x0":[-1.2608,6.98724,0.0],"n0x1":[-0.114208,10.0774,0.0],"n0x2":[2.66454e-15,4.68758,0.0]},"u":{"n1x1":[0.00528449,-0.000108657],"n1x0":[0.00532035,-5.27367e-05],"n1x2":[0.00528104,-3.53799e-05]},"M":{"4":9.00288,"5":8.45471,"1":4.41281,"2":0.571041},"N":{"1":6.98724,"2":10.0774,"3":4.68758,"4":3.62552}},{"n":"gable-PΔ","m":{"tipo":"portico","nudos":"n0x0 0 0\nn0x1 7.5 0\nn0x2 15 0\nn1x0 0 3.5\nn1x1 7.5 5\nn1x2 15 3.5","secciones":"C 2200000.0 0.210784 0.00376215\nV 2200000.0 0.18 0.0054","barras":"1 n0x0 n1x0 C\n2 n0x1 n1x1 C\n3 n0x2 n1x2 C\n4 n1x0 n1x1 V\n5 n1x1 n1x2 V rj","apoyos":"n0x0 110\nn0x1 110\nn0x2 110","cargas":"P 4 6.96488 0.719906\nT 5 -2.38688 -1.04188 0 7.64853 perp\nN n1x0 3.94658 -1.92952 0"},"pd":true,"R":{"n0x0":[-1.26829,6.97164,0.0],"n0x1":[-0.113893,10.0931,0.0],"n0x2":[0.00716169,4.68754,0.0]},"u":{"n1x1":[0.00535057,-0.000108828],"n1x0":[0.00538617,-5.26198e-05],"n1x2":[0.00534729,-3.53799e-05]},"M":{"4":9.04604,"5":8.46291,"1":4.47643,"2":0.622926},"N":{"1":6.97164,"2":10.0931,"3":4.68754,"4":3.61515}},{"n":"truss1","m":{"tipo":"armadura","nudos":"b0 0 0\nb1 2.5 0\nb2 5 0\nb3 7.5 0\nb4 10 0\nt1 2.5 1.5\nt2 5 1.5\nt3 7.5 1.5","secciones":"S 20000000.0 0.00205669 1e-06","barras":"1 b0 b1 S rij\n2 b1 b2 S rij\n3 b2 b3 S rij\n4 b3 b4 S rij\n5 b0 t1 S rij\n6 t3 b4 S rij\n7 t1 t2 S rij\n8 t2 t3 S rij\n9 b1 t1 S rij\n10 b2 t2 S rij\n11 b3 t3 S rij\n12 t1 b2 S rij\n13 b2 t3 S rij","apoyos":"b0 110\nb4 010","cargas":"N t1 -0.489862 -3.48631 0\nN t2 -0.101018 -3.95478 0\nN t3 0.577447 -2.28158 0"},"pd":false,"R":{"b0":[0.0134331,5.16453,0.0],"b4":[0.0,4.55813,0.0]},"u":{"t2":[0.00101095,-0.00581641],"b2":[0.00104465,-0.00567219],"t1":[0.00167432,-0.00417339]},"M":{"5":2.29948e-17,"6":2.16702e-17,"1":1.85336e-17,"4":1.73687e-17},"N":{"1":-8.59411,"2":-8.59411,"3":-7.59689,"4":-7.59689}},{"n":"beam0","m":{"tipo":"portico","nudos":"a0 0 0\na1 5 0\na2 9 0\na3 14 0","secciones":"V 2200000.0 0.18 0.0054","barras":"1 a0 a1 V\n2 a1 a2 V rj\n3 a2 a3 V","apoyos":"a0 111\na1 010\na2 010\na3 010\na3 K 0 0 800","cargas":"T 1 2 3 0.5 4.5\nP 1 5 1.5\nT 2 2 3 0.5 3.5\nP 2 5 1.2\nT 3 2 3 0.5 4.5\nP 3 5 1.5\nD a1 0 -0.005 0"},"pd":false,"R":{"a0":[0.0,13.5769,21.4811],"a1":[0.0,7.17649,0.0],"a2":[0.0,14.7602,0.0],"a3":[0.0,6.98645,-1.09891]},"u":{"a1":[0.0,-0.005],"a0":[0.0,0.0],"a2":[0.0,0.0]},"M":{"1":21.4811,"2":11.6315,"3":11.1516},"N":{"1":0.0,"2":0.0,"3":0.0}}];
+  for (const r of REF) {
+    const A = analyzeFrame({ ...r.m, combinaciones: '', pdelta: r.pd }, new Map());
+    const set = [...A.sets.values()].find(s => s.kind === 'comb');
+    const md = A.md, ix = (id) => md.nids.indexOf(id);
+    let eR = 0, Rr = 0; for (const [n, v] of Object.entries(r.R)) for (let d = 0; d < 3; d++) { eR = Math.max(eR, Math.abs(set.R[3 * ix(n) + d] - v[d])); Rr = Math.max(Rr, Math.abs(v[d])); }
+    let eu = 0, ur = 0; for (const [n, v] of Object.entries(r.u)) for (let d = 0; d < 2; d++) { eu = Math.max(eu, Math.abs(set.u[3 * ix(n) + d] - v[d])); ur = Math.max(ur, Math.abs(v[d])); }
+    let eM = 0, Mr = 0; for (const [k, v] of Object.entries(r.M)) { const mi = md.mids.indexOf(k); eM = Math.max(eM, Math.abs(Math.max(...set.mf[mi].M.map(Math.abs)) - v)); Mr = Math.max(Mr, v); }
+    let eN = 0, Nr = 0; for (const [k, v] of Object.entries(r.N)) { const mi = md.mids.indexOf(k); eN = Math.max(eN, Math.abs(Math.abs(set.mf[mi].N[0]) - Math.abs(v))); Nr = Math.max(Nr, Math.abs(v)); }
+    truthy(`PyNite «${r.n}»: reacciones, desplazamientos, |M|máx y |N| (≤ 0.1 %)`, eR <= 1e-3 * Rr && eu <= 1e-3 * ur && eM <= 1e-3 * Mr && eN <= 1e-3 * Nr + 1e-6,
+      `εR=${(eR / Rr).toExponential(1)} εu=${(eu / ur).toExponential(1)} εM=${(eM / Mr).toExponential(1)} εN=${(eN / (Nr || 1)).toExponential(1)}`);
+    if (!r.pd) truthy(`«${r.n}»: equilibrio global ΣFx = ΣFy = ΣM = 0`, set.eq.every(v => Math.abs(v) < 1e-6 * (1 + Rr * 10)), set.eq.map(v => v.toExponential(1)).join(' '));
+  }
+}
+
+section('frame2d — segundo orden P-Δ (soluciones cerradas)');
+{
+  // Columna en voladizo con carga axial P y lateral H en el extremo (Timoshenko–Gere, «Theory of Elastic Stability» §1.11):
+  //   δ = H/(P k)·(tan kL − kL) ;  M_base = H·tan(kL)/k ;  k = √(P/EI)
+  const Lc = 4, EIc = 2e6 * 0.002, Pc = 0.4 * Math.PI ** 2 * EIc / (4 * Lc * Lc), Hc = 1, kc = Math.sqrt(Pc / EIc), n = 8;
+  const nod = Array.from({ length: n + 1 }, (_, k) => `${k + 1} 0 ${Lc * k / n}`).join('\n'), bar = Array.from({ length: n }, (_, k) => `${k + 1} ${k + 1} ${k + 2}`).join('\n');
+  const gp = block('frame2d', { nudos: nod, secciones: 'C 2e6 1000 0.002', barras: bar, apoyos: '1 E', cargas: `N ${n + 1} ${Hc} ${-Pc}`, combinaciones: 'U = CM', pdelta: true, servicio: 'U' });
+  near('Voladizo P-Δ (P = 0.4 Pcr): δ = H(tan kL − kL)/(Pk)', gp('deltax_' + (n + 1), 'm'), Hc * (Math.tan(kc * Lc) - kc * Lc) / (Pc * kc), 0.002);
+  near('Voladizo P-Δ: M base = H·tan(kL)/k', Math.abs(gp('R1m', 'tonf*m')), Hc * Math.tan(kc * Lc) / kc, 0.002);
+  near('Amplificación ≈ 1/(1 − P/Pcr) (P = 0.4 Pcr)', gp('ampPD'), Hc * (Math.tan(kc * Lc) - kc * Lc) / (Pc * kc) / (Hc * Lc ** 3 / (3 * EIc)), 0.003);
+  let err = ''; try { block('frame2d', { nudos: nod, secciones: 'C 2e6 1000 0.002', barras: bar, apoyos: '1 E', cargas: `N ${n + 1} ${Hc} ${-1.2 * Math.PI ** 2 * EIc / (4 * Lc * Lc)}`, combinaciones: 'U = CM', pdelta: true }); } catch (e) { err = e.message; }
+  truthy('P > Pcr: error claro de pandeo (sin NaN)', /P-Δ/.test(err) && /pandeo/.test(err), err.slice(0, 90));
+  // pórtico: los casos se mantienen lineales; las combinaciones se amplifican
+  const gq = block('frame2d', { nudos: '1 0 0\n2 0 4\n3 6 4\n4 6 0', secciones: 'C rect 0.3 0.3 2e6\nV rect 0.3 0.5 2e6', barras: '1 1 2 C\n2 2 3 V\n3 4 3 C', apoyos: '1,4 A', cargas: 'CM: N 2,3 0 -60\nCS: N 2 2 0', combinaciones: 'U = CM + CS', pdelta: true });
+  const gl = block('frame2d', { nudos: '1 0 0\n2 0 4\n3 6 4\n4 6 0', secciones: 'C rect 0.3 0.3 2e6\nV rect 0.3 0.5 2e6', barras: '1 1 2 C\n2 2 3 V\n3 4 3 C', apoyos: '1,4 A', cargas: 'CM: N 2,3 0 -60\nCS: N 2 2 0', combinaciones: 'U = CM + CS' });
+  truthy('Pórtico articulado: P-Δ amplifica el momento de la columna (> 1.05×)', gq('Mmax_1', 'tonf*m') > 1.05 * gl('Mmax_1', 'tonf*m'), `${gq('Mmax_1', 'tonf*m').toFixed(3)} vs ${gl('Mmax_1', 'tonf*m').toFixed(3)}`);
+  truthy('P-Δ: ΣFx y ΣFy de reacciones = cargas (equilibrio de fuerzas)', Math.abs(gq('R1x_U', 'tonf') + gq('R4x_U', 'tonf') + 2) < 1e-6 && Math.abs(gq('R1y_U', 'tonf') + gq('R4y_U', 'tonf') - 120) < 1e-6);
+}
+
+section('frame2d — deformación por cortante (Timoshenko), zonas rígidas y apoyos inclinados');
+{
+  const Es = 2e6, nu = 0.25, Gs = Es / (2 * (1 + nu)), Ir = 0.3 * 0.8 ** 3 / 12, Asr = 0.24 * 5 / 6;
+  let t = block('frame2d', { nudos: '1 0 0\n2 2 0', secciones: `S rect 0.3 0.8 ${Es}`, barras: '1 1 2', apoyos: '1 E', cargas: 'N 2 0 -10', cortante: String(nu) });
+  near('Voladizo corto: δ = PL³/3EI + PL/(G·As)', -t('deltay_2', 'm'), 10 * 8 / (3 * Es * Ir) + 10 * 2 / (Gs * Asr), 1e-6);
+  t = block('frame2d', { nudos: '1 0 0\n2 6 0', secciones: `S rect 0.3 0.8 ${Es}`, barras: '1 1 2', apoyos: '1 A\n2 Ry', cargas: 'U 1 2', cortante: String(nu), deflim: '1e6' });
+  near('Simple con cortante: δ = 5wL⁴/384EI + wL²/(8GAs)', t('delta_1', 'mm'), (5 * 2 * 6 ** 4 / (384 * Es * Ir) + 2 * 36 / (8 * Gs * Asr)) * 1000, 2e-3);
+  // empotramiento perfecto con cortante: carga puntual en a = 1 m (L = 4) vs. modelo con nudo bajo la carga
+  const a1 = block('frame2d', { nudos: '1 0 0\n2 4 0', secciones: `S rect 0.3 1.2 ${Es}`, barras: '1 1 2', apoyos: '1 E\n2 E', cargas: 'P 1 10 1\nM 1 3 2.5\nT 1 2 5 0.5 3', cortante: String(nu) });
+  const a2 = block('frame2d', { nudos: '1 0 0\n2 4 0\n3 1 0\n4 2.5 0\n5 0.5 0\n6 3 0', secciones: `S rect 0.3 1.2 ${Es}`, barras: '1 1 5\n2 5 3\n3 3 4\n4 4 6\n5 6 2', apoyos: '1 E\n2 E', cargas: 'N 3 0 -10\nN 4 0 0 3\nT 2 2 2.6 \nT 3 2.6 4.4\nT 4 4.4 5', cortante: String(nu) });
+  near('MEP con cortante (forma de Timoshenko) = modelo subdividido: M_A', a1('R1m', 'tonf*m'), a2('R1m', 'tonf*m'), 1e-9);
+  near('MEP con cortante: M_B', a1('R2m', 'tonf*m'), a2('R2m', 'tonf*m'), 1e-9);
+  // zonas rígidas: equivalentes a barras muy rígidas explícitas
+  const z1 = block('frame2d', { nudos: '1 0 0\n2 0 4\n3 6 4\n4 6 0', secciones: 'C rect 0.4 0.6 2e6\nV rect 0.3 0.6 2e6', barras: '1 1 2 C zj=0.3\n2 2 3 V zi=0.2 zj=0.2\n3 4 3 C zj=0.3', apoyos: '1,4 E', cargas: 'N 2 5 0\nU 2 3' });
+  const z2 = block('frame2d', { nudos: '1 0 0\n2 0 4\n3 6 4\n4 6 0\n5 0 3.7\n6 0.2 4\n7 5.8 4\n8 6 3.7', secciones: 'C rect 0.4 0.6 2e6\nV rect 0.3 0.6 2e6\nR 2e10 10 10', barras: '1 1 5 C\n1r 5 2 R\n2a 2 6 R\n2 6 7 V\n2b 7 3 R\n3 4 8 C\n3r 8 3 R', apoyos: '1,4 E', cargas: 'N 2 5 0\nU 2a,2,2b 3' });
+  near('Zonas rígidas zi/zj = barras rígidas explícitas: Δx nudo 2', z1('deltax_2', 'mm'), z2('deltax_2', 'mm'), 1e-4);
+  near('Zonas rígidas: momento en la base', z1('R1m', 'tonf*m'), z2('R1m', 'tonf*m'), 1e-4);
+  near('Zonas rígidas: M− de diseño de la viga en la cara del nudo', z1('Mneg_2', 'tonf*m'), z2('Mneg_2', 'tonf*m'), 1e-4);
+  near('Zonas rígidas: M+ de la viga', z1('Mpos_2', 'tonf*m'), z2('Mpos_2', 'tonf*m'), 1e-4);
+  const z3 = block('frame2d', { nudos: '1 0 0\n2 0 4\n3 6 4\n4 6 0', secciones: 'C rect 0.4 0.6 2e6\nV rect 0.3 0.6 2e6', barras: '1 1 2 C\n2 2 3 V\n3 4 3 C', apoyos: '1,4 E', cargas: 'N 2 5 0\nU 2 3', brazos: '1' });
+  const z4 = block('frame2d', { nudos: '1 0 0\n2 0 4\n3 6 4\n4 6 0', secciones: 'C rect 0.4 0.6 2e6\nV rect 0.3 0.6 2e6', barras: '1 1 2 C zj=0.3\n2 2 3 V zi=0.3 zj=0.3\n3 4 3 C zj=0.3', apoyos: '1,4 E', cargas: 'N 2 5 0\nU 2 3' });
+  near('Zonas rígidas automáticas (factor 1 = medio peralte transversal)', z3('deltax_2', 'mm'), z4('deltax_2', 'mm'), 1e-9);
+  // rodillo sobre plano inclinado α = 30°: R normal al plano → Rx = −(P/2)·tan α
+  const ri = block('frame2d', { nudos: '1 0 0\n2 6 0', secciones: 'S 2e6 0.2 0.005', barras: '1 1 2', apoyos: '1 A\n2 RI 30', cargas: 'P 1 10 3' });
+  near('Rodillo inclinado 30°: R2x = −(P/2)·tan 30°', ri('R2x', 'tonf'), -5 * Math.tan(Math.PI / 6));
+  near('Rodillo inclinado: R2y = P/2', ri('R2y', 'tonf'), 5);
+  near('Rodillo inclinado: N de la viga = R2x (compresión)', -ri('Nc_1', 'tonf'), -5 * Math.tan(Math.PI / 6));
+}
+
+section('frame2d — análisis modal (masas concentradas)');
+{
+  // columna en voladizo con masa en el extremo: T = 2π√(m/k), k = 3EI/L³
+  const mo = block('frame2d', { nudos: '1 0 0\n2 0 3', secciones: 'C 2e6 1000 0.002', barras: '1 1 2', apoyos: '1 E', cargas: 'N 2 1 0', masas: '2 9.80665 x' });
+  near('Voladizo con masa: T = 2π√(m·L³/3EI)', mo('T1', 's'), 2 * Math.PI * Math.sqrt(27 / (3 * 2e6 * 0.002)), 1e-9);
+  near('Voladizo: masa efectiva = 100 %', mo('MPx1'), 1, 1e-9);
+  // edificio de cortante de 3 pisos (vigas infinitamente rígidas): ω² = (k/m)·[2 − 2cos((2j−1)π/7)]
+  const hs = 3, kst = 2 * 12 * 2e6 * 0.002 / hs ** 3, mst = 20 / 9.80665;
+  const sb = block('frame2d', { nudos: '1 0 0\n2 6 0\n3 0 3\n4 6 3\n5 0 6\n6 6 6\n7 0 9\n8 6 9', secciones: 'C 2e6 1000 0.002\nV 2e6 1000 1000', barras: '1 1 3 C\n2 2 4 C\n3 3 5 C\n4 4 6 C\n5 5 7 C\n6 6 8 C\n7 3 4 V\n8 5 6 V\n9 7 8 V', apoyos: '1,2 E', cargas: 'N 7 1 0', masas: '3-8 10 x', modos: '3' });
+  for (let j = 1; j <= 3; j++) near(`Edificio de cortante: T${j}`, sb('T' + j, 's'), 2 * Math.PI / Math.sqrt(kst / mst * (2 - 2 * Math.cos((2 * j - 1) * Math.PI / 7))), 2e-4);
+  near('Σ masa efectiva de 3 modos = 100 %', sb('SMPx'), 1, 1e-6);
+  // masas a partir de las cargas (fuente de masa CM + 0.25 CV)
+  const ms = block('frame2d', { nudos: '1 0 0\n2 0 3\n3 6 3\n4 6 0', secciones: 'C 2e6 1000 0.002\nV 2e6 1000 1000', barras: '1 1 2 C\n2 2 3 V\n3 4 3 C', apoyos: '1,4 E', cargas: 'CM: U 2 3\nCV: U 2 2', masas: '= CM + 0.25 CV x', modos: '1' });
+  near('Masa de las cargas: T = 2π√((wL)/(g·2·12EI/h³))', ms('T1', 's'), 2 * Math.PI * Math.sqrt(3.5 * 6 / 9.80665 / (2 * 12 * 2e6 * 0.002 / 27)), 2e-4);
+}
+
+section('frame2d — sintaxis, errores y rendimiento');
+{
+  let err = ''; try { block('frame2d', { nudos: '1 0 0\n2 4 0', secciones: 'S 2e6 0.1 0.001', barras: '1 1 3', apoyos: '1 E', cargas: 'N 2 0 -1' }); } catch (e) { err = e.message; }
+  truthy('Nudo inexistente: el mensaje nombra el nudo', /nudo «3» no existe/.test(err), err.slice(0, 80));
+  err = ''; try { block('frame2d', { nudos: '1 0 0\n2 0 4\n3 6 4\n4 6 0', secciones: 'S 2e6 0.1 0.001', barras: '1 1 2 rj\n2 2 3\n3 4 3 rj', apoyos: '1,4 A', cargas: 'N 2 1 0' }); } catch (e) { err = e.message; }
+  truthy('Mecanismo de ladeo: indica los nudos y la dirección', /mecanismo/.test(err) && /nudos 3, 2|nudos 2, 3/.test(err) && /en x/.test(err), err.slice(0, 110));
+  const pm = block('frame2d', { nudos: '1 0 0\n2 6 0', secciones: 'S 2e6 1 0.001', barras: '1 1 2', apoyos: '1 A\n2 Ry', cargas: 'CM: U 1 1\nSX: N 2 1 0\nSY: U 1 0.2', combinaciones: 'U = 1.2 CM ± SX ± 0.3 SY' });
+  truthy('Dos signos ± generan 4 combinaciones (Ua…Ud)', ['Ua', 'Ub', 'Uc', 'Ud'].every(k => { try { pm('R1y_' + k, 'tonf'); return true; } catch (e) { return false; } }));
+  near('Ud = 1.2 CM − SX − 0.3 SY', pm('R1y_Ud', 'tonf'), (1.2 - 0.3 * 0.2) * 3);
+  const pp = block('frame2d', { nudos: '1 0 0\n2 6 3', secciones: 'S 2e6 1 0.001', barras: '1 1 2', apoyos: '1 A\n2 Ry', cargas: 'P 1 10 50% proy' });
+  near('Puntual con «proy» no se reduce por la inclinación (R = P/2)', pp('R2y', 'tonf'), 5);
+  const rr = block('frame2d', { nudos: '1 0 0\n2 7.6485 0', secciones: 'S 2e6 1 0.001', barras: '1 1 2', apoyos: '1 A\n2 Ry', cargas: 'U 1 2 0 7.65' });
+  near('Tramo cargado redondeado (b = 7.65 > L = 7.6485) se acepta', rr('R1y', 'tonf'), 2 * 7.6485 / 2, 1e-3);
+  // pórtico de 10 pisos × 10 vanos (210 barras): debe resolverse en pocos segundos
+  let nod = '', bar = '', k = 0, ld = '';
+  for (let s = 0; s <= 10; s++) for (let b = 0; b <= 10; b++) nod += `${s * 100 + b} ${b * 5} ${s * 3}\n`;
+  for (let s = 0; s < 10; s++) for (let b = 0; b <= 10; b++) bar += `${++k} ${s * 100 + b} ${(s + 1) * 100 + b} C\n`;
+  for (let s = 1; s <= 10; s++) for (let b = 0; b < 10; b++) { bar += `${++k} ${s * 100 + b} ${s * 100 + b + 1} V\n`; ld += `CM: U ${k} 3\nCV: U ${k} 1\n`; }
+  for (let s = 1; s <= 10; s++) ld += `CS: N ${s * 100} ${s} 0\n`;
+  const t0 = Date.now();
+  const big = block('frame2d', { nudos: nod, secciones: 'C rect 0.5 0.5 2.17e6\nV rect 0.3 0.6 2.17e6', barras: bar, apoyos: '0-10 E', cargas: ld, combinaciones: 'U1 = 1.4 CM + 1.7 CV\nU2 = 1.25(CM + CV) ± CS\nU3 = 0.9 CM ± CS', deriva_caso: 'CS', deriva_f: '6', pdelta: true, masas: '= CM + 0.25 CV x', modos: '6' });
+  const dt = Date.now() - t0;
+  truthy(`Pórtico de 210 barras con P-Δ y modal resuelto en ${dt} ms (< 4000 ms)`, dt < 4000 && big('T1', 's') > 0.5 && big('ampPD') > 1);
+}
 
 section('beamcase — fórmulas cerradas vs. método de rigidez');
 {

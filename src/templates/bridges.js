@@ -864,7 +864,7 @@ const pilar = {
   id: 'br-pilar', pais: 'PE', cat: CAT, icon: 'column', settings: {},
   name: 'Pilar de puente con sismo (pórtico de dos columnas)',
   normas: NORMAS_PE + ' · AASHTO Guide Specifications for LRFD Seismic Bridge Design (referencial)',
-  desc: 'Pilar intermedio de puente continuo 2 × 25 m: masa sísmica, rigidez y periodo en ambas direcciones, espectro AASHTO/MTC (Fpga, Fa, Fv), R (Tabla 3.10.7.1-1), combinación 100 %–30 %, diagrama P–M de las columnas, cortante y confinamiento.',
+  desc: 'Pilar intermedio de puente continuo 2 × 25 m: masa sísmica, rigidez y periodo en ambas direcciones, espectro AASHTO/MTC (Fpga, Fa, Fv), R (Tabla 3.10.7.1-1), combinación 100 %–30 %, esbeltez, diagrama P–M con φ AASHTO, P–Δ, cortante y confinamiento.',
   titulo: 'Diseño sísmico de pilar de dos columnas — AASHTO LRFD 3.10 / MTC 2018',
   blocks: [
     text(`# Generalidades

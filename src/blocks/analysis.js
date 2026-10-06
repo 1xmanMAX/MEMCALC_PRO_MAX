@@ -1294,11 +1294,25 @@ function renderFrame(b, ctx) {
   const serv = pick(b.servicio, 'Deformada') || (md.cases.length > 1 ? mk(Object.fromEntries(md.cases.map(c => [c.name, 1])), 'Servicio (Σ casos)', '') : sets.get(md.cases[0].name));
   // envolvente por estación
   const envOf = (mi, key) => { const st = md.mems[mi].st; const mx = st.map((_, p) => Math.max(...envSets.map(s => s.mf[mi][key][p]))); const mn = st.map((_, p) => Math.min(...envSets.map(s => s.mf[mi][key][p]))); return { mx, mn }; };
+  // con zonas rígidas, los esfuerzos de diseño se toman en las caras (tramo flexible)
   const memRes = md.mems.map((m, mi) => {
     const M = envOf(mi, 'M'), V = envOf(mi, 'V'), N = envOf(mi, 'N');
-    const Mpos = Math.max(0, ...M.mx), Mneg = Math.min(0, ...M.mn), Vmax = Math.max(...V.mx.map(Math.abs), ...V.mn.map(Math.abs));
+    const ks = m.st.map((s, p) => p).filter(p => m.st[p][0] >= (m.zi || 0) - 1e-9 && m.st[p][0] <= m.L - (m.zj || 0) + 1e-9);
+    const sel = (a) => ks.map(p => a[p]), k0 = ks[0], k1 = ks[ks.length - 1];
+    // extremos interiores exactos: donde V cambia de signo, M es parabólico entre estaciones (M* = Ma − Va²·h / (2(Vb − Va)))
+    let pk = [-Infinity, Infinity];
+    for (const set of md.pdelta ? [] : envSets) {
+      const q = set.mf[mi];
+      for (let t = 1; t < ks.length; t++) {
+        const pa = ks[t - 1], pb = ks[t], h = m.st[pb][0] - m.st[pa][0], Va = q.V[pa], Vb = q.V[pb];
+        if (!(h > 1e-9) || !(Va * Vb < 0)) continue;
+        const Ms = q.M[pa] - Va * Va * h / (2 * (Vb - Va));
+        if (Number.isFinite(Ms)) { pk[0] = Math.max(pk[0], Ms); pk[1] = Math.min(pk[1], Ms); }
+      }
+    }
+    const Mpos = Math.max(0, pk[0], ...sel(M.mx)), Mneg = Math.min(0, pk[1], ...sel(M.mn)), Vmax = Math.max(...sel(V.mx).map(Math.abs), ...sel(V.mn).map(Math.abs));
     const Nt = Math.max(0, ...N.mx), Nc = -Math.min(0, ...N.mn);
-    return { Mpos, Mneg, Mmax: Math.max(Mpos, -Mneg), Vmax, Nt, Nc, Nmax: Math.max(Nt, Nc), M, V, N, Mi: [Math.min(...M.mn.slice(0, 1)), Math.max(...M.mx.slice(0, 1))], Mj: [M.mn[M.mn.length - 1], M.mx[M.mx.length - 1]] };
+    return { Mpos, Mneg, Mmax: Math.max(Mpos, -Mneg), Vmax, Nt, Nc, Nmax: Math.max(Nt, Nc), M, V, N, Mi: [M.mn[k0], M.mx[k0]], Mj: [M.mn[k1], M.mx[k1]] };
   });
   const uM = FU + '*m';
   memRes.forEach((r, mi) => {
@@ -1456,8 +1470,8 @@ function renderFrame(b, ctx) {
     html += `<div class="dt">Fuerzas axiales por barra (${esc(envName)}) [${lu}]</div><table class="tbl"><thead><tr><th>Barra</th><th>Nudos</th><th>L [m]</th><th>Sección</th>${envSets.length === 1 ? '<th>N</th><th>Estado</th>' : '<th>N tracción máx.</th><th>N compresión máx.</th>'}</tr></thead><tbody>` +
       md.mems.map((m, mi) => { const r = memRes[mi]; const N = envSets[0].mf[mi].N[0]; return `<tr><td>${esc(m.id)}</td><td>${esc(md.nodes[m.i].id)}–${esc(md.nodes[m.j].id)}</td><td>${fx(m.L, 3)}</td><td>${esc(md.secs[m.sec].id)}</td>${envSets.length === 1 ? `<td>${fx(N)}</td><td>${Math.abs(N) < 1e-6 ? 'sin fuerza' : N > 0 ? '<span style="color:' + COL.T + '">Tracción</span>' : '<span style="color:' + COL.Cc + '">Compresión</span>'}</td>` : `<td>${fx(r.Nt)}</td><td>${fx(-r.Nc)}</td>`}</tr>`; }).join('') + '</tbody></table>';
   } else {
-    html += `<div class="dt">Esfuerzos de diseño por barra (${esc(envName)}) [${lu}, ${lu}·m]</div><table class="tbl"><thead><tr><th>Barra</th><th>Nudos</th><th>L [m]</th><th>Secc.</th><th>Mi (−/+)</th><th>Mj (−/+)</th><th>M+ máx</th><th>M− máx</th><th>|V| máx</th><th>N tracc.</th><th>N compr.</th></tr></thead><tbody>` +
-      md.mems.map((m, mi) => { const r = memRes[mi]; const pm = (a) => (Math.abs(a[0] - a[1]) < 1e-9 ? fx(a[0]) : fx(a[0]) + ' / ' + fx(a[1])); return `<tr><td>${esc(m.id)}</td><td>${esc(md.nodes[m.i].id)}–${esc(md.nodes[m.j].id)}</td><td>${fx(m.L, 3)}</td><td>${esc(md.secs[m.sec].id)}</td><td>${pm([r.M.mn[0], r.M.mx[0]])}</td><td>${pm(r.Mj)}</td><td>${fx(r.Mpos)}</td><td>${fx(r.Mneg)}</td><td>${fx(r.Vmax)}</td><td>${fx(r.Nt)}</td><td>${fx(-r.Nc)}</td></tr>`; }).join('') + '</tbody></table>';
+    html += `<div class="dt">Esfuerzos de diseño por barra (${esc(envName)}) [${lu}, ${lu}·m]</div><table class="tbl"><thead><tr><th>Barra</th><th>Nudos</th><th>L [m]</th><th>Secc.</th><th>Mi (−/+)${md.mems.some(m => m.zi > 0 || m.zj > 0) ? ' cara' : ''}</th><th>Mj (−/+)${md.mems.some(m => m.zi > 0 || m.zj > 0) ? ' cara' : ''}</th><th>M+ máx</th><th>M− máx</th><th>|V| máx</th><th>N tracc.</th><th>N compr.</th></tr></thead><tbody>` +
+      md.mems.map((m, mi) => { const r = memRes[mi]; const pm = (a) => (Math.abs(a[0] - a[1]) < 1e-9 ? fx(a[0]) : fx(a[0]) + ' / ' + fx(a[1])); return `<tr><td>${esc(m.id)}</td><td>${esc(md.nodes[m.i].id)}–${esc(md.nodes[m.j].id)}</td><td>${fx(m.L, 3)}</td><td>${esc(md.secs[m.sec].id)}</td><td>${pm(r.Mi)}</td><td>${pm(r.Mj)}</td><td>${fx(r.Mpos)}</td><td>${fx(r.Mneg)}</td><td>${fx(r.Vmax)}</td><td>${fx(r.Nt)}</td><td>${fx(-r.Nc)}</td></tr>`; }).join('') + '</tbody></table>';
   }
   if (groups.length) {
     html += `<div class="dt">Resumen por grupos de barras [${lu}, ${lu}·m, m]</div><table class="tbl"><thead><tr><th>Grupo</th><th>Barras</th>${md.truss ? '' : '<th>M+ máx</th><th>M− máx</th><th>|V| máx</th>'}<th>N tracc.</th><th>N compr.</th><th>L máx</th></tr></thead><tbody>` +

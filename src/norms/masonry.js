@@ -78,36 +78,37 @@ defineFns({
 }, 'Albañilería — E.070');
 
 // ---------------------------------------------------------------------
-//  NTE E.010 Madera (2014) — Tablas de esfuerzos admisibles y módulos
-//  (madera con CH ≤ 22 %, kgf/cm²) — idénticas al Manual JUNAC (Tabla 13.1)
+//  NTE E.010 Madera — Tablas 3 y 5 del texto vigente (gob.pe, 2021; grupos A–C iguales a la versión
+//  2006/2014 y al Manual JUNAC; el grupo D se incorporó en 2021). Madera latifoliada con CH ≤ 22 %, kgf/cm²
 // ---------------------------------------------------------------------
 export const E010 = {
   //      Emin    Eprom    fm   fc∥  fc⊥  ft   fv
   1: { Emin: 95000, Eprom: 130000, fm: 210, fc: 145, fcp: 40, ft: 145, fv: 15, n: 'A' },
   2: { Emin: 75000, Eprom: 100000, fm: 150, fc: 110, fcp: 28, ft: 105, fv: 12, n: 'B' },
   3: { Emin: 55000, Eprom: 90000, fm: 100, fc: 80, fcp: 15, ft: 75, fv: 8, n: 'C' },
+  4: { Emin: 45000, Eprom: 65000, fm: 70, fc: 63, fcp: 13, ft: 60, fv: 6, n: 'D' },
 };
-const g10 = (g, k) => mkUnit(pick(E010, g, 'Grupo E.010 (1 = A, 2 = B, 3 = C)')[k], KG);
+const g10 = (g, k) => mkUnit(pick(E010, g, 'Grupo E.010 (1 = A, 2 = B, 3 = C, 4 = D)')[k], KG);
 defineFns({
-  EminE010: { fn: (g) => g10(g, 'Emin'), tex: 'E_{min}', desc: 'E.010 Tabla 4: módulo de elasticidad mínimo (1 = A, 2 = B, 3 = C)', args: 'grupo' },
-  EpromE010: { fn: (g) => g10(g, 'Eprom'), tex: 'E_{prom}', desc: 'E.010 Tabla 4: módulo de elasticidad promedio', args: 'grupo' },
-  fmE010: { fn: (g) => g10(g, 'fm'), tex: 'f_m', desc: 'E.010 Tabla 3: esfuerzo admisible en flexión', args: 'grupo' },
+  EminE010: { fn: (g) => g10(g, 'Emin'), tex: 'E_{min}', desc: 'E.010 Tabla 5: módulo de elasticidad mínimo (1 = A, 2 = B, 3 = C, 4 = D)', args: 'grupo' },
+  EpromE010: { fn: (g) => g10(g, 'Eprom'), tex: 'E_{prom}', desc: 'E.010 Tabla 5: módulo de elasticidad promedio (acción de conjunto, Art. 17)', args: 'grupo' },
+  fmE010: { fn: (g) => g10(g, 'fm'), tex: 'f_m', desc: 'E.010 Tabla 3: esfuerzo admisible en flexión (+10 % con acción de conjunto, Art. 16.3)', args: 'grupo' },
   fcE010: { fn: (g) => g10(g, 'fc'), tex: 'f_{c\\parallel}', desc: 'E.010 Tabla 3: compresión paralela a las fibras', args: 'grupo' },
   fcpE010: { fn: (g) => g10(g, 'fcp'), tex: 'f_{c\\perp}', desc: 'E.010 Tabla 3: compresión perpendicular a las fibras', args: 'grupo' },
   ftE010: { fn: (g) => g10(g, 'ft'), tex: 'f_t', desc: 'E.010 Tabla 3: tracción paralela a las fibras', args: 'grupo' },
   fvE010: { fn: (g) => g10(g, 'fv'), tex: 'f_v', desc: 'E.010 Tabla 3: corte paralelo a las fibras', args: 'grupo' },
-  CkE010: { fn: (E, fc, forma = 1) => (Math.round(n0(forma)) === 2 ? 0.6077 : 0.7025) * Math.sqrt(n0(math.divide(E, fc))), tex: 'C_k', desc: 'E.010 / JUNAC 9.4: Ck = 0.7025√(E/fc) (rectangular); 0.6077√(E/fc) (circular)', args: 'Emin, fc, forma' },
+  CkE010: { fn: (E, fc, forma = 1) => (Math.round(n0(forma)) === 2 ? 0.6077 : 0.7025) * Math.sqrt(n0(math.divide(E, fc))), tex: 'C_k', desc: 'E.010 Art. 27–28 (Tablas 8 y 9) / JUNAC 9.4: Ck = 0.7025√(E/fc) (rectangular); 0.6077√(E/fc) (circular)', args: 'Emin, fc, forma' },
   NadmE010: {
-    fn: (fc, E, A, lam, Ck) => { const l = n0(lam), ck = Ck === undefined ? 0.7025 * Math.sqrt(n0(math.divide(E, fc))) : n0(Ck);
+    fn: (fc, E, A, lam, Ck, forma = 1) => { const circ = Math.round(n0(forma)) === 2, l = n0(lam), ck = Ck === undefined ? (circ ? 0.6077 : 0.7025) * Math.sqrt(n0(math.divide(E, fc))) : n0(Ck);
       // λ > 50 no está permitido (E.010 9.4): se sigue usando 0.329·E·A/λ² para que la memoria continúe y la
       // verificación «λ ≤ 50» de la plantilla marque NO CUMPLE (sin errores en cadena)
       if (!(l > 0)) throw new Error('E.010: la esbeltez debe ser positiva');
-      if (l < 10) return math.multiply(fc, A);
+      if (l < (circ ? 9 : 10)) return math.multiply(fc, A);
       if (l <= ck) return math.multiply(1 - (l / ck) ** 4 / 3, math.multiply(fc, A));
-      return math.multiply(0.329 / (l * l), math.multiply(E, A)); },
-    tex: 'N_{adm}', desc: 'E.010 Art. 9.4: carga admisible de columna corta (λ<10), intermedia (10≤λ≤Ck) o larga (Ck<λ≤50; λ > 50 no permitido: verificar aparte)', args: 'fc, Emin, A, λ, Ck',
+      return math.multiply((circ ? 0.2467 : 0.329) / (l * l), math.multiply(E, A)); },
+    tex: 'N_{adm}', desc: 'E.010 Art. 27, 28 y 30: columna corta (λ<10), intermedia (λ≤Ck) o larga (0.329 EA/λ², λ≤50); circular (forma = 2): λ<9, 0.2467 EA/λ², λ≤43. Límite de λ: verificar aparte', args: 'fc, Emin, A, λ, Ck, forma',
   },
-  kmE010: { fn: (N, Ncr) => { const r = n0(math.divide(N, Ncr)); if (!(r >= 0)) throw new Error('E.010: N y Ncr deben ser positivos'); return r >= 0.666 ? 1000 : 1 / (1 - 1.5 * r); }, tex: 'k_m', desc: 'E.010 Art. 10.3: km = 1/(1 − 1.5 N/Ncr); si N ≥ Ncr/1.5 (inestable) devuelve 1000 para que la interacción NO CUMPLA', args: 'N, Ncr' },
+  kmE010: { fn: (N, Ncr) => { const r = n0(math.divide(N, Ncr)); if (!(r >= 0)) throw new Error('E.010: N y Ncr deben ser positivos'); return r >= 0.666 ? 1000 : 1 / (1 - 1.5 * r); }, tex: 'k_m', desc: 'E.010 Art. 31.2: km = 1/(1 − 1.5 N/Ncr); si N ≥ Ncr/1.5 (inestable) devuelve 1000 para que la interacción NO CUMPLA', args: 'N, Ncr' },
 }, 'Madera — E.010');
 
 // ---------------------------------------------------------------------

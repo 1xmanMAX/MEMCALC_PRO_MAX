@@ -10,7 +10,7 @@ const ZONA = '[0.45 : Zona 4|0.35 : Zona 3|0.25 : Zona 2|0.10 : Zona 1]';
 const SUELO = '[0.80 : S0 roca dura|1.00 : S1 roca o suelo rígido|1.05 : S2 intermedio (Z4)|1.10 : S3 blando (Z4)|1.15 : S2 intermedio (Z3)|1.20 : S3 blando (Z3)]';
 const TP = '[0.3 s|0.4 s|0.6 s|1.0 s]';
 const TL = '[3.0 s|2.5 s|2.0 s|1.6 s]';
-const GRUPO = '[1 : Grupo A|2 : Grupo B|3 : Grupo C]';
+const GRUPO = '[1 : Grupo A|2 : Grupo B|3 : Grupo C|4 : Grupo D]';
 
 // Planta del edificio de 4 pisos (dimensiones en m, cargas en tonf al nivel del primer piso)
 const MUROS_EDIF = `X1 X 0 0 3.6 0.23 Pg=24 Pm=28
@@ -438,7 +438,7 @@ check ff <= ftad // Tracción por flexión admisible (Art. 8.6)`),
   // ===================================================================
   {
     id: 'ma-vigamadera', pais: 'PE', cat: 'Madera y tierra', icon: 'beam',
-    name: 'Viga de madera (E.010 / JUNAC)', normas: 'RNE — NTE E.010 Madera (2014), E.020; Manual de Diseño para Maderas del Grupo Andino (JUNAC)',
+    name: 'Viga de madera (E.010 / JUNAC)', normas: 'RNE — NTE E.010 Madera (texto vigente 2021; antes DS 005-2014), E.020; Manual de Diseño para Maderas del Grupo Andino (JUNAC)',
     desc: 'Vigas de entrepiso por esfuerzos admisibles: flexión, corte a una distancia h del apoyo, aplastamiento, deflexión con 1.8 CM + CV y estabilidad lateral (h/b).',
     titulo: 'Diseño de vigas de madera de entrepiso — NTE E.010',
     blocks: [
@@ -446,20 +446,22 @@ check ff <= ftad // Tracción por flexión admisible (Art. 8.6)`),
 Diseño por **esfuerzos admisibles** de las vigas de un entrepiso de madera (viguetas con entablado y cielo raso de yeso), según la NTE E.010 y el *Manual de Diseño para Maderas del Grupo Andino* (JUNAC, Cap. 8). Se usa madera estructural seca (CH ≤ 22 %) de dimensiones reales comerciales. Para viguetas que trabajan en conjunto (4 o más elementos con entablado) se emplea el módulo de elasticidad promedio $E_{prom}$; en elementos aislados, $E_{min}$.`),
       calc(`# Datos
 grupo = 2 // Grupo estructural de la madera (E.010 Tabla 1) ${GRUPO}
-Lv = 3.60 m // Luz de cálculo de la vigueta
+Lv = 4.20 m // Luz de cálculo de la vigueta
 sv = 0.60 m // Separación entre viguetas
-b = 4 cm // Ancho real (sección comercial 2" × 10")
+b = 6.5 cm // Ancho real (sección comercial 3" × 10")
 h = 24 cm // Peralte real
 apoyo = 8 cm // Longitud de apoyo
 wD = 100 kgf/m^2 // Carga muerta (entablado, cielo raso, acabados)
 wL = 200 kgf/m^2 // Sobrecarga de vivienda (E.020)
 gmad = 650 kgf/m^3 // Densidad de la madera seca del grupo B (peso propio)
-conj = 1 // Elementos en conjunto (≥ 4 viguetas con entablado) [1 : Sí — Eprom|0 : No — Emin]
-lim = 300 // Deflexión admisible L/k (E.010 Tabla 8) [300 : Con cielo raso de yeso|250 : Sin cielo raso de yeso]
-# Propiedades (E.010 Tablas 3 y 4)
-E = si(conj == 1, EpromE010(grupo), EminE010(grupo)) // Módulo de elasticidad
-fm = fmE010(grupo) // Esfuerzo admisible en flexión
-fv = fvE010(grupo) // Esfuerzo admisible en corte paralelo
+conj = 1 // Acción de conjunto (viguetas con entablado a ≤ 60 cm) [1 : Sí — Eprom y +10 %|0 : No — Emin]
+lim = 300 // Deflexión admisible L/k (E.010 Art. 18.2 a) [300 : Con cielo raso de yeso|250 : Sin cielo raso de yeso]
+check si(conj == 1, sv, 0.60 m) <= 0.60 m // Acción de conjunto solo con separación ≤ 60 cm (E.010 Art. 16.3)
+# Propiedades (E.010 Tablas 3 y 5)
+E = si(conj == 1, EpromE010(grupo), EminE010(grupo)) // Módulo de elasticidad (Art. 17)
+kc = si(conj == 1, 1.10, 1.00) // Incremento de esfuerzos por acción de conjunto (Art. 16.3, excepto fc⊥)
+fm = kc*fmE010(grupo) // Esfuerzo admisible en flexión
+fv = kc*fvE010(grupo) // Esfuerzo admisible en corte paralelo
 fcp = fcpE010(grupo) // Compresión perpendicular a las fibras
 A = b*h // Área de la sección
 Ix = b*h^3/12 // Momento de inercia
@@ -469,27 +471,29 @@ wpp = gmad*A -> kgf/m // Peso propio
 wd = wD*sv + wpp -> kgf/m // Carga muerta por vigueta
 wl = wL*sv -> kgf/m // Carga viva por vigueta
 w = wd + wl // Carga total de servicio
-# Flexión (JUNAC 8.4)
+# Flexión (E.010 Art. 19.1)
 M = w*Lv^2/8 -> kgf*m // Momento máximo
 sigma = M/Zx -> kgf/cm^2 // Esfuerzo de flexión
 check sigma <= fm // Esfuerzo de flexión admisible
-# Corte (JUNAC 8.5 — a una distancia h del apoyo)
+# Corte (E.010 Art. 19.2 b — a una distancia h del apoyo)
 V = w*(Lv/2 - h) -> kgf // Cortante a la distancia h
 tau = 1.5*V/A -> kgf/cm^2 // τ = 1.5 V/(b h)
 check tau <= fv // Esfuerzo de corte admisible
-# Aplastamiento en el apoyo (JUNAC 8.6)
+# Aplastamiento en el apoyo (E.010 Art. 19.3)
 R = w*Lv/2 -> kgf // Reacción
 sap = R/(b*apoyo) -> kgf/cm^2 // Compresión perpendicular a las fibras
 check sap <= fcp // Aplastamiento
-# Deflexión (E.010 Art. 8.3 / JUNAC 8.3)
-weq = 1.8*wd + wl // Carga equivalente con deformaciones diferidas (1.8 CM + CV)
+# Deflexión (E.010 Art. 18)
+weq = 1.8*wd + wl // Carga equivalente: deformación diferida +80 % de la carga permanente (Art. 18.3)
 delta = 5*weq*Lv^4/(384*E*Ix) -> cm // Deflexión máxima
-dadm = Lv/lim -> cm // Deflexión admisible
-check delta <= dadm // Deflexión
-# Estabilidad lateral (JUNAC Tabla 8.2)
+dadm = Lv/lim -> cm // Deflexión admisible (CM + CV)
+check delta <= dadm // Deflexión con carga permanente + viva (Art. 18.2 a)
+deltaL = 5*wl*Lv^4/(384*E*Ix) -> cm // Deflexión por carga viva sola
+check deltaL <= min(Lv/350, 1.3 cm) // Deflexión por carga viva ≤ L/350 y ≤ 13 mm (Art. 18.2 b)
+# Estabilidad lateral (E.010 Art. 20)
 rhb = h/b // Relación peralte/ancho
-check rhb <= 6 // h/b ≤ 6: arriostrar el borde comprimido (entablado) y colocar crucetas o bloques
-"Con $h/b$ = {rhb}: restringir el desplazamiento lateral en los apoyos y el borde comprimido (entablado clavado) y colocar bloques o crucetas de arriostre a lo largo de la luz (JUNAC Tabla 8.2).`),
+check rhb <= 5 // h/b ≤ 5 (máxima relación con arriostre normado: entablado continuo, Art. 20.2 d)
+"Con $h/b$ = {rhb}: h/b ≤ 3 restringe el desplazamiento lateral de los apoyos; h/b ≤ 4 exige además arriostrar el borde comprimido con correas o viguetas a ≤ 60 cm; h/b ≤ 5, con entablado continuo (E.010 Art. 20.2).`),
       summary(),
     ],
   },
@@ -498,7 +502,7 @@ check rhb <= 6 // h/b ≤ 6: arriostrar el borde comprimido (entablado) y coloca
   // ===================================================================
   {
     id: 'ma-colmadera', pais: 'PE', cat: 'Madera y tierra', icon: 'column',
-    name: 'Columna de madera (E.010 / JUNAC)', normas: 'RNE — NTE E.010 Madera (2014); Manual de Diseño para Maderas del Grupo Andino (JUNAC, Cap. 9)',
+    name: 'Columna de madera (E.010 / JUNAC)', normas: 'RNE — NTE E.010 Madera (texto vigente 2021; antes DS 005-2014); Manual de Diseño para Maderas del Grupo Andino (JUNAC, Cap. 9)',
     desc: 'Columna rectangular: esbeltez λ = lef/d, Ck = 0.7025√(E/fc), carga admisible (corta, intermedia, larga) y flexocompresión N/Nadm + km M/(Z fm) < 1.',
     titulo: 'Diseño de columna de madera a flexocompresión — NTE E.010',
     blocks: [
@@ -509,7 +513,7 @@ grupo = 2 // Grupo estructural ${GRUPO}
 b = 14 cm // Ancho real (sección comercial 6" × 6")
 d = 14 cm // Dimensión en la dirección del pandeo y de la flexión
 lc = 2.60 m // Longitud no arriostrada
-k = 1.0 // Factor de longitud efectiva (JUNAC Tabla 9.1) [1.0 : Articulada–articulada|1.2 : Empotrada–articulada con desplazamiento|2.0 : Voladizo|0.65 : Empotrada–empotrada]
+k = 1.0 // Factor de longitud efectiva (E.010 Art. 26 / JUNAC Tabla 9.1) [1.0 : Articulada–articulada|1.2 : Empotrada–articulada con desplazamiento|2.0 : Voladizo|0.65 : Empotrada–empotrada]
 Nd = 6.0 tonf // Carga axial de servicio
 Md = 0.15 tonf*m // Momento de servicio
 # Propiedades (E.010 Tablas 3 y 4)
@@ -519,17 +523,17 @@ fm = fmE010(grupo) // Flexión admisible
 A = b*d // Área
 Ix = b*d^3/12 // Inercia
 Zx = b*d^2/6 // Módulo de sección
-# Esbeltez y carga admisible (JUNAC 9.4)
+# Esbeltez y carga admisible (E.010 Art. 27 y 30)
 lef = k*lc // Longitud efectiva
 lam = lef/d // Esbeltez λ
-check lam <= 50 // Esbeltez máxima λ ≤ 50
+check lam <= 50 // Esbeltez máxima λ ≤ 50 (E.010 Art. 27)
 Ck = CkE010(Emin, fc) // Esbeltez límite Ck = 0.7025 √(Emin/fc)
 "Columna {si(lam < 10, 1, si(lam <= Ck, 2, 3))} (1 = corta, 2 = intermedia, 3 = larga).
 Nadm = NadmE010(fc, Emin, A, lam, Ck) -> tonf // Carga admisible
 check Nd <= Nadm // Compresión
-# Flexocompresión (JUNAC 9.6)
+# Flexocompresión (E.010 Art. 31)
 Ncr = pi^2*Emin*Ix/lef^2 -> tonf // Carga crítica de Euler
-check Nd < Ncr/1.5 // Estabilidad: N < Ncr/1.5 (E.010 Art. 10.3)
+check Nd < Ncr/1.5 // Estabilidad: N < Ncr/1.5 para que km sea finito (E.010 Art. 31.2)
 km = kmE010(Nd, Ncr) // Factor de magnificación km = 1/(1 − 1.5 N/Ncr)
 ic = Nd/Nadm + km*Md/(Zx*fm) // Ecuación de interacción
 check ic < 1 // N/Nadm + km|M|/(Z fm) < 1`),
@@ -541,12 +545,12 @@ check ic < 1 // N/Nadm + km|M|/(Z fm) < 1`),
   // ===================================================================
   {
     id: 'ma-tijeral', pais: 'PE', cat: 'Madera y tierra', icon: 'beam',
-    name: 'Tijeral de madera (E.010 / JUNAC)', normas: 'RNE — NTE E.010 Madera (2014), E.020; Manual JUNAC (Cap. 11 Armaduras)',
+    name: 'Tijeral de madera (E.010 / JUNAC)', normas: 'RNE — NTE E.010 Madera (texto vigente 2021; antes DS 005-2014), E.020; Manual JUNAC (Cap. 11 Armaduras)',
     desc: 'Armadura Howe/Pratt a dos aguas: cargas por nudo, análisis por rigidez, diseño de cuerda superior a flexocompresión, cuerda inferior a tracción y diagonales a compresión.',
     titulo: 'Diseño de tijeral de madera para cobertura liviana',
     blocks: [
       text(`# Generalidades
-Tijeral de madera a dos aguas para cobertura liviana (teja andina de fibrocemento sobre correas), con cielo raso colgado de la cuerda inferior. La armadura se analiza con nudos articulados y cargas aplicadas en los nudos (JUNAC Cap. 11); la cuerda superior se verifica además a flexocompresión por la carga repartida de las correas entre nudos, y la longitud efectiva de los elementos se toma según la Tabla 11.1 del Manual JUNAC.`),
+Tijeral de madera a dos aguas para cobertura liviana (teja andina de fibrocemento sobre correas), con cielo raso colgado de la cuerda inferior. La armadura se analiza con nudos articulados y cargas aplicadas en los nudos (JUNAC Cap. 11); la cuerda superior se verifica además a flexocompresión por la carga repartida de las correas entre nudos, y la longitud efectiva en el plano se toma como 0.9 veces la longitud entre nudos (E.010 Art. 43.2; el Manual JUNAC admitía 0.8 l).`),
       calc(`# Datos
 grupo = 2 // Grupo estructural ${GRUPO}
 Lt = 8.00 m // Luz del tijeral
@@ -572,11 +576,12 @@ b1 = 4 cm // Ancho (sección comercial 2" × 4")
 d1 = 9 cm // Peralte (en el plano del tijeral)
 A1 = b1*d1
 Z1 = b1*d1^2/6
-lef1 = 0.8*Lcs // Longitud efectiva en el plano: 0.8 l (cuerda continua, JUNAC Tabla 11.1)
+lef1 = 0.9*Lcs // Longitud efectiva en el plano: 0.9 l (E.010 Art. 43.2)
 lam1 = lef1/d1 // Esbeltez en el plano
-lc1 = 0.60 m // Separación de correas (arriostre fuera del plano)
-lam1b = lc1/b1 // Esbeltez fuera del plano
-check max(lam1, lam1b) <= 50 // Esbeltez máxima
+lc1 = 0.55 m // Separación de correas (arriostre fuera del plano)
+lam1b = lc1/b1 // Esbeltez fuera del plano (correas como arriostre, Art. 43.1)
+check max(lam1, lam1b) <= 50 // Esbeltez máxima en compresión (Art. 43.5)
+check lam1b <= lam1 // Separación de correas: esbeltez fuera del plano ≤ en el plano (Art. 43.4)
 Nadm1 = min(NadmE010(fc, Emin, A1, lam1, Ck), NadmE010(fc, Emin, A1, lam1b, Ck)) -> tonf // Carga admisible
 w1 = (wcob + wsc)*st -> kgf/m // Carga repartida de las correas
 M1 = w1*(Lpan)^2/10 -> kgf*m // Momento entre nudos (cuerda continua)
@@ -589,16 +594,17 @@ b2 = 4 cm
 d2 = 9 cm // Sección 2" × 4"
 An2 = 0.85*b2*d2 // Área neta (descuento por perforaciones de pernos)
 check Nti/An2 <= ft // Tracción en la cuerda inferior
+check Lpan/b2 <= 80 // Esbeltez máxima en tracción (lef/b ≤ 80, Art. 43.5)
 # Diagonales y montantes — compresión
 b3 = 4 cm
 d3 = 6.5 cm // Sección 2" × 3"
-lam3 = 0.8*Ldc/b3 // Esbeltez fuera del plano (lef = 0.8 l)
-check lam3 <= 50
+lam3 = max(0.9*Ldc/d3, Ldc/b3) // Esbeltez: en el plano 0.9 l/d; fuera del plano l/b (sin arriostre intermedio)
+check lam3 <= 50 // Esbeltez máxima de la diagonal (Art. 43.5)
 Nadm3 = NadmE010(fc, Emin, b3*d3, lam3, Ck) -> tonf
 check Ndc <= Nadm3 // Compresión en la diagonal más cargada
 check Ndt/(0.85*b3*d3) <= ft // Tracción en montantes y diagonales
-# Deflexión del tijeral (JUNAC 11.6, aproximación)
-"Deflexión admisible de armaduras: L/300 con cielo raso de yeso; la contraflecha de fabricación recomendada es L/200 = {Lt/200 -> cm}.`),
+# Deflexión y contraflecha (E.010 Art. 42)
+"Deflexión admisible de armaduras igual a la de elementos en flexión (Art. 42.2: L/300 con cielo raso de yeso, incluyendo la deformación de los nudos); armaduras de más de 8 m llevan contraflecha mínima L/300 = {Lt/300 -> cm} (Art. 42.3).`),
       summary(),
     ],
   },

@@ -642,7 +642,8 @@ export function blockTable(b, ctx) {
     if (typeof v === 'number') return f2(v, dec);
     return esc(String(v));
   };
-  let h = '<table class="tbl"><thead><tr>' + cols.map(c => `<th>${richText(c.head.replace(/\[[^\]]+\]\s*$/, ''), S, true)}${c.unit ? ' [' + esc(c.unit) + ']' : ''}</th>`).join('') + '</tr></thead><tbody>';
+  const fsz = cols.length > 12 ? 7 : cols.length > 9 ? 8 : cols.length > 7 ? 9 : 0;
+  let h = `<table class="tbl"${fsz ? ` style="font-size:${fsz}pt"` : ''}><thead><tr>` + cols.map(c => `<th>${richText(c.head.replace(/\[[^\]]+\]\s*$/, ''), S, true)}${c.unit ? ' [' + esc(c.unit) + ']' : ''}</th>`).join('') + '</tr></thead><tbody>';
   for (let r = 0; r < n; r++) h += '<tr>' + cols.map(c => `<td>${fmt(c.vals[r], c.unit)}</td>`).join('') + '</tr>';
   if (b.total) h += '<tr class="tot">' + cols.map((c, i) => { if (i === 0) return '<td>Σ</td>'; try { const s = c.vals.reduce((a, v) => math.add(a, v)); return `<td>${fmt(s, c.unit)}</td>`; } catch (e) { return '<td></td>'; } }).join('') + '</tr>';
   h += '</tbody></table>';

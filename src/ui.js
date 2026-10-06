@@ -281,7 +281,7 @@ function compute() {
     const el = (f.l !== undefined && document.querySelector(`#paper .ln[data-b="${f.b}"][data-l="${f.l}"]`)) || document.querySelector(`#paper .blk[data-b="${f.b}"]`);
     if (el) {
       const r = el.getBoundingClientRect(), box = $('#right').getBoundingClientRect();
-      if (r.top < box.top + 40 || r.top > box.bottom - 80) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (r.top < box.top + 40 || r.top > box.bottom - 80) paperGo(el);
       if (el.classList.contains('ln')) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
     }
   }
@@ -1213,7 +1213,7 @@ function showCmdK() {
     A('Ir a Datos', I.data, 'Alt 1', () => { setView('edit'); setTab('datos'); }), A('Ir al Editor', I.edit, 'Alt 2', () => { setView('edit'); setTab('bloques'); }), A('Ir a Variables', I.vars, 'Alt 3', () => { setView('edit'); setTab('vars'); }), A('Ir a Proyecto', I.gear, 'Alt 4', () => { setView('edit'); setTab('proyecto'); }),
     A('Cambiar tema (claro / oscuro / automático)', I.moon, '', () => runAction('theme')), A('Normas implementadas', I.book, '', () => showNormas()), A('Ayuda y sintaxis', I.help, 'F1', () => showHelp()), A('Atajos de teclado', I.key, '', () => showKeys()),
   ];
-  const secs = lastRes.ctx.toc.map(t => ({ g: 'Secciones', t: (t.num ? t.num + ' ' : '') + t.text.replace(/\$[^$]*\$/g, '').replace(/[*_`]/g, ''), ic: I.book, run: () => { if (isMobile()) setView('prev'); document.getElementById(t.id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }); } }));
+  const secs = lastRes.ctx.toc.map(t => ({ g: 'Secciones', t: (t.num ? t.num + ' ' : '') + t.text.replace(/\$[^$]*\$/g, '').replace(/[*_`]/g, ''), ic: I.book, run: () => { if (isMobile()) setView('prev'); paperGo(document.getElementById(t.id), 'start'); } }));
   const blks = addGroups().flatMap(([g, ks]) => ks.map(k => ({ g: 'Agregar bloque', t: 'Agregar: ' + TYPES[k].name, sub: g, ic: icon(TYPES[k]), run: () => { setView('edit'); setTab('bloques'); insertBlock(k); } })));
   const tpls = TEMPLATES.map(t => ({ g: 'Plantillas', t: t.name, sub: t.normas || t.cat, ic: I[t.icon] || I.calc, k: paisOf(t), run: () => loadTemplate(t) }));
   const fns = allFns().map(f => ({ g: 'Funciones', t: f.name + '(' + f.args + ')', sub: f.desc, ic: I.fn, run: () => insertFn(f), key: f.name }));
@@ -1254,6 +1254,14 @@ function showCmdK() {
 }
 
 // ---------------- Navegación ----------------
+// Desplaza la vista previa hasta un elemento. Los bloques fuera de pantalla usan
+// content-visibility (alturas estimadas); se maquetan todos un momento para llegar exacto.
+let cvT = 0;
+function paperGo(el, block = 'center') {
+  if (!el) return; const p = $('#paper');
+  p.classList.add('cvoff'); clearTimeout(cvT); cvT = setTimeout(() => p.classList.remove('cvoff'), 1500);
+  el.scrollIntoView({ block, behavior: 'smooth' });
+}
 // Modo lectura: oculta el panel izquierdo para ver la memoria a todo el ancho
 function toggleFocus(on) {
   const m = $('.main'); on = on ?? !m.classList.contains('focus');
@@ -1367,7 +1375,7 @@ export function start() {
     if (ch) {
       const g = ch.dataset.go;
       if (g === 'err' && lastRes.ctx.errors.length) { const er = lastRes.ctx.errors[0]; goToLine(er.block, Math.max(0, er.line - 1)); }
-      else { if (isMobile()) setView('prev'); const el = document.querySelector(g === 'bad' ? '#paper .cbad, #paper .bad' : '#paper .sum, #paper .cok'); el?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      else { if (isMobile()) setView('prev'); const el = document.querySelector(g === 'bad' ? '#paper .cbad, #paper .bad' : '#paper .sum, #paper .cok'); paperGo(el); }
       return;
     }
     const ln = e.target.closest('#paper .ln[data-b]');
@@ -1428,12 +1436,12 @@ export function start() {
     if (e.target.closest('[data-csopen]')) { csOpen = !csOpen; lsSet('mc_csopen', csOpen ? '1' : '0'); const st = $('#p-datos .cstrip'); st._h = ''; renderCheckStrip(); return; }
     if (e.target.closest('[data-figtoggle]')) { figOpen = !figOpen; lsSet('mc_figopen', figOpen ? '1' : '0'); const bx = $('#p-datos .dfig'); bx._src = ''; renderSketch(); return; }
     const fg = e.target.closest('[data-figgo]');
-    if (fg) { if (isMobile()) setView('prev'); const el = document.querySelector(`#paper .blk[data-b="${fg.dataset.figgo}"] .figure`); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } return; }
+    if (fg) { if (isMobile()) setView('prev'); const el = document.querySelector(`#paper .blk[data-b="${fg.dataset.figgo}"] .figure`); if (el) { paperGo(el); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } return; }
     const g = e.target.closest('[data-gob]'); if (!g) return;
     if (g.classList.contains('erow')) { goToLine(g.dataset.gob, +g.dataset.gol); return; }
     if (isMobile()) setView('prev');
     const el = document.querySelector(`#paper .ln[data-b="${g.dataset.gob}"][data-l="${g.dataset.gol}"]`) || document.querySelector(`#paper .blk[data-b="${g.dataset.gob}"]`);
-    if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+    if (el) { paperGo(el); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
   });
   $('#p-datos').addEventListener('keydown', e => {
     if (e.target.tagName !== 'INPUT' || !['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) return;
@@ -1658,8 +1666,12 @@ async function boot() {
       history.replaceState(null, '', location.pathname);
     }
   } catch (e) { /* */ }
-  if (!d) { doc = newDoc(TEMPLATES.find(t => t.id === 'viga')); first = true; } else doc = migrate(d);
+  // ?plantilla=ID abre directamente una plantilla (enlaces directos, capturas automáticas)
+  let qTpl = null; try { const id = new URLSearchParams(location.search).get('plantilla'); if (id) qTpl = TEMPLATES.find(t => t.id === id) || null; } catch (e) { /* */ }
+  if (qTpl) { doc = newDoc(qTpl); first = false; }
+  else if (!d) { doc = newDoc(TEMPLATES.find(t => t.id === 'viga')); first = true; } else doc = migrate(d);
   loadUI(); compute();
-  if (first) { setTab('datos'); showHome(true); } else if (lsGet('mc_home', '0') === '1') showHome();
+  if (qTpl) setTab('datos');
+  else if (first) { setTab('datos'); showHome(true); } else if (lsGet('mc_home', '0') === '1') showHome();
   void math;
 }

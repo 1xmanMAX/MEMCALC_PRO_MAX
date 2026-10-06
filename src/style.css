@@ -559,3 +559,5 @@ details.hint[open] summary{border-bottom:1px solid var(--bd);border-radius:8px 8
   .csum-t small{font-size:11px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+/* rendimiento: los bloques de la vista previa fuera de pantalla no se maquetan ni pintan */
+@media screen{#paper section.blk{content-visibility:auto;contain-intrinsic-size:auto 420px}#paper.fitm section.blk,#paper.cvoff section.blk{content-visibility:visible}}

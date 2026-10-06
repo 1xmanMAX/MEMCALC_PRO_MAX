@@ -8,7 +8,7 @@ import katex from 'katex';
 
 const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
 const X = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
-const ACC = '0B5CAD', GRAY = '5D6B78';
+const ACC = '1F4E79', GRAY = '5D6B78', INK = '1B222B', HDR = 'EEF2F6';
 const TEXT_W = 9354; // twips (A4 - márgenes)
 const EMU_MAX = Math.round(TEXT_W / 1440 * 914400);
 
@@ -65,6 +65,10 @@ function inline(node, f = {}) {
     if (cls.contains('ok')) { out += run(' ✔ CUMPLE ', { b: 1, color: 'FFFFFF', shd: '1A7F37', sz: 18 }); continue; }
     if (cls.contains('nvb')) { out += run(' ⚠ NO VERIFICABLE ', { b: 1, color: 'FFFFFF', shd: 'B26B00', sz: 18 }); continue; }
     if (cls.contains('bad')) { out += run(' ✘ NO CUMPLE ', { b: 1, color: 'FFFFFF', shd: 'C62828', sz: 18 }); continue; }
+    if (cls.contains('hn')) { if (el.textContent.trim()) out += run(el.textContent.trim() + '  ', f); continue; }
+    if (cls.contains('capn')) { out += run(el.textContent + '. ', { ...f, b: 1, i: 0, color: INK }); continue; }
+    if (cls.contains('govt')) { out += run(' ' + el.textContent.toUpperCase() + ' ', { b: 1, color: ACC, sz: 15 }); continue; }
+    if (cls.contains('nref')) { out += run(' [' + el.textContent.trim() + ']', { ...f, b: 1, i: 0, color: ACC, sz: 16 }); continue; }
     if (cls.contains('dc')) { out += run('  ' + el.textContent + ' ', { color: GRAY, sz: 18 }); continue; }
     if (tag === 'br') { out += '<w:r><w:br/></w:r>'; continue; }
     if (tag === 'strong' || tag === 'b') { out += inline(el, { ...f, b: 1 }); continue; }
@@ -87,7 +91,8 @@ function tblXml(rows, o = {}) {
     x += `<w:tr>${ri === 0 && o.header ? '<w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>' : '<w:trPr><w:cantSplit/></w:trPr>'}`;
     for (let ci = 0; ci < ncol; ci++) {
       const c = r[ci] ?? '';
-      const shd = ri === 0 && o.header ? '<w:shd w:val="clear" w:color="auto" w:fill="E8F1FB"/>' : (o.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>` : '');
+      const shd = ri === 0 && o.header ? `<w:shd w:val="clear" w:color="auto" w:fill="${HDR}"/>`
+        : (o.rowFill && o.rowFill[ri]) ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.rowFill[ri]}"/>` : (o.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>` : '');
       x += `<w:tc><w:tcPr><w:tcW w:w="${widths[ci]}" w:type="dxa"/>${shd}<w:vAlign w:val="center"/></w:tcPr>${c.startsWith('<w:p') ? c : para(c, { jc: o.jc ? o.jc[ci] : 'center', spacing: 20, before: 20 })}</w:tc>`;
     }
     x += '</w:tr>';
@@ -101,6 +106,10 @@ function htmlTable(t) {
     return inline(td, td.tagName === 'TH' ? { b: 1, color: '0D3B66' } : {});
   }));
   const hdr = !!t.querySelector('thead, th');
+  if (t.classList.contains('sum') && rows[0] && rows[0].length === 6) {
+    const trs = [...t.querySelectorAll('tr')];
+    return tblXml(rows, { header: hdr, widths: [460, 3900, 1450, 800, 1050, 1694], jc: ['center', 'left', 'center', 'center', 'center', 'center'], rowFill: trs.map(tr => tr.classList.contains('gov') ? 'FBF6E7' : null) });
+  }
   return tblXml(rows, { header: hdr });
 }
 
@@ -144,6 +153,7 @@ export async function buildDocx(root, meta) {
         const chk = cls.contains('chk');
         const fill = cls.contains('cbad') ? 'FDECEC' : cls.contains('cok') ? 'EEF7F0' : null;
         if (cm && !chk) body += para(inline(cm, { i: 1, color: GRAY, sz: 17 }), { keep: 1, spacing: 0, before: 60 });
+        else if (cm && chk) { const lab = cm.querySelector('.cmt'), ref = cm.querySelector('.nref'), st = cm.querySelector('.cst'); if (lab || ref) body += para((lab ? inline(lab, { b: 1, sz: 18 }) : '') + (ref ? inline({ childNodes: [ref] }, { sz: 18 }) : ''), { keep: 1, spacing: 0, before: 80, shd: fill }); if (st) { body += `<w:p><w:pPr><w:keepNext/><w:spacing w:before="0" w:after="0"/>${fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : ''}</w:pPr><m:oMathPara><m:oMathParaPr><m:jc m:val="left"/></m:oMathParaPr>${eq && eq.querySelector('math') ? omml(eq.querySelector('math')) : ''}</m:oMathPara></w:p>` + para(inline(st, { b: 1, sz: 18 }), { jc: 'right', spacing: 100, shd: fill }); continue; } }
         const m = eq && eq.querySelector('math');
         const math = m ? omml(m) : '';
         body += `<w:p><w:pPr>${chk ? '' : ''}<w:keepNext w:val="${chk ? 1 : 0}"/><w:spacing w:before="20" w:after="${chk ? 0 : 60}"/>${fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : ''}</w:pPr><m:oMathPara><m:oMathParaPr><m:jc m:val="left"/></m:oMathParaPr>${math}</m:oMathPara></w:p>`;
@@ -151,7 +161,7 @@ export async function buildDocx(root, meta) {
         continue;
       }
       flushLn();
-      if (cls.contains('runhead') || cls.contains('gap')) continue;
+      if (cls.contains('runhead') || cls.contains('gap') || tag === 'style') continue;
       if (cls.contains('pb')) { body += pageBreak(); continue; }
       if (tag === 'section' || cls.contains('md') || tag === 'div' && (cls.contains('figure') || cls.contains('blk'))) {
         if (cls.contains('figure')) await walkFigure(n); else await walk(n);
@@ -164,7 +174,15 @@ export async function buildDocx(root, meta) {
       if (tag === 'blockquote') { body += para(inline(n), { shd: 'FFF8E1' }); continue; }
       if (tag === 'ul' || tag === 'ol') { [...n.children].forEach((li, i) => { body += para(run(tag === 'ul' ? '•  ' : (i + 1) + '.  ', {}) + inline(li)); }); continue; }
       if (tag === 'table') { body += htmlTable(n); continue; }
-      if (cls.contains('sumhead')) { const big = n.querySelector('.sumbig'); body += para(run(big ? big.textContent : n.textContent, { b: 1, color: big && big.classList.contains('bad') ? 'C62828' : '1A7F37', sz: 24 }), { jc: 'center' }); continue; }
+      if (cls.contains('sumhead')) {
+        const big = n.querySelector('.sumbig'), col = big && big.classList.contains('bad') ? 'B42318' : big && big.classList.contains('nv') ? '8F5B00' : '1D6B40';
+        body += para(run(big ? big.textContent : n.textContent, { b: 1, color: col, sz: 26 }), { spacing: 60, before: 60, keep: 1 });
+        const stats = [...n.querySelectorAll('.sumstats > div')].map(d => [d.querySelector('b')?.textContent || '', d.querySelector('span')?.textContent || '']);
+        if (stats.length) body += tblXml([stats.map(x => run(x[0], { b: 1, sz: 28, color: INK })), stats.map(x => run(x[1].toUpperCase(), { color: GRAY, sz: 15 }))], { noBorder: true, jc: stats.map(() => 'left') });
+        const gov = n.querySelector('.sumgov'); if (gov) body += para(inline(gov, { sz: 19 }), { spacing: 40, keep: 1 });
+        const note = n.querySelector('.sumnote'); if (note) body += para(run(note.textContent, { i: 1, color: GRAY, sz: 16 }), { spacing: 120, keep: 1 });
+        continue;
+      }
       if (cls.contains('ph') || cls.contains('warn')) { body += para(run(n.textContent, { i: 1, color: GRAY })); continue; }
       if (n.children.length) await walk(n); else if (n.textContent.trim()) body += para(inline(n));
     }
@@ -186,7 +204,8 @@ export async function buildDocx(root, meta) {
   }
   await walk(root);
 
-  const sect = `<w:sectPr><w:headerReference w:type="default" r:id="rIdHdr"/><w:footerReference w:type="default" r:id="rIdFtr"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1418" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr>`;
+  const hasCover = !!root.querySelector('.cover');
+  const sect = `<w:sectPr><w:headerReference w:type="default" r:id="rIdHdr"/><w:footerReference w:type="default" r:id="rIdFtr"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1418" w:header="567" w:footer="567" w:gutter="0"/>${hasCover ? '<w:titlePg/>' : ''}</w:sectPr>`;
   const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${body}${sect}</w:body></w:document>`;
   const hdr = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr ${NS}>${para(run(meta.empresa || meta.proyecto || 'Memoria de cálculo', { b: 1, color: ACC, sz: 16 }) + '<w:r><w:tab/></w:r>' + run(meta.titulo || '', { color: GRAY, sz: 16 }), { style: 'Header' })}</w:hdr>`;
   const fld = (code) => `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> ${code} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`;
@@ -211,15 +230,25 @@ function tocField() {
   return `<w:p><w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \\o "1-3" \\h \\z \\u </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:i/><w:color w:val="${GRAY}"/></w:rPr><w:t xml:space="preserve">Índice: si no aparece, haga clic derecho aquí y elija «Actualizar campo».</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>`;
 }
 function coverXml(m) {
-  const rows = [['Proyecto', m.proyecto], ['Cliente / Entidad', m.cliente], ['Ubicación', m.ubicacion], ['Elaborado por', m.autor], ['Reg. CIP', m.cip], ['Revisado por', m.revisor], ['Normativa', m.normas], ['Fecha', m.fecha], ['Revisión', m.rev]].filter(r => r[1]);
+  const rows = [['Cliente / Entidad', m.cliente], ['Ubicación', m.ubicacion], ['Normativa', m.normas], ['Fecha', m.fecha], ['Revisión', m.rev || '0']].filter(r => r[1]);
   let x = '';
-  for (let i = 0; i < 6; i++) x += para('');
-  x += para(run('MEMORIA DE CÁLCULO ESTRUCTURAL', { b: 1, color: GRAY, sz: 22 }), { jc: 'center' });
-  x += para(run(m.titulo || 'Memoria de cálculo', { b: 1, color: ACC, sz: 48 }), { jc: 'center', spacing: 240, before: 120 });
-  if (rows.length) x += tblXml(rows.map(r => [run(r[0], { color: GRAY }), run(r[1], { b: 1 })]), { widths: [2800, TEXT_W - 2800], jc: ['right', 'left'] });
-  x += para('', { spacing: 400 });
-  x += tblXml([[run('Rev.', { b: 1 }), run('Fecha', { b: 1 }), run('Descripción', { b: 1 }), run('Elaboró', { b: 1 }), run('Revisó', { b: 1 })], [run(m.rev || '0'), run(m.fecha || ''), run('Emitido para revisión'), run(m.autor || ''), run(m.revisor || '')]], { header: true, widths: [900, 1900, 3054, 1750, 1750] });
-  if (m.empresa) x += para(run(m.empresa, { b: 1, color: ACC, sz: 24 }), { jc: 'center', before: 600, spacing: 0 });
+  if (m.empresa) x += para(run(m.empresa.toUpperCase(), { b: 1, color: INK, sz: 20 }), { jc: 'right', spacing: 0 });
+  x += '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="3D4854"/></w:pBdr><w:spacing w:after="0"/></w:pPr></w:p>';
+  for (let i = 0; i < 5; i++) x += para('');
+  x += para(run('MEMORIA DE CÁLCULO ESTRUCTURAL', { b: 1, color: ACC, sz: 20 }), { spacing: 120 });
+  x += para(run(m.titulo || 'Memoria de cálculo', { b: 1, color: INK, sz: 52 }), { spacing: 120 });
+  if (m.proyecto) x += para(run(m.proyecto, { color: '3D4854', sz: 28 }), { spacing: 360 });
+  x += '<w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="24" w:space="1" w:color="' + ACC + '"/></w:pBdr><w:ind w:right="8300"/><w:spacing w:after="240"/></w:pPr></w:p>';
+  if (rows.length) x += tblXml(rows.map(r => [run(r[0].toUpperCase(), { b: 1, color: GRAY, sz: 16 }), run(r[1], { sz: 20 })]), { noBorder: true, widths: [2600, TEXT_W - 2600], jc: ['left', 'left'] });
+  for (let i = 0; i < 4; i++) x += para('');
+  x += para(run('CONTROL DE REVISIONES', { b: 1, color: '3D4854', sz: 16 }), { spacing: 40, keep: 1 });
+  const H = (t) => run(t, { b: 1, sz: 17 }), C = (t) => run(t || '', { sz: 17 });
+  x += tblXml([[H('Rev.'), H('Fecha'), H('Descripción'), H('Elaboró'), H('Revisó'), H('Aprobó')], [C(m.rev || '0'), C(m.fecha), C('Emitido para revisión'), C(m.autor), C(m.revisor), C('')], ['', '', '', '', '', ''], ['', '', '', '', '', '']], { header: true, widths: [700, 1700, 2154, 1650, 1650, 1500], jc: ['center', 'left', 'left', 'left', 'left', 'left'] });
+  const sig = (rol, name, extra) => para(run(rol.toUpperCase(), { b: 1, color: '3D4854', sz: 15 }), { spacing: 0 }) + para('', { spacing: 0 }) + para('', { spacing: 0 }) + para('', { spacing: 0 }) + para('', { spacing: 0 })
+    + '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="3D4854"/></w:pBdr><w:jc w:val="right"/><w:spacing w:after="40"/></w:pPr>' + run('Firma y sello', { i: 1, color: 'A0A9B3', sz: 14 }) + '</w:p>'
+    + para(run(name || ' ', { b: 1, sz: 17 }), { spacing: 0 }) + para(run(extra || ' ', { color: GRAY, sz: 16 }), { spacing: 0 });
+  const w3 = Math.floor(TEXT_W / 3);
+  x += tblXml([[sig('Elaboró', m.autor, m.cip), sig('Revisó', m.revisor, ''), sig('Aprobó', '', '')]], { widths: [w3, w3, TEXT_W - 2 * w3] });
   return x;
 }
 

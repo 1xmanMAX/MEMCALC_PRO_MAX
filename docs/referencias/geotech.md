@@ -53,7 +53,10 @@ Texto consultado: separata de *El Peruano*, 3 de diciembre de 2018
 | `alphaAPI, betaBurland, betaFHWA, qpFHWA` | API RP2A (1987); Burland (1973); O'Neill y Reese (1999, FHWA-IF-99-025) | — |
 | `qpMeyerhofSPT, fsMeyerhofSPT` | Meyerhof (1976) | — |
 | `etaConverse` | Converse–Labarre | 4×3, D/s = 1/3 → 0.710 |
+| `HuBromsC, HuBromsS, modoBromsC, modoBromsS` | Broms (1964a, b): carga lateral última, cabeza libre/empotrada; mínimo entre mecanismos corto, intermedio y largo (cohesivo: 9cuD bajo 1.5D; granular: 3Kpγ′zD) | soluciones cerradas de los 7 casos (ver pruebas) |
 | `rdYoud, rdIB, CSRSeed` | Youd et al. (2001) ec. 2; Idriss (1999) | rd(5 m) = 0.965 |
+| `rdCetin` | Cetin et al. (2004), función de z, amax, Mw y V*s,12 (E.050 Art. 38.5.3) | ecuación transcrita del manual de Settle3 |
+| `KsigmaYoud` | Hynes y Olsen (1999), recomendado por Youd et al. (2001): Kσ = (σ′v/pa)^(f−1) ≤ 1, f = 0.8…0.6 según Dr | — |
 | `N160cs, N160csIB` | Idriss–Seed en Youd et al. (2001); Idriss–Boulanger (2008) | — |
 | `CRR75, CRR75IB, MSFYoud, MSFIB, KsigmaIB` | Youd et al. (2001) ec. 4; Idriss–Boulanger (2008) | CRR(15) = 0.160; MSF(6.5) = 1.44 |
 | `FSLiq, PLCetin, liqEstado` | E.050 Art. 38.5.8; Cetin et al. (2004) | PL ≈ 50 % sobre su propia curva de PL = 50 % |
@@ -67,7 +70,7 @@ Fórmulas de Cetin et al. (2004) y del resto de procedimientos de licuación ver
 |---|---|---|
 | `winkler` | Viga libre–libre sobre resortes de Winkler por **elementos finitos** (viga de Hermite + matriz consistente de cimentación kB·l/420[…]); opción suelo sin tracción (iterativa); o **método rígido** (presión lineal, triangular si e > L/6). Diagramas de q, w, V y M; verificación q ≤ qadm | `qmax qmin wmax wmin Mpos Mneg Vmax` (+sufijo) |
 | `soilprofile` | Columna estratigráfica SUCS con tramas, N-SPT (N, N60, (N1)60) y σv, u, σ′v vs. profundidad; tabla de correcciones | vectores `zSPT NSPT N60v N160v svSPT uSPT svpSPT`; `sv_ref u_ref svp_ref N60prom` |
-| `slope` | Dovelas: Fellenius y Bishop simplificado, estratos horizontales, NF horizontal recortado por el terreno, sobrecargas, kh seudoestático, búsqueda en malla de centros + optimización del radio + búsqueda por patrones; tabla de dovelas; FS ≥ 1.5/1.25 | `FS FSb FSf xc yc Rc` (+sufijo) |
+| `slope` | Dovelas: Fellenius y Bishop simplificado, estratos horizontales, NF horizontal **o poligonal** recortado por el terreno, intersección exacta círculo–terreno, sobrecargas, kh seudoestático, búsqueda en malla de centros + optimización del radio + búsqueda por patrones; tabla de dovelas; FS ≥ 1.5/1.25 | `FS FSb FSf xc yc Rc` (+sufijo) |
 | `pilegroup` | Planta y elevación de grupo de pilotes con cabezal, perímetro crítico y zapata equivalente a 2/3 L | `npil Lcab Bcab Lg Bg` |
 | `liqchart` | CSR, CRR_M y FS_L vs. profundidad con FS mínimo | — |
 | `stripfooting` | Sección de cimiento corrido de concreto ciclópeo | — |
@@ -79,6 +82,10 @@ Validación de los bloques (`tests/geotech.test.mjs`):
 * **Taylor (1937)**: φ = 0, β = 60°, número de estabilidad m = 0.191 → FS reproducido con error < 1 %.
 * **Talud infinito** en arena (c = 0): FS → tanφ/tanβ (< 2 %).
 * **Círculo fijo φ = 0**: FS = c R² θ / Σ W x por integración exacta (< 0.3 %); Fellenius = Bishop.
+* **Rocscience Slide2 Verification Manual**: ACADS 1(a) (0.985 vs 0.987), Arai y Tagyo ej. 1 (1.404 vs 1.409) y ej. 3 con NF
+  poligonal (1.113 vs 1.118), Yamagami y Ueta (Bishop 1.343 vs 1.344; Fellenius 1.284 vs 1.282) — errores < 0.5 %.
+* **Hetényi, viga finita libre** con carga central (λL = 1 y 3): w y M bajo la carga < 0.5 %.
+* **Das, Ej. 3.7** (área efectiva): q′u = 549 kN/m², Qult = 989 kN.
 
 ## 4. Plantillas (`pais: 'PE'`)
 
@@ -91,9 +98,9 @@ Validación de los bloques (`tests/geotech.test.mjs`):
 | `ge-platea` | Platea 3×3, método rígido convencional (ACI 336.2R), presiones en puntos, franja con cargas modificadas, punzonamiento y flexión |
 | `ge-winkler` | Viga de cimentación sobre lecho elástico; ks de Vesic/Bowles; servicio y últimas; diseño E.060 |
 | `ge-corrido` | Cimiento corrido de concreto ciclópeo (concreto simple, φ = 0.65) |
-| `ge-pilote` | Pilote hincado en suelo estratificado: punta Meyerhof (Nq*, ql, SPT), fuste α y β, FS ≥ 2, asentamiento de Vesic |
+| `ge-pilote` | Pilote hincado en suelo estratificado: punta Meyerhof (Nq*, ql, SPT), fuste α y β, fricción negativa (opción, método β, Art. 32.3.4 e–f), FS ≥ 2, asentamiento de Vesic, capacidad lateral de Broms, profundidad de exploración (Art. 15) |
 | `ge-grupo` | Grupo 3×3 en arcilla: Tabla 9, Converse–Labarre, bloque, FS 3, cargas por pilote, zapata equivalente, cabezal |
-| `ge-licuacion` | Licuación por SPT con tabla por profundidad, FS_L, PL de Cetin; gráfico |
+| `ge-licuacion` | Licuación por SPT con tabla por profundidad, Kσ, FS_L, PL de Cetin con su propio rd (V*s,12); gráfico |
 | `ge-talud` | Estabilidad estática y seudoestática (Bishop/Fellenius) |
 | `ge-spt` | Perfil estratigráfico, correcciones, correlaciones, profundidad de exploración |
 
@@ -118,14 +125,16 @@ Validación de los bloques (`tests/geotech.test.mjs`):
 
 ## 6. Limitaciones
 
-* Bearing capacity: el factor de profundidad de Fox (If) no se aplica en el asentamiento elástico (If = 1, conservador).
+* Asentamiento elástico: el factor de profundidad de Fox (If) no se aplica (If = 1, conservador).
 * `qWT/gammaWT` usan los tres casos de Das; no se modela un NF dentro de estratos distintos.
-* Taludes: superficies **circulares** solamente; estratos **horizontales**; NF horizontal (recortado por el terreno, sin
-  agua libre exterior); el método de Bishop no considera fuerzas entre dovelas horizontales ni refuerzos/anclajes.
+* Taludes: superficies **circulares** solamente; estratos **horizontales**; NF horizontal o poligonal (recortado por el terreno,
+  sin agua libre exterior; u = γw·Δy vertical); el método de Bishop no considera fuerzas entre dovelas horizontales ni refuerzos/anclajes.
   La búsqueda puede hallar mínimos locales: revise la malla.
 * Winkler: modelo de resortes independientes (sin acoplamiento lateral del suelo); ks depende del ancho y
   debe calibrarse con el EMS. El método rígido supone presión lineal.
 * Licuación: CRR de Youd et al. para (N1)60cs < 30; para ≥ 30 se considera no licuable (CRR = 2). La PL de Cetin et al.
-  se calcula con el CSR del método de Youd (Cetin usa su propio rd), lo que es aproximado.
-* Pilotes: punta por Meyerhof con Nq* tabulado para 20° ≤ φ ≤ 45°; no se evalúa fricción negativa ni carga lateral.
+  usa su propio rd (con V*s,12) y CSR sin MSF ni Kσ; el factor de finos de Cetin se limita a FC ≤ 35 %.
+* Pilotes: punta por Meyerhof con Nq* tabulado para 20° ≤ φ ≤ 45°. Fricción negativa con plano neutro supuesto en el tope del
+  estrato portante (pilote de punta); Broms supone suelo homogéneo (la plantilla verifica que la zona de reacción quede en la
+  arcilla) y no da desplazamientos laterales.
 * Correlaciones SPT: orientativas; deben confirmarse con ensayos de laboratorio del EMS.

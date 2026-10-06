@@ -1,6 +1,6 @@
 # Módulo «bridges» — Puentes (AASHTO LRFD / Manual de Puentes MTC 2018)
 
-Archivos: `src/norms/bridges.js` (funciones), `src/blocks/bridges.js` (bloques `hl93env`, `bridgesec`, `estribo`),
+Archivos: `src/norms/bridges.js` (funciones), `src/blocks/bridges.js` (bloques `hl93env`, `bridgesec`, `estribo`, `pmLRFD`),
 `src/templates/bridges.js` (9 plantillas, categoría *Puentes*), `tests/bridges.test.mjs` (validación).
 
 ## Fuentes
@@ -28,7 +28,7 @@ Archivos: `src/norms/bridges.js` (funciones), `src/blocks/bridges.js` (bloques `
 | `leverLRFD(S,de[,dw])` | regla de la palanca, ruedas a 6 ft (1.83 m), la primera a dw = 2 ft (0.61 m) de la barrera (sin m) | C4.6.2.2.1 |
 | `skewMLRFD`, `skewVLRFD` | 1 − c1 tan^1.5θ, c1 = 0.25(Kg/12Lts³)^0.25(S/L)^0.5; 1 + 0.2 (12Lts³/Kg)^0.3 tanθ | Tablas 4.6.2.2.2e-1 y 4.6.2.2.3c-1 |
 
-> Las fórmulas de distribución se implementan en la forma de la 9.ª/10.ª ed. (unidades de EE. UU., que es la única edición vigente; desde 2014 no existe versión SI) con conversión exacta de unidades. El Manual MTC 2018 reproduce la versión SI de ediciones anteriores (S/4300, S/2900, S/3600, de/2800…), cuyos resultados difieren en menos de 1.5 %. Con la forma SI el cortante 2+ carriles del ejemplo FHWA daría 0.987 en lugar de 0.973.
+> Las fórmulas de distribución admiten un último argumento opcional `ver`: 1 (o vacío) = forma de la 9.ª/10.ª ed. (unidades de EE. UU., la única vigente; desde 2014 no existe versión SI) con conversión exacta; **2 = forma SI del Manual MTC 2018** (S/4300, S/2900, Kg/(L·ts³) en mm; 0.36 + S/7600; 0.2 + S/3600 − (S/10700)²; e = 0.77 + de/2800 y 0.6 + de/3000; palanca con ruedas a 1800 mm y 600 mm). Las diferencias son < 1.5 %. La plantilla `br-vigalosa` expone el dato `verDF` (por defecto 2, MTC).
 | `mpLRFD(n)`, `NLLRFD(w)` | 1.20 / 1.00 / 0.85 / 0.65; INT(w/3600) | Tabla 3.6.1.1.2-1; 3.6.1.1.1 |
 | `EposLRFD`, `EnegLRFD`, `EvolLRFD` | 660 + 0.55S; 1220 + 0.25S; 1140 + 0.833X | Tabla 4.6.2.1.3-1 |
 | `E1slabLRFD`, `EmslabLRFD` | 250 + 0.42√(L1W1); 2100 + 0.12√(L1W1) ≤ W/NL | 4.6.2.3-1/-2 |
@@ -40,12 +40,13 @@ Archivos: `src/norms/bridges.js` (funciones), `src/blocks/bridges.js` (bloques `
 | `FpgaLRFD`, `FaLRFD`, `FvLRFD` | factores de sitio A–E con interpolación lineal (F: error) | Tablas 3.10.3.2-1 a -3 |
 | `CsmLRFD(T,As,SDS,SD1)` | As + (SDS − As)T/T0; SDS; SD1/T (acepta vectores) | 3.10.4.2 |
 | `zonaLRFD(SD1)` | 1 (≤ 0.15), 2 (≤ 0.30), 3 (≤ 0.50), 4 | Tabla 3.10.6-1 |
-| `NapLRFD(L,H,S)`, `NpctLRFD(zona,As)` | (200 + 0.0017L + 0.0067H)(1 + 0.000125S²) mm; 75/100/150 % | 4.7.4.4-1, Tabla 4.7.4.4-1 |
+| `NapLRFD(L,H,S)`, `NpctLRFD(zona,As)` | (200 + 0.0017L + 0.0067H)(1 + 0.000125S²) mm; zona 1: 75/100 %; zonas 2–4: 150 % | 4.7.4.4-1, Tabla 4.7.4.4-1 |
 | `beta1LRFD`, `EcLRFD`, `frLRFD` | β1; 120 000 K1 wc² f′c^0.33 (ksi, kcf); 0.24√f′c (ksi) | 5.6.2.2; 5.4.2.4-1; 5.4.2.6 |
 | `gammahLRFD`, `gammastLRFD`, `dfpLTLRFD` | 1.7 − 0.01H; 5/(1 + f′ci); 10 fpi Aps/Ag γhγst + 12γhγst + ΔfpR | 5.9.3.3 |
 | `dfpESLRFD` | (Ep/Eci)·fcgp | 5.9.3.2.3a-1 |
 | `kpsLRFD`, `cpsLRFD`, `fpsLRFD` | k = 2(1.04 − fpy/fpu); c rectangular/T; fps = fpu(1 − kc/dp) | 5.6.3.1.1 |
 | `betaMCFT`, `thetaMCFT` | 4.8/(1 + 750εs); 29 + 3500εs | 5.7.3.4.2 |
+| `FtLRFD(TL)`, `LtLRFD(TL)`, `HbminLRFD(TL)` | Ft, Lt y altura mínima de barreras TL-1…TL-6 (60/120/240/240/550/780 kN; 1.22/1.07/2.44 m) | Tabla A13.2-1 (NCHRP 350) |
 | `SbearLRFD`, `DaBearLRFD` | LW/[2hri(L + W)]; Da = 1.4 (rect.) | 14.7.5.1-1, 14.7.5.3.3 |
 
 ## Bloques
@@ -64,6 +65,12 @@ Archivos: `src/norms/bridges.js` (funciones), `src/blocks/bridges.js` (bloques `
 - Exporta `MLLp`, `MLLn`, `VLL`, `xMLL`, `Mtr`, `Mta`, `Mln`, y con DC/DW `MDCp`, `MDCn`, `MDWp`, `MDWn`, `VDC`, `VDW`, `Mup`, `Mun`, `Vu`;
   en las secciones de interés `MLLx1`, `MLLnx1`, `VLLx1`, `MDCx1`, `MDWx1`, `VDCx1`, `VDWx1`, `Mux1`, `Vux1` (+ sufijo).
 
+### `pmLRFD` — diagrama P–M con φ de AASHTO
+Columna rectangular (barras por cara + intermedias), εcu = 0.003, α1 y β1 de 5.6.2.2, φ = 0.75 (compresión) → 0.90 (tracción) con
+transición lineal entre εcl = fy/Es ≤ 0.002 y εtl = 0.005 (5.5.4.2, 5.6.2.1), Pr,max = 0.80φP0 (estribos) o 0.85φP0 (espiral).
+Las demandas cuya etiqueta contiene «Evento», «EE» o «sismo» se verifican con φ = `phiEE` (0.90 por defecto, 5.10.11.4.1b para zonas 3 y 4).
+Exporta `DCpm`, `phiPnmax`, `Ast`, `rhog` y las funciones `phiMnS(P)`, `phiMnEE(P)`.
+
 ### `bridgesec` — sección transversal
 Losa, vigas T / I / cajón / acero o losa maciza, veredas, barreras New Jersey o barandas, asfalto, carriles de 3.60 m con camión
 (ruedas a 1.80 m, P/2 = 7.26 t) y cotas (B, calzada, voladizos, S, h, ts). Muestra $d_e$.
@@ -79,7 +86,7 @@ Zapata, pantalla, cajuela, parapeto, viga apoyada, relleno, reacciones, frenado 
 | `br-presforzada` | Viga AASHTO Tipo IV, L = 100 ft, 30 torones 0.6″: sección compuesta, DF, pérdidas (ES forma cerrada C5.9.3.2.3a + método aproximado 5.9.3.3), esfuerzos en transferencia y servicio (5.9.2.3), fps, Mn, Mcr, cortante MCFT, deflexión | [PCI], [FHWA-PSC] |
 | `br-acero` | Viga I armada compuesta L = 100 ft: proporciones (6.10.2), propiedades n y 3n, Mp (D6.1, tres casos), compacidad y ductilidad, Mn (6.10.7.1.2), Servicio II, constructibilidad (6.10.3.2, LTB y pandeo del alma), cortante (6.10.9), deflexión | FHWA Steel Design Example |
 | `br-estribo` | Estribo en voladizo H = 7 m: DC, DW, LL+IM, BR, EH, EV, LS (heq), sismo M-O (kh = 0.5As) + inercias; Resistencia Ia/Ib y Evento Extremo I; excentricidad, deslizamiento, capacidad (Meyerhof), N; diseño de pantalla, punta y talón | [RS] cap. X |
-| `br-pilar` | Pórtico de dos columnas: espectro (Fpga, Fa, Fv), periodo en dos direcciones (Ie = 0.5Ig), R, 100–30, diagrama P–M, cortante con fuerza elástica, confinamiento (5.10.11.4) | [MTC] 2.4.3.11 |
+| `br-pilar` | Pórtico de dos columnas: espectro (Fpga, Fa, Fv), periodo en dos direcciones (Ie = 0.5Ig), R, 100–30, esbeltez y magnificación (5.6.4.3), diagrama P–M con φ AASHTO (bloque `pmLRFD`), P–Δ (4.7.4.5), cortante con fuerza elástica, confinamiento (5.10.11.4) | [MTC] 2.4.3.11 |
 | `br-neopreno` | Apoyo 300 × 450 mm: Método A (14.7.6) y Método B (14.7.5): deformaciones por corte axial/rotación/corte, estabilidad, zunchos, deflexión, anclaje | [AASHTO-9] Secc. 14 |
 | `br-sismo` | Factores de sitio, espectro (gráfico + tabla), zona, requisitos de análisis, R, método de carga uniforme, fuerzas de conexión, N | [MTC], [AASHTO-9] 3.10 |
 | `br-alcantarilla` | Marco de una celda con relleno 1.5 m: Fe (12.11.2.2), k0, LL a través del relleno (LLDF 1.15, interacción de ruedas), análisis por pendiente-deflexión (simetría), diseño de losas, esquinas, muros, cortante 5.12.7.3, fisuración | [RS] cap. XIII |
@@ -97,9 +104,11 @@ Zapata, pantalla, cajuela, parapeto, viga apoyada, relleno, reacciones, frenado 
 ## Limitaciones conocidas
 - Distribución de carga viva: solo fórmulas para tableros de concreto sobre vigas de acero, concreto T o I (tipos a, e, k); no se incluyen cajones multicelulares ni vigas adyacentes.
 - `hl93env`: rigidez EI constante en toda la viga; el doble camión del momento negativo se aplica a todas las secciones (conservador); no considera el par de tándems de C3.6.1.3.1.
-- Losa del tablero: momento negativo en el eje de las vigas (conservador respecto a la sección de diseño de 4.6.2.1.6) y suma de máximos de DC, DW y LL (conservador).
+- Losa del tablero: momento negativo en las caras de las almas (4.6.2.1.6) con efectos concomitantes; el momento positivo suma los máximos de DC, DW y LL (conservador). La franja y la sección rígida están planteadas para 4 vigas (verificación `Nb == 4`).
 - Estribo: empuje sísmico por Mononobe–Okabe con δ = 0 en el plano virtual y el incremento a 0.6H; la fuerza sísmica de la superestructura se toma como kh·RDC.
-- Pilar: método unimodal de carga uniforme; diagrama P–M con φ de la NTE E.060 (conservador frente a AASHTO); cortante de diseño con la fuerza elástica no reducida (no se calcula el momento de sobrerresistencia).
-- Viga presforzada: se desprecia Vp de los torones desviados y la relajación antes de la transferencia; εs < 0 se toma 0 (conservador).
+- Pilar: método unimodal de carga uniforme; P–M con φ de AASHTO 5.5.4.2 y φ = 0.90 en Evento Extremo (zonas 3–4); cortante de diseño con la fuerza elástica no reducida (no se calcula el momento de sobrerresistencia).
+- Viga presforzada: Vp = Pe·tanψ del centroide de torones (punto de desvío en 0.4L); se desprecia la relajación antes de la transferencia; εs < 0 se toma 0 (conservador).
 - Alcantarilla: reacción del suelo uniforme, sin carga de carril (relleno ≥ 0.60 m) y sin análisis de fatiga.
-- Barreras: la plantilla viga-losa toma Mc y Mw como datos (deben provenir del diseño de la barrera); la 10.ª ed./MASH aumenta Ft para TL-4 (70–80 kip).
+- Barreras: Mc y Mw se calculan con una sección rectangular equivalente de espesor medio (barras verticales y horizontales dadas); la 10.ª ed./MASH aumenta Ft para TL-4 (80 kip).
+
+Revisión independiente: `docs/referencias/revision-bridges.md`.

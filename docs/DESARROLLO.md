@@ -45,6 +45,7 @@ Reglas importantes:
 - `Ab(n)`, `db(n)`: área/diámetro de varilla #n (ASTM). `Abmm(12)`.
 - `roundup(x, 5 cm)`, `rounddown(x, 2.5 cm)`.
 - Vectores: `[1, 2, 3]`, `1:5`, operaciones elemento a elemento `.*`, `./`, `.^`, `sum(v)`, `cumsum(v)`, `max(v)`.
+- **Ojo:** entre dos vectores `*` es producto matricial/escalar; para elemento a elemento use `.*`, `./`, `.^`.
 - `check` crea una verificación; su D/C se calcula automáticamente para `<, <=, >, >=`.
 - Tras un error en una línea, la variable asignada se elimina (los errores no se propagan en silencio).
 

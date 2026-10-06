@@ -692,12 +692,14 @@ check max(Delta ./ hsx) <= Dlim // Deriva de entrepiso`),
   },
   // ------------------------------------------------------------------
   {
-    id: 'japon', settings: { sys: 'si' }, normas: 'Building Standard Law of Japan (Orden de Aplicación, Art. 88) · Notificación MOC 1793', cat: 'Sismo — Japón', name: 'Sismo — Norma japonesa (BSL)', icon: 'quake',
-    desc: 'Ci = Z·Rt·Ai·Co con distribución Ai, primera fase (Co = 0.2, deriva ≤ 1/200) y resistencia última Qun = Ds·Fes·Qud (Co = 1.0).',
+    id: 'japon', settings: { sys: 'si' }, normas: 'Building Standard Law of Japan (Orden de Aplicación, Art. 88) · Notificación MOC 1793', cat: 'Sismo — Japón', name: 'Sismo — Norma japonesa BSL (versión rápida)', icon: 'quake',
+    desc: 'Versión rápida: Ci = Z·Rt·Ai·Co, primera fase (Co = 0.2, deriva ≤ 1/200) y Qun = Ds·Fes·Qud (Co = 1.0). Memorias completas: «jp-bsl-ruta12» y «jp-bsl-ruta3».',
     titulo: 'Fuerza sísmica según la Building Standard Law de Japón',
     blocks: [
       text(`# Método de diseño japonés
-La Building Standard Law (BSL) de Japón verifica dos niveles: **primera fase** (sismo moderado, $C_o = 0.2$, esfuerzos admisibles y deriva ≤ 1/200) y **segunda fase** (sismo severo, $C_o = 1.0$), donde la resistencia lateral última de cada entrepiso debe superar $Q_{un} = D_s F_{es} Q_{ud}$. Es una referencia muy útil para comparar con la E.030, que comparte la filosofía de diseño por ductilidad.`),
+La Building Standard Law (BSL) de Japón verifica dos niveles: **primera fase** (sismo moderado, $C_o = 0.2$, esfuerzos admisibles y deriva ≤ 1/200) y **segunda fase** (sismo severo, $C_o = 1.0$), donde la resistencia lateral última de cada entrepiso debe superar $Q_{un} = D_s F_{es} Q_{ud}$. Es una referencia muy útil para comparar con la E.030, que comparte la filosofía de diseño por ductilidad.
+
+> Versión rápida con datos del modelo. Las memorias completas del módulo Japón desarrollan la Ruta 1–2 (rigidez relativa $R_s \\ge 0.6$, excentricidad $R_e \\le 0.15$, cantidad de muros, *jp-bsl-ruta12*), la Ruta 3 con $D_s$ y $F_{es}$ por entrepiso (*jp-bsl-ruta3*) y el espectro de la Notificación 1461 (*jp-bsl-n1461*).`),
       calc(`# Parámetros
 Zj = 1.0 // Coeficiente de zona sísmica [1.0 : Zona general|0.9 : Zona reducida|0.8 : Zona reducida|0.7 : Okinawa]
 Tc = 0.6 // Periodo característico del suelo [s] [0.4 : Tipo 1 (roca, grava dura)|0.6 : Tipo 2 (intermedio)|0.8 : Tipo 3 (aluvial, blando)]
@@ -722,7 +724,7 @@ check max(di ./ hs) <= 1/200 // Deriva de entrepiso ≤ 1/200
 Ds = 0.30 // Coef. de características estructurales (C°A°) [0.30 : Muy dúctil (FA)|0.35 : Dúctil (FB)|0.40 : Moderada (FC)|0.45 : Baja (FD)|0.55 : Muros / frágil]
 Rs = 0.8 // Rigidez relativa del entrepiso (rs/r̄s)
 Re = 0.10 // Excentricidad relativa (e/re)
-Fes = FsBSL(Rs)*FeBSL(Re) // Factor de forma
+Fes = FsBSL(Rs)*FeBSL(Re) // Factor de forma Fs·Fe (Notificación MOC 1792): Fs = 1 si Rs ≥ 0.6; Fe = 1 si Re ≤ 0.15, 1.5 si Re ≥ 0.30
 Qud = Zj*Rt*1.0*Ai .* Wsup // Cortante elástico último
 Qun = Ds*Fes*Qud // Resistencia lateral requerida
 Qu = [3100, 2600, 1900, 1050] kN // Resistencia lateral última de cada entrepiso (pushover)
@@ -747,7 +749,7 @@ S = SE030(4, 300 m/s) // Suelo con Vs30 = 300 m/s
 Tp = TpE030(300 m/s)
 Tl = TlE030(300 m/s)
 R = 8 // Pórticos de C°A° regulares
-SaPE = Z*U*CE030(Te, Tp, Tl)*S/R // Sa/g de diseño
+SaPE = Z*U*CE030d(Te, Tp, Tl)*S/R // Sa/g de diseño, espectro del análisis dinámico con rama T < 0.2 TP (Art. 41, Tabla N° 6)
 ## EE. UU. — ASCE 7-22
 SDS = 1.0 // [g]
 SD1 = 0.6 // [g]
@@ -768,9 +770,9 @@ Zj = 1.0
 Tc = 0.6 // Suelo tipo 2
 Ds = 0.30 // Pórtico de C°A° dúctil
 SaJP = Ds*Zj*RtBSL(Te, Tc)*1.0 // Coeficiente de corte último requerido`),
-      { type: 'plot', expr: 'Z*U*CE030(x, Tp, Tl)*S/R; SaASCE7(x, SDS, SD1, TL)/(Rus/Ie); SdEC8(x, ag, Sec, TB, TC, TD, q); Ds*Zj*RtBSL(x, Tc)', var: 'x', desde: '0.01', hasta: '3', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Sa/g de diseño', leyenda: true, nombres: 'Perú E.030-2026; EE. UU. ASCE 7-22; Europa EC8; Japón BSL (Ds·Z·Rt)', titulo: 'Espectros de diseño reducidos de cuatro normas' },
+      { type: 'plot', expr: 'Z*U*CE030d(x, Tp, Tl)*S/R; SaASCE7(x, SDS, SD1, TL)/(Rus/Ie); SdEC8(x, ag, Sec, TB, TC, TD, q); Ds*Zj*RtBSL(x, Tc)', var: 'x', desde: '0.01', hasta: '3', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Sa/g de diseño', leyenda: true, nombres: 'Perú E.030-2026; EE. UU. ASCE 7-22; Europa EC8; Japón BSL (Ds·Z·Rt)', titulo: 'Espectros de diseño reducidos de cuatro normas' },
       { type: 'table', columnas: 'Norma = ["E.030-2026 (Perú)", "ASCE 7-22 (EE. UU.)", "EN 1998-1 (Europa)", "BSL (Japón)"]\nSa/g de diseño para Te = [SaPE, SaUS, SaEU, SaJP]', dec: '3', titulo: 'Demanda sísmica de diseño para el periodo de la estructura' },
-      text(`> La curva japonesa ($D_s Z R_t$) es una demanda de **resistencia última** del entrepiso; las demás son demandas de **resistencia de diseño**. Los espectros parten de amenazas sísmicas distintas (Z, SDS/SD1, ag) y de filosofías de reducción distintas (R, R/Ie, q, Ds). La comparación es ilustrativa: cada proyecto se diseña con la norma vigente del lugar.`),
+      text(`> La curva japonesa ($D_s Z R_t$) es una demanda de **resistencia última** del entrepiso; las demás son demandas de **resistencia de diseño**. Los espectros parten de amenazas sísmicas distintas (Z, SDS/SD1, ag) y de filosofías de reducción distintas (R, R/Ie, q, Ds). La comparación es ilustrativa: cada proyecto se diseña con la norma vigente del lugar. Para Chile (NCh433) vea *cl-nch433-estatico* y *cl-nch433-modal*; para Japón, *jp-bsl-n1461*.`),
     ],
   },
   // ------------------------------------------------------------------
@@ -878,11 +880,15 @@ Mu = 1.25*MDC + 1.50*MDW + 1.75*MLLu -> tonf*m/m
 ## Diseño del refuerzo principal
 d = h - 2.5 cm - db(bar)/2 // Peralte efectivo
 Rn = Mu*1 m/(0.9*100 cm*d^2) // Parámetro de resistencia
-rho = 0.85*fc/fy*(1 - sqrt(1 - 2*Rn/(0.85*fc)))
+check Rn <= 0.85*fc/2 // Espesor suficiente como sección simplemente reforzada
+rho = 0.85*fc/fy*(1 - sqrt(max(1 - 2*Rn/(0.85*fc), 0)))
 As = rho*100 cm*d // Acero por metro
-s = rounddown(Ab(bar)/As*100 cm, 2.5 cm) // Espaciamiento
+s = rounddown(max(min(Ab(bar)/As*100 cm, 1.5*h, 45 cm), 2.5 cm), 2.5 cm) // Espaciamiento: ≤ 1.5 h y 450 mm (5.10.3.2)
 Asc = Ab(bar)*100 cm/s // Acero colocado
 a = Asc*fy/(0.85*fc*100 cm)
+beta1 = si(fc <= 280 kgf/cm^2, 0.85, max(0.65, 0.85 - 0.05*(fc - 280 kgf/cm^2)/(70 kgf/cm^2))) // 5.6.2.2
+epst = 0.003*(d - a/beta1)/(a/beta1) // Deformación neta del acero
+check epst >= 0.005 // Sección controlada por tracción, φ = 0.90 (5.5.4.2 y 5.6.2.1)
 phiMn = 0.9*Asc*fy*(d - a/2)/(1 m) -> tonf*m/m // Resistencia de diseño
 check Mu <= phiMn // Resistencia a flexión
 fr = 2.01*sqrtfc(fc) // Módulo de rotura (0.63√f'c MPa)
@@ -902,7 +908,7 @@ dc = h - d // Recubrimiento al centro de la barra
 betas = 1 + dc/(0.7*(h - dc))
 smaxcr = 123000*0.75/(betas*fss/(1 MPa))*1 mm - 2*dc -> cm // Espaciamiento máximo (γe = 0.75)
 check s <= smaxcr // Control de fisuración
-"Además: diseñar la franja de borde (4.6.2.1.4) y, opcionalmente, verificar la deflexión por carga viva ≤ L/800 (2.5.2.6.2).`),
+"Además: diseñar la franja de borde (4.6.2.1.4) y, opcionalmente, verificar la deflexión por carga viva ≤ L/800 (2.5.2.6.2). Se omiten los modificadores de carga $\\eta$ (1.3.2), que se toman iguales a 1. Para puentes viga-losa, estribos, pilares, apoyos y sismo vea las plantillas del módulo *Puentes* (*br-vigalosa*, *br-estribo*, *br-pilar*, *br-neopreno*, *br-sismo*).`),
       { type: 'plot', expr: 'MtruckHL93(x)*1.33 + MlaneHL93(x); MtandemHL93(x)*1.33 + MlaneHL93(x)', var: 'x', desde: '4', hasta: '25', puntos: '60', xlabel: 'Luz L [m]', ylabel: 'M_LL+IM [t·m/carril]', titulo: 'Momento HL-93 por carril (camión vs. tándem) en función de la luz', leyenda: true, nombres: 'Camión + carril; Tándem + carril' },
       text(`> Las losas diseñadas por momento según 4.6.2.3 se consideran satisfactorias por cortante (AASHTO LRFD 5.12.2.1).`),
       { type: 'summary' },
@@ -910,10 +916,12 @@ check s <= smaxcr // Control de fisuración
   },
   // ------------------------------------------------------------------
   {
-    id: 'acero', settings: { sys: 'us' }, normas: 'ANSI/AISC 360-16 (LRFD) · RNE — NTE E.090', cat: 'Acero estructural', name: 'Viga de acero W (AISC 360)', icon: 'steel',
-    desc: 'Flexión con pandeo lateral-torsional (F2), compacidad de la sección y cortante (G2) por LRFD. Unidades inglesas.',
+    id: 'acero', settings: { sys: 'us' }, normas: 'ANSI/AISC 360-16 (LRFD; F2 y G2 sin cambios en 360-22) · RNE — NTE E.090', cat: 'Acero estructural', name: 'Viga de acero W (AISC 360)', icon: 'steel',
+    desc: 'Flexión con pandeo lateral-torsional (F2), compacidad de la sección y cortante (G2) por LRFD, con propiedades ingresadas a mano. Unidades inglesas.',
     titulo: 'Verificación de viga de acero — AISC 360-16 (LRFD)',
     blocks: [
+      text(`# Alcance
+Verificación LRFD de una viga laminada W de sección compacta, flectada alrededor del eje fuerte (AISC 360-16 Cap. F2 y G2.1; las mismas expresiones se mantienen en AISC 360-22). Las propiedades se ingresan a mano (AISC *Manual*, Tabla 1-1); también pueden leerse de la base de datos con \`sec("W12X26", "Zx")\` o dibujarse con el bloque **steelsec**. Para columnas, vigas-columna, conexiones y placas base vea *st-columna*, *st-vigacolumna*, *st-shear-tab* y *st-placa-base*.`),
       calc(`# Sección W12x26 — ASTM A992
 Fy = 50 ksi // Esfuerzo de fluencia
 Es = 29000 ksi // Módulo de elasticidad
@@ -967,11 +975,14 @@ wpiso = 1.0 tonf/m^2 // Peso por piso (categoría C, aprox.) [0.8 tonf/m^2|1.0 t
 Atc = 20 m^2 // Área tributaria de la columna central
 Ate = 10 m^2 // Área tributaria de la columna perimetral
 ## Losas
-h_al = roundup(Ln/25, 0.05 m) -> cm // Aligerado en una dirección (h ≥ Ln/25)
-h_mz = roundup(Ln/40, 0.01 m) -> cm // Losa maciza en dos direcciones (perímetro/180 aprox.)
+h_al = roundup(Ln/25, 0.05 m) -> cm // Aligerado en una dirección: práctica h ≈ Ln/25
+h_91 = Ln/18.5 -> cm // Aligerado que no requiere verificar deflexiones, tramo con un extremo continuo (E.060 Tabla 9.1)
+h_mz = roundup(Ln/40, 0.01 m) -> cm // Losa maciza en dos direcciones: h ≈ Ln/40 o perímetro/180 (práctica)
 ## Vigas principales
 h_v = roundup(Ln/11, 0.05 m) -> cm // Peralte h = Ln/10 a Ln/12
-b_v = max(roundup(h_v/2, 5 cm), 25 cm) // Ancho b ≈ h/2 (práctica); E.060 21.5.1.3 exige b ≥ 0.25h y ≥ 25 cm
+b_v = max(roundup(h_v/2, 5 cm), 25 cm) // Ancho b ≈ h/2 (práctica)
+check b_v >= max(0.25*h_v, 25 cm) // Vigas sísmicas: b ≥ 0.25 h y ≥ 250 mm (E.060 21.5.1.3)
+check Ln >= 4*h_v // Luz libre ≥ 4 h (E.060 21.5.1.2); si no, viga de gran peralte
 ## Columnas
 Pc = wpiso*Atc*N // Carga de servicio, columna central
 Ac_c = Pc/(0.45*fc) -> cm^2 // Área requerida (columna central)
@@ -980,7 +991,8 @@ Pe = wpiso*Ate*N // Carga de servicio, columna perimetral
 Ac_e = Pe/(0.35*fc) -> cm^2 // Área requerida (columna perimetral / esquina)
 lc_e = max(roundup(sqrt(Ac_e), 5 cm), 25 cm)
 "Resultado: aligerado h = {h_al}, vigas {b_v} × {h_v}, columnas centrales {lc_c} × {lc_c} y perimetrales {lc_e} × {lc_e}.`),
-      text(`> El peralte Ln/25 del aligerado es práctica usual pero menor que el de la Tabla 9.1 de E.060, por lo que debe verificarse la deflexión. El predimensionamiento es referencial: las dimensiones finales deben confirmarse con el análisis sísmico (control de derivas E.030) y el diseño por resistencia.`),
+      text(`> El peralte Ln/25 del aligerado es práctica usual pero menor que el de la Tabla 9.1 de E.060 ($h_{91}$), por lo que debe verificarse la deflexión (*co-deflexion*). Las áreas de columnas $P/(0.45 f'_c)$ y $P/(0.35 f'_c)$ son criterios prácticos para edificios con muros (Blanco Blasco); en sistemas aporticados conviene verificar la rigidez lateral desde el inicio. El predimensionamiento es referencial: las dimensiones finales deben confirmarse con el análisis sísmico (derivas E.030-2026, Art. 51) y el diseño por resistencia.`),
+      { type: 'summary' },
     ],
   },
   // ------------------------------------------------------------------
@@ -1007,9 +1019,11 @@ Pu = cD*PD + cL*PL + cS*PS // Carga axial última
 Mu = cD*MD + cL*ML + cS*MS // Momento último
 Vu = cD*VD + cL*VL + cS*VS // Cortante último
 Pumax = max(Pu) // Máxima carga axial
+Pumin = min(Pu) // Mínima carga axial (crítica para tracción, volteo y flexocompresión con poca carga)
 Mumax = max(abs(Mu)) // Máximo momento
 Vumax = max(abs(Vu)) // Máximo cortante`),
       { type: 'table', columnas: 'Combinación = ["1.4CM+1.7CV", "1.25(CM+CV)+CS", "1.25(CM+CV)−CS", "0.9CM+CS", "0.9CM−CS"]\nPu [tonf] = Pu\nMu [tonf*m] = Mu\nVu [tonf] = Vu', dec: '2', titulo: 'Combinaciones de diseño' },
+      text(`> Combinaciones de la NTE E.060 Art. 9.2.1 y 9.2.3 con las fuerzas de sismo de la E.030 (resistencia). Si hay viento se usan 1.25(CM + CV ± CVi) y 0.9 CM ± 1.25 CVi (9.2.2); con empuje lateral del suelo, 1.4 CM + 1.7 CV + 1.7 CE (9.2.4); con fluidos, 1.4 CF (9.2.5). Para elementos de sistemas con muros o dual tipo I el cortante de diseño se amplifica según 21.4.3 (2.5 CS). El metrado de cargas por E.020 se desarrolla en *pe-e020-metrado*.`),
     ],
   },
   // ------------------------------------------------------------------
@@ -1029,16 +1043,16 @@ Pg = 18 tonf // Carga de gravedad con 25 % de sobrecarga
 Ve = 9.5 tonf // Cortante del sismo moderado (análisis elástico)
 Me = 26 tonf*m // Momento del sismo moderado
 ## Densidad mínima de muros (Art. 19.2.b) — dirección analizada
-Z = 0.35 // Factor de zona [0.45|0.35|0.25|0.10]
-U = 1.0 // Factor de uso
-S = 1.15 // Factor de suelo
+Z = 0.35 // Factor de zona (E.030 Tabla N° 1) [0.45 : Zona 4|0.35 : Zona 3|0.25 : Zona 2|0.10 : Zona 1]
+U = 1.0 // Factor de uso (E.030) [1.0 : C Común|1.3 : B Importante|1.5 : A2 Esencial]
+S = 1.15 // Factor de suelo (E.030-2026: SE030(zona, Vs30); E.030-2018: Tabla N° 3)
 N = 4 // Número de pisos
 SumLt = 3.60 m^2 // Σ L·t de muros portantes en la dirección
 Ap = 120 m^2 // Área de la planta típica
 dens = SumLt/Ap // Densidad de muros
 dmin = Z*U*S*N/56 // Densidad mínima
 check dens >= dmin // Densidad de muros suficiente
-check t >= h/20 // Espesor efectivo mínimo, zonas 2–4 (Art. 19.1.a)
+check t >= si(Z > 0.10, h/20, h/25) // Espesor efectivo mínimo: h/20 en zonas 2–4, h/25 en zona 1 (Art. 19.1.a)
 ## Esfuerzo axial máximo (Art. 19.1.b)
 sigmam = Pm/(L*t) -> kgf/cm^2 // Esfuerzo axial actuante
 Fa = min(0.2*fm*(1 - (h/(35*t))^2), 0.15*fm) // Esfuerzo admisible
@@ -1050,8 +1064,10 @@ check Ve <= 0.55*Vm // Control de fisuración ante sismo moderado (Art. 26.2)
 ## Fuerzas internas ante sismo severo (Art. 26.4 y 27)
 factor = min(max(Vm/Ve, 2), 3) // Factor Vm1/Ve1 (2 a 3), válido para muro del primer piso
 Vu = factor*Ve // Cortante último ante sismo severo
-Mu = factor*Me // Momento último`),
-      text(`> La resistencia global del entrepiso ($\\Sigma V_m \\ge V_E$, Art. 26.4) debe verificarse con todos los muros del piso. El diseño de los elementos de confinamiento (columnas y vigas soleras, Art. 27) debe completarse con las fuerzas $V_u$ y $M_u$ obtenidas, considerando todos los muros del piso.`),
+Mu = factor*Me // Momento último
+## Refuerzo horizontal (Art. 27.1)
+"Requiere refuerzo horizontal continuo ($\\rho \\ge 0.001$) si $V_u \\ge V_m$ ({si(Vu >= Vm, "sí", "no")}), si $\\sigma_m \\ge 0.05 f'_m$ ({si(sigmam >= 0.05*fm, "sí", "no")}: $\\sigma_m/f'_m$ = {sigmam/fm}) o, en edificios de más de tres pisos, en todos los muros portantes del primer nivel ({si(N > 3, "sí", "no")}).`),
+      text(`> La resistencia global del entrepiso ($\\Sigma V_m \\ge V_E$, Art. 26.4) debe verificarse con todos los muros del piso. El diseño de los elementos de confinamiento (columnas y vigas soleras, Art. 27) debe completarse con las fuerzas $V_u$ y $M_u$ obtenidas, considerando todos los muros del piso. Esta plantilla es la verificación **rápida de un muro**; el edificio completo (planta de muros, centro de rigidez, torsión, resistencia global y diseño de confinamientos) se desarrolla en *ma-edificio* y la albañilería armada en *ma-armada*.`),
       { type: 'summary' },
     ],
   },
@@ -1075,8 +1091,10 @@ sc = 0.20 tonf/m^2 // Sobrecarga (E.020: viviendas) [0.20 tonf/m^2|0.40 tonf/m^2
 alfa = 1.0 // Coef. de momento (1.0 apoyos simples; 0.8 semiempotrado) [1.0|0.9|0.8]
 ## Verificación de geometría
 check 2*cp + p >= 60 cm // Regla 2cp + p ≥ 60 cm (RNE A.010)
-check 2*cp + p <= 64 cm // Regla 2cp + p ≤ 64 cm
-check t >= Ln/25 // Espesor mínimo de garganta (Ln/25)
+check 2*cp + p <= 64 cm // Regla 2cp + p ≤ 64 cm (RNE A.010)
+check p >= 25 cm // Paso mínimo 25 cm (RNE A.010)
+check cp <= 18 cm // Contrapaso máximo 18 cm (RNE A.010)
+check t >= Ln/25 // Espesor de garganta: práctica Ln/20 – Ln/25 (control de deflexiones)
 ## Metrado (por metro de ancho)
 theta = atan(cp/p) -> deg // Inclinación
 hm = t/cos(theta) + cp/2 // Altura media equivalente
@@ -1086,9 +1104,11 @@ Mu = alfa*wu*Ln^2/8 -> tonf*m/m // Momento último
 ## Diseño del refuerzo longitudinal
 d = t - 2 cm - 0.64 cm // Peralte efectivo (varilla 1/2")
 Rn = Mu*1 m/(0.9*100 cm*d^2)
-rho = 0.85*fc/fy*(1 - sqrt(1 - 2*Rn/(0.85*fc)))
-As = max(rho*100 cm*d, 0.0018*100 cm*t) // Acero por metro (mín. 0.0018 b t)
-s = rounddown(min(Ab(4)/As*100 cm, 3*t, 40 cm), 2.5 cm) // Espaciamiento con 1/2"
+check Rn <= 0.85*fc/2 // Garganta suficiente por flexión
+rho = 0.85*fc/fy*(1 - sqrt(max(1 - 2*Rn/(0.85*fc), 0)))
+As = max(rho*100 cm*d, 0.0018*100 cm*t) // Acero por metro (mín. 0.0018 b h, E.060 10.5.4 y 9.7.2)
+s = rounddown(max(min(Ab(4)/As*100 cm, 3*t, 40 cm), 2.5 cm), 2.5 cm) // Espaciamiento con 1/2": ≤ 3h y 400 mm (E.060 10.5.4)
+check Ab(4)/s*100 cm >= As // Acero colocado ≥ requerido
 Ast = 0.0018*100 cm*t // Acero de temperatura (transversal)
 st = rounddown(min(Ab(3)/Ast*100 cm, 5*t, 40 cm), 2.5 cm) // Espaciamiento con 3/8"
 phiVc = 0.85*0.53*sqrtfc(fc)*100 cm*d/(1 m) -> tonf/m // Resistencia al corte por metro

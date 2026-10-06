@@ -94,18 +94,19 @@ d = hv - 4 cm - db(est) - db(bar)/2 // Peralte efectivo
 phif = 0.9 // Factor de reducción por flexión (E.060 9.3.2.1)
 ## Acero negativo (apoyo interior)
 Rn = Mu_n/(phif*bv*d^2) // Parámetro de resistencia
-rho = 0.85*fc/fy*(1 - sqrt(1 - 2*Rn/(0.85*fc))) // Cuantía requerida
+rho = 0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*Rn/(0.85*fc)))) // Cuantía requerida (si 2Rn > 0.85f'c la sección es insuficiente: ρ = 0.85f'c/fy y las verificaciones no cumplen)
 Asmin = 0.7*sqrtfc(fc)/fy*bv*d // Acero mínimo (E.060 10.5.2)
 As_n = max(rho*bv*d, Asmin) // Acero requerido
 n_n = max(2, ceil(As_n/Ab(bar))) // Número de varillas
 a_n = n_n*Ab(bar)*fy/(0.85*fc*bv) // Bloque de compresiones
 phiMn_n = phif*n_n*Ab(bar)*fy*(d - a_n/2) -> tonf*m // Momento resistente
+check Rn <= 0.85*fc/2 // La sección admite solución con acero simple (Rn ≤ 0.425 f'c)
 check Mu_n <= phiMn_n // Flexión negativa (E.060 10)
 rhob = 0.85*0.85*fc/fy*6000/(6000 + fy/(1 kgf/cm^2)) // Cuantía balanceada (β1 = 0.85)
 check n_n*Ab(bar) <= 0.75*rhob*bv*d // Acero máximo 0.75ρb (E.060 10.3.4)
 ## Acero positivo (centro de luz)
 Rp = Mu_p/(phif*bv*d^2) // Parámetro de resistencia
-As_p = max(0.85*fc/fy*(1 - sqrt(1 - 2*Rp/(0.85*fc)))*bv*d, Asmin) // Acero requerido
+As_p = max(0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*Rp/(0.85*fc))))*bv*d, Asmin) // Acero requerido
 n_p = max(2, ceil(As_p/Ab(bar))) // Número de varillas
 phiMn_p = phif*n_p*Ab(bar)*fy*(d - n_p*Ab(bar)*fy/(0.85*fc*bv)/2) -> tonf*m // Momento resistente
 check Mu_p <= phiMn_p // Flexión positiva (E.060 10)
