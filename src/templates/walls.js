@@ -438,7 +438,9 @@ Tuh = pu*Sc -> tonf/m // Tracción horizontal por metro de altura en la base
 Ash = Tuh/(0.9*fy) -> cm^2/m // Estribos horizontales (2 ramas)
 sth = min(rounddown(max(2*Ab(4)/Ash, 2.5 cm), 2.5 cm), 30 cm) // Estribo de 1/2" en dos ramas, separación ≤ 30 cm
 check 2*Ab(4)/sth >= Ash // Tirantes horizontales suficientes
-wn = 1.7*(gammas*hp + gammac*hz + ws - qheel) -> tonf/m^2 // Carga neta descendente sobre el talón (presión mínima del suelo)
+wn1 = 1.7*(gammas*hp + gammac*hz + ws - qheel) -> tonf/m^2 // Carga neta descendente sobre el talón, estático (presión mínima del suelo)
+wn2 = 1.25*(gammas*hp + gammac*hz + 0.5*ws) - qheels -> tonf/m^2 // Con sismo (E.060 9.2.3): el momento de volteo descarga el talón (presión mínima con sismo)
+wn = max(wn1, wn2) // Carga neta de diseño del talón y de los tirantes verticales
 Asvt = wn*Sc/(0.9*fy) -> cm^2/m // Tirantes verticales talón–contrafuerte
 svt = min(rounddown(max(2*Ab(4)/Asvt, 2.5 cm), 2.5 cm), 30 cm) // Estribo de 1/2" en dos ramas
 check 2*Ab(4)/svt >= Asvt // Tirantes verticales suficientes
@@ -827,6 +829,18 @@ DCp = Tmax ./ (0.90*Pr) // Demanda/capacidad por capa
 check max(DCp) <= 1 // Arranque de la geomalla (capa crítica)`),
     { type: 'table', columnas: 'Capa = 1:nr\nz [m] = zr\nσH [t/m²] = sigH\nTmax [t/m] = Tmax\nD/C rotura = DCr\nLa [m] = La\nLe [m] = Le\nPr [t/m] = Pr\nD/C arranque = DCp', titulo: 'Estabilidad interna por capa (rotura y arranque)', dec: '2' },
     { type: 'msewall', H: 'H', L: 'L', z: 'zr', phi: 'phir', tipo: 'extensible', q: 'ws', dc: '(DCr + DCp + abs(DCr - DCp))/2' },
+    calc(`## Estabilidad interna con sismo (11.10.7.2, Evento Extremo I)
+"La zona activa genera una fuerza de inercia que se reparte entre las capas en proporción a su longitud resistente (refuerzo extensible). En geosintéticos la parte dinámica no se reduce por fluencia lenta (*creep*) y el coeficiente de arranque F* se toma al 80 %.
+Wa = 0.5*gammar*H^2*tan(45 deg - phir/2) -> tonf/m // Peso de la zona activa (cuña de Rankine)
+Pi = kh*Wa -> tonf/m // Fuerza de inercia de la zona activa (11.10.7.2)
+@ocultar
+Tmd = Pi*Le/sum(Le) -> tonf/m // Incremento dinámico por capa, proporcional a Le
+Tmaxe = Kr*(gammar*zr + 0.5*ws)*Sv -> tonf/m // Tracción estática en Evento Extremo I (γEV = 1.0, γLS = 0.5)
+@mostrar
+DCre = (Tmaxe*RFID*RFCR*RFD + Tmd*RFID*RFD)/(1.20*Tult) // Rotura con sismo: Tult ≥ Tmax·RF/φ + Tmd·RFID·RFD/φ, φ = 1.20 (11.10.7.2; Tabla 11.5.7-1)
+check max(DCre) <= 1 // Rotura de la geomalla con sismo (capa crítica)
+DCpe = (Tmaxe + Tmd) ./ (1.20*0.8*Pr) // Arranque con sismo: F* al 80 % y φ = 1.20 (11.10.7.2)
+check max(DCpe) <= 1 // Arranque de la geomalla con sismo (capa crítica)`),
     summary(),
   ],
 };
@@ -891,7 +905,7 @@ check abs(Mmaxn - Mmax) <= 0.02*Mmax // Comprobación: integración numérica de
 sigadm = 0.65*fys // Esfuerzo admisible en flexión (USS *Steel Sheet Piling Design Manual*)
 Sreq = Mmax/sigadm -> cm^3/m // Módulo resistente requerido
 check Sreq <= Sx // Módulo resistente del perfil elegido
-"Longitud total de la tablestaca: {Lt} (empotramiento {D}). Verificar además la hinca (SPT/rechazo), la corrosión (sobreespesor o protección) y la deflexión en la corona.`),
+"Longitud total de la tablestaca: {Lt} (empotramiento {D}). Verificar además la hinca (SPT/rechazo), la corrosión (sobreespesor o protección) y la deflexión en la corona. El cálculo es estático: sirve para una **entibación provisional**. Si la tablestaca es permanente, en zonas 3 y 4 debe agregarse el incremento sísmico de Mononobe–Okabe con kh = 0.5·Z·S y la reducción del pasivo (Kpe), con FS ≥ 1.25 (E.050 39.13).`),
     summary(),
   ],
 };
@@ -967,7 +981,7 @@ La = roundup(Lmin, 0.5 m) // Distancia colocada desde la tablestaca
 Pdm = 0.5*gammas*hd^2*(Kp - Ka) -> tonf/m // Capacidad del muerto continuo (Das 9.13)
 FSdm = Pdm*sa/Tt // Factor de seguridad del muerto (por tirante, muerto continuo)
 check FSdm >= 2.0 // Capacidad del muerto de anclaje (Das 9.13: FS ≥ 2)
-"Tirante Ø según lista @ {sa}, a {La} de la tablestaca; longitud total de la tablestaca {H + Dd}.`),
+"Tirante Ø según lista @ {sa}, a {La} de la tablestaca; longitud total de la tablestaca {H + Dd}. Cálculo estático, válido para una entibación provisional; si la obra es permanente, agregar el incremento sísmico de Mononobe–Okabe (kh = 0.5·Z·S) en la tablestaca, el tirante y el muerto, y considerar que la cuña pasiva del muerto también se reduce con sismo.`),
     summary(),
   ],
 };

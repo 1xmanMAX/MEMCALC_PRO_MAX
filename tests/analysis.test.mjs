@@ -294,4 +294,19 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('an-'))) {
   const sinEtq = r.ctx.inputs.filter(i => !i.label);
   truthy(`${t.id}: todos los datos tienen etiqueta`, sinEtq.length === 0, sinEtq.map(i => i.name).join(', '));
 }
+section('Segunda opinión — tercera tanda B (armadura, nave, voladizo)');
+{ const subT = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const fails = (r) => r.res.ctx.checks.filter(c => !c.ok).map(c => c.label).join(' | ');
+  const a = runTemplate('an-armadura');
+  near('Armadura: PW = Cup·0.005·Vh²·st·p con Vh = V(h/10)^0.22', a('PW', 'tonf'), 0.9 * 0.005 * (75 * (8 / 10) ** 0.22) ** 2 * 5 * 2 / 1000, 1e-6);
+  const a2 = runTemplate('an-armadura', subT([['V = 75 //', 'V = 130 //'], ['Lbci = 4.0 m', 'Lbci = 6.0 m']]));
+  truthy('Armadura con V = 130 km/h y cordón inferior arriostrado cada 6 m: NO CUMPLE la compresión del cordón inferior', /Cordón inferior en compresión/.test(fails(a2)) && a2.res.ctx.errors.length === 0, fails(a2));
+  const n = runTemplate('an-nave');
+  near('Nave: Lp = 1.76·ry·√(E/Fy) (F2-5)', n('Lp', 'm'), 1.76 * 0.0389 * Math.sqrt(200000 / 345), 1e-6);
+  const n2 = runTemplate('an-nave', subT([['Lbr = 1.50 m', 'Lbr = 4.0 m']]));
+  truthy('Nave con tornapuntas cada 4 m (Lb > Lr): NO CUMPLE la flexocompresión (antes se suponía Mp)', /Flexocompresión en columnas/.test(fails(n2)), fails(n2));
+  const v = runTemplate('an-voladizo');
+  const Ms = 1.2 * 1.8 ** 2 / 2 + 0.6 * 1.8, MsL = 0.4 * 1.8 ** 2 / 2;
+  near('Voladizo: Mu = máx(1.4CM + 1.7CV; 1.25(CM + CV) + Fv(CM + 0.25CV))', v('Mu', 'tonf*m'), Math.max(1.4 * (Ms - MsL) + 1.7 * MsL, 1.25 * Ms + 0.32 * (Ms - MsL + 0.25 * MsL)), 1e-4);
+}
 done();

@@ -411,7 +411,7 @@ pnet_mb = p_mb + p_i -> kgf/m^2 // Presión neta máxima en el cerramiento a bar
 ## Cobertura de calamina
 wcob = 8 kgf/m^2 // Peso propio de la cobertura y accesorios [3..40]
 qadm = 60 kgf/m^2 // Resistencia admisible a succión de la cobertura con sus fijaciones (dato del fabricante, correas @ 1.5 m) [20..300]
-check pnet_tb - 0.9*wcob <= qadm // Levantamiento neto de la cobertura (E.020 Art. 12.5 y 20.1: solo cargas muertas estabilizan)
+check pnet_tb - 0.6*wcob <= qadm // Levantamiento neto de la cobertura: solo estabiliza 0.6 CM frente a un viento de servicio (criterio de esfuerzos admisibles, ASCE 7-05 2.4.1, comb. 0.6D + W; E.020 Art. 12.5)
 check pnet_mb <= qadm // Presión neta en los paneles de cerramiento
 # Cargas sobre el pórtico típico
 s_p = 6 m // Espaciamiento entre pórticos [3..12]

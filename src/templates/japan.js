@@ -481,15 +481,17 @@ Las viviendas de madera de entramado de postes y vigas (*zairai jikugumi koho*) 
 4. **Balance por cuartos** (*yonbun-wari-ho*, Notif. 1352): en las franjas extremas de 1/4 de la planta, la **suficiencia** (longitud efectiva/requerida) debe superar 1.0 en ambas, o la relación entre la menor y la mayor debe ser ≥ 0.5. La longitud requerida de cada franja usa su propia área y el coeficiente $c_w$ que corresponde al número de pisos **de esa franja** (si sobre la franja no hay 2F, se usa el valor de 1 piso).
 
 Vivienda de 2 pisos, techo ligero de lámina metálica, planta del 1F de 10.92 × 7.28 m (módulo 910 mm).
-> Desde abril de 2025 la reforma de la BSL reemplazó la tabla de $c_w$ por valores en función del peso real (paneles solares, aislamiento). El valor $c_w$ de esta memoria es editable.`),
+> **Vigencia.** Desde abril de 2025 la reforma de la BSL reemplazó la tabla de $c_w$ por valores que dependen del peso real de la edificación (cubierta, aislamiento, paneles solares) y elevó el límite del multiplicador de muro. La tabla anterior, que es la que reproduce la función *kabeBSL*, solo se admite en el régimen transitorio de la reforma. En un expediente nuevo ingrese en $c_{w1,v}$ y $c_{w2,v}$ los valores obtenidos con el procedimiento vigente; la memoria usa el mayor de ambos.`),
       calc(`# Datos de la vivienda
 techo = 1 // Tipo de techo [1 : Ligero (lámina metálica, pizarra)|2 : Pesado (teja cerámica)]
 niv = 2 // Número de pisos [1 : 1 piso|2 : 2 pisos|3 : 3 pisos]
 Lx = 10.92 m // Largo de la planta del 1F (dirección X) [3..30]
 Ly = 7.28 m // Ancho de la planta del 1F (dirección Y) [3..30]
 A1 = Lx*Ly // Área de piso del 1F
-cw1 = kabeBSL(techo, niv, 1) // Longitud requerida por sismo, 1F (Order Art. 46-4, tabla 2)
-cw2 = kabeBSL(techo, niv, 2) // Longitud requerida por sismo, 2F
+cw1v = 0 cm/m^2 // c_w del 1F según el procedimiento vigente (reforma de 2025); 0 = solo la tabla anterior [0..100]
+cw2v = 0 cm/m^2 // c_w del 2F según el procedimiento vigente (reforma de 2025); 0 = solo la tabla anterior [0..100]
+cw1 = max(kabeBSL(techo, niv, 1), cw1v) // Longitud requerida por sismo, 1F (Order Art. 46-4, tabla 2, o valor vigente si es mayor)
+cw2 = max(kabeBSL(techo, niv, 2), cw2v) // Longitud requerida por sismo, 2F
 cv = 50 cm/m^2 // Longitud requerida por viento (Order Art. 46-4, tabla 3) [50 cm/m^2 : Zona general|75 cm/m^2 : Zona de vientos fuertes]
 AvX = 31.0 m^2 // Área de fachada proyectada que recibe viento en X (por encima de 1.35 m del 1F) [5..300]
 AvY = 49.5 m^2 // Área de fachada proyectada que recibe viento en Y [5..300]
@@ -651,6 +653,15 @@ khcII = max(cs*cz*khc0JRA(T, suelo, 2), 0.4*cz) // Coeficiente sísmico de dise�
 Pa = 8200 kN // Capacidad de carga horizontal de la pila (curva de capacidad) [100..100000]
 check khcI*W <= Pa // Nivel 2 tipo I: Pa ≥ khc·W
 check khcII*W <= Pa // Nivel 2 tipo II: Pa ≥ khc·W
+## Desplazamiento residual (JRA V 6.4.6)
+dy = 0.040 m // Desplazamiento de fluencia en el centro de inercia de la superestructura (curva de capacidad) [0.005..0.5]
+Hp = 10.0 m // Altura desde la base de la pila al centro de inercia de la superestructura [2..60]
+rpos = 0 // Relación entre la rigidez posfluencia y la elástica r (0 en pilas de C°A°) [0..0.5]
+cR = 0.6 // Coeficiente de desplazamiento residual (pilas de C°A°, JRA V 6.4.6) [0.5..0.6]
+muR = 0.5*((max(cIz*khc0JRA(T, suelo, 1), cz*khc0JRA(T, suelo, 2))*W/Pa)^2 + 1) // Ductilidad de respuesta por igual energía, sismo que gobierna (JRA V 6.4.6)
+check muR <= muA // Ductilidad de respuesta ≤ ductilidad admisible μa (equivale a Pa ≥ cs·khc0·W sin el mínimo 0.4cz)
+dR = cR*(muR - 1)*(1 - rpos)*dy -> mm // Desplazamiento residual δR = cR(μr − 1)(1 − r)δy (JRA V 6.4.6)
+check dR <= Hp/100 // Desplazamiento residual ≤ h/100 (JRA V 6.4.6)
 # Espectros de aceleración en el sitio (análisis dinámico, JRA V 4.2 y 4.3)
 S1 = cz*cD*SJRA1(T, suelo) // Nivel 1 [gal]
 SI = cIz*cD*SJRA2I(T, suelo) // Nivel 2 tipo I [gal]

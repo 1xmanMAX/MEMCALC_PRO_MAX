@@ -870,6 +870,7 @@ phiVc = 0.85*0.53*sqrtfc(fc)*Bv*d -> tonf
 check Vud <= phiVc + 0.85*2.1*sqrtfc(fc)*Bv*d // Límite de la sección
 Vs = max(Vud/0.85 - phiVc/0.85, 0 tonf) // Resistencia requerida de estribos
 sest = rounddown(min(si(Vs > 0 tonf, 4*Ab(4)*fy*d/Vs, d/2), d/2, 60 cm), 2.5 cm) // Estribos de 4 ramas #4
+check 4*Ab(4) >= si(Vud > 0.5*phiVc, max(0.2*sqrtfc(fc), 3.5 kgf/cm^2)*Bv*sest/fy, 0 cm^2) // Refuerzo mínimo por cortante si Vu > 0.5 φVc (E.060 11.5.6.1 y 11.5.6.3)
 "Refuerzo: {nsup} φ1\\" superiores, {ninf} φ1\\" inferiores y estribos #4 de 4 ramas @ {sest}.`),
       summary(),
     ],
@@ -1281,7 +1282,11 @@ gs2 = 2.05 tonf/m^3 // Peso unitario saturado (estrato 2) [1.5..2.3]
 ## Nivel freático, sobrecarga y sismo
 ynf = 3.0 m // Cota del nivel freático [0..30]
 qsc = 2.0 tonf/m^2 // Sobrecarga de la edificación en la corona (E.050 Art. 30.2) [0..10]
-kh = 0.15 // Coeficiente sísmico horizontal (≈ 0.5·amax/g) [0..0.3]
+zona = 2 // Zona sísmica (E.030-2026 Art. 10) [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
+Vs30 = 450 m/s // Velocidad de ondas de corte del sitio (EMS, E.030-2026 Art. 15.2) [180..1500]
+PGA = ZE030(zona)*SE030(zona, Vs30) // Aceleración máxima del terreno Z·S, en g (E.030-2026 Tablas N° 1 y 4)
+kh = 0.15 // Coeficiente sísmico horizontal adoptado (del EMS) [0..0.4]
+check kh >= 0.5*PGA // Coeficiente sísmico no menor que 0.5·PGA (criterio de Hynes-Griffin y Franklin, 1984; la E.050 Art. 30.3 fija FS ≥ 1.25 pero no fija kh)
 "Geometría: talud de 10 m de altura con inclinación 2H:1V entre las abscisas 12 m y 32 m; la edificación (sobrecarga $q$) se ubica entre 2 m y 10 m.`),
       { type: 'slope', superficie: '0 10\n12 10\n32 0\n50 0', estratos: '10 c1 phi1 g1 gs1 Arcilla arenosa (CL)\n2 c2 phi2 g2 gs2 Arena densa (SP)', nf: 'ynf', kh: '0', sobrecarga: '2 10 qsc', malla: '14 36 12 34 10', ybase: '-4', metodo: 'bishop', ndov: '30', unidades: 't', tabla: true, sufijo: 'est', titulo: 'Condición estática — círculo crítico (Bishop simplificado)' },
       { type: 'slope', superficie: '0 10\n12 10\n32 0\n50 0', estratos: '10 c1 phi1 g1 gs1 Arcilla arenosa (CL)\n2 c2 phi2 g2 gs2 Arena densa (SP)', nf: 'ynf', kh: 'kh', sobrecarga: '2 10 qsc', malla: '14 36 12 34 10', ybase: '-4', metodo: 'bishop', ndov: '30', unidades: 't', tabla: false, sufijo: 'sis', titulo: 'Condición seudoestática (kh) — círculo crítico (Bishop simplificado)' },

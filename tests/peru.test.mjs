@@ -383,4 +383,9 @@ section('Segunda opinión — segunda tanda (pe-e020-metrado)');
   const g = runTemplate('pe-e020-metrado', sub2([['Ltab = 42 m', 'Ltab = 0 m'], ['wa = 100 kgf/m^2', 'wa = 0 kgf/m^2']]));
   truthy('Metrado sin tabiquería ni acabados: q < 0.6 t/m² → NO CUMPLE el control inferior del orden de magnitud', g.res.ctx.checks.some(c => !c.ok && /Control inferior/.test(c.label)));
 }
+section('Segunda opinión — tercera tanda B (viento: levantamiento con 0.6 CM)');
+{ const w = runTemplate('pe-e020-viento');
+  const c = w.res.ctx.checks.find(x => /Levantamiento neto/.test(x.label));
+  near('Viento: D/C del levantamiento = (pnet − 0.6·wcob)/qadm', c.ratio, (w('pnet_tb', 'kgf/m^2') - 0.6 * 8) / 60, 1e-6);
+}
 done();

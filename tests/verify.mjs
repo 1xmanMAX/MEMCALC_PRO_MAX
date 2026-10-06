@@ -155,6 +155,9 @@ const EXTREMOS = [
   ['sismo2018', [['Ip = 1.0 //', 'Ip = 0.75 //'], ['hn = 12.0 m', 'hn = 18 m']], '28.1.2'],
   ['sismo2018', [['Di = [0.22', 'Di = [0.32']], 'Tabla N° 11'],
   ['asce7', [['configuracion = 1 //', 'configuracion = 3 //']], 'ELF permitido'],
+  ['asce7', [['sistema = 1 //', 'sistema = 2 //']], 'Sistema permitido'],
+  ['aci', [['dbl = 22 mm', 'dbl = 20 mm']], 'Separación libre mínima'],
+  ['puente', [['h = roundup(hmin, 0.05 m)', 'h = 0.35 m']], 'Franja de borde controlada'],
   ['japon', [['Qu = [3100', 'Qu = [310']], 'Qu ≥ Qun'],
   ['puente', [['fc = 280 kgf/cm^2', 'fc = 100 kgf/cm^2'], ['L = 10.0 m', 'L = 10.0 m'], ['h = roundup(hmin, 0.05 m)', 'h = 0.30 m']], 'Resistencia a flexión'],
   ['acero', [['Lb = 10 ft', 'Lb = 60 ft']], 'Resistencia a flexión'],
@@ -219,6 +222,21 @@ console.log('Segunda opinión — segunda tanda (vigacont, aligerado, escalera)'
   ok('Escalera con garganta de 15 cm y ℓ = 4.39 m: NO CUMPLE ℓ/240 (antes no se calculaba la deflexión)', es.fails.some(l => l.includes('Diferida por CM')));
   const em = runT('escalera', [['alpha = 1.0 //', 'alpha = 0.8 //']]);
   near('Escalera semiempotrada (α = 0.8): M⁻ = (1/3)·wu·Ln²/8 ≥ (1 − α)·wu·Ln²/8', em.v('Mneg', 'tonf*m/m'), em.v('wu', 'tonf/m^2') * 3.6 ** 2 / 24, 1e-6);
+}
+console.log('Segunda opinión — tercera tanda B (aci, asce7, puente)');
+{
+  const ok = (name, c) => { c ? pass++ : fail++; console.log((c ? '  ✔ ' : '  ✘ ') + name); };
+  const ac = runT('aci');
+  near('ACI 318-19 25.2.1: separación libre (300 − 80 − 20 − 4·22)/3 = 37.3 mm', ac.v('sl', 'mm'), 112 / 3, 1e-6);
+  const as = runT('asce7');
+  ok('ASCE 7-22 11.6: SDS = 1.0 y SD1 = 0.6 (riesgo II) → SDC D', as.v('SDC') === 4);
+  near('ASCE 7-22 12.8.7: θ del 1.er entrepiso = Px·δxe/(Vx·hsx)', as.v('theta').get([0]), 9600 * 5 / (as.v('Vx').get([0]).toNumber('kN') * 3000), 1e-6);
+  const sE = runT('asce7', [['S1 = 0.60', 'S1 = 0.80']]);
+  ok('ASCE 7-22 11.6: S1 ≥ 0.75 g → SDC E', sE.v('SDC') === 5);
+  const pu = runT('puente');
+  const MLLb = 1.2 * (0.5 * pu.v('Mta', 'tonf*m') * 1.33 + pu.v('Mln', 'tonf*m') * 1.4 / 3) / 1.8;
+  near('AASHTO 4.6.2.1.4: MLL de la franja de borde (Eb = 1.8 m, m = 1.2)', pu.v('MLLb', 'tonf*m/m'), MLLb, 1e-6);
+  ok('Puente: la franja de borde gobierna (Mu,borde > φMn de la franja interior) y se arma aparte', pu.v('Mub', 'tonf*m/m') > pu.v('phiMn', 'tonf*m/m') && pu.v('sb', 'cm') < pu.v('s', 'cm'));
 }
 console.log(`\nResultado: ${pass} correctas, ${fail} fallidas`);
 process.exit(fail ? 1 : 0);

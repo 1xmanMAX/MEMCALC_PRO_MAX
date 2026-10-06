@@ -792,6 +792,12 @@ qv = Vs/(pi*(D + tw)/2) -> tonf/m // Flujo de corte tangencial máximo q = V/(π
 Avf = 2*Asv // Refuerzo vertical que atraviesa la junta (dos caras)
 phiVn = 0.75*1.0*Avf*fy -> tonf/m // Corte-fricción φ μ Avf fy, μ = 1.0 (junta rugosa, E.060 11.7)
 check qv <= phiVn // Corte-fricción en la base de la pared (ACI 350.3-06 3.3.2 y R3.3.2; E.060 11.7)
+## Tracción vertical en la pared por el momento sísmico de la base
+rmw = (D + tw)/2 // Radio medio de la pared
+Nvm = Mb/(pi*rmw^2) -> tonf/m // Fuerza de membrana vertical máxima por metro de perímetro: M/(π r²) (cáscara cilíndrica)
+Nvd = gc*tw*Hw + Wr/(2*pi*rmw) -> tonf/m // Peso de la pared y de la cubierta por metro de perímetro
+Nvu = Nvm - 0.9*Nvd -> tonf/m // U = 0.9D + 1.0E (ACI 350-06 9.2.1)
+check Nvu <= 0.9*fy*2*Asv // Refuerzo vertical de las dos caras a tracción por el momento de volteo (ACI 350.3-06 R5.3)
 ## Anclaje de la cubierta frente al oleaje
 pup = gw*max(dmax - fbl, 0 m) -> tonf/m^2 // Presión ascendente estimada: columna de la ola no acomodada (estimación simplificada)
 qup = pup*D/4 - 0.9*gc*er*D/4 -> tonf/m // Tracción por metro en la unión cubierta–pared (placa circular: q = pR/2), descontando 0.9 del peso propio
@@ -812,7 +818,7 @@ check qup <= phiTa // Anclaje de la cubierta al empuje del oleaje (ACI 350.3 R7.
       text(`# Generalidades
 Cisterna enterrada de concreto armado con losa de techo, paredes empotradas en la losa de fondo y en las paredes transversales (continuidad en las esquinas) y apoyadas en la losa de techo. Cada pared se analiza como una **placa** bajo presión triangular o trapezoidal mediante diferencias finitas, lo que reproduce los coeficientes de momento de las tablas del PCA *Rectangular Concrete Tanks* para cualquier relación de lados y condición de borde.
 
-Se consideran dos estados: **(1) prueba hidráulica** — tanque lleno sin relleno exterior; **(2) tanque vacío** con empuje de suelo en reposo y sobrecarga. Coeficientes sanitarios ACI 350R/PCA: 1.30 en flexión, factor de carga 1.7.`),
+Se consideran tres estados: **(1) prueba hidráulica** — tanque lleno sin relleno exterior; **(2) tanque vacío** con empuje de suelo en reposo y sobrecarga; **(3) tanque vacío con sismo**: incremento uniforme de Wood (1973) para muros rígidos con $k_h = Z\\,S$. Coeficientes sanitarios ACI 350R/PCA: 1.30 en flexión, factor de carga 1.7. Se verifican además la losa de fondo, la presión de contacto y la flotación.`),
       calc(`# Datos
 Li = 4.00 m // Longitud interior [1.50 m..10.00 m]
 Bi = 3.00 m // Ancho interior [1.50 m..10.00 m]
@@ -829,6 +835,9 @@ fc = 280 kgf/cm^2 // Resistencia del concreto [210..420]
 fy = 4200 kgf/cm^2 // Acero de refuerzo [2800..4200]
 rec = 5 cm // Recubrimiento [4..7.5]
 qadm = 1.5 kgf/cm^2 // Capacidad admisible del suelo [0.5..4.0]
+Z = 0.45 // Factor de zona ${ZONA} [0.10..0.45]
+S = 1.05 // Factor de suelo ${SUELO} [0.80..2.00]
+Hnf = 5.0 m // Profundidad del nivel freático desde la superficie (EMS) [0..30]
 Vol = Li*Bi*HL -> m^3 // Volumen útil
 # Presiones
 Ko = 1 - sin(phis) // Empuje en reposo (paredes restringidas por el techo)
@@ -836,21 +845,27 @@ Hp = Hc + (tf + tt)/2 // Altura de cálculo de la pared (entre ejes de losas)
 qw = gw*HL -> tonf/m^2 // Presión del agua en la base
 qsb = Ko*(ws + gs*(Hp + tt/2)) -> tonf/m^2 // Presión del suelo en la base
 qst = Ko*ws -> tonf/m^2 // Presión de la sobrecarga
+pse = Z*S*gs*(Hp + tt/2) -> tonf/m^2 // Incremento sísmico uniforme del suelo sobre muros rígidos (Wood 1973), kh = PGA = Z·S (E.030; igual que en la memoria de muro de sótano)
+Hfo = tt + Hc + tf // Profundidad del fondo de la cisterna (techo a nivel del terreno)
+check Hnf >= Hfo // Nivel freático bajo el fondo: hipótesis de suelo seco (si no, recalcular el empuje con γ′ + γw)
 # Pared larga — estado 1: agua interior`),
       { type: 'tankwall', a: 'Li + tw', b: 'Hp', inf: 'empotrado', sup: 'articulado', lat: 'empotrado', qb: 'qw', qs: '0', hq: 'HL', nu: '0.2', ndiv: '20', sufijo: 'a', titulo: 'Pared larga con agua interior (prueba hidráulica)' },
       calc(`# Pared larga — estado 2: suelo exterior`),
       { type: 'tankwall', a: 'Li + tw', b: 'Hp', inf: 'empotrado', sup: 'articulado', lat: 'empotrado', qb: 'qsb', qs: 'qst', hq: '', nu: '0.2', ndiv: '20', sufijo: 's', titulo: 'Pared larga con empuje de suelo y sobrecarga (tanque vacío)' },
       calc(`# Pared corta — estado 1: agua interior`),
       { type: 'tankwall', a: 'Bi + tw', b: 'Hp', inf: 'empotrado', sup: 'articulado', lat: 'empotrado', qb: 'qw', qs: '0', hq: 'HL', nu: '0.2', ndiv: '20', sufijo: 'c', titulo: 'Pared corta con agua interior' },
+      calc(`# Pared larga — estado 3: incremento sísmico del suelo (tanque vacío)`),
+      { type: 'tankwall', a: 'Li + tw', b: 'Hp', inf: 'empotrado', sup: 'articulado', lat: 'empotrado', qb: 'pse', qs: 'pse', hq: '', nu: '0.2', ndiv: '20', sufijo: 'e', titulo: 'Pared larga con el incremento sísmico uniforme de Wood (solo sismo)' },
       calc(`# Diseño de las paredes (por metro)
-bar = 4 // Varilla [3 : 3/8"|4 : 1/2"|5 : 5/8"]
+"Estado con sismo: $U = 1.7\\,CE + 1.0\\,CS$ (mismo criterio que el muro de sótano). Como el acero se calcula con el factor 1.7 × 1.30, el momento sísmico se ingresa como $M_E/1.7$, de modo que el momento último es $1.30\\,(1.7\\,M_{CE} + 1.0\\,M_{CS})$.
+bar = 5 // Varilla (con el sismo del suelo gobierna 5/8" en la cara exterior) [3 : 3/8"|4 : 1/2"|5 : 5/8"]
 d = tw - rec - db(bar)/2 // Peralte efectivo
 fs = 1.3*1.7 // Factor total en flexión: PCA 1.7 × 1.30 (≈ ACI 350-06: 1.4 × Sd ≈ 1.4 × 1.5)
 As(Mx) = 0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*(fs*Mx*1 m/(0.9*100 cm*d^2))/(0.85*fc))))*100 cm*d/(1 m) // Acero requerido para un momento por metro
 rhomax = 0.75*0.85*0.85*fc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy) // Cuantía máxima 0.75 ρb (β1 = 0.85)
 ## Refuerzo vertical
-Mvi = max(MyNa, MyPs) -> tonf*m/m // Cara interior: base con agua / tramo con suelo
-Mve = max(MyPa, MyNs) -> tonf*m/m // Cara exterior: tramo con agua / base con suelo
+Mvi = max(MyNa, MyPs + MyPe/1.7) -> tonf*m/m // Cara interior: base con agua / tramo con suelo y sismo
+Mve = max(MyPa, MyNs + MyNe/1.7) -> tonf*m/m // Cara exterior: tramo con agua / base con suelo y sismo
 @modo corto
 Asvi = As(Mvi) -> cm^2/m // Acero vertical requerido, cara interior
 Asve = As(Mve) -> cm^2/m // Acero vertical requerido, cara exterior
@@ -861,8 +876,8 @@ Asp = Ab(bar)/s -> cm^2/m // Acero colocado por cara
 check Asp >= max(Asvi, Asmin) // Refuerzo vertical, cara interior
 check Asp >= max(Asve, Asmin) // Refuerzo vertical, cara exterior
 ## Refuerzo horizontal
-Mhi = max(MxNa, MxNc, MxPs) -> tonf*m/m // Cara interior: esquinas con agua / tramo con suelo
-Mhe = max(MxPa, MxPc, MxNs) -> tonf*m/m // Cara exterior: tramo con agua / esquinas con suelo
+Mhi = max(MxNa, MxNc, MxPs + MxPe/1.7) -> tonf*m/m // Cara interior: esquinas con agua / tramo con suelo y sismo
+Mhe = max(MxPa, MxPc, MxNs + MxNe/1.7) -> tonf*m/m // Cara exterior: tramo con agua / esquinas con suelo y sismo
 @modo corto
 Ashi = As(Mhi) -> cm^2/m // Acero horizontal requerido, cara interior
 Ashe = As(Mhe) -> cm^2/m // Acero horizontal requerido, cara exterior
@@ -872,7 +887,7 @@ check max(Asvi, Asve, Ashi, Ashe) <= Asmax // Espesor de pared suficiente: ρ �
 check Asp >= max(Ashi, Asmin) // Refuerzo horizontal, cara interior
 check Asp >= max(Ashe, Asmin) // Refuerzo horizontal, cara exterior
 ## Cortante en la base de la pared
-Vu = 1.7*max(Vba, Vbs) -> tonf/m
+Vu = max(1.7*Vba, 1.7*Vbs + 1.0*Vbe) -> tonf/m // Agua; suelo + sismo (1.7 CE + 1.0 CS)
 phiVc = 0.75*0.53*sqrtfc(fc)*100 cm*d/(1 m) -> tonf/m // φVc (φ = 0.75)
 check Vu <= phiVc // Cortante en la unión con la losa de fondo (ACI 350-06 11.3, φ = 0.75)
 # Losa de techo (placa articulada en sus cuatro bordes)
@@ -895,7 +910,24 @@ Wag = gw*Vol -> tonf // Peso del agua
 Wsc = (wlt + 0.10 tonf/m^2)*Lt*Bt -> tonf // Sobrecarga y acabados del techo
 Wtot = Wcon + Wag + Wsc // Peso total
 qs = Wtot/(Lt*Bt) -> kgf/cm^2
-check qs <= qadm // Presión de contacto (E.050)`),
+check qs <= qadm // Presión de contacto (E.050)
+# Flotación (tanque vacío)
+Uw = gw*Lt*Bt*max(Hfo - Hnf, 0 m) -> tonf // Subpresión si el nivel freático sube sobre el fondo
+check 1.25*Uw <= 0.9*Wcon // FS a la flotación ≥ 1.25 con 0.9 del peso propio, sin fricción del relleno (práctica ACI 350.4R / USACE)
+# Losa de fondo (placa empotrada en las paredes)
+"La reacción del suelo debida al peso de las paredes, del techo y de su sobrecarga actúa hacia arriba sobre la losa de fondo (el peso del agua y el de la propia losa se equilibran con su reacción): $q_n = (W_{con} - W_{fo} + W_{sc})/(L_t B_t)$.
+Wfo = 2.4 tonf/m^3*Lt*Bt*tf -> tonf // Peso de la losa de fondo
+qnf = (Wcon - Wfo + Wsc)/(Lt*Bt) -> tonf/m^2 // Presión neta hacia arriba (servicio)`),
+      { type: 'tankwall', a: 'Li + tw', b: 'Bi + tw', inf: 'empotrado', sup: 'empotrado', lat: 'empotrado', qb: 'qnf', qs: 'qnf', hq: '', nu: '0.2', ndiv: '20', sufijo: 'f', titulo: 'Losa de fondo con la presión neta del suelo (momentos en la luz menor = My)' },
+      calc(`dff = tf - rec - db(bar)/2 // Peralte efectivo de la losa de fondo
+Asf(Mx) = 0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*(fs*Mx*1 m/(0.9*100 cm*dff^2))/(0.85*fc))))*100 cm*dff/(1 m) // Acero con el factor 1.7 × 1.30
+Asfb = Asf(max(MyNf, Mve)) -> cm^2/m // Cara inferior en los bordes: placa empotrada y momento de la base de la pared (continuidad)
+Asft = Asf(max(MyPf, Mvi)) -> cm^2/m // Cara superior: centro de la placa y momento de la base de la pared con agua
+Asmf = 0.0015*tf*1 m/m -> cm^2/m // Mínimo por cara (ACI 350 Tabla 7.12.2.1)
+sfo = 20 cm // Espaciamiento de la malla de la losa de fondo (dos capas) [10..30]
+Aspf = Ab(bar)/sfo -> cm^2/m // Acero colocado por cara
+check Aspf >= max(Asfb, Asmf) // Losa de fondo, cara inferior y bordes
+check Aspf >= max(Asft, Asmf) // Losa de fondo, cara superior`),
       summary(),
     ],
   },
@@ -990,7 +1022,8 @@ check rhoh >= 0.0025 // Cuantía horizontal mínima (E.060 11.10.7)
 phiVf = 0.85*Acw*(0.53*sqrtfc(fc) + rhoh*fy) -> tonf // φVn = φ Acw (0.53√f'c + ρh fy) (E.060 11.10)
 check Vuf <= phiVf // Cortante en el fuste (E.060 11.10)
 sigma_gc = (1.25*(Wcuba + Wfus + WL))/Ag -> kgf/cm^2 // Compresión por gravedad
-check sigma_gc <= 0.1*fc // Esfuerzo axial bajo: validez de la fórmula de anillo plástico (hipótesis de esta memoria)`),
+check sigma_gc <= 0.1*fc // Esfuerzo axial bajo: validez de la fórmula de anillo plástico (hipótesis de esta memoria)
+"**Abertura de acceso.** La resistencia del fuste se calculó con la sección anular completa. La puerta en la base (usualmente 0.9 × 2.1 m) reduce el área y el módulo resistente justo donde el momento es máximo: la sección neta debe verificarse con el ángulo de la abertura descontado, con columnas de borde (pilastras) que repongan el acero cortado y con dinteles que transmitan el flujo de corte (ACI 371R-16, 4.4.3 y 4.4.5). La cimentación (volteo con $M_{base}$, presiones y flexión de la losa) se diseña aparte.`),
       summary(),
     ],
   },

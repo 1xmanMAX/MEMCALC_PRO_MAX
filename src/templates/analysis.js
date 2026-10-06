@@ -201,6 +201,13 @@ theta = atan(f/(Lt/2)) -> deg // Inclinación del techo
 wLr = max(100 kgf/m^2 - 5 kgf/m^2*(theta/(1 deg) - 3), 50 kgf/m^2) -> kgf/m^2 // Sobrecarga de techo inclinado (E.020 7.1)
 PD = wD*st*p -> tonf // Carga muerta por nudo interior
 PL = wLr*st*p -> tonf // Carga viva de techo por nudo interior
+## Viento (E.020 Art. 12): succión sobre la cubierta
+V = 75 // Velocidad básica a 10 m [km/h] (mapa eólico, mín. 75 km/h) [75..130]
+he = 6.0 m // Altura de apoyo de la armadura sobre el terreno [3..15]
+Vh = V*((he + f)/(10 m))^0.22 // Velocidad de diseño a la altura de la cumbrera (E.020 12.3)
+ph = 0.005*Vh^2 kgf/m^2 -> kgf/m^2 // Presión dinámica con C = 1 (E.020 12.4)
+Cup = 0.9 // Coeficiente neto de succión: sotavento −0.6 (Tabla 4, 15° < θ ≤ 60°) más presión interior +0.3 (Art. 12.5) [0.6|0.9|1.1] [0.3..1.5]
+PW = Cup*ph*st*p -> tonf // Levantamiento por nudo interior (vertical, sobre la proyección horizontal)
 "El peso propio de la armadura ($\\gamma_s = 7.85$ t/m³ por el área de cada barra) se agrega al caso CM; en las barras genera flexión local despreciable y se transmite a los nudos.`),
       {
         type: 'frame2d', tipo: 'armadura',
@@ -208,10 +215,10 @@ PL = wLr*st*p -> tonf // Carga viva de techo por nudo interior
         secciones: 'CO Es A_c\nWE Es A_w',
         barras: '1 1 2 CO\n2 2 3 CO\n3 3 4 CO\n4 4 5 CO\n5 5 6 CO\n6 6 7 CO\n7 1 8 CO\n8 8 9 CO\n9 9 10 CO\n10 10 11 CO\n11 11 12 CO\n12 12 7 CO\n13 2 8 WE\n14 3 9 WE\n15 4 10 WE\n16 5 11 WE\n17 6 12 WE\n18 8 3 WE\n19 9 4 WE\n20 11 4 WE\n21 12 5 WE',
         apoyos: '1 A\n7 Ry',
-        cargas: 'CM: N 8-12 0 -PD\nCM: N 1,7 0 -PD/2\nCV: N 8-12 0 -PL\nCV: N 1,7 0 -PL/2',
-        casos: 'CM Carga muerta\nCV Carga viva de techo',
+        cargas: 'CM: N 8-12 0 -PD\nCM: N 1,7 0 -PD/2\nCV: N 8-12 0 -PL\nCV: N 1,7 0 -PL/2\nW: N 8-12 0 PW',
+        casos: 'CM Carga muerta\nCV Carga viva de techo\nW Viento (succión, levantamiento)',
         pp: 'CM 7.85 tonf/m^3',
-        combinaciones: 'U1 = 1.4 CM\nU2 = 1.2 CM + 1.6 CV',
+        combinaciones: 'U1 = 1.4 CM\nU2 = 1.2 CM + 1.6 CV\nU3 = 0.9 CM + 1.3 W',
         grupos: 'CS 7-12\nCI 1-6\nMON 13-17\nDIA 18-21',
         servicio: 'CM + CV', graficos: 'C N D',
         titulo: 'Armadura Pratt de 12 m',
@@ -235,11 +242,22 @@ phiPn_ci = phit*Fy*A_c -> tonf // Fluencia en el área bruta (D2-1)
 phiPr_ci = 0.75*Fu*0.85*A_c -> tonf // Rotura en el área neta efectiva, U = 0.85 (D2-2, D3)
 check Pu_ci <= min(phiPn_ci, phiPr_ci) // Tracción en el cordón inferior
 check Lmax_CI/r_c <= 300 // Esbeltez de barras en tracción (D1)
+"Con el viento (U3 = 0.9 CM + 1.3 W, E.090) el cordón inferior puede quedar en **compresión**; su longitud no arriostrada fuera del plano es la separación entre los arriostres del cordón inferior, no el panel.
+Lbci = 4.0 m // Separación de los arriostres laterales del cordón inferior (cada dos paneles) [1..12]
+Pc_ci = abs(Nc_CI) // Compresión máxima del cordón inferior (inversión por viento)
+KLr_ci = K*Lbci/r_c // Esbeltez fuera del plano (r mínimo del par de ángulos, conservador)
+Fe_ci = pi^2*Es/KLr_ci^2 // Pandeo elástico (E3-4)
+Fcr_ci = si(KLr_ci <= lim, 0.658^(Fy/Fe_ci)*Fy, 0.877*Fe_ci) // Esfuerzo crítico
+phiPn_ci2 = phic*Fcr_ci*A_c -> tonf // Resistencia a compresión del cordón inferior
+check Pc_ci <= phiPn_ci2 // Cordón inferior en compresión por levantamiento de viento (E3)
 ## Montantes y diagonales (perfil 2L 2×2×3/16")
 "Por la pendiente del cordón superior, bajo cargas de gravedad las diagonales de esta configuración trabajan a compresión y los montantes a tracción; se verifican ambos estados.
 phiPt_w = min(phit*Fy*A_w, 0.75*Fu*0.85*A_w) -> tonf // Resistencia a tracción (D2)
 check Nt_MON <= phiPt_w // Tracción en montantes
 check Lmax_MON/r_w <= 300 // Esbeltez de montantes (D1)
+KLr_mo = K*Lmax_MON/r_w // Esbeltez del montante más largo (con viento los montantes pasan a compresión)
+Fcr_mo = si(KLr_mo <= lim, 0.658^(Fy/(pi^2*Es/KLr_mo^2))*Fy, 0.877*pi^2*Es/KLr_mo^2) // Esfuerzo crítico (E3-2, E3-3)
+check abs(Nc_MON) <= phic*Fcr_mo*A_w // Compresión en montantes por inversión de viento (E3)
 KLr_di = K*Lc_DIA/r_w // Esbeltez de la diagonal que gobierna
 check KLr_di <= 200 // Esbeltez recomendada de diagonales
 Fe_di = pi^2*Es/KLr_di^2 // Pandeo elástico
@@ -295,6 +313,16 @@ Z_col = 895 cm^3 // Columna W14×34: módulo plástico Zx [200..4000]
 r_col = 14.8 cm // Columna W14×34: radio de giro rx [8..30]
 A_vig = 64.5 cm^2 // Viga W14×34: área [30..300]
 I_vig = 14150 cm^4 // Viga W14×34: inercia Ix [2000..100000]
+d_vig = 35.5 cm // Viga W14×34: peralte d [15..100]
+tw_vig = 0.724 cm // Viga W14×34: espesor del alma tw [0.4..2.5]
+## Pandeo lateral-torsional del perfil W14×34 (columna y viga, AISC 360-16 F2)
+S_x = 796 cm^3 // Módulo elástico Sx [100..4000]
+ry = 3.89 cm // Radio de giro ry [1..10]
+rts = 4.62 cm // Radio de giro efectivo rts [1..12]
+Jt = 23.7 cm^4 // Constante torsional J [1..2000]
+ho = 34.0 cm // Distancia entre centroides de alas [10..100]
+Lbr = 1.50 m // Separación de los arriostres del ala interior (tornapuntas desde correas y vigas de fachada) [0.5..6]
+Cb = 1.0 // Factor de gradiente de momento (1.0 conservador) [1.0..2.3]
 ## Cargas de gravedad
 wcub = 25 kgf/m^2 // Cubierta + correas + instalaciones [10..50]
 pend = atan(hr/(Lb/2)) -> deg // Pendiente del techo
@@ -333,7 +361,12 @@ KLr = K*hcol/r_col // Esbeltez en el plano del pórtico
 Fe = pi^2*Es/KLr^2 // Pandeo elástico (E3-4)
 Fcr = si(KLr <= 4.71*sqrt(Es/Fy), 0.658^(Fy/Fe)*Fy, 0.877*Fe) // Esfuerzo crítico (E3)
 phiPn = 0.9*Fcr*A_col -> tonf // Resistencia a compresión
-phiMn = 0.9*Fy*Z_col -> tonf*m // Resistencia a flexión (Lb ≤ Lp por arriostres de correas y vigas de fachada)
+Mp = Fy*Z_col -> tonf*m // Momento plástico
+Lp = 1.76*ry*sqrt(Es/Fy) -> m // Longitud límite plástica (F2-5)
+Lr = 1.95*rts*Es/(0.7*Fy)*sqrt(Jt/(S_x*ho) + sqrt((Jt/(S_x*ho))^2 + 6.76*(0.7*Fy/Es)^2)) -> m // Longitud límite inelástica (F2-6)
+Fcr_lt = Cb*pi^2*Es/(Lbr/rts)^2*sqrt(1 + 0.078*Jt/(S_x*ho)*(Lbr/rts)^2) // Esfuerzo crítico elástico (F2-4)
+Mn = si(Lbr <= Lp, Mp, si(Lbr <= Lr, min(Cb*(Mp - (Mp - 0.7*Fy*S_x)*(Lbr - Lp)/(Lr - Lp)), Mp), min(Fcr_lt*S_x, Mp))) -> tonf*m // Momento nominal con pandeo lateral-torsional (F2)
+phiMn = 0.9*Mn -> tonf*m // Resistencia a flexión: el ala interior (comprimida en el nudo de esquina) solo está arriostrada en los tornapuntas
 ra = Pu/phiPn // Relación axial
 IH = si(ra >= 0.2, ra + 8/9*Mu/phiMn, ra/2 + Mu/phiMn) // Interacción (H1-1a / H1-1b)
 check IH <= 1.0 // Flexocompresión en columnas
@@ -343,7 +376,8 @@ check dcum <= Lb/240 // Deflexión vertical de la cubierta ≤ L/240 (E.090 / AI
 # Verificación de la viga del techo
 Mu_v = Mmax_VIG // Momento máximo en vigas
 check Mu_v <= phiMn // Flexión en vigas (perfil compacto)
-check Vmax_VIG <= 1.0*0.6*Fy*(35.5 cm*0.724 cm) // Cortante en el alma, φv = 1.0 (G2.1a): d·tw de W14×34`),
+check (d_vig - 2*1.83 cm)/tw_vig <= 2.24*sqrt(Es/Fy) // Alma sin pandeo por cortante: φv = 1.0 y Cv1 = 1.0 (G2.1a, perfiles laminados; k = 1.83 cm)
+check Vmax_VIG <= 1.0*0.6*Fy*d_vig*tw_vig // Cortante en el alma, φv = 1.0 (G2.1a)`),
       summary(),
     ],
   },
@@ -358,13 +392,13 @@ check Vmax_VIG <= 1.0*0.6*Fy*(35.5 cm*0.724 cm) // Cortante en el alma, φv = 1.
     titulo: 'Vigas en voladizo y simplemente apoyadas — casos tabulados',
     validacion: {
       fuente: 'AISC Steel Construction Manual, Tabla 3-23, casos 7, 22 y 24 (fórmulas cerradas: voladizo con carga uniforme y puntual en el extremo; viga simple con carga puntual)',
-      nota: 'Valores exactos de las fórmulas cerradas con los datos por defecto: MA = wL²/2 + PL, RA = Pb/L, Mmax = Pab/L.',
+      nota: 'Valores exactos de las fórmulas cerradas con los datos por defecto: MA = wL²/2 + PL, RA = Pb/L, Mmax = Pab/L. Segunda opinión (tercera tanda B): Mu pasó de 1.5·Ms = 4.536 t·m (factor promedio, no normativo) a máx(1.4CM + 1.7CV; 1.25(CM + CV) + CSv) = 4.592 t·m (E.060 9.2.1 y 9.2.3; E.030-2026 Art. 28.4).',
       valores: [
         { var: 'abs(MA_w)', unidad: 'tonf*m', esperado: 1.944, tol: 0.0005, desc: 'Tabla 3-23 caso 22: wL²/2' },
         { var: 'abs(MA_P)', unidad: 'tonf*m', esperado: 1.08, tol: 0.0005, desc: 'Tabla 3-23 caso 24: PL' },
         { var: 'RA_d', unidad: 'tonf', esperado: 1.142857, tol: 0.0005, desc: 'Tabla 3-23 caso 7: Pb/L' },
         { var: 'Mmax_d', unidad: 'tonf*m', esperado: 1.714286, tol: 0.0005, desc: 'Tabla 3-23 caso 7: Pab/L' },
-        { var: 'Mu', unidad: 'tonf*m', esperado: 4.536, tol: 0.002, desc: 'Control: momento último en el empotramiento' },
+        { var: 'Mu', unidad: 'tonf*m', esperado: 4.592, tol: 0.002, desc: 'Control: momento último en el empotramiento (máx. de 1.4CM + 1.7CV y 1.25(CM + CV) + CSv)' },
         { var: 'phiMn', unidad: 'tonf*m', esperado: 9.295, tol: 0.002, desc: 'Control: resistencia a flexión' },
       ],
     },
@@ -384,12 +418,18 @@ h = 50 cm // Peralte en el empotramiento [30..80]
 Ig = b*h^3/12 -> m^4 // Inercia bruta
 Lv = 1.80 m // Longitud del voladizo [0.8..3]
 wv = 1.20 tonf/m // Carga uniforme de servicio (losa + acabados + s/c) [0.5..5]
-Pv = 0.60 tonf // Parapeto en el extremo libre (carga puntual de servicio) [0..3]`),
+Pv = 0.60 tonf // Parapeto en el extremo libre (carga puntual de servicio) [0..3]
+wvL = 0.40 tonf/m // Parte de wv que es carga viva (balcón 400 kgf/m², E.020 Tabla 1, ancho tributario 1.0 m) [0..3]
+Fv = 0.32 // Fuerza sísmica vertical del voladizo como fracción de su peso: 2/3·Z·U·S (E.030-2026 Art. 28.4; 0.32 en zona 4, Vs30 = 450 m/s) [0..0.6]`),
       { type: 'beamcase', apoyo: 'V', carga: 'U', L: 'Lv', w: 'wv', E: 'Ec', I: 'Ig', sufijo: 'w', titulo: 'Voladizo con carga uniforme' },
       { type: 'beamcase', apoyo: 'V', carga: 'P', L: 'Lv', P: 'Pv', a: 'Lv', E: 'Ec', I: 'Ig', sufijo: 'P', titulo: 'Voladizo con carga puntual en el extremo' },
       calc(`## Superposición y verificación
 Ms = -(MA_w + MA_P) // Momento de servicio en el empotramiento
-Mu = 1.5*Ms // Momento último aproximado (factor promedio 1.4–1.7)
+MsL = wvL*Lv^2/2 -> tonf*m // Parte del momento de servicio debida a la carga viva
+MsD = Ms - MsL // Parte debida a la carga muerta (incluye el parapeto)
+Mu1 = 1.4*MsD + 1.7*MsL // U = 1.4 CM + 1.7 CV (E.060 9.2.1)
+Mu2 = 1.25*Ms + Fv*(MsD + 0.25*MsL) // U = 1.25(CM + CV) + CSv con el sismo vertical del voladizo (E.060 9.2.3; E.030-2026 Art. 28.4)
+Mu = max(Mu1, Mu2) // Momento último en el empotramiento
 delta = deltamax_w + deltamax_P // Deflexión inmediata en el extremo libre (superposición)
 check delta <= 2*Lv/360 // Deflexión inmediata ≤ ℓ/360 con ℓ = 2Lv (E.060 Tabla 9.2)
 d = h - 6 cm // Peralte efectivo
@@ -397,7 +437,13 @@ fy = 4200 kgf/cm^2 // Acero [2800..4200]
 As = 3*Ab(5) // Refuerzo superior colocado: 3 Ø 5/8"
 a = As*fy/(0.85*fc*b) // Bloque equivalente de compresiones
 phiMn = 0.9*As*fy*(d - a/2) -> tonf*m // Momento resistente de diseño
-check Mu <= phiMn // Flexión en el empotramiento`),
+check Mu <= phiMn // Flexión en el empotramiento
+check As >= max(0.7*sqrtfc(fc)/fy*b*d, 1.2*2*sqrtfc(fc)*b*h^2/6/(fy*0.9*(d - a/2))) // Acero mínimo: 0.7√f'c·b·d/fy y φMn ≥ 1.2 Mcr (E.060 10.5.1–10.5.2)
+VsD = wv*Lv + Pv - wvL*Lv // Cortante de servicio por carga muerta en el empotramiento
+VsL = wvL*Lv // Cortante de servicio por carga viva
+Vu = max(1.4*VsD + 1.7*VsL, 1.25*(VsD + VsL) + Fv*(VsD + 0.25*VsL)) // Cortante último (conservador, en la cara)
+phiVc = 0.85*0.53*sqrtfc(fc)*b*d -> tonf // Resistencia del concreto (E.060 11.3.1.1)
+check Vu <= phiVc // Cortante en el empotramiento (con estribos mínimos de 21.4 si la viga es sísmica)`),
       calc(`# Dintel simplemente apoyado
 Ld = 3.5 m // Luz del dintel [2..8]
 Pd = 2.0 tonf // Carga puntual de una viga que apoya en el dintel [0..20]

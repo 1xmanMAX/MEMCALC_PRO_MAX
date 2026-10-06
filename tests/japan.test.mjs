@@ -229,4 +229,15 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('jp-'))) {
 }
 truthy('Listas desplegables intactas con rango (suelo, rangos FA–FD/WA–WD, Fc)', (() => { const f = (id, n) => runTemplate(id).res.ctx.inputs.find(i => i.name === n); return f('jp-bsl-ruta3', 'suelo').options.length === 3 && f('jp-bsl-ruta3', 'rF').options.length === 4 && f('jp-bsl-ruta3', 'rF').range.max === 4 && f('jp-bsl-ruta12', 'Fc').options.length === 5 && f('jp-bsl-ruta12', 'Fc').range.min === 18; })());
 truthy('Viento: validacion con el ejemplo publicado de la Notif. 1454 (Er = 0.794, q ≈ 1095 N/m²)', TEMPLATES.find(x => x.id === 'jp-bsl-viento-nieve').validacion.valores.some(v => v.var === 'Er' && v.esperado === 0.794));
+section('Segunda opinión — tercera tanda B (JRA: desplazamiento residual; kabe-ryo vigente)');
+{ const subT = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const j = runTemplate('jp-jra-espectro');
+  const muR = 0.5 * ((Math.max(j('cIz') * j('khcI') / j('cs'), j('khcII') / j('cs')) * 9800 / 8200) ** 2 + 1);
+  near('JRA: μr = ½[(khc0·W/Pa)² + 1] con el sismo que gobierna', j('muR'), muR, 1e-6);
+  near('JRA: δR = cR(μr − 1)(1 − r)δy [mm]', j('dR', 'mm'), 0.6 * (muR - 1) * 40, 1e-6);
+  const j2 = runTemplate('jp-jra-espectro', subT([['dy = 0.040 m', 'dy = 0.12 m']]));
+  truthy('JRA con δy = 0.12 m: NO CUMPLE δR ≤ h/100', j2.res.ctx.checks.some(c => !c.ok && /residual/.test(c.label)));
+  const k = runTemplate('jp-madera-kaberyo', subT([['cw1v = 0 cm/m^2', 'cw1v = 40 cm/m^2']]));
+  near('Kabe-ryo: cw del 1F = máx(tabla anterior, valor vigente)', k('cw1', 'cm/m^2'), 40, 1e-9);
+}
 done();

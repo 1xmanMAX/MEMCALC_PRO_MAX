@@ -332,4 +332,11 @@ section('Segunda opinión — segunda tanda (co-voladizo, co-punzonamiento, co-l
   near('Losa 1D: ρt = 0.0020 con fy = 2800 (E.060 9.7.2)', l('rhot'), 0.0020, 1e-9);
   near('Losa 1D: ρt = 0.0018 con fy = 4200', runTemplate('co-losa1d')('rhot'), 0.0018, 1e-9);
 }
+section('Segunda opinión — tercera tanda B (columna esbelta biaxial)');
+{ const subT = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const e = runTemplate('co-colesbelta');
+  truthy('Columna esbelta: verificación biaxial con δns·M2x y M2y simultáneos (D/C ≤ 1 con 12 Ø 1")', e('DCpmg_xy') <= 1 && e('DCpmg_xy') > e('DCpmg_y'), e('DCpmg_xy').toFixed(3));
+  const e2 = runTemplate('co-colesbelta', subT([['bar = 8 //', 'bar = 6 //']]));
+  truthy('Columna esbelta con 12 Ø 3/4": cumple cada dirección por separado pero NO CUMPLE la biaxial (D/C ≈ 1.12)', e2('DCpmg_x') <= 1 && e2('DCpmg_y') <= 1 && e2('DCpmg_xy') > 1.05, e2('DCpmg_xy').toFixed(3));
+}
 done();

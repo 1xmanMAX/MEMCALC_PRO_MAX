@@ -443,4 +443,13 @@ section('ge-licuacion: lista de amax = Z·S (E.030)');
   const src = TEMPLATES.find(x => x.id === 'ge-licuacion').blocks.map(b => b.src || '').join('\n');
   truthy('Licuación: advierte que en la costa (zona 4) corresponde ≈ 0.45 g', /costa[^"]*zona 4[^"]*0\.45/.test(src));
 }
+section('Segunda opinión — tercera tanda B (talud: kh; Winkler: Av mínimo)');
+{ const subT = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const t = runTemplate('ge-talud');
+  near('Talud: PGA = Z·S (zona 2, Vs30 = 450 m/s)', t('PGA'), 0.25 * 1.15, 1e-6);
+  const t2 = runTemplate('ge-talud', subT([['zona = 2 //', 'zona = 4 //']]));
+  truthy('Talud en zona 4 con kh = 0.15: NO CUMPLE kh ≥ 0.5·PGA', t2.res.ctx.checks.some(c => !c.ok && /Coeficiente sísmico/.test(c.label)));
+  const w = runTemplate('ge-winkler');
+  truthy('Winkler: se verifica el refuerzo mínimo por cortante (E.060 11.5.6)', w.res.ctx.checks.some(c => /Refuerzo mínimo por cortante/.test(c.label) && c.ok));
+}
 done();

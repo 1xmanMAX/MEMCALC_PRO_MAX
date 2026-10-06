@@ -354,13 +354,13 @@ check Pu <= phiPnb // Aplastamiento del concreto de la zapata bajo la columna
     titulo: 'Diseño de viga — ACI 318-19/25 (unidades SI)',
     validacion: {
       fuente: 'Control: ACI 318-19 (SI), 22.2 y 22.5 (Tabla 22.5.5.1)',
-      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). d = 600 − 40 − 10 − 10 = 540 mm se comprueba a mano.',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). d = 600 − 40 − 10 − 11 = 539 mm se comprueba a mano. Segunda opinión (tercera tanda B): la barra por defecto pasó de 20 a 22 mm porque 5 Ø 20 mm en 300 mm dejaban 25.0 mm libres, menos que 4/3·19 mm = 25.3 mm (ACI 318-19 25.2.1).',
       valores: [
-        { var: 'd', unidad: 'mm', esperado: 540, tol: 0.0005, desc: 'Peralte efectivo' },
-        { var: 'As', unidad: 'mm^2', esperado: 1320, tol: 0.002, desc: 'Acero requerido' },
-        { var: 'phiMn', unidad: 'kN*m', esperado: 293.2, tol: 0.002, desc: 'Momento resistente' },
-        { var: 'Vc', unidad: 'kN', esperado: 145.7, tol: 0.002, desc: 'Resistencia del concreto' },
-        { var: 'phiVn', unidad: 'kN', esperado: 216.2, tol: 0.002, desc: 'Resistencia a cortante' },
+        { var: 'd', unidad: 'mm', esperado: 539, tol: 0.0005, desc: 'Peralte efectivo' },
+        { var: 'As', unidad: 'mm^2', esperado: 1322.5, tol: 0.002, desc: 'Acero requerido' },
+        { var: 'phiMn', unidad: 'kN*m', esperado: 284.1, tol: 0.002, desc: 'Momento resistente' },
+        { var: 'Vc', unidad: 'kN', esperado: 145.5, tol: 0.002, desc: 'Resistencia del concreto' },
+        { var: 'phiVn', unidad: 'kN', esperado: 215.8, tol: 0.002, desc: 'Resistencia a cortante' },
       ],
     },
     blocks: [
@@ -373,8 +373,9 @@ lambda = 1.0 // Factor de concreto liviano (1.0 = peso normal) [0.75..1.0]
 b = 300 mm // Ancho del alma [200..600]
 h = 600 mm // Peralte total [300..1200]
 cover = 40 mm // Recubrimiento libre [25..75]
-dbl = 20 mm // Diámetro de barra longitudinal [16 mm|20 mm|22 mm|25 mm|28 mm]
+dbl = 22 mm // Diámetro de barra longitudinal [16 mm|20 mm|22 mm|25 mm|28 mm]
 dbs = 10 mm // Diámetro de estribo [10 mm|12 mm]
+dagg = 19 mm // Tamaño máximo nominal del agregado [10 mm|13 mm|19 mm|25 mm]
 Mu = 250 kN*m // Momento último [10..1500]
 Vu = 180 kN // Cortante último en la sección crítica [10..1000]
 ## Flexión (Cap. 9 y 22)
@@ -388,6 +389,8 @@ Asmin = max(0.25*sqrtMPa(fc)/fy, 1.4 MPa/fy)*b*d // Acero mínimo (9.6.1.2)
 Ab1 = pi*dbl^2/4 // Área de una barra
 n = max(2, ceil(max(As, Asmin)/Ab1)) // Número de barras
 Asc = n*Ab1 // Acero colocado
+sl = (b - 2*cover - 2*dbs - n*dbl)/(n - 1) // Separación libre entre barras en una capa
+check sl >= max(25 mm, dbl, 4/3*dagg) // Separación libre mínima (25.2.1); si no cumple, use dos capas y recalcule d
 a = Asc*fy/(0.85*fc*b) // Bloque de compresión
 c = a/beta1 // Eje neutro
 epst = 0.003*(d - c)/c // Deformación en el acero extremo
@@ -824,6 +827,11 @@ Ie = si(riesgo == 4, 1.5, si(riesgo == 3, 1.25, 1.0)) // Factor de importancia s
 hn = 15 // Altura estructural [m] [3..80]
 Ct = si(sistema == 1 or sistema == 2 or sistema == 3, 0.0466, si(sistema == 6, 0.0724, si(sistema == 7, 0.0731, 0.0488))) // Tabla 12.8-2 (unidades SI)
 x = si(sistema <= 3, 0.9, si(sistema == 6, 0.8, 0.75)) // Exponente (Tabla 12.8-2)
+## Categoría de diseño sísmico (11.6) y limitaciones del sistema (Tabla 12.2-1)
+cSDS = si(SDS < 0.167, 1, si(SDS < 0.33, si(riesgo == 4, 3, 2), si(SDS < 0.50, si(riesgo == 4, 4, 3), 4))) // SDC por SDS (Tabla 11.6-1): 1 = A, 2 = B, 3 = C, 4 = D
+cSD1 = si(SD1 < 0.067, 1, si(SD1 < 0.133, si(riesgo == 4, 3, 2), si(SD1 < 0.20, si(riesgo == 4, 4, 3), 4))) // SDC por SD1 (Tabla 11.6-2)
+SDC = si(S1 >= 0.75, si(riesgo == 4, 6, 5), max(cSDS, cSD1)) // Categoría de diseño sísmico: 1 A … 4 D, 5 E, 6 F (S1 ≥ 0.75 g, 11.6)
+check sistema == 1 or sistema == 4 or sistema == 6 or (sistema == 2 and SDC <= 3) or (sistema == 3 and SDC <= 2) or ((sistema == 5 or sistema == 7) and (SDC <= 3 or (SDC <= 5 and hn <= 48.8) or hn <= 30.5)) // Sistema permitido para la SDC y la altura (Tabla 12.2-1: C.6 NP en D–F, C.7 NP en C–F; B.4 y B.1 ≤ 160 ft en D–E y ≤ 100 ft en F)
 ## Periodo fundamental (12.8.2)
 Ta = Ct*hn^x // Periodo aproximado [s] (12.8-8)
 Cu = CuASCE7(SD1) // Coeficiente del límite superior (Tabla 12.8-1)
@@ -831,8 +839,8 @@ Tmod = 0.90 // Periodo fundamental del modelo analítico [s] (0 si no se dispone
 T = si(Tmod > 0, min(Tmod, Cu*Ta), Ta) // Periodo adoptado: el del modelo, no mayor que Cu·Ta (12.8.2)
 ## Aplicabilidad del procedimiento ELF (12.6, Tabla 12.6-1)
 Ts = SD1/SDS // Periodo de esquina del espectro [s]
-configuracion = 1 // Configuración (12.3) [1 : Regular|2 : Solo irregularidades H2–H5 / V4–V5 (hn ≤ 160 ft)|3 : Otras irregularidades]
-check (configuracion == 1 and T < 3.5*Ts) or (configuracion == 2 and hn <= 48.8) // ELF permitido en SDC D–F (Tabla 12.6-1); si no, análisis modal (12.9)
+configuracion = 1 // Configuración (12.3) [1 : Regular|2 : Solo irregularidades H2–H5 / V4, V5a o V5b|3 : Otras irregularidades]
+check SDC <= 3 or ((configuracion == 1 or configuracion == 2) and T < 3.5*Ts) // ELF permitido (Tabla 12.6-1, rige en SDC D–F: estructura regular o solo con irregularidades H2–H5 / V4–V5, ambas con T < 3.5 Ts); si no, análisis modal (12.9)
 ## Coeficiente de respuesta sísmica (12.8.1.1)
 Cs1 = SDS/(R/Ie) // Valor base
 Cs2 = si(T <= TL, SD1/(T*R/Ie), SD1*TL/(T^2*R/Ie)) // Límite superior
@@ -853,7 +861,12 @@ Dxe = [5, 6, 6, 5, 4] mm // Deriva elástica de entrepiso (del modelo)
 hsx = [3, 3, 3, 3, 3] m // Altura de entrepiso
 Delta = Cd*Dxe/Ie // Deriva de diseño
 Dlim = si(riesgo == 4, 0.010, si(riesgo == 3, 0.015, 0.020)) // Deriva admisible Δa/hsx, «todas las demás estructuras» (Tabla 12.12-1)
-check max(Delta ./ hsx) <= Dlim // Deriva de entrepiso`),
+check max(Delta ./ hsx) <= Dlim // Deriva de entrepiso
+## Efecto P-Δ (12.8.7)
+Px = W - cumsum(wx) + wx // Carga vertical sobre cada entrepiso (aquí el peso sísmico acumulado; use la carga de servicio total D + L sin mayorar si es mayor)
+theta = Px .* Delta*Ie ./ (Vx .* hsx*Cd) // Coeficiente de estabilidad θ = Px·Δ·Ie/(Vx·hsx·Cd) (12.8.7)
+thetamax = min(0.5/Cd, 0.25) // θmáx = 0.5/(β·Cd) ≤ 0.25 con β = 1, conservador (12.8.7)
+check max(theta) <= min(0.10, thetamax) // P-Δ despreciable si θ ≤ 0.10 (12.8.7); si 0.10 < θ ≤ θmáx se amplifican las fuerzas y derivas por 1/(1 − θ)`),
       { type: 'text', src: '> ASCE 7-22 obtiene $S_{DS}$ y $S_{D1}$ del espectro multiperiodo del sitio (11.4.8); el espectro de dos periodos se usa como alternativa. En pórticos especiales de SDC D–F la deriva admisible se divide entre ρ (12.12.1.1). Los desplazamientos para derivas pueden calcularse con el periodo del modelo sin el límite Cu·Ta (12.8.6.2).' },
       { type: 'table', columnas: 'Nivel = 1:5\nAltura $h_x$ [m] = hx\nPeso $w_x$ [kN] = wx\n$C_{vx}$ = Cvx\nFuerza $F_x$ [kN] = Fx\nCortante $V_x$ [kN] = Vx', dec: '3', titulo: 'Distribución vertical de fuerzas sísmicas (ASCE 7-22)' },
       { type: 'plot', expr: 'SaASCE7(x, SDS, SD1, TL); SaASCE7(x, SDS, SD1, TL)/(R/Ie)', var: 'x', desde: '0', hasta: '4', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Sa [g]', leyenda: true, nombres: 'Espectro de diseño Sa; Sa/(R/Ie)', titulo: 'Espectro de respuesta de diseño (ASCE 7-22, 11.4.6)' },
@@ -934,11 +947,13 @@ check min(Qu ./ Qun) >= 1 // Qu ≥ Qun en todos los entrepisos`),
       calc(`# Periodo de la estructura
 Te = 0.40 // Periodo fundamental [s] [0.05..4]
 ## Perú — NTE E.030-2026
-Z = 0.45 // Zona 4 [0.10..0.45]
+zona = 4 // Zona sísmica (Art. 10) [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
+Z = ZE030(zona) // Factor de zona (Tabla N° 1)
 U = 1.0 // Factor de uso (categoría C) [1.0..1.5]
-S = SE030(4, 300 m/s) // Suelo con Vs30 = 300 m/s
-Tp = TpE030(300 m/s)
-Tl = TlE030(300 m/s)
+Vs30 = 300 m/s // Velocidad de ondas de corte del sitio (Art. 15.2) [200..1500]
+S = SE030(zona, Vs30) // Factor de suelo de la misma zona y del Vs30 del sitio (Tabla N° 4)
+Tp = TpE030(Vs30) // Periodo TP (Tabla N° 5)
+Tl = TlE030(Vs30) // Periodo TL (Tabla N° 5)
 R = 8 // Pórticos de C°A° regulares [3..8]
 SaPE = Z*U*CE030d(Te, Tp, Tl)*S/R // Sa/g de diseño, espectro del análisis dinámico con rama T < 0.2 TP (Art. 41, Tabla N° 6)
 ## EE. UU. — ASCE 7-22
@@ -1065,6 +1080,7 @@ gammac = 2.5 tonf/m^3 // Peso unitario del concreto armado [2.2..2.5]
 gammaw = 2.25 tonf/m^3 // Peso unitario del asfalto [2.0..2.4]
 ta = 0.05 m // Espesor de la carpeta asfáltica [0.025..0.075]
 wbar = 0.60 tonf/m // Peso de cada barrera / baranda [0.3..0.8]
+bb = 0.40 m // Distancia del borde del tablero a la cara interior de la barrera [0.2..1.2]
 bar = 8 // Varilla principal [6 : 3/4"|8 : 1"|9 : 1 1/8"|10 : 1 1/4"]
 ## Predimensionamiento (AASHTO Tabla 2.5.2.6.3-1)
 hmin = 1.2*(L + 3 m)/30 -> m // Espesor mínimo losa simplemente apoyada
@@ -1112,6 +1128,23 @@ Asd = pdist*Asc // Refuerzo de distribución (inferior, transversal)
 As1 = 0.75*W*h/(2*(W + h))*(1 MPa)/fy -> cm^2/m // 0.75·b·h/[2(b+h)·fy] (b, h en mm; fy en MPa)
 Astem = min(max(As1, 2.33 cm^2/m), 12.7 cm^2/m) // Temperatura por cara (AASHTO 5.10.6)
 "Usar #{bar} @ {s} como refuerzo principal; #5 @ {rounddown(Ab(5)/Asd*100 cm, 2.5 cm)} de distribución y #4 @ {rounddown(min(Ab(4)/Astem, 3*h, 45 cm), 2.5 cm)} de temperatura.
+## Franja de borde (4.6.2.1.4)
+"La franja de borde soporta una barrera completa, una línea de ruedas y la parte de la carga de carril que cae sobre ella; con un solo carril se aplica el factor de presencia múltiple $m$ = 1.2 (3.6.1.1.2).
+Eb = min(bb + 0.30 m + E/2, E, 1.80 m) // Ancho de la franja de borde (4.6.2.1.4b)
+MDCb = (gammac*h + wbar/Eb)*L^2/8 -> tonf*m/m // Peso propio + una barrera sobre la franja
+MDWb = wDW*(Eb - bb)/Eb*L^2/8 -> tonf*m/m // Rodadura solo sobre el ancho libre de la franja
+MLLb = 1.2*(0.5*max(Mtr, Mta)*(1 + IM) + Mln*(Eb - bb)/(3.0 m))/Eb -> tonf*m/m // Media línea de ruedas + carril tributario (ancho 3.0 m, 3.6.1.2.4), m = 1.2
+Mub = 1.25*MDCb + 1.50*MDWb + 1.75*MLLb -> tonf*m/m // Resistencia I en la franja de borde
+Rnb = Mub*1 m/(0.9*100 cm*d^2) // Parámetro de resistencia
+check Rnb <= 0.85*fc/2 // Espesor suficiente en la franja de borde
+Asb = 0.85*fc/fy*(1 - sqrt(max(1 - 2*Rnb/(0.85*fc), 0)))*100 cm*d // Acero por metro en la franja de borde
+sb = rounddown(max(min(Ab(bar)/Asb*100 cm, 1.5*h, 45 cm), 2.5 cm), 2.5 cm) // Espaciamiento en la franja de borde
+Ascb = Ab(bar)*100 cm/sb // Acero colocado en la franja de borde
+epstb = 0.003*(d - Ascb*fy/(0.85*fc*100 cm)/beta1)/(Ascb*fy/(0.85*fc*100 cm)/beta1) // Deformación neta del acero en la franja de borde
+check epstb >= 0.005 // Franja de borde controlada por tracción, φ = 0.90 (5.6.2.1)
+phiMnb = 0.9*Ascb*fy*(d - Ascb*fy/(0.85*fc*100 cm)/2)/(1 m) -> tonf*m/m // Resistencia de diseño
+check Mub <= phiMnb // Resistencia a flexión en la franja de borde
+"En los {Eb} extremos de cada borde se coloca #{bar} @ {sb} (franja de borde); en la franja interior, #{bar} @ {s}.
 ## Control de fisuración — Estado Límite de Servicio I (5.6.7)
 Ms = MDC + MDW + MLLu -> tonf*m/m // Momento de servicio
 fss = Ms*1 m/(Asc*0.875*d) -> kgf/cm^2 // Esfuerzo en el acero en servicio (j ≈ 0.875)
@@ -1120,7 +1153,7 @@ dc = h - d // Recubrimiento al centro de la barra
 betas = 1 + dc/(0.7*(h - dc))
 smaxcr = 123000*0.75/(betas*fss/(1 MPa))*1 mm - 2*dc -> cm // Espaciamiento máximo (γe = 0.75)
 check s <= smaxcr // Control de fisuración
-"Además: diseñar la franja de borde (4.6.2.1.4) y, opcionalmente, verificar la deflexión por carga viva ≤ L/800 (2.5.2.6.2). Se omiten los modificadores de carga $\\eta$ (1.3.2), que se toman iguales a 1. Para puentes viga-losa, estribos, pilares, apoyos y sismo vea las plantillas del módulo *Puentes* (*br-vigalosa*, *br-estribo*, *br-pilar*, *br-neopreno*, *br-sismo*).`),
+"Además: verificar la fisuración de la franja de borde con su propio momento de servicio y, opcionalmente, la deflexión por carga viva ≤ L/800 (2.5.2.6.2). Se omiten los modificadores de carga $\\eta$ (1.3.2), que se toman iguales a 1. Para puentes viga-losa, estribos, pilares, apoyos y sismo vea las plantillas del módulo *Puentes* (*br-vigalosa*, *br-estribo*, *br-pilar*, *br-neopreno*, *br-sismo*).`),
       { type: 'plot', expr: 'MtruckHL93(x)*1.33 + MlaneHL93(x); MtandemHL93(x)*1.33 + MlaneHL93(x)', var: 'x', desde: '4', hasta: '25', puntos: '60', xlabel: 'Luz L [m]', ylabel: 'M_LL+IM [t·m/carril]', titulo: 'Momento HL-93 por carril (camión vs. tándem) en función de la luz', leyenda: true, nombres: 'Camión + carril; Tándem + carril' },
       text(`> Las losas diseñadas por momento según 4.6.2.3 se consideran satisfactorias por cortante (AASHTO LRFD 5.12.2.1).`),
       { type: 'summary' },

@@ -275,4 +275,16 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('wa-'))) {
   const sinEtq = r.ctx.inputs.filter(i => !i.label);
   truthy(`${t.id}: todos los datos tienen etiqueta`, sinEtq.length === 0, sinEtq.map(i => i.name).join(', '));
 }
+section('Segunda opinión — tercera tanda B (contrafuertes con sismo; MSE sísmico interno)');
+{ const c = runTemplate('wa-contrafuertes');
+  near('Contrafuertes: wn con sismo = 1.25(γs·hp + γc·hz + 0.5q) − q_talón,s', c('wn2', 'tonf/m^2'), 1.25 * (1.9 * 7.3 + 2.4 * 0.7 + 0.5) - c('qheels', 'tonf/m^2'), 1e-6);
+  truthy('Contrafuertes: el talón y los tirantes se diseñan con la envolvente (gobierna el sismo: wn2 > wn1)', c('wn', 'tonf/m^2') === Math.max(c('wn1', 'tonf/m^2'), c('wn2', 'tonf/m^2')) && c('wn2', 'tonf/m^2') > c('wn1', 'tonf/m^2'));
+  const m = runTemplate('wa-mse');
+  near('MSE: Pi = kh·½γr·H²·tan(45° − φr/2) (11.10.7.2)', m('Pi', 'tonf/m'), m('kh') * 0.5 * 2 * 36 * Math.tan((45 - 17) * Math.PI / 180), 1e-6);
+  const Tmd = m('Tmd').toArray().map(u => u.toNumber('tonf/m')), Le = m('Le').toArray();
+  near('MSE: ΣTmd = Pi (reparto proporcional a Le)', Tmd.reduce((x, y) => x + y, 0), m('Pi', 'tonf/m'), 1e-9);
+  const n = Tmd.length - 1, Tme = 0.28271 * (2 * 5.7 + 0.6) * 0.6;
+  near('MSE: D/C de rotura con sismo de la capa inferior (Tmax·RF + Tmd·RFID·RFD)/(1.2·Tult)', m('DCre').toArray()[n], (Tme * 1.1 * 2.6 * 1.1 + Tmd[n] * 1.1 * 1.1) / (1.2 * 120 / 9.80665), 0.002);
+  void Le;
+}
 done();

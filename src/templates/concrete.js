@@ -156,7 +156,7 @@ const colEsbelta = {
   id: 'co-colesbelta', pais: 'PE', cat: CAT, icon: 'column', normas: E060 + ' — Art. 10.10 a 10.13',
   validacion: {
     fuente: 'NTE E.060-2009 Art. 10.10 a 10.13 — valores de control',
-    nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Ec = 15000√280; Cm = 0.6 + 0.4·9/14 = 0.857; δns = Cm/(1 − Pu/0.75Pc) y Q = ΣPu·Δo/(Vus·he) se comprueban a mano en las pruebas. Los algoritmos se validan con ejemplos publicados de StructurePoint (spColumn/spBeam) en tests/concrete.test.mjs.',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Ec = 15000√280; Cm = 0.6 + 0.4·9/14 = 0.857; δns = Cm/(1 − Pu/0.75Pc) y Q = ΣPu·Δo/(Vus·he) se comprueban a mano en las pruebas. Los algoritmos se validan con ejemplos publicados de StructurePoint (spColumn/spBeam) en tests/concrete.test.mjs. Segunda opinión (tercera tanda B): se agregó la verificación biaxial con δns·M2x y M2y simultáneos (E.060 10.18); con 12 Ø 3/4" daba D/C = 1.12, por lo que la barra por defecto pasó a 1" (DCpmg_y 0.825 → 0.640).',
     valores: [
       { var: 'Ec', unidad: 'kgf/cm^2', esperado: 251000, tol: 0.002, desc: 'Control: Ec = 15000√f\'c' },
       { var: 'Cm', esperado: 0.85714, tol: 0.001, desc: 'Control: Cm = 0.6 + 0.4·M1/M2' },
@@ -164,7 +164,8 @@ const colEsbelta = {
       { var: 'dns', esperado: 1.0866, tol: 0.002, desc: 'Control: δns' },
       { var: 'Q', esperado: 0.069643, tol: 0.002, desc: 'Control: índice de estabilidad' },
       { var: 'ds', esperado: 1.0749, tol: 0.002, desc: 'Control: δs' },
-      { var: 'DCpmg_y', esperado: 0.82517, tol: 0.002, desc: 'Control: D/C en Y' },
+      { var: 'DCpmg_y', esperado: 0.64034, tol: 0.002, desc: 'Control: D/C en Y (12 Ø 1")' },
+        { var: 'DCpmg_xy', esperado: 0.90437, tol: 0.003, desc: 'Control: D/C biaxial con δns·M2x y M2y simultáneos' },
     ],
   },
   name: 'Columna esbelta — magnificación de momentos',
@@ -185,7 +186,7 @@ hp = 4.80 m // Altura de entrepiso (piso a piso) [2.4..6.0]
 bv = 30 cm // Ancho de vigas [20..80]
 hv = 60 cm // Peralte de vigas [30..120]
 Lv = 6.0 m // Luz de las vigas que llegan al nudo (ambos lados) [2..15]
-bar = 6 // Barra longitudinal [6 : 3/4"|8 : 1"]
+bar = 8 // Barra longitudinal [6 : 3/4"|8 : 1"]
 ## Cargas amplificadas en la columna
 Pu = 190 tonf // Carga axial amplificada [0..2000]
 betad = 0.60 // Carga axial sostenida / carga axial total (E.060 10.11.1) [0..1]
@@ -252,11 +253,15 @@ check Qg <= 0.60 // Estabilidad ante cargas de gravedad (E.060 10.13.6 b)`),
 Se verifica la sección con los momentos magnificados en cada dirección, por separado (E.060 10.11.6). El refuerzo es de 12 barras distribuidas en el perímetro.`),
     { type: 'pmgen', geom: '0 0 b h', barras: 'R 6 6 b-6 h-6 4 4 bar', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'X', sufijo: 'x', demandas: 'Pu, Mcx // δns·M2 (X)', titulo: 'Diagrama de interacción en X (pórtico arriostrado)' },
     { type: 'pmgen', geom: '0 0 b h', barras: 'R 6 6 b-6 h-6 4 4 bar', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'Y', sufijo: 'y', demandas: 'Pu, M2y // M2ns + δs·M2s (Y)', titulo: 'Diagrama de interacción en Y (pórtico no arriostrado)' },
+    text(`## Flexión biaxial (E.060 10.18)
+En la combinación con sismo en Y la columna conserva el momento de gravedad en X. Se verifica la acción simultánea de $\\delta_{ns}M_{2x}$ y del momento magnificado en Y con el contorno de carga por compatibilidad de deformaciones, que es el método de referencia de 10.18. Se toma el momento en X completo, lo que es conservador: en 1.25(CM + CV) ± CS el momento de gravedad es del orden de 1.25/1.5 del de 1.4CM + 1.7CV.`),
+    { type: 'pmgen', geom: '0 0 b h', barras: 'R 6 6 b-6 h-6 4 4 bar', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'XY', sufijo: 'xy', demandas: 'Pu, Mcx, M2y // Biaxial', titulo: 'Contorno de carga biaxial con los momentos magnificados en X e Y' },
     calc(`## Resumen de la sección
 check rhog_x >= 0.01 // Cuantía mínima (E.060 10.9.1)
 check rhog_x <= 0.06 // Cuantía máxima (E.060 10.9.1)
 check DCpmg_x <= 1 // Flexocompresión en X
-check DCpmg_y <= 1 // Flexocompresión en Y`),
+check DCpmg_y <= 1 // Flexocompresión en Y
+check DCpmg_xy <= 1 // Flexocompresión biaxial (E.060 10.18)`),
     summary(),
   ],
 };

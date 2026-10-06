@@ -197,11 +197,16 @@ section('Plantillas contra ejemplos resueltos');
     near('Placa base DG1: tp req = ℓ√(2Pu/(0.9FyBN))', g('tpreq', 'cm'), l * Math.sqrt(2 * Pu * 1000 / (0.9 * 2530 * A1)), 1e-6); }
   g = runTemplate('st-correas');
   { const A = 544e-6, wD = 10 * 1.2 + A * 7850, wLr = 30 * 1.2 * Math.cos(Math.PI / 18), wu = 1.2 * wD + 1.6 * wLr;
-    near('Correas: Mux = wu·cosθ·L²/8 (kgf·m)', g('Mux', 'kgf*m'), wu * Math.cos(Math.PI / 18) * 36 / 8, 1e-6);
+    // Segunda opinión (tercera tanda A): la combinación E.090 1.4-3 incluye 0.8W en presión (Cext = +0.3, Cint = −0.3)
+    const wWd = 0.005 * 0.6 * 75 ** 2 * 1.2, wun = Math.max(wu * Math.cos(Math.PI / 18), wu * Math.cos(Math.PI / 18) + 0.8 * wWd, (1.2 * wD + 0.5 * wLr) * Math.cos(Math.PI / 18) + 1.3 * wWd);
+    near('Correas: Mux = [(1.2D + 1.6Lr)·cosθ + 0.8W]·L²/8 (kgf·m, E.090 1.4-3)', g('Mux', 'kgf*m'), wun * 36 / 8, 1e-6);
+    truthy('Correas: el 0.8W en presión aumenta Mux respecto a solo gravedad', g('Mux', 'kgf*m') > wu * Math.cos(Math.PI / 18) * 36 / 8 * 1.15);
     near('Correas: presión de viento 0.005·1.0·75² = 28.1 kgf/m² (E.020)', g('ph', 'kgf/m^2'), 28.125, 1e-6); }
   g = runTemplate('st-armadura');
-  near('Armadura: cuerda superior = wL²/(8h) = 8.1 t', g('Fcs', 'tonf'), 0.36 * 144 / 8 / 0.8, 1e-6);
-  near('Armadura: diagonal extrema = (R − P/2)/sen α = 4.02 t', g('Fd', 'tonf'), (2.16 - 0.27) / (0.8 / Math.hypot(1.5, 0.8)), 1e-6);
+  // Segunda opinión (tercera tanda A): wu = (1.2D + 1.6Lr + 0.8W)·s = (24 + 48 + 13.6)·5 = 0.428 t/m (E.090 1.4-3)
+  near('Armadura: cuerda superior = wL²/(8h) = 9.63 t (con 0.8W)', g('Fcs', 'tonf'), 0.428 * 144 / 8 / 0.8, 1e-6);
+  near('Armadura: diagonal extrema = (R − P/2)/sen α = 4.77 t', g('Fd', 'tonf'), (0.428 * 6 - 0.428 * 1.5 / 2) / (0.8 / Math.hypot(1.5, 0.8)), 1e-6);
+  near('Armadura: soldadura φRn = 0.75·0.6·FEXX·0.707·w·2lw', g('phiRwd', 'tonf'), 0.75 * 0.6 * 4920 * 0.707 * 0.32 * 2 * 6 / 1000, 1e-6);
   g = runTemplate('st-nave');
   { near('Nave (frame2d a dos aguas): empuje bajo CM = Kleinlogel wL²(3+5m)/(16hN)', Math.abs(g('R1x_CM', 'tonf')), g('HKL', 'tonf'), 0.005);
     near('Nave: K de pórtico no arriostrado con GA = 10, GB = 2.22 ≈ 2.16', g('Kx'), 2.159, 0.002);
@@ -210,7 +215,15 @@ section('Plantillas contra ejemplos resueltos');
     truthy('Nave: B2 entre 1.0 y 1.5 (Apéndice 8)', g('B2') > 1 && g('B2') < 1.5, 'B2 = ' + g('B2').toFixed(3)); }
   g = runTemplate('st-compuesta');
   near('Viga compuesta: Qn = Rg·Rp·Asa·Fu = 7.82 t (I8-1)', g('Qn', 'tonf'), 0.6 * Math.PI * 1.905 ** 2 / 4 * 4570 / 1000, 1e-6);
-  near('Viga compuesta: φMn = 28.7 t·m (cálculo manual)', g('phiMn', 'tonf*m'), 28.7, 0.003);
+  { // Segunda opinión (tercera tanda A): perfil W16×31 (el W12×19 no cumplía la vibración del AISC DG11)
+    const p = getShape('W16X31').p, A = p.A * 6.4516, d = p.d * 2.54, bf = p.bf * 2.54, Fy = 3515, beff = 225;
+    const AsFy = A * Fy / 1000, Cf = Math.min(0.85 * 210 * beff * 6 / 1000, AsFy, g('SQn', 'tonf')), af = Cf * 1000 / (0.85 * 210 * beff), Cs = (AsFy - Cf) / 2, yf = Cs * 1000 / (bf * Fy);
+    const Mn = (Cf * (d / 2 + 6 + 6 - af / 2) + 2 * Cs * (d / 2 - yf / 2)) / 100;
+    near('Viga compuesta W16×31: φMn = 0.9[Cf(d/2 + hr + tc − a/2) + 2Cs(d/2 − yf/2)] (cálculo manual)', g('phiMn', 'tonf*m'), 0.9 * Mn, 1e-4);
+    const W12 = runTemplate('st-compuesta', (dd) => dd.blocks.forEach(b => { if (b.type === 'steelsec') b.perfil = 'W12X19'; }));
+    truthy('Viga compuesta: con el W12×19 original la vibración por caminar NO CUMPLE (ap/g = 0.69 % > 0.5 %, DG11)', W12('apg') > 0.005 && W12.res.ctx.checks.some(c => !c.ok && /DG11/.test(c.label)), 'ap/g = ' + W12('apg').toFixed(4));
+    near('Viga compuesta: fn = 0.18√(g/Δ) (DG11 Ec. 3-3)', g('fnv', 'Hz'), 0.18 * Math.sqrt(9810 / g('Dvj', 'mm')), 1e-6);
+  }
   g = runTemplate('st-viga-ipe');
   near('Viga IPE300: Lp = 1.59 m', g('Lp', 'm'), 1.59, 0.003);
   near('Viga IPE300: Lr (AISC F2-6) = 5.10 m', g('Lr', 'm'), 5.097, 0.003);

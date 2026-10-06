@@ -435,3 +435,270 @@ Las memorias se revisaron renderizadas con `tools/shot.mjs --paper`.
 Pendiente (fuera de alcance): las otras plantillas de muros (*wa-gravedad*, *wa-contrafuertes*, *wa-sotano*,
 *wa-gaviones* y *wa-mse*) siguen con el bloque `SISMO` de la E.030-2018. Pasarlas a `SISMO26` cambia sus valores de
 validación de kh, por lo que debe hacerse plantilla por plantilla, eligiendo Vs30.
+
+---
+
+# Tercera tanda A: puentes, acero, albañilería y tanques, y extras (32 plantillas)
+
+Revisor: ingeniero jefe (misma metodología). Fecha: octubre de 2026. Alcance: todas las plantillas de
+`src/templates/{bridges,steel,masonry,extras}.js` que no se habían revisado en las tandas anteriores. Cada plantilla
+se ejecutó con los datos por defecto (`runTemplate`) y con cambios realistas: otra luz, otra zona, suelo blando, nivel
+freático alto, perno de 1 in, Vs del suelo mayor, perfil más liviano y cargas mayores. Se revisaron renderizadas
+(`build.mjs` + `shot.mjs --paper`) *br-presforzada*, *br-acero*, *st-correas*, *st-compuesta*, *ma-cisterna*, *ma-adobe* y
+*ex-pase-aereo*, y se pasó `tools/qa-render.mjs --no-shot` por las 14 plantillas modificadas.
+
+Solo se editaron `src/templates/{bridges,steel,masonry,extras}.js` y `tests/{bridges,steel,masonry,extras}.test.mjs`.
+Al final, `node tests/run.mjs` pasa completo.
+
+## Resumen
+
+| # | Plantilla | Veredicto | Hallazgo principal | Corregido |
+|---|---|---|---|---|
+| 1 | br-presforzada | **Corregida (Media)** | Sin cortante de interfaz, sin refuerzo longitudinal en el apoyo, sin hendimiento y sin el refuerzo que exige la tracción de transferencia | Sí |
+| 2 | br-acero | **Corregida (Media)** | Viga armada sin rigidizadores de apoyo, sin fatiga y sin conectores de corte | Sí |
+| 3 | br-sismo | **Corregida (Media)** | R fijo de «pórtico de varias columnas»: con columna simple la fuerza de diseño correcta es 75 % mayor | Sí |
+| 4 | br-alcantarilla | Apta, con corrección | Sin cortante en la losa inferior (la más cargada) ni presión de contacto | Sí |
+| 5 | br-peatonal | **Corregida (Media)** | Sin constructibilidad: el ala superior no está arriostrada por la losa durante el vaciado | Sí |
+| 6 | st-columna | Apta | — | — |
+| 7 | st-vigacolumna | Apta | — | — |
+| 8 | st-traccion | Apta, con corrección | Distancia mínima al borde fija para ⅞ in | Sí |
+| 9 | st-shear-tab | Apta, con observación | Desgarramiento horizontal en el alma de la viga | No (observación) |
+| 10 | st-correas | **Corregida (Alta)** | Faltaba 1.2D + 1.6Lr + 0.8W: Mux subestimado 22 % | Sí |
+| 11 | st-armadura | **Corregida (Media)** | Faltaba 0.8W y la soldadura de los ángulos del alma | Sí |
+| 12 | st-compuesta | **Corregida (Media)** | W12×19 de 9 m para oficinas no cumple la vibración por caminar (DG11) | Sí (W16×31) |
+| 13 | st-viga-ipe | Apta | — | — |
+| 14 | ma-adobe | Apta | Densidad y esfuerzos en el límite; desempeño no cuantificado (declarado) | — |
+| 15 | ma-vigamadera | Apta | — | — |
+| 16 | ma-colmadera | Apta | — | — |
+| 17 | ma-tijeral | Apta, con observación | No verifica viento sobre la cobertura | No (observación) |
+| 18 | ma-reservorio | Apta, con corrección | Mb y Mo se calculaban pero no se usaban | Sí |
+| 19 | ma-cisterna | **Corregida (Alta)** | Sin sismo, sin losa de fondo y sin flotación; con sismo, la cara exterior quedaba 43 % corta | Sí |
+| 20 | ma-elevado | Apta, con observación | No considera la puerta del fuste | Nota en la memoria |
+| 21 | ex-escalera-2t | Apta | — | — |
+| 22 | ex-piso-ind | Apta | — | — |
+| 23 | ex-pav-rigido | Apta | — | — |
+| 24 | ex-cim-maquina | Apta, con corrección | Sin variación del módulo G; «empotramiento despreciado = conservador» es falso cuando fop > fn | Sí |
+| 25 | ex-viga-acople | Apta | — | — |
+| 26 | ex-diafragma | Apta | — | — |
+| 27 | ex-pase-aereo | Apta, con observación | No incluye la zapata de las torres | No (observación) |
+| 28 | ex-muro-anclado | Apta, con observación | No verifica la componente vertical de los anclajes en la base de la pantalla | No (observación) |
+| 29 | ex-letrero | Apta, con corrección | La tracción de los pernos se aliviaba con 1.2D en lugar de 0.9D | Sí |
+| 30 | ex-frp | Apta | — | — |
+| 31 | ex-pilote-fuste | Apta | — | — |
+| 32 | ex-encamisado | Apta | — | — |
+
+## Detalle por plantilla
+
+### 1. br-presforzada (viga AASHTO Tipo IV, 100 ft)
+**Veredicto: corregida.** Pérdidas (20 % de fpj), esfuerzos en transferencia y servicio, fps, Mcr con γ1 = 1.6 y
+γ3 = 1.0, y MCFT coinciden con el método de la 9.ª ed. Con L = 140 ft da NO CUMPLE en compresión, Servicio III y
+flexión, lo que es coherente. Faltaban cuatro requisitos que un revisor del MTC exige en toda viga pretensada:
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La tracción superior en el extremo (0.309 ksi) supera 0.0948√f'ci ≤ 0.20 ksi. El límite 0.24√f'ci que usaba la plantilla solo vale con refuerzo adherido que tome toda la tracción, y ese refuerzo no se calculaba. | Media | AASHTO 9.ª ed. Tabla 5.9.2.3.1b-1 | `ftr0`, profundidad `ytz`, fuerza `Ttz`, `As_tz` con fs = 0.5fy ≤ 30 ksi (0.50 in²) y check con 4#5 (D/C 0.41). |
+| No se verificaba el refuerzo longitudinal en la cara del apoyo, donde el torón no está desarrollado (fpx = fpe·lpx/60db = 81 ksi). | Media | 5.7.3.5-2, 5.9.4.3.2 | `lpx`, `ldv`, `fpx`, `Treq = (Vu/φ − 0.5Vs − Vp)cot θ` = 339.6 kip ≤ Aps·fpx = 529.1 kip (D/C 0.64). |
+| Faltaba el cortante de interfaz viga–losa de la sección compuesta. | Media | 5.7.4.3, 5.7.4.2-1 | `Vui = Vu/dv`, `Vni = c·Acv + μAvf fy ≤ K1f'c Acv, K2 Acv` (D/C 0.71) y Avf mínimo. |
+| Faltaba el refuerzo de hendimiento en la zona de anclaje. | Media | 5.9.4.4.1 | `Prq = 0.04Aps fpj`, As = 2.64 in² frente a 5 estribos #5 dentro de h/4 (D/C 0.85). |
+| El punto de desvío de los torones (0.4L) no se verifica en la transferencia. | Baja | 5.9.2.3.1 | Observación: con em igual y Mg(0.4L) = 0.96Mg, la diferencia es menor al 2 %. |
+
+### 2. br-acero (viga I armada compuesta, 100 ft)
+**Veredicto: corregida.** Mp por los tres casos de la ENP, ductilidad Dp ≤ 0.42Dt, Servicio II con 1.30LL y
+constructibilidad con Lb = 20 ft coinciden con 6.10 y D6.1.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| En vigas armadas los rigidizadores de apoyo son obligatorios. La reacción es de 283 kip con un alma de D/tw = 96 sin rigidizar. | Media | 6.10.11.2 | Par de platinas 6 × ¾ in: bt/tp ≤ 0.48√(E/Fys), aplastamiento 1.4·Apn·Fy (D/C 0.54) y columna con 9tw y KL = 0.75D, φc = 0.95 (D/C 0.45). |
+| No se verificaba la fatiga del ala inferior traccionada. | Media | 6.6.1.2, Tabla 6.6.1.2.5-3 | Fatiga I: γΔf = 1.75·(gM1/1.2)·1.15·Mfat/Sbn = 7.76 ksi ≤ 12 ksi (categoría C′, D/C 0.65). |
+| La sección «compuesta» no tenía conectores de corte. | Media | 6.10.10.1, 6.10.10.2, 6.10.10.4 | Pernos de ⅞ in: H/d ≥ 4, 6d ≤ p ≤ 24 in, penetración y recubrimiento, paso por fatiga p ≤ nZr·I/(Vsr·Q) = 9.27 in con p = 9 in (D/C 0.97) y número por resistencia 198 ≥ 92. |
+| `ww` y `wcl` sin conversión explícita. | Baja | — | `-> kip/ft`. |
+
+### 3. br-sismo (espectro, carga uniforme y N)
+**Veredicto: corregida.** Factores de sitio con interpolación, espectro, zona, método de carga uniforme y N coinciden con
+3.10 y 4.7.4.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| R era siempre el de «pórtico de varias columnas» (3.5 esencial, 5.0 otros). En el Perú el pilar más común es la columna simple (2.0 / 3.0) o el pilar tipo muro (1.5 / 2.0). Con columna simple la fuerza de diseño era 155.7 t en lugar de 272.5 t (−43 %). | Media | Tabla 3.10.7.1-1 | Lista `sub` con los cinco tipos de subestructura y R según la categoría operativa. |
+| `check zona >= 1 and zona <= 4` no verifica nada. | Baja | — | Eliminado. |
+| Solo dirección longitudinal; no hay transversal ni 100 %–30 %, ni amplificación de desplazamientos para periodos cortos. | Baja | 3.10.8; 4.7.4.3 | Observación: la memoria es un cálculo de fuerzas de la subestructura en una dirección. |
+
+### 4. br-alcantarilla (marco 3.00 × 2.50 m)
+**Veredicto: apta, con corrección.** Fe, LLDF = 1.15, IM enterrado, EH en reposo con 50 % para M⁺ y pendiente-deflexión
+están bien.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| Solo se verificaba el cortante de la losa superior. La inferior recibe la reacción del suelo de toda la estructura (qb = 8.9 t/m frente a qt = 4.9 t/m). | Media | 5.12.7.3 | `Vu3`, `vcs3`, `Vc3` y check (D/C 0.55). Con Hf = 6 m da NO CUMPLE. |
+| No se verificaba la presión de contacto. | Baja | E.050 | Dato `qadm = 1.0 kg/cm²` y check en Servicio I (0.72 kg/cm², D/C 0.72). |
+| Presiones del combo sin unidad forzada. | Baja | — | `-> tonf/m` en qb, pA, pB, pLLt y pLLd. |
+
+### 5. br-peatonal (pasarela de 30 m)
+**Veredicto: corregida.** Carga peatonal de 4.3 kPa, H5, L/360 y frecuencias de 3.06 Hz y 3.32 Hz son correctas.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La flexión suponía el ala superior «arriostrada continuamente por la losa», pero la losa no es compuesta y durante el vaciado el ala solo está arriostrada por los diafragmas. Faltaba la constructibilidad. | Media | 6.10.3.2.1, 6.10.8.2.3 | Datos `Lb = 5 m` y `wcon = 0.96 kPa`; Mcon = (1.25DC + 1.5C)L²/8, Lp, Lr, pandeo lateral-torsional con Cb = 1 (fbc = 79 MPa frente a 294 MPa, D/C 0.27). Texto: la losa debe fijarse al ala. |
+| Faltan los rigidizadores de apoyo y el viento sobre la pasarela. | Baja | 6.10.11.2; Guide Spec 3.4 | Observación. |
+
+### 6–7. st-columna y st-vigacolumna
+**Veredicto: aptas.** Reproducen E.1A (φPn = 893 kip) y H.1A (0.928). E7 con c1/c2 de la Tabla E7.1, F2/F3/F6 y H1-1 son
+correctos. Con Mux = 900 kip·ft da NO CUMPLE.
+
+### 8. st-traccion
+**Veredicto: apta, con corrección.** D2, U = 0.869, J3 y J4.3 son correctos.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La distancia mínima al borde era 1⅛ in fija («para ⅞ in»). Con un perno de 1 in (opción de la lista), le = 1⅛ in pasaba, pero se exige 1¼ in. | Baja | AISC 360 Tabla J3.4 | `lemin` según el diámetro. Prueba: con 1 in y le = 1⅛ in da NO CUMPLE. |
+
+### 9. st-shear-tab
+**Veredicto: apta, con observación.** Configuración convencional, método elástico con e = a (conservador), J3, J4 y la
+soldadura 5/8·tp son correctos. Observación (Baja): el perno crítico tiene una componente horizontal hacia el extremo de la
+viga; en vigas con extremo cercano (≤ 1½ in) debe verificarse el desgarramiento del alma con esa componente (Manual AISC,
+Parte 10).
+
+### 10. st-correas
+**Veredicto: corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La flexión por gravedad solo usaba 1.4D y 1.2D + 1.6Lr. La E.090 1.4-3 es **1.2D + 1.6Lr + 0.8W** con el viento en presión (barlovento +0.3 y succión interior −0.3, 16.9 kg/m²), y 1.4-4 es 1.2D + 1.3W + 0.5Lr. Con ellas Mux pasa de 337.9 a 410.8 kgf·m (+21.6 %) y la flexión biaxial de D/C 0.65 a 0.78. Con una luz de 7 m la plantilla anterior aprobaba una correa que no cumple. | **Alta** | E.090 1.4.1 (1.4-3, 1.4-4); E.020 Tabla 4 y 12.5 | Dato `Cextp = 0.3`, `phd`, `wWd`, `wun3`, `wun4` y `wun = máx(…)`. El viento no tiene componente tangencial (`wut` no cambia). |
+
+### 11. st-armadura
+**Veredicto: corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| Mismo caso que las correas: faltaba el 0.8W en presión. wu pasa de 0.360 a 0.428 t/m (+19 %) y la cuerda superior de D/C 0.77 a 0.915. | Media | E.090 1.4-3, 1.4-4 | Dato `pWp = 17 kg/m²`, `wu3`, `wu4` y `wu = máx(1.4D, wu3, wu4)`. |
+| No se verificaba la soldadura de los ángulos del alma (lw = 6 cm es un dato). | Media | AISC 360 J2.2b, J2.4, Tabla J2.4 | Filete de ⅛ in: mínimo de la Tabla J2.4, lw ≥ 4w y φRn = 0.75·0.6·FEXX·0.707w·2lw ≥ máx(Fd, Fdu, Fv0) (D/C 0.79). Nota sobre la plastificación de la pared del HSS (Cap. K). |
+| La validación describía `dv` como «deflexión por carga viva», pero es D + Lr. | Baja | — | Descripción corregida. |
+
+### 12. st-compuesta (viga de 9 m, oficinas)
+**Veredicto: corregida.** I3.2a con compuesta parcial, Qn con Rp = 0.6 e ILB son correctos.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| No se verificaba la vibración por caminar. Para una oficina de 9 m de luz con W12×19 (L/d = 29) la aceleración del modo de viga es ap/g = 0.69 % > 0.5 %, y con vigas principales flexibles sería mayor. | Media (servicio; es el reclamo más frecuente en losas colaborantes) | AISC Design Guide 11, 2.ª ed., Ec. 3-3, 4-1 a 4-3 y Tablas 4-1 y 4-2 | Sección DG11: Ec dinámico 1.35Ec, Itr, fn = 0.18√(g/Δ), Ds, Dj, Bj ≤ ⅔ del ancho del piso, W y ap/g ≤ 0.5 %. **Perfil por defecto W12×19 → W16×31** (fn = 5.9 Hz, ap/g = 0.42 %). |
+| Faltaban la longitud del conector sobre la cresta y el recubrimiento, y la separación máxima. | Baja | I3.2c(2), I8.2d | Dato `Hsa = 4 in` y tres checks. |
+
+### 13. st-viga-ipe
+**Veredicto: apta.** F2, Cb del segmento, comparación con la E.090 (X1, X2, FL), J10 y flechas son correctos. Si Lb > Lr
+la verificación «zona inelástica» da NO CUMPLE en lugar de calcular el pandeo elástico; es una limitación declarada.
+
+### 14. ma-adobe (E.080-2017)
+**Veredicto: apta.** Límites de la Fig. 2, densidad, H = SUCP, corte con +20 % por muros transversales, compresión y
+flexión fuera del plano con 3 bordes. Con los datos por defecto varias relaciones geométricas quedan exactamente en el
+límite (D/C = 1.00) y el corte en 0.98; es correcto, pero cualquier vano adicional saca la vivienda de la norma. En zonas
+3 y 4 da NO CUMPLE, como advierte la nota. El desempeño del refuerzo (Art. 7.3.3) no se cuantifica y así está declarado.
+
+### 15–16. ma-vigamadera y ma-colmadera (E.010)
+**Veredicto: aptas.** Esfuerzos admisibles con +10 % de acción de conjunto, corte a h del apoyo, 1.8CM + CV en flechas,
+h/b, λ, Ck = 18.34 (grupo B), Nadm y km son correctos.
+
+### 17. ma-tijeral
+**Veredicto: apta, con observación.** Howe con 0.9l en el plano, flexocompresión de la cuerda superior, tracción con área
+neta y diagonales. Observación (Baja): con teja de fibrocemento (60 kg/m² de carga muerta) el viento de barlovento en
+pendientes de 15° a 60° es de presión (+0.7) y debe combinarse con la carga muerta (E.020 Tabla 4). No gobierna con los
+datos por defecto, pero debe evaluarse en coberturas más livianas.
+
+### 18. ma-reservorio (250 m³)
+**Veredicto: apta, con corrección.** Cáscara PCA, Sd de ACI 350-06, Housner con convectiva restringida si dmax > borde
+libre, tensión anular sísmica y corte-fricción son correctos. Ti = 0.019 s se comprobó a mano: es correcto para un tanque
+achatado con D/HL = 2.25.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| El momento sísmico de la base (Mb = 661 t·m) y el de volteo se calculaban pero no se usaban. La tracción vertical de membrana Mb/(πr²) no se verificaba. | Baja (no gobierna aquí) | ACI 350.3-06 R5.3; ACI 350-06 9.2.1 | `Nvm`, `Nvd`, `Nvu = Nvm − 0.9Nvd` = 5.9 t/m y check con el acero vertical (D/C 0.08). |
+| No incluye la losa de fondo, el anillo de cimentación ni la estabilidad al volteo (Mo = 998 t·m). | Baja | — | Observación: se diseñan aparte. |
+
+### 19. ma-cisterna (26 m³ enterrada)
+**Veredicto: corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| Sin sismo. Una cisterna enterrada en zona 4 recibe el incremento dinámico del suelo sobre muros rígidos. Con Wood (Δp = Z·S·γ·H = 2.36 t/m², el mismo criterio que *wa-sotano*) y U = 1.7CE + 1.0CS, el momento vertical exterior pasa de 1.16 a 2.14 t·m/m y el acero de 4.87 a 9.35 cm²/m. Con 1/2" @ 20 (6.45 cm²/m) la cara exterior quedaba con D/C 1.43. | **Alta** | E.030 (PGA = Z·S); Wood (1973); E.060 9.2 | Datos `Z` y `S`, bloque `tankwall` con el sismo (sufijo e), momentos de diseño `Ms + Me/1.7` (el factor 1.7 × 1.30 se aplica después) y Vu = 1.7Vbs + Vbe. **Varilla por defecto 1/2" → 5/8" @ 20** (D/C 0.94 en la cara exterior y en el cortante). |
+| No se diseñaba la losa de fondo, que recibe el momento de la base de las paredes y la presión neta del suelo. | Media | ACI 350-06; PCA | Placa empotrada con qn = (Wcon − Wfo + Wsc)/A (`tankwall`, sufijo f), acero inferior ≥ máx(MyNf, Mve) y superior ≥ máx(MyPf, Mvi) (D/C 0.68). |
+| Sin flotación ni nivel freático. | Media | Práctica ACI 350.4R / USACE (FS ≥ 1.25) | Dato `Hnf`, check «NF bajo el fondo (hipótesis de suelo seco)» y FS a la flotación con 0.9 del peso propio. Con NF a 1.0 m ambas dan NO CUMPLE. |
+
+### 20. ma-elevado (85 m³ sobre fuste)
+**Veredicto: apta, con observación.** Dos masas de Housner, convectiva con 1.5 (0.5 %), masa restringida, φ de la E.060
+9.3.2.2 en el anillo y cortante 11.10 son correctos.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| El fuste se verifica con la sección anular completa; la puerta de acceso en la base reduce la sección donde el momento es máximo. | Media | ACI 371R-16 4.4.3 y 4.4.5 | Nota en la memoria: verificar la sección neta, las pilastras de borde y el dintel. La cimentación se diseña aparte. |
+
+### 21–23. ex-escalera-2t, ex-piso-ind y ex-pav-rigido
+**Veredicto: aptas.** Escalera: RA y Mmáx cerrados frente al análisis matricial, Branson y ℓ/240. Piso: Westergaard
+(Huang 4.1–4.3), punzonamiento de concreto simple con h − 50 mm y φ = 0.60, Packard. Pavimento: la ecuación AASHTO 93
+reproduce el Ej. 12.6 de Huang. Observación (Baja) en el piso: los postes de racks junto a juntas deben verificarse con el
+esfuerzo de borde.
+
+### 24. ex-cim-maquina
+**Veredicto: apta, con corrección.** Richart–Hall–Woods, Fo = SF·mr·G·ω y las tres frecuencias son correctos.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La no resonancia se verificaba solo con G nominal. Además, la memoria decía que despreciar el empotramiento es «conservador para las frecuencias». Eso es falso cuando la máquina opera sobre la frecuencia natural (sintonía baja): el empotramiento sube fn hacia fop. | Media | ACI 351.3R-18 Cap. 4 (variación de las propiedades del suelo) | Texto corregido y tres checks con G entre 0.5G y 1.5G. Con Vs = 410 m/s, rz = 1.35 pasa ±20 % pero da NO CUMPLE con 1.5G (prueba). |
+
+### 25–26. ex-viga-acople y ex-diafragma
+**Veredicto: aptas.** Acople: Avd con φ = 0.85, límite 0.83√f'c Acw, confinamiento de toda la sección y 1.25ℓd. Diafragma:
+la equivalencia 0.2SDS ↔ 0.5ZUS es correcta para la E.030 (Z de diseño, no MCE), con colectores con Ω0, cortante-fricción
+en la unión y flexibilidad del diafragma.
+
+### 27. ex-pase-aereo
+**Veredicto: apta, con observación.** Cable parabólico con la carga de mantenimiento, péndolas, silla con desequilibrio
+horizontal, magnificación de la torre en voladizo y cámara de anclaje. Observación (Baja): falta la zapata de las torres
+(Pu y Mu en la base) y el sismo de las torres. En la sierra conviene subir el FS del cable a 3.5–4.
+
+### 28. ex-muro-anclado
+**Veredicto: apta, con observación.** Envolvente 0.65KaγH², áreas tributarias, PTI (0.60/0.70/0.80 fpu), longitud libre
+más allá de la cuña y bulbo ≥ 4.5 m. Observación (Media, no corregida): la componente vertical de los anclajes
+(Σ T·tan 15° ≈ 7.9 t/m) más el peso de la pantalla (6.5 t/m) se transmite a la base de la pantalla. Debe verificarse la
+capacidad portante de la base o de la zapata corrida y el asentamiento durante la excavación (FHWA GEC-4, cap. 5). Falta el dato de
+capacidad de la base, por eso no se agregó el check.
+
+### 29. ex-letrero
+**Veredicto: apta, con corrección.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La tracción del perno se aliviaba con Pu = 1.2D. Para el levantamiento la carga muerta entra con 0.9. | Baja | E.090 1.4-6; ASCE 7 2.3 | `Tb = 4Mu/(n·Dbc) − 0.9·Wd/n` (prueba). |
+| No se diseña la zapata a flexión ni la placa base. | Baja | — | Observación. |
+
+### 30–32. ex-frp, ex-pilote-fuste y ex-encamisado
+**Veredicto: aptas.** FRP: reproduce el Ej. 16.3 del ACI 440.2R-17, con el límite 1.1D + 0.75L, εfd, ψf = 0.85 y
+creep-rupture. Pilote: φ = 0.55, Matlock–Reese con cabeza empotrada, P–M circular y espiral de 18.13.5.7.1. Encamisado:
+la sección monolítica con el f'c existente y sin las barras antiguas, la reducción 0.9 en cortante y el cortante-fricción
+de la carga en exceso son conservadores.
+
+## Hallazgos en el motor y en los bloques (no editables por este revisor)
+
+| # | Dónde | Hallazgo | Gravedad | Propuesta |
+|---|---|---|---|---|
+| M5 | Render KaTeX (motor) | Un `floor()` cuyo argumento contiene una fracción anidada (`floor(L/2/pst)`) o una `sqrt` muy alta generan en el navegador un `<path d="…MM…">` inválido (error de consola en `qa-render`). | Baja | Normalizar el path de los delimitadores altos o evitar `\dfrac` anidados dentro de `\left\lfloor`. Se mitigó en *br-acero* (`floor(L/(2*pst))` y radio de giro en dos líneas). |
+| M6 | Bloque `armadura` (`src/blocks/steel.js`) | Las etiquetas de fuerza de la diagonal y del montante extremos se superponen (16 %) cuando las fuerzas pasan de ~0.9 t con tres decimales. Aparece en *st-armadura* con el 0.8W. | Baja | Detectar colisiones y desplazar la etiqueta, o redondear a dos decimales. |
+| M7 | Resumen de verificaciones | Cuando la cita va entre paréntesis en la etiqueta del `check` («… (5.9.4.4.1)»), la columna «Referencia» queda en «—». | Baja | Extraer la cita final entre paréntesis como referencia. |
+| M8 | `VfatLRFD`, `MfatLRFD` | Devuelven tonf o tonf·m también en memorias en unidades inglesas, y la sustitución muestra «26.8 tonf» en medio de kip. | Baja | Devolver en la unidad del sistema del documento o en kip si `settings.sys = 'us'`. |
+| M4 (bis) | Render de sustituciones | Persiste el desborde de `max(…)` largos (combinaciones de correas y vigueta). | Baja | Ver M4. Se mitigó dividiendo en `wun3/wun4` y `wu3/wu4`. |
+
+## Pruebas añadidas (tercera tanda A)
+
+- `tests/bridges.test.mjs`: Treq de 5.7.3.5-2 y fpx = fpe·lpx/60db; Vni de interfaz; hendimiento 0.04Aps fpj/20; refuerzo de
+  transferencia; Fatiga I del ala; Qn = Asc·Fu; paso por fatiga; aplastamiento del rigidizador; R de columna simple
+  (2.0) frente a pórtico (3.5); cortante de la losa inferior de la alcantarilla; Lp de la pasarela.
+- `tests/steel.test.mjs`: Mux de las correas con 0.8W; fuerzas de la vigueta con wu = 0.428 t/m y soldadura; φMn de la viga
+  compuesta W16×31 a mano; W12×19 con ap/g > 0.5 % (NO CUMPLE); fn = 0.18√(g/Δ).
+- `tests/masonry.test.mjs`: Δp de Wood en la cisterna; Mve = máx(MyPa, MyNs + MyNe/1.7); NF a 1.0 m con NO CUMPLE en
+  flotación y en la hipótesis de suelo seco; 1/2" @ 20 con NO CUMPLE en la cara exterior; Nvm = Mb/(πr²) del reservorio.
+- `tests/extras.test.mjs`: máquina con Vs = 410 m/s (pasa ±20 % y no pasa con 1.5G); tracción de los pernos del letrero
+  con 0.9D.
+
+Validaciones modificadas, con la justificación de arriba:
+
+- `st-correas.Mux`: 337.9 → 410.8 kgf·m (E.090 1.4-3, 0.8W).
+- `st-armadura.Fcs`: 8.10 → 9.63 t y `Fd`: 4.016 → 4.775 t (E.090 1.4-3).
+- `st-compuesta`: perfil W12×19 → W16×31 (AISC DG11). `phiMn` 28.7 → 48.38 t·m, `Mu` 24.38 → 24.59 t·m y `dL`
+  1.834 → 0.880 cm; se agregó `apg` = 0.0042.
+- `ma-cisterna` no tiene `validacion`; su varilla por defecto pasó de 1/2" a 5/8" @ 20 (sismo del suelo).

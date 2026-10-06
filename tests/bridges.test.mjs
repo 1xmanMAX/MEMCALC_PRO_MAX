@@ -209,6 +209,29 @@ section('Revisión — datos extremos: verificaciones NO CUMPLE sin errores ni N
     truthy(`${id} ${JSON.stringify(c)}: ${r.ctx.checks.filter(x => !x.ok).length} NO CUMPLE, ${r.ctx.errors.length} errores, ${nan.length} D/C no finitos`, r.ctx.errors.length === 0 && nan.length === 0 && r.ctx.checks.some(x => !x.ok), r.ctx.errors.map(e => e.msg).join('; '));
   }
 }
+section('Segunda opinión — tercera tanda A (puentes)');
+{
+  const setIn = (d, name, val) => { d.blocks.forEach(b => { if (b.type === 'calc') b.src = b.src.replace(new RegExp('^' + name + ' = .*?( //|$)', 'm'), name + ' = ' + val + '$1'); }); };
+  const p = runTemplate('br-presforzada');
+  near('Presforzada: tracción en el apoyo (Vu/φ − 0.5Vs − Vp)·cot θ (5.7.3.5-2) [kip]', p('Treq', 'kip'), (p('Vux', 'kip') / 0.9 - 0.5 * Math.min(p('Vs', 'kip'), p('Vux', 'kip') / 0.9) - p('Vp', 'kip')) / Math.tan(p('theta', 'rad')), 1e-6);
+  near('Presforzada: fpx = fpe·lpx/(60db) en la cara del apoyo (lpx = 18 in < 36 in) [ksi]', p('fpx', 'ksi'), p('fpe', 'ksi') * 18 / 36, 1e-6);
+  near('Presforzada: Vni = c·Acv + μ·Avf·fy con Acv = 20 in/in (5.7.4.3-3) [kip/ft]', p('Vni', 'kip/ft'), (0.28 * 20 + 1.0 * 0.4 / 12 * 60) * 12, 1e-6);
+  near('Presforzada: hendimiento 0.04·Aps·fpj/20 ksi (5.9.4.4.1) [in²]', p('Asplr', 'in^2'), 0.04 * 6.51 * 202.5 / 20, 1e-6);
+  truthy('Presforzada: tracción superior en la transferencia > 0.0948√f\'ci → se exige refuerzo adherido', p('As_tz', 'in^2') > 0.3 && p('As_tz', 'in^2') < 1.24);
+  const a = runTemplate('br-acero');
+  near('Acero: Fatiga I γΔf = 1.75·(gM1/1.2)·1.15·Mfat/Sbn [ksi]', a('dff', 'ksi'), 1.75 * a('gF') * a('Mfat', 'kip*ft') * 12 / (a('Sbn', 'in^3')), 1e-6);
+  near('Acero: Qn = Asc·Fu (gobierna sobre 0.5Asc√(f\'cEc)) [kip]', a('Qn', 'kip'), Math.PI * 0.875 ** 2 / 4 * 60, 1e-6);
+  near('Acero: paso por fatiga p = n·Zr·I/(Vsr·Q) [in]', a('psr', 'in'), 3 * 5.5 * 0.875 ** 2 * a('In', 'in^4') / (a('Vsr', 'kip') * a('Qn_s', 'in^3')), 1e-6);
+  near('Acero: aplastamiento del rigidizador 1.4·Apn·Fy, Apn = 2(6 − 1)·0.75 in² [kip]', a('Rsbr', 'kip'), 1.4 * 7.5 * 50, 1e-6);
+  const s3 = runTemplate('br-sismo', d => setIn(d, 'sub', '3'));
+  near('Sismo: columna simple, puente esencial → R = 2.0 (Tabla 3.10.7.1-1)', s3('R'), 2.0, 1e-9);
+  near('Sismo: pórtico de varias columnas, esencial → R = 3.5', runTemplate('br-sismo')('R'), 3.5, 1e-9);
+  const c = runTemplate('br-alcantarilla');
+  near('Alcantarilla: cortante en la losa inferior qb·(Bi/2 − dv) [tonf]', c('Vu3', 'tonf'), Math.max(c('qb1', 'tonf/m'), c('qb2', 'tonf/m')) * (1.5 - c('dv3', 'm')), 1e-6);
+  const w = runTemplate('br-peatonal');
+  near('Peatonal: Lp = rt√(E/Fy) (6.10.8.2.3-4) [m]', w('Lp', 'm'), w('rt', 'm') * Math.sqrt(200000 / 345), 1e-6);
+}
+
 section('QA de plantillas: «validacion» y rangos usuales [mín..máx] de los datos');
 for (const t of TEMPLATES.filter(x => x.id.startsWith('br-'))) {
   const v = t.validacion;

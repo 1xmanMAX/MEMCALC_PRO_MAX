@@ -207,7 +207,8 @@ phiPr = 0.75*Fu*Ae -> kip // Rotura en el área neta efectiva (D2-2)
 check Pu <= min(phiPy, phiPr) // Resistencia a tracción del ángulo (D2)
 # Pernos (J3)
 check sp >= 2.67*db // Separación mínima (J3.3)
-check le >= 1.125 in // Distancia mínima al borde, Tabla J3.4 para ⅞ in
+lemin = si(db <= 0.75 in, 1 in, si(db <= 0.875 in, 1.125 in, si(db <= 1 in, 1.25 in, 1.25*db))) // Distancia mínima al borde según el diámetro (Tabla J3.4)
+check le >= lemin // Distancia mínima al borde (Tabla J3.4)
 Fnv = FnvJ3(grupo, "N") // Esfuerzo nominal de corte, roscas incluidas (Tabla J3.2)
 Abp = pi*db^2/4 // Área nominal del perno
 phirnv = 0.75*Fnv*Abp -> kip // Corte simple por perno (J3-1)
@@ -454,10 +455,10 @@ wcol = max(wminJ2(tf), 5 mm) // Filete perimetral mínimo (Tabla J2.4): la compr
     titulo: 'Diseño de correas de techo de perfil conformado en frío',
     validacion: {
       fuente: 'Control: AISI S100-16 (sección C con labios, ancho efectivo) y NTE E.020 (viento)',
-      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). La presión de viento 0.005·C·V² = 28.1 kgf/m² y Mux = wu·cosθ·L²/8 se comprueban a mano.',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). La presión de viento 0.005·C·V² = 28.1 kgf/m² y Mux = [(1.2D + 1.6Lr)cosθ + 0.8W]·L²/8 se comprueban a mano (antes de la segunda opinión, Mux = 337.9 kgf·m sin el 0.8W de la combinación E.090 1.4-3).',
       valores: [
         { var: 'ph', unidad: 'kgf/m^2', esperado: 28.125, tol: 0.0005, desc: 'Presión dinámica 0.005·75²' },
-        { var: 'Mux', unidad: 'kgf*m', esperado: 337.9, tol: 0.002, desc: 'Momento último eje fuerte' },
+        { var: 'Mux', unidad: 'kgf*m', esperado: 410.8, tol: 0.002, desc: 'Momento último eje fuerte (1.2D + 1.6Lr + 0.8W, E.090 1.4-3)' },
         { var: 'phiMnx', unidad: 'kgf*m', esperado: 559.8, tol: 0.002, desc: 'Resistencia a flexión eje fuerte' },
         { var: 'phiMnu', unidad: 'kgf*m', esperado: 391.9, tol: 0.002, desc: 'Resistencia con succión (método R)' },
         { var: 'phiVn', unidad: 'kgf', esperado: 3813, tol: 0.002, desc: 'Resistencia a cortante' },
@@ -489,18 +490,23 @@ wacc = 5 kgf/m^2 // Accesorios, luminarias e instalaciones [0..20]
 WLr = 30 kgf/m^2 // Carga viva de techo liviano, cualquier pendiente (E.020 Art. 7.1 b) [30..100]
 Vv = 75 km/h // Velocidad básica de viento a 10 m (E.020 Anexo 2; mínimo 75 km/h) [75..130]
 Cext = -0.7 // Factor de forma exterior, superficie inclinada ≤ 15°, succión (E.020 Tabla 4)
+Cextp = 0.3 // Factor de forma exterior en presión, barlovento ≤ 15° (E.020 Tabla 4) [0..0.7]
 Cint = 0.3 // Presión interior por aberturas (E.020 Art. 12.5, ±0.3) [-0.3..0.3]
 # Presión de viento (E.020 Art. 12)
 Vh = Vv*max(1, (hz/(10 m))^0.22) // Velocidad de diseño Vh = V(h/10)^0.22 ≥ V (E.020 12.3)
 ph = 0.005*abs(Cext - Cint)*(Vh/(1 km/h))^2*1 kgf/m^2 -> kgf/m^2 // Presión de succión neta ph = 0.005·C·Vh² (E.020 12.4)
+phd = 0.005*(Cextp + abs(Cint))*(Vh/(1 km/h))^2*1 kgf/m^2 -> kgf/m^2 // Presión neta hacia abajo: exterior +0.3 con succión interior −0.3 (E.020 12.4 y 12.5)
 # Metrado por metro de correa
 wD = (wcob + wacc)*sc + peso -> kgf/m // Carga muerta (incluye peso propio)
 wLr = WLr*sc*cos(theta) -> kgf/m // Carga viva sobre la proyección horizontal
 wW = ph*sc -> kgf/m // Viento normal a la cubierta (levante)
+wWd = phd*sc -> kgf/m // Viento normal a la cubierta (presión hacia abajo)
 # Combinaciones de diseño (E.090 1.4.1)
-wu = max(1.4*wD, 1.2*wD + 1.6*wLr) -> kgf/m // Gravedad: 1.2D + 1.6Lr
-wun = wu*cos(theta) -> kgf/m // Componente normal a la cubierta (eje x de la correa)
-wut = wu*sin(theta) -> kgf/m // Componente paralela a la pendiente (eje y)
+wu = max(1.4*wD, 1.2*wD + 1.6*wLr) -> kgf/m // Cargas verticales: 1.4D; 1.2D + 1.6Lr
+wun3 = (1.2*wD + 1.6*wLr)*cos(theta) + 0.8*wWd -> kgf/m // 1.2D + 1.6Lr + 0.8W, componente normal (E.090 1.4-3)
+wun4 = (1.2*wD + 0.5*wLr)*cos(theta) + 1.3*wWd -> kgf/m // 1.2D + 1.3W + 0.5Lr, componente normal (E.090 1.4-4)
+wun = max(wu*cos(theta), wun3, wun4) -> kgf/m // Componente normal a la cubierta que gobierna (eje x de la correa)
+wut = wu*sin(theta) -> kgf/m // Componente paralela a la pendiente (eje y; el viento es normal a la cubierta)
 wup = 1.3*wW - 0.9*wD*cos(theta) -> kgf/m // Levante neto: 0.9D − 1.3W
 # Solicitaciones
 Mux = wun*Lc^2/8 -> kgf*m // Momento eje mayor (simplemente apoyada)
@@ -508,7 +514,7 @@ cty = si(nt == 1, 0.125, 0.10) // Coeficiente de viga continua sobre templadores
 Muy = cty*wut*(Lc/(nt + 1))^2 -> kgf*m // Momento eje menor entre templadores
 Vu = wun*Lc/2 -> kgf // Cortante máximo
 Mup = wup*Lc^2/8 -> kgf*m // Momento por levante (ala inferior comprimida)`),
-      { type: 'beam', tramos: 'Lc', apoyos: 'A A', E: 'E', I: 'Ix', cargas: 'U 1 wun', titulo: 'Correa simplemente apoyada bajo 1.2D + 1.6Lr (componente normal)' },
+      { type: 'beam', tramos: 'Lc', apoyos: 'A A', E: 'E', I: 'Ix', cargas: 'U 1 wun', titulo: 'Correa simplemente apoyada bajo la combinación de gravedad que gobierna (componente normal)' },
       calc(`# Anchos efectivos (AISI S100-16, Apéndice 1)
 wf = bf - 2*t // Ancho plano del ala comprimida (aprox. esquinas rectas)
 dl = D - t // Ancho plano del labio
@@ -572,13 +578,13 @@ check Tr <= phiTr // Resistencia del templador`),
     titulo: 'Diseño de vigueta metálica de techo (armadura Pratt)',
     validacion: {
       fuente: 'Control: armadura Pratt de cuerdas paralelas (método de los nudos) y AISC 360-16 E3, E5, D2',
-      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Comprobados a mano: cuerda superior wL²/(8h) = 0.36·144/(8·0.8) y diagonal extrema (R − P/2)/sen α.',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Comprobados a mano: cuerda superior wL²/(8h) con wu = (1.2·20 + 1.6·30 + 0.8·17)·5 = 0.428 t/m y diagonal extrema (R − P/2)/sen α. Segunda opinión (2026): se agregó el 0.8W en presión de la combinación E.090 1.4-3; antes wu = 0.36 t/m, Fcs = 8.10 t y Fd = 4.016 t.',
       valores: [
-        { var: 'Fcs', unidad: 'tonf', esperado: 8.1, tol: 0.0005, desc: 'Cuerda superior wL²/(8h)' },
-        { var: 'Fd', unidad: 'tonf', esperado: 4.01625, tol: 0.0005, desc: 'Diagonal extrema (R − P/2)/sen α' },
+        { var: 'Fcs', unidad: 'tonf', esperado: 9.63, tol: 0.0005, desc: 'Cuerda superior wL²/(8h)' },
+        { var: 'Fd', unidad: 'tonf', esperado: 4.7748, tol: 0.0005, desc: 'Diagonal extrema (R − P/2)/sen α' },
         { var: 'phiPcs', unidad: 'tonf', esperado: 10.52, tol: 0.002, desc: 'Compresión de la cuerda superior' },
         { var: 'phiPdc', unidad: 'tonf', esperado: 2.6, tol: 0.002, desc: 'Compresión de la diagonal (levante)' },
-        { var: 'dv', unidad: 'cm', esperado: 2.195, tol: 0.002, desc: 'Deflexión por carga viva' },
+        { var: 'dv', unidad: 'cm', esperado: 2.195, tol: 0.002, desc: 'Flecha por D + Lr (con 15 % por el alma)' },
       ],
     },
     blocks: [
@@ -607,8 +613,13 @@ E = 2039000 kgf/cm^2 // Módulo de elasticidad (29 000 ksi) [2000000..2100000]
 wD = 20 kgf/m^2 // Muerta: cobertura, correas, vigueta y arriostres [10..50]
 wLr = 30 kgf/m^2 // Viva de techo liviano (E.020 7.1 b) [30..100]
 pW = 28 kgf/m^2 // Succión neta de viento sobre la cubierta (E.020 12.4, ver memoria de correas) [10..80]
+pWp = 17 kgf/m^2 // Presión neta de viento hacia abajo: Cext = +0.3 con Cint = −0.3 (E.020 12.4 y 12.5) [0..60]
+FEXX = 4920 kgf/cm^2 // Electrodo E70XX [4200..5700]
+wsz = 3.2 mm // Tamaño del filete de los ángulos del alma (1/8") [3..8]
 # Cargas de diseño (E.090 1.4.1)
-wu = (1.2*wD + 1.6*wLr)*st -> tonf/m // 1.2D + 1.6Lr por metro de vigueta
+wu3 = (1.2*wD + 1.6*wLr + 0.8*pWp)*st -> tonf/m // 1.2D + 1.6Lr + 0.8W (E.090 1.4-3)
+wu4 = (1.2*wD + 0.5*wLr + 1.3*pWp)*st -> tonf/m // 1.2D + 1.3W + 0.5Lr (E.090 1.4-4)
+wu = max(1.4*wD*st, wu3, wu4) -> tonf/m // Carga de gravedad que gobierna, por metro de vigueta
 wup = (1.3*pW - 0.9*wD)*st -> tonf/m // Levante neto 0.9D − 1.3W
 a = Lt/np // Longitud de panel
 P = wu*a -> tonf // Carga en cada nudo interior de la cuerda superior
@@ -661,16 +672,22 @@ Fcrv = si(Fya/Fev <= 2.25, 0.658^(Fya/Fev)*Fya, 0.877*Fev)
 phiPv = 0.90*Fcrv*A_d -> tonf
 check Fv0 <= phiPv // Montante a compresión
 check lambdaf_d <= 0.45*sqrt(E/Fya) // Ala del ángulo no esbelta (Tabla B4.1a caso 3)
+# Soldadura de los ángulos del alma a las cuerdas (J2)
+check wsz >= wminJ2(t_d) // Tamaño mínimo del filete (Tabla J2.4)
+check lw >= 4*wsz // Longitud mínima del filete ≥ 4w (J2.2b)
+phiRwd = 0.75*0.6*FEXX*0.707*wsz*2*lw -> tonf // Dos filetes longitudinales de longitud lw (J2-4)
+check max(Fd, Fdu, Fv0) <= phiRwd // Resistencia de la soldadura de la diagonal y del montante extremos (J2.4)
+"Las uniones soldadas de los ángulos a la pared del tubo deben verificarse además por plastificación de la pared del HSS (AISC 360 Cap. K) cuando la relación ancho del ángulo/ancho del tubo sea pequeña.
 # Flecha (servicio D + Lr)
 Ieq = 2*A_c*(ht/2)^2 -> cm^4 // Inercia equivalente de las cuerdas
 dv = 1.15*5*(wD + wLr)*st*Lt^4/(384*E*Ieq) -> cm // Incremento de 15 % por deformación de las barras del alma
 check dv <= Lt/240 // Flecha admisible L/240`),
-      { type: 'armadura', L: 'Lt', h: 'ht', np: 'np', w: 'wu', tipo: 'pratt', titulo: 'Fuerzas axiales en la vigueta bajo 1.2D + 1.6Lr — método de los nudos [t]' },
+      { type: 'armadura', L: 'Lt', h: 'ht', np: 'np', w: 'wu', tipo: 'pratt', titulo: 'Fuerzas axiales en la vigueta bajo 1.2D + 1.6Lr + 0.8W — método de los nudos [t]' },
       calc(`## Comprobación: método de las secciones frente al método de los nudos
 check round(abs(Ncs - Fcs)/Fcs, 9) <= 0.001 // Cuerda superior: ambos métodos coinciden (diferencia relativa)
 check round(abs(Ndt - Fd)/Fd, 9) <= 0.001 // Diagonal extrema: ambos métodos coinciden (diferencia relativa)
 check abs(Nv - Fv0) <= 0.001*Fv0 // Montante extremo: ambos métodos coinciden`),
-      { type: 'plot', expr: 'Mt(x m)/ht/(1 tonf); -Mt(x m)/ht/(1 tonf)', var: 'x', desde: '0', hasta: 'Lt/(1 m)', puntos: '100', xlabel: 'x [m]', ylabel: 'Fuerza en cuerdas [t]', nombres: 'Cuerda inferior (tracción, +); Cuerda superior (compresión, −)', leyenda: true, titulo: 'Fuerza axial en las cuerdas F = M(x)/h bajo 1.2D + 1.6Lr' },
+      { type: 'plot', expr: 'Mt(x m)/ht/(1 tonf); -Mt(x m)/ht/(1 tonf)', var: 'x', desde: '0', hasta: 'Lt/(1 m)', puntos: '100', xlabel: 'x [m]', ylabel: 'Fuerza en cuerdas [t]', nombres: 'Cuerda inferior (tracción, +); Cuerda superior (compresión, −)', leyenda: true, titulo: 'Fuerza axial en las cuerdas F = M(x)/h bajo 1.2D + 1.6Lr + 0.8W' },
       { type: 'table', titulo: 'Resumen de barras críticas (fuerza última y resistencia de diseño)', columnas: 'Barra = ["Cuerda superior", "Cuerda inferior", "Cuerda inferior (levante)", "Diagonal extrema", "Diagonal (levante)", "Montante extremo"]\nPu [tonf] = [Fcs, Fci, Fciu, Fd, Fdu, Fv0]\nφPn [tonf] = [phiPcs, phiPti, phiPci, min(phiPdy, phiPdr), phiPdc, phiPv]\nD/C = [Fcs/phiPcs, Fci/phiPti, Fciu/phiPci, Fd/min(phiPdy, phiPdr), Fdu/phiPdc, Fv0/phiPv]', dec: '2' },
       summary(),
     ],
@@ -862,13 +879,14 @@ check Dw <= hc/100 // Deriva de servicio por viento h/100 (AISC, Guía de Diseñ
     titulo: 'Diseño de viga compuesta acero–concreto — AISC 360 Cap. I',
     validacion: {
       fuente: 'Control: AISC 360-16 Cap. I (I3.2a, I8.2a) con losa colaborante',
-      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Qn = Rg·Rp·Asa·Fu (I8-1) y φMn = 28.7 t·m se comprueban a mano en tests/steel.test.mjs.',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Qn = Rg·Rp·Asa·Fu (I8-1) y φMn se comprueban a mano en tests/steel.test.mjs. Segunda opinión (2026): el perfil pasó de W12×19 a W16×31 porque el W12×19 (L/d = 29) no cumple la vibración por caminar del AISC DG11 (ap/g = 0.69 % > 0.5 %); antes φMn = 28.7 t·m, Mu = 24.38 t·m y ΔL = 1.834 cm.',
       valores: [
         { var: 'Qn', unidad: 'tonf', esperado: 7.815, tol: 0.002, desc: 'Resistencia de un conector (I8-1)' },
         { var: 'SQn', unidad: 'tonf', esperado: 117.2, tol: 0.002, desc: 'Σ Qn de media luz' },
-        { var: 'phiMn', unidad: 'tonf*m', esperado: 28.7, tol: 0.003, desc: 'Resistencia a flexión compuesta' },
-        { var: 'Mu', unidad: 'tonf*m', esperado: 24.38, tol: 0.002, desc: 'Momento último' },
-        { var: 'dL', unidad: 'cm', esperado: 1.834, tol: 0.002, desc: 'Deflexión por carga viva (ILB)' },
+        { var: 'phiMn', unidad: 'tonf*m', esperado: 48.38, tol: 0.003, desc: 'Resistencia a flexión compuesta' },
+        { var: 'Mu', unidad: 'tonf*m', esperado: 24.59, tol: 0.002, desc: 'Momento último' },
+        { var: 'dL', unidad: 'cm', esperado: 0.880, tol: 0.003, desc: 'Deflexión por carga viva (ILB)' },
+        { var: 'apg', esperado: 0.0042, tol: 0.02, desc: 'Aceleración pico por caminar ap/g (DG11)' },
       ],
     },
     blocks: [
@@ -877,8 +895,8 @@ Viga secundaria de entrepiso, simplemente apoyada, de perfil W **no apuntalado**
 
 - **Etapa constructiva:** el perfil solo resiste el peso del concreto fresco y una carga de construcción de 50 kgf/m² (ASCE 37), con el ala superior arriostrada por la placa.
 - **Etapa compuesta:** resistencia plástica a flexión (AISC I3.2a) con compuesta parcial ΣQn < AsFy; el concreto por debajo de la cresta de los nervios se desprecia (I3.2c).
-- **Servicio:** flecha por carga viva con la **inercia de límite inferior** ILB (Comentario I3, Ec. C-I3-1).`),
-      { type: 'steelsec', perfil: 'W12X19', tabla: true, titulo: 'Perfil de acero W12×19 (ASTM A992)' },
+- **Servicio:** flecha por carga viva con la **inercia de límite inferior** ILB (Comentario I3, Ec. C-I3-1) y **vibración por caminar** (AISC Design Guide 11, criterio de oficinas ap/g ≤ 0.5 %), que en vigas de entrepiso de 8–10 m suele gobernar el perfil.`),
+      { type: 'steelsec', perfil: 'W16X31', tabla: true, titulo: 'Perfil de acero W16×31 (ASTM A992)' },
       calc(`# Datos
 ## Geometría
 Lv = 9 m // Luz de la viga [5..15]
@@ -920,6 +938,10 @@ Asa = pi*dsa^2/4 -> cm^2 // Área del conector
 check hr <= 7.5 cm // Altura del nervio hr ≤ 3 in (I3.2c)
 check wr >= 5 cm // Ancho medio del nervio ≥ 2 in (I3.2c)
 check tc >= 5 cm // Concreto sobre la placa ≥ 2 in (I3.2c)
+Hsa = 4 in // Longitud del conector después de soldado (¾" × 4") [3..7]
+check Hsa >= hr + 1.5 in // El conector sobresale ≥ 1½ in sobre la cresta (I3.2c(2))
+check Hsa <= hr + tc - 0.5 in // Recubrimiento de concreto sobre el conector ≥ ½ in (I3.2c(2))
+check ss <= min(8*(hr + tc), 36 in) // Separación máxima de conectores (I8.2d)
 Rg = 1.0 // Un conector por nervio, placa perpendicular (Tabla I8.1) [0.85..1.0]
 Rp = 0.6 // Conector en posición débil, placa perpendicular (Tabla I8.1) [0.6..0.75]
 Qn = min(0.5*Asa*sqrt(fc*Ec), Rg*Rp*Asa*Fusa) -> tonf // Resistencia de un conector (I8-1)
@@ -948,6 +970,26 @@ YENA = (A*d/2 + SQn/Fy*(d + d1))/(A + SQn/Fy) // Eje neutro elástico desde la c
 ILB = Ix + A*(YENA - d/2)^2 + SQn/Fy*(d + d1 - YENA)^2 -> cm^4 // Inercia de límite inferior (C-I3-1)
 dL = 5*wL*sv*Lv^4/(384*E*ILB) -> cm // Flecha por carga viva
 check dL <= Lv/360 // Límite L/360 para carga viva (IBC Tabla 1604.3)
+# Vibraciones de piso por caminar (AISC Design Guide 11, 2.ª ed., Cap. 3 y 4)
+"Modo de la viga con las vigas principales supuestas rígidas (apoyo en muros o vigas peraltadas); si la viga se apoya en vigas principales flexibles debe combinarse con su modo (DG11 Ec. 4-4).
+Bpiso = 18 m // Ancho del piso perpendicular a las vigas (límite Bj ≤ 2/3 del ancho) [6..60]
+beta_v = 0.03 // Amortiguamiento: oficina con cielo raso y ductos (DG11 Tabla 4-2) [0.02..0.05]
+wvib = (wdeck + wcon + wsd + 54 kgf/m^2)*sv + peso -> kgf/m // Carga muerta + 11 psf (0.5 kPa) de carga viva real de oficinas (DG11 4.1)
+Ecd = 1.35*Ec // Módulo dinámico del concreto (DG11 3.3)
+nvd = E/Ecd // Relación modular dinámica
+Acd = beff*tc/nvd // Área transformada del concreto sobre la cresta (se desprecian los nervios)
+ycd = d/2 + hr + tc/2 // Brazo del concreto respecto al centroide del perfil
+ytr = Acd*ycd/(A + Acd) // Eje neutro de la sección transformada
+Itr = Ix + A*ytr^2 + Acd*(ycd - ytr)^2 + beff/nvd*tc^3/12 -> cm^4 // Inercia transformada (DG11 3.3: acción compuesta total)
+Dvj = 5*wvib*Lv^4/(384*E*Itr) -> mm // Deflexión de la viga bajo la carga de vibración
+fnv = 0.18*sqrt(9.81 m/s^2/Dvj) -> Hz // Frecuencia natural (DG11 Ec. 3-3)
+dse = tc + hr/2 // Espesor efectivo de la losa (DG11 4.1)
+Dsl = dse^3/(12*nvd) -> cm^4/m // Rigidez transversal de la losa por unidad de ancho
+Djv = Itr/sv -> cm^4/m // Rigidez de las vigas por unidad de ancho
+Bj = min(2.0*(Dsl/Djv)^(1/4)*Lv, 2/3*Bpiso) // Ancho efectivo del panel, Cj = 2.0 (DG11 Ec. 4-3)
+Wp = wvib/sv*Bj*Lv -> kN // Peso efectivo del panel (DG11 Ec. 4-2)
+apg = 0.29 kN*e^(-0.35*fnv/(1 Hz))/(beta_v*Wp) // Aceleración pico ap/g = P0 e^(−0.35 fn)/(βW), P0 = 0.29 kN (DG11 Ec. 4-1)
+check apg <= 0.005 // ap/g ≤ 0.5 % en oficinas (DG11 Tabla 4-1)
 "Contraflecha recomendada del perfil: {camber}. Conectores ¾\\" × 4\\": {nq} entre el apoyo y el centro de luz (total {2*nq}).`),
       { type: 'plot', expr: 'wu2*(x m)*(Lv - x m)/2/(1 tonf*m); phiMn/(1 tonf*m)', var: 'x', desde: '0', hasta: 'Lv/(1 m)', puntos: '80', xlabel: 'x [m]', ylabel: 'M [t·m]', nombres: 'Mu (1.2D + 1.6L); φMn sección compuesta', leyenda: true, titulo: 'Momento solicitante y resistencia de la sección compuesta' },
       summary(),

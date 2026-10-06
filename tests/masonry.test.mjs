@@ -389,6 +389,16 @@ truthy('Listas desplegables intactas con rango (Z, Tp, f\'c del edificio)', (() 
   return f('Z').options.length === 4 && f('Z').range.max === 0.45 && f('Tp').options.length === 4 && f('Tp').range.unit === 's' && f('fc').options.length === 2 && f('fc').range.max === 280; })());
 { const r = runTemplate('ma-edificio');
   near('San Bartolomé (2006): Fa = 93.8 t/m² en los muros de soga de la plantilla (t = 13 cm, h = 2.40 m)', math.evaluate('min(FaX)', new Map(r.res.ctx.scope)).toNumber('tonf/m^2'), 93.8, 0.001); }
+section('Segunda opinión — tercera tanda A (tanques)');
+{ const c = runTemplate('ma-cisterna');
+  near('Cisterna: incremento sísmico de Wood Δp = Z·S·γ·H [t/m²]', c('pse', 'tonf/m^2'), 0.45 * 1.05 * 1.8 * (2.7 + 0.075), 1e-6);
+  near('Cisterna: Mve = máx(MyPa, MyNs + MyNe/1.7) (U = 1.7CE + 1.0CS)', c('Mve', 'tonf*m/m'), Math.max(c('MyPa', 'tonf*m/m'), c('MyNs', 'tonf*m/m') + c('MyNe', 'tonf*m/m') / 1.7), 1e-6);
+  const cw = runTemplate('ma-cisterna', d => { for (const b of d.blocks) if (b.src) b.src = b.src.replace('Hnf = 5.0 m', 'Hnf = 1.0 m'); });
+  truthy('Cisterna: con NF a 1.0 m → NO CUMPLE la flotación y la hipótesis de suelo seco', cw.res.ctx.errors.length === 0 && cw.res.ctx.checks.filter(x => !x.ok && /flotación|freático/.test(x.label)).length === 2);
+  const c4 = runTemplate('ma-cisterna', d => { for (const b of d.blocks) if (b.src) b.src = b.src.replace(/^bar = 5 /m, 'bar = 4 '); });
+  truthy('Cisterna: con 1/2" @ 20 (diseño original) la cara exterior NO CUMPLE con el sismo del suelo', c4.res.ctx.checks.some(x => !x.ok && /cara exterior/.test(x.label)));
+  const r = runTemplate('ma-reservorio');
+  near('Reservorio: N vertical por volteo = Mb/(π r²) [t/m]', r('Nvm', 'tonf/m'), r('Mb', 'tonf*m') / (Math.PI * 4.65 ** 2), 1e-6); }
 near('JUNAC Tabla 9.2: Ck grupo B = 18.34 en la plantilla de columna', runTemplate('ma-colmadera')('Ck'), 18.34, 0.001);
 truthy('Plantillas con validacion: edificio, cerco, columna de madera y reservorio', ['ma-edificio', 'ma-cerco', 'ma-colmadera', 'ma-reservorio'].every(id => TEMPLATES.find(x => x.id === id).validacion));
 section('Segunda opinión — segunda tanda (ma-cerco)');

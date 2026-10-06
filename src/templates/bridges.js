@@ -432,7 +432,7 @@ Sdk = Ic/(h + hh + ts - ybc)/nd // Módulo de la fibra superior de la losa (en e
 wg = gammac*Ag -> kip/ft // Peso propio de la viga (DC1)
 ws = gammac*(S*ts + btf*hh) -> kip/ft // Losa y acartelamiento (DC1)
 wb = 2*0.40 kip/ft/Nb // Barreras de 0.40 kip/ft repartidas entre las vigas (DC2, 4.6.2.2.1)
-ww = 0.025 kip/ft^2*wcc/Nb // Superficie de rodadura futura 25 psf (DW)
+ww = 0.025 kip/ft^2*wcc/Nb -> kip/ft // Superficie de rodadura futura 25 psf (DW)
 Mg = wg*L^2/8 -> kip*ft // Momento por peso propio en L/2
 Ms = ws*L^2/8 -> kip*ft // Momento por losa en L/2
 Mb = wb*L^2/8 -> kip*ft // Momento por barreras en L/2
@@ -478,6 +478,13 @@ fte = Pi/Ag - Pi*ee/St + Mgt/St -> ksi // Fibra superior
 fbe = Pi/Ag + Pi*ee/Sb - Mgt/Sb -> ksi // Fibra inferior
 check -fte <= ftia // Tracción superior en el extremo
 check fbe <= fcia // Compresión inferior en el extremo
+ftr0 = min(0.0948*sqrt(fci/(1 ksi)), 0.20)*1 ksi // Tracción admisible sin refuerzo adherido (Tabla 5.9.2.3.1b-1)
+"Si la tracción superior supera {ftr0}, el límite $0.24\\sqrt{f'_{ci}}$ solo es válido con refuerzo adherido que tome toda la fuerza de tracción de la sección no fisurada, con $f_s = 0.5f_y \\le 30$ ksi (Tabla 5.9.2.3.1b-1):
+ytz = max(-fte, 0 ksi)/(max(-fte, 0 ksi) + fbe)*h -> in // Profundidad de la zona traccionada (sección no fisurada)
+Ttz = 0.5*max(-fte, 0 ksi)*ytz*btf -> kip // Fuerza de tracción (ancho del ala superior en toda la zona: conservador)
+As_tz = si(-fte > ftr0, Ttz/min(0.5*fy, 30 ksi), 0 in^2) -> in^2 // Refuerzo adherido requerido en el ala superior (0 si la tracción no supera el límite sin refuerzo)
+nbtz = 4 // Barras #5 longitudinales en el ala superior, en la zona de extremo [2..10]
+check nbtz*0.31 in^2 >= As_tz // Refuerzo adherido para la tracción en la transferencia (Tabla 5.9.2.3.1b-1)
 ## Centro de la luz
 ftm = Pi/Ag - Pi*em/St + Mg/St -> ksi // Fibra superior
 fbm = Pi/Ag + Pi*em/Sb - Mg/Sb -> ksi // Fibra inferior
@@ -535,6 +542,28 @@ check Vux <= 0.90*Vn // Resistencia a cortante, φ = 0.90
 vu = abs(Vux - 0.90*Vp)/(0.90*bw*dv) -> ksi // (5.7.2.8-1)
 check sv <= si(vu < 0.125*fc, min(0.8*dv, 24 in), min(0.4*dv, 12 in)) // Espaciamiento máximo (5.7.2.6)
 check Avs >= 0.0316*sqrt(fc/(1 ksi))*1 ksi*bw*sv/fy // Refuerzo transversal mínimo (5.7.2.5-1)
+## Refuerzo longitudinal en la cara del apoyo (5.7.3.5)
+lpx = 18 in // Distancia del extremo de la viga a la cara interior del apoyo [6..36]
+ldv = 1.6*(fps - 2/3*fpe)/(1 ksi)*dbs -> ft // Longitud de desarrollo del torón, κ = 1.6 (5.9.4.3.2-1)
+fpx = si(lpx <= lt, fpe*lpx/lt, min(fpe + (lpx - lt)/(ldv - lt)*(fps - fpe), fps)) -> ksi // Esfuerzo desarrollable en la cara del apoyo (5.9.4.3.2)
+Vsl = min(Vs, Vux/0.90) -> kip // Vs no mayor que Vu/φ (5.7.3.5)
+Treq = (Vux/0.90 - 0.5*Vsl - Vp)*cot(theta) -> kip // Tracción requerida (5.7.3.5-2; Vu, Vs, Vp y θ a dv de la cara, C5.7.3.5)
+Tprov = Aps*fpx -> kip // Fuerza que pueden desarrollar los torones
+check Treq <= Tprov // Refuerzo longitudinal en el apoyo (5.7.3.5-2)
+## Cortante de interfaz viga–losa (5.7.4)
+Vui = Vux/dv -> kip/ft // Fuerza de interfaz por unidad de longitud (5.7.4.5-2)
+cc = 0.28 ksi // Cohesión: losa vaciada contra el ala rugosa de ¼ in (5.7.4.4) [0.075..0.40]
+mui = 1.0 // Coeficiente de fricción (5.7.4.4) [0.6..1.0]
+Avfi = Avs/sv -> in^2/ft // Estribos que se prolongan dentro de la losa
+Vni = min(cc*btf + mui*Avfi*fy, 0.3*fcd*btf, 1.8 ksi*btf) -> kip/ft // Vni = c Acv + μ(Avf fy + Pc) ≤ K1 f'c Acv, K2 Acv; Pc = 0 (5.7.4.3)
+check Vui <= 0.90*Vni // Cortante de interfaz, φ = 0.90 (5.7.4.3-1)
+Avfmin = 0.05 ksi*btf/fy -> in^2/ft // Área mínima 0.05 Acv/fy por pie de longitud
+check Avfi >= Avfmin // Área mínima de refuerzo de interfaz (5.7.4.2-1)
+## Hendimiento en la zona de anclaje (5.9.4.4.1)
+Prq = 0.04*Aps*fpj -> kip // 4 % de la fuerza de tensado antes de la transferencia
+Asplr = Prq/(20 ksi) -> in^2 // Área requerida dentro de h/4 desde el extremo, fs ≤ 20 ksi
+nsp = 5 // Estribos #5 de dos ramas dentro de h/4 = 13.5 in [3..10]
+check nsp*2*0.31 in^2 >= Asplr // Resistencia al hendimiento (5.9.4.4.1)
 # Deflexión por carga viva (2.5.2.6.2)
 DFd = NL*mpLRFD(NL)/Nb // Todos los carriles cargados
 EIc = Ec*Ic -> kip*in^2
@@ -637,8 +666,8 @@ Sb3 = I3/y3 // Módulo inferior compuesto (3n)
 wst = 1.10*gammas*As -> kip/ft // Acero + 10 % por rigidizadores, diafragmas y conexiones
 wsl = gammac*(S*ts + bc*th) -> kip/ft // Losa + acartelamiento (DC1)
 wb = 2*0.40 kip/ft/Nb // Barreras (DC2), repartidas por igual (4.6.2.2.1)
-ww = 0.025 kip/ft^2*wcc/Nb // Superficie de rodadura futura 25 psf (DW)
-wcl = 0.020 kip/ft^2*S // Carga viva de construcción 20 psf (3.4.2.1)
+ww = 0.025 kip/ft^2*wcc/Nb -> kip/ft // Superficie de rodadura futura 25 psf (DW)
+wcl = 0.020 kip/ft^2*S -> kip/ft // Carga viva de construcción 20 psf (3.4.2.1)
 MDC1 = (wst + wsl)*L^2/8 -> kip*ft
 MDC2 = wb*L^2/8 -> kip*ft
 MDW = ww*L^2/8 -> kip*ft
@@ -715,6 +744,47 @@ kv = 5 // Alma sin rigidizadores transversales [5..20]
 Cv = si(D/tw <= 1.12*sqrt(Es*kv/Fy), 1, si(D/tw <= 1.40*sqrt(Es*kv/Fy), 1.12/(D/tw)*sqrt(Es*kv/Fy), 1.57/(D/tw)^2*(Es*kv/Fy))) // Relación C (6.10.9.3.2-4 a -6)
 Vn = Cv*Vp // Resistencia nominal del alma no rigidizada (6.10.9.2-1)
 check Vu <= 1.00*Vn // φv = 1.00
+## Rigidizadores de apoyo (6.10.11.2, obligatorios en vigas armadas)
+bp = 6 in // Ancho de cada platina del par de rigidizadores [4..10]
+tp = 0.75 in // Espesor de las platinas [0.5..1.5]
+check bp/tp <= 0.48*sqrt(Es/Fy) // Esbeltez de la platina bt/tp ≤ 0.48√(E/Fys) (6.10.11.2.2-1)
+Apn = 2*(bp - 1 in)*tp // Área de contacto con el ala (recorte de 1 in por el filete alma–ala)
+Rsbr = 1.0*1.4*Apn*Fy -> kip // Aplastamiento de los extremos, φb = 1.0 (6.10.11.2.3-1, -2)
+check Vu <= Rsbr // Aplastamiento del rigidizador de apoyo
+Ast_r = 2*bp*tp + 18*tw^2 // Columna efectiva: platinas + 9tw a cada lado del alma (6.10.11.2.4b)
+I_st = tp*(2*bp + tw)^3/12 // Inercia de las platinas respecto al plano del alma
+r_st = sqrt(I_st/Ast_r) // Radio de giro de la columna efectiva
+lambda_st = (0.75*D/(r_st*pi))^2*Fy/Es // λ = (KL/rπ)²·Fy/E con KL = 0.75D (6.10.11.2.4a y 6.9.4.1)
+Pn_st = si(lambda_st <= 2.25, 0.658^lambda_st*Fy*Ast_r, 0.877*Fy*Ast_r/lambda_st) -> kip // Resistencia nominal a compresión
+check Vu <= 0.95*Pn_st // Resistencia axial del rigidizador, φc = 0.95 (6.10.11.2.4)
+# Fatiga del ala inferior (6.6.1.2, Fatiga I)
+gF = gMi1LRFD(S, L, ts, Kg)/1.2 // Un carril, sin factor de presencia múltiple (3.6.1.1.2)
+Mfat = 1.15*MfatLRFD(L) -> kip*ft // Camión de fatiga (ejes posteriores a 30 ft) con IM = 15 % (3.6.1.4, Tabla 3.6.2.1-1)
+dff = 1.75*gF*Mfat/Sbn -> ksi // γ(Δf), Fatiga I con γ = 1.75 (Tabla 3.4.1-1)
+Fth = 12 ksi // Categoría C′: placas de conexión de diafragmas soldadas al ala (Tabla 6.6.1.2.5-3) [7..24]
+check dff <= Fth // Vida infinita: γ(Δf) ≤ (ΔF)TH (6.6.1.2.2-1)
+# Conectores de corte (6.10.10)
+dst = 0.875 in // Diámetro del perno conector [0.75 in|0.875 in] [0.625..1]
+nst = 3 // Pernos por fila transversal [2..4]
+pst = 9 in // Paso longitudinal de las filas [6..24]
+Hst = 6 in // Altura del perno [4..8]
+Asc = pi*dst^2/4 // Área de un perno
+check Hst/dst >= 4 // Relación altura/diámetro ≥ 4 (6.10.10.1.1)
+check pst >= 6*dst and pst <= 24 in // 6d ≤ p ≤ 24 in (6.10.10.1.2)
+check Hst >= th + 2 in and Hst <= th + ts - 3 in // Penetración ≥ 2 in en la losa y recubrimiento superior ≥ 3 in (6.10.10.1.4)
+## Fatiga (6.10.10.2, vida infinita)
+Zr = 5.5*(dst/(1 in))^2*1 kip // Resistencia a la fatiga de un perno (6.10.10.2-1, Fatiga I)
+gFV = gVi1LRFD(S)/1.2 // Cortante, un carril, sin factor de presencia múltiple
+Vsr = 1.75*gFV*1.15*VfatLRFD(L) -> kip // Rango de cortante de fatiga en el apoyo (Fatiga I)
+Qn_s = Adn*(yd - yn) -> in^3 // Momento estático de la losa transformada (n)
+psr = nst*Zr/(Vsr*Qn_s/In) -> in // Paso máximo por fatiga p ≤ n Zr/Vsr (6.10.10.1.2-1)
+check pst <= psr // Paso de conectores por fatiga
+## Resistencia (6.10.10.4)
+Qn = min(0.5*Asc*sqrt(fc*Ecd), Asc*60 ksi) -> kip // Resistencia nominal de un perno (6.10.10.4.3-1), Fu = 60 ksi
+Pp = min(Ps, Pc + Pw + Pt) -> kip // Fuerza de corte horizontal entre M máximo y el apoyo (6.10.10.4.2)
+nreq = Pp/(0.85*Qn) // Número requerido, φsc = 0.85 (6.10.10.4.1-2)
+nprov = nst*floor(L/(2*pst)) // Pernos colocados entre el apoyo y el centro de la luz
+check nprov >= nreq // Conectores por resistencia (6.10.10.4.1)
 # Deflexión por carga viva (2.5.2.6.2)
 DFd = NL*mpLRFD(NL)/Nb // Todos los carriles cargados
 EIn = Es*In -> kip*in^2
@@ -1093,7 +1163,8 @@ SD1 = Fv*S1 // (3.10.4.2-6)
 Ts = SD1/SDS*1 s // Periodo de esquina
 T0 = 0.2*Ts
 zona = zonaLRFD(SD1) // Zona sísmica (Tabla 3.10.6-1)
-R = si(imp == 1, 1.5, si(imp == 2, 3.5, 5.0)) // Pórtico de varias columnas (Tabla 3.10.7.1-1)
+sub = 4 // Tipo de subestructura (Tabla 3.10.7.1-1) [1 : Pilar tipo muro, dirección mayor|2 : Pilotes verticales de concreto armado|3 : Columna simple|4 : Pórtico de varias columnas|5 : Pilotes verticales de acero o compuestos]
+R = si(imp == 1, 1.5, si(sub == 1, si(imp == 2, 1.5, 2.0), si(sub == 2 or sub == 3, si(imp == 2, 2.0, 3.0), si(imp == 2, 3.5, 5.0)))) // Factor R de la subestructura (Tabla 3.10.7.1-1)
 # Masa, rigidez y periodo
 W = 1.25*(wDCs + wDWs)*L1 + Wcab + ncol*2.40 tonf/m^3*bcol^2*Hc/2 -> tonf // Reacción continua 1.25wL + cabezal + mitad de columnas
 Ig = bcol^4/12 -> m^4 // Inercia bruta de una columna
@@ -1354,9 +1425,9 @@ Csm = CsmLRFD(Tm, As, SDS, SD1) // Coeficiente de respuesta elástico (3.10.4.2)
 pe = Csm*W/Ltot -> tonf/m // Carga sísmica uniforme equivalente (4.7.4.3.2c-4)
 Fe = pe*Ltot // Fuerza sísmica elástica total
 De = pe*Ltot/Kb -> cm // Desplazamiento elástico
-R = si(imp == 1, 1.5, si(imp == 2, 3.5, 5.0)) // Pórtico de varias columnas (Tabla 3.10.7.1-1)
+sub = 4 // Tipo de subestructura (Tabla 3.10.7.1-1) [1 : Pilar tipo muro, dirección mayor|2 : Pilotes verticales de concreto armado|3 : Columna simple|4 : Pórtico de varias columnas|5 : Pilotes verticales de acero o compuestos]
+R = si(imp == 1, 1.5, si(sub == 1, si(imp == 2, 1.5, 2.0), si(sub == 2 or sub == 3, si(imp == 2, 2.0, 3.0), si(imp == 2, 3.5, 5.0)))) // Factor R de la subestructura (Tabla 3.10.7.1-1)
 FR = Fe/R // Fuerza de diseño de la subestructura
-check zona >= 1 and zona <= 4 // Zona sísmica definida
 "Periodo $T_m$ = {Tm}: $C_{sm}$ = {Csm}; fuerza elástica {Fe} y de diseño {FR} con $R$ = {R}.
 # Fuerzas mínimas en conexiones (3.10.9)
 Fcon1 = si(As < 0.05, 0.15, 0.25)*W // Zona 1: 0.15 o 0.25 de la carga permanente tributaria (3.10.9.2)
@@ -1380,9 +1451,9 @@ check Nreq <= bseat // Longitud de apoyo suficiente`),
 const boxCombo = (k, gDC, gEV, gEH, gLS, gLL) => `## Combinación ${k}
 qt${k} = ${gDC}*wtop + ${gEV}*pEV // Carga uniforme sobre la losa superior
 qL${k} = ${gLL}*pLL // Carga viva sobre la longitud c (centrada)
-qb${k} = (qt${k}*Lc + qL${k}*cL + ${gDC}*2*wwall)/Lc // Reacción uniforme del suelo bajo la losa inferior
-pA${k} = (${gEH}*k0*gammas*(Hf + tt/2) + ${gLS}*k0*gammas*heq)*1 m // Presión lateral en el eje de la losa superior
-pB${k} = (${gEH}*k0*gammas*(Hf + tt/2 + Hcl) + ${gLS}*k0*gammas*heq)*1 m // Presión lateral en el eje de la losa inferior
+qb${k} = (qt${k}*Lc + qL${k}*cL + ${gDC}*2*wwall)/Lc -> tonf/m // Reacción uniforme del suelo bajo la losa inferior
+pA${k} = (${gEH}*k0*gammas*(Hf + tt/2) + ${gLS}*k0*gammas*heq)*1 m -> tonf/m // Presión lateral en el eje de la losa superior
+pB${k} = (${gEH}*k0*gammas*(Hf + tt/2 + Hcl) + ${gLS}*k0*gammas*heq)*1 m -> tonf/m // Presión lateral en el eje de la losa inferior
 FEt${k} = -(qt${k}*Lc^2/12 + qL${k}*cL*(3*Lc^2 - cL^2)/(24*Lc)) // Momento de empotramiento, losa superior (horario +)
 FEb${k} = qb${k}*Lc^2/12 // Losa inferior (carga hacia arriba)
 FEab${k} = pA${k}*Hcl^2/12 + (pB${k} - pA${k})*Hcl^2/30 // Muro, extremo superior
@@ -1456,8 +1527,8 @@ Hintt = (1.80 m - 0.51 m - 0.06*Di)/LLDF // Profundidad de interacción entre ru
 ww = si(Hf > Hintt, 0.51 m + 1.80 m + LLDF*Hf + 0.06*Di, 0.51 m + LLDF*Hf + 0.06*Di) // Ancho de la huella a la profundidad H (perpendicular a la luz)
 lwt = 0.25 m + LLDF*Hf // Longitud de la huella de un eje del camión (paralela a la luz)
 lwd = si(Hf > (1.20 m - 0.25 m)/LLDF, 0.25 m + 1.20 m + LLDF*Hf, 0.25 m + LLDF*Hf) // Longitud de la huella del tándem
-pLLt = mpLRFD(1)*(1 + IMb)*14.52 tonf/(ww*lwt)*1 m // Presión por eje del camión
-pLLd = mpLRFD(1)*(1 + IMb)*22.68 tonf/(ww*lwd)*1 m // Presión por el tándem
+pLLt = mpLRFD(1)*(1 + IMb)*14.52 tonf/(ww*lwt)*1 m -> tonf/m // Presión por eje del camión
+pLLd = mpLRFD(1)*(1 + IMb)*22.68 tonf/(ww*lwd)*1 m -> tonf/m // Presión por el tándem
 pLL = max(pLLt, pLLd) -> tonf/m // Presión viva de diseño (por metro de franja)
 cL = min(si(pLLt >= pLLd, lwt, lwd), Lc) // Longitud cargada sobre la luz
 "Luz de la losa superior ≤ 4.60 m: solo se aplican los ejes del camión o del tándem, sin carga de carril (3.6.1.3.3).
@@ -1521,6 +1592,17 @@ vcs = 0.178*sqrtMPa(fc) + 32*Ab(bar)/(s1*dts)*min(Vu*dts/Mux, 1)*1 MPa // Esfuer
 Vc = min(vcs, 0.332*sqrtMPa(fc))*100 cm*dts -> tonf // Con el límite 0.332√f'c (5.12.7.3)
 phiv = 0.85 // Cortante en alcantarillas cajón vaciadas in situ (Tabla 12.5.5-1)
 check Vu <= phiv*Vc // Cortante sin estribos
+## Cortante en la losa inferior a dv de la cara del muro (5.12.7.3)
+dv3 = max(0.9*dbs, 0.72*tb)
+Vu3 = max(qb1, qb2)*(Bi/2 - dv3) -> tonf // Reacción del suelo (la losa inferior recibe la carga de la superior y de los muros)
+Mux3 = max(abs(MB1), abs(MB2), Vu3*dbs) // Momento concomitante
+vcs3 = 0.178*sqrtMPa(fc) + 32*Ab(bar)/(s3*dbs)*min(Vu3*dbs/Mux3, 1)*1 MPa // (5.12.7.3-1, SI)
+Vc3 = min(vcs3, 0.332*sqrtMPa(fc))*100 cm*dbs -> tonf
+check Vu3 <= phiv*Vc3 // Cortante sin estribos en la losa inferior
+## Presión de contacto en servicio
+qadm = 1.0 kgf/cm^2 // Capacidad admisible del suelo de fundación (EMS, E.050) [0.5..4]
+qsv = qb3/(1 m) + gammac*tb -> kgf/cm^2 // Servicio I: reacción de la losa inferior + su peso propio
+check qsv <= qadm // Presión de contacto (E.050)
 ## Servicio I — fisuración en el centro de la losa superior (5.6.7)
 Ms = Mt3 -> tonf*m
 nmod = 200000 MPa/Ec
@@ -1562,6 +1644,8 @@ const peatonal = {
   blocks: [
     text(`# Generalidades
 Puente peatonal de un tramo simplemente apoyado de **30.00 m** con dos vigas I armadas de acero ASTM A709 Gr. 50 separadas 2.00 m y losa de concreto de 0.12 m (no compuesta) con barandas metálicas. El ancho libre es de 2.50 m.
+
+**Hipótesis de arriostramiento.** En servicio el ala superior se considera arriostrada en forma continua por la losa, que debe quedar **fijada al ala** (pernos o conectores sin contar con acción compuesta). Durante el vaciado el ala superior solo está arriostrada por los diafragmas, cada $L_b$: se verifica la **constructibilidad** (AASHTO 6.10.3) con el peso del concreto fresco y la carga de construcción.
 
 ## Normas y referencias
 - AASHTO, *LRFD Guide Specifications for the Design of Pedestrian Bridges* (2009, rev. 2015): 3.1 (carga peatonal 90 psf = 4.3 kPa sin reducción por área), 3.2 (vehículo de mantenimiento H5 para anchos de 2.1 a 3.0 m), 5 (deflexión L/360), 6 (vibraciones: $f_v \\ge 3.0$ Hz o $W \\ge 180\\,e^{-0.35 f}$ kip; $f_{lat} \\ge 1.3$ Hz).
@@ -1618,6 +1702,16 @@ Fnc = si(lamf <= lampf, Rb*Fy, Rb*Fy*(1 - (1 - 0.7)*(lamf - lampf)/(lamrf - lamp
 fbu = Mu/Sx -> MPa
 check fbu <= 1.00*Fnc // Ala comprimida (6.10.8.1.1-1, φf = 1.0)
 check fbu <= 1.00*Fy // Ala traccionada (6.10.8.1.2-1)
+## Constructibilidad: vaciado de la losa con el ala superior arriostrada solo por diafragmas (6.10.3.2.1)
+Lb = 5.0 m // Separación de diafragmas o arriostres transversales durante el vaciado [2..10]
+wcon = 0.96 kPa // Carga viva de construcción 20 psf (3.4.2.1) [0.5..2]
+Mcon = (1.25*wDC + 1.50*wcon*(wb + 0.30 m)/nv)*L^2/8 -> kN*m // Acero + concreto fresco + construcción, factorizados
+fbc = Mcon/Sx -> MPa // Esfuerzo en el ala comprimida (sección no compuesta)
+rt = bf/sqrt(12*(1 + Dc*tw/(3*bf*tf))) // Radio de giro efectivo (6.10.8.2.3-9)
+Lp = 1.0*rt*sqrt(Es/Fy) -> m // (6.10.8.2.3-4)
+Lr = pi*rt*sqrt(Es/(0.7*Fy)) -> m // (6.10.8.2.3-5)
+Fltb = si(Lb <= Lp, Rb*Fy, si(Lb <= Lr, Rb*Fy*(1 - 0.3*(Lb - Lp)/(Lr - Lp)), min(Rb*pi^2*Es/(Lb/rt)^2, Rb*Fy))) -> MPa // Pandeo lateral-torsional con Cb = 1 (6.10.8.2.3)
+check fbc <= 1.00*min(Fnc, Fltb) // Ala comprimida durante el vaciado (6.10.3.2.1-2)
 ## Cortante (6.10.9)
 Vp = 0.58*Fy*D*tw -> kN
 kv = 5 // Alma sin rigidizadores intermedios [5..20]

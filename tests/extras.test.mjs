@@ -278,6 +278,17 @@ section('Encamisado de columna');
   near('Avf = (Pu − φPn0)/(φ·fy·μ)', g('Avf', 'cm^2'), (150 - P0) * 1000 / (0.85 * 4200), 1e-6);
 }
 
+section('Segunda opinión — tercera tanda A (extras)');
+{
+  // Máquina: con Vs = 410 m/s, rz ≈ 1.35 pasa la banda ±20 % pero no la variación 0.5G–1.5G (ACI 351.3R-18 Cap. 4)
+  const m = runTemplate('ex-cim-maquina', setData({ Vs: '410 m/s' }));
+  const rz = m('rz');
+  truthy('Máquina: rz = ' + rz.toFixed(2) + ' fuera de ±20 % pero dentro de la banda con 1.5G → NO CUMPLE la verificación con G variable', rz > 1.2 && rz / Math.sqrt(1.5) < 1.2 && m.res.ctx.checks.some(c => !c.ok && /0.5G y 1.5G/.test(c.label)) && m.res.ctx.errors.length === 0);
+  // Letrero: la tracción del perno usa 0.9D (la carga muerta alivia)
+  const l = runTemplate('ex-letrero');
+  near('Letrero: Tb = 4Mu/(n·Dbc) − 0.9·Wd/n [tonf]', l('Tb', 'tonf'), 4 * l('Mu', 'tonf*m') / (8 * 0.75) - 0.9 * l('Wd', 'tonf') / 8, 1e-6);
+}
+
 section('Bloques gráficos del módulo (datos por defecto)');
 for (const k of ['exEscalera', 'exCapas', 'exMaquina', 'exAcople', 'exDiafragma', 'exCable', 'exAnclado', 'exLetrero', 'exFRP', 'exPMcirc']) {
   let ok = false, info = '';

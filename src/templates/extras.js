@@ -292,7 +292,7 @@ const maquina = {
     text(`# Generalidades
 Bloque macizo de concreto armado que soporta un equipo rotativo (bomba, ventilador o compresor centrífugo acoplado a motor). Se analiza como **cuerpo rígido sobre un semiespacio elástico** con el modelo de parámetros concentrados de Richart, Hall y Woods (1970), recomendado por el ACI 351.3R-18 (Cap. 4): para cada modo (vertical, horizontal y cabeceo) se calcula la rigidez, el amortiguamiento geométrico y la frecuencia natural, que debe alejarse de la frecuencia de operación al menos ±20 % (ACI 351.3R-18, criterio de no resonancia). La amplitud forzada se obtiene con la fuerza de desbalance del rotor según el grado de balanceo G (ISO 21940-11) y se compara con un límite de velocidad de vibración.
 
-La fuerza de desbalance gira en el plano perpendicular al eje de la máquina: su componente horizontal actúa en la dirección del **ancho** $B$ y produce **cabeceo alrededor del eje longitudinal** (paralelo al eje de la máquina, dirección $L$), que es la dirección más flexible del bloque. Simplificación: modos desacoplados y empotramiento despreciado (conservador para las frecuencias).`),
+La fuerza de desbalance gira en el plano perpendicular al eje de la máquina: su componente horizontal actúa en la dirección del **ancho** $B$ y produce **cabeceo alrededor del eje longitudinal** (paralelo al eje de la máquina, dirección $L$), que es la dirección más flexible del bloque. Simplificación: modos desacoplados y empotramiento despreciado. El empotramiento y la incertidumbre del módulo de corte cambian las frecuencias naturales en ambos sentidos; por eso, como recomienda el ACI 351.3R-18 (Cap. 4), la condición de no resonancia se verifica también con $G$ entre $0.5G$ y $1.5G$ (las frecuencias varían con $\\sqrt{G}$).`),
     calc(`# Datos
 ## Máquina
 Wm = 6.0 tonf // Peso total de la máquina y el motor [0.5..100]
@@ -335,6 +335,7 @@ Dz = 0.425/sqrt(Bz) // Amortiguamiento geométrico
 fz = sqrt(kz/mt)/(2*pi) -> Hz // Frecuencia natural vertical
 rz = fop/fz // Relación de frecuencias
 check abs(rz - 1) >= 0.2 // Fuera de la banda de resonancia ±20 % (ACI 351.3R)
+check si(rz > 1, rz/sqrt(1.5) >= 1.2, rz*sqrt(2) <= 0.8) // Sin resonancia con G entre 0.5G y 1.5G (ACI 351.3R-18 Cap. 4: variación de las propiedades del suelo)
 ## Respuesta forzada
 Fo = SFd*Wr/(9.80665 m/s^2)*Gbal*omega -> tonf // Fuerza de desbalance Fo = SF·mr·e·ω² con e·ω = G
 Az = Fo/kz/sqrt((1 - rz^2)^2 + (2*Dz*rz)^2) -> mm // Amplitud vertical
@@ -347,6 +348,7 @@ Dx = 0.2875/sqrt(Bx) // Amortiguamiento geométrico
 fx = sqrt(kx/mt)/(2*pi) -> Hz // Frecuencia natural horizontal
 rx = fop/fx // Relación de frecuencias
 check abs(rx - 1) >= 0.2 // Fuera de la banda de resonancia (ACI 351.3R-18 Cap. 3)
+check si(rx > 1, rx/sqrt(1.5) >= 1.2, rx*sqrt(2) <= 0.8) // Sin resonancia horizontal con G entre 0.5G y 1.5G (ACI 351.3R-18 Cap. 4: variación de las propiedades del suelo)
 Ax = Fo/kx/sqrt((1 - rx^2)^2 + (2*Dx*rx)^2) -> mm // Amplitud horizontal en la base
 # Modo de cabeceo (alrededor del eje longitudinal, paralelo a L; fuerza en la dirección de B)
 r0p = (L*B^3/(3*pi))^(1/4) -> m // Radio equivalente para cabeceo r0 = (L·B³/3π)^¼
@@ -358,6 +360,7 @@ Dpsi = 0.15/((1 + Bpsi)*sqrt(Bpsi)) // Amortiguamiento geométrico
 fpsi = sqrt(kpsi/Ipsi)/(2*pi) -> Hz // Frecuencia natural de cabeceo
 rpsi = fop/fpsi // Relación de frecuencias
 check abs(rpsi - 1) >= 0.2 // Fuera de la banda de resonancia (ACI 351.3R-18 Cap. 3)
+check si(rpsi > 1, rpsi/sqrt(1.5) >= 1.2, rpsi*sqrt(2) <= 0.8) // Sin resonancia de cabeceo con G entre 0.5G y 1.5G (ACI 351.3R-18 Cap. 4: variación de las propiedades del suelo)
 Mo = Fo*(hb + hm) -> tonf*m // Momento de desbalance respecto a la base
 Apsi = Mo/kpsi/sqrt((1 - rpsi^2)^2 + (2*Dpsi*rpsi)^2) // Giro de cabeceo (rad)
 Ahe = Ax + Apsi*(hb + hm) -> mm // Amplitud horizontal total al nivel del eje
@@ -826,7 +829,7 @@ check IH3 <= 1.0 // Flexión + axial + cortante + torsión (H3.2)
 dtop = Fp*zp^2*(3*Ht - zp)/(6*Es*Ip) -> cm // Desplazamiento en la cima por la fuerza del panel
 check dtop <= Ht/100 // Límite usual H/100 para letreros (criterio de servicio, ASCE 7-22 C.1.2)
 # Pernos de anclaje
-Tb = 4*Mu/(nb*Dbc) - Pu/nb -> tonf // Tracción en el perno más esforzado
+Tb = 4*Mu/(nb*Dbc) - 0.9*Wd/nb -> tonf // Tracción en el perno más esforzado con 0.9D + γW·W (la carga muerta alivia: E.090 1.4-6)
 Abp = pi*dbp^2/4 -> cm^2 // Área nominal
 phiRt = 0.75*0.75*Fub*Abp -> tonf // φRn = 0.75·Fnt·Ab con Fnt = 0.75Fu (AISC J3)
 check Tb <= phiRt // Tracción en pernos (AISC 360-16 J3.6)
