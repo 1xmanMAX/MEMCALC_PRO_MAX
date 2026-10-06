@@ -466,21 +466,22 @@ Mprc = 1.25*max(Mn_X(Pumin), Mn_X(Pumax), Mn_X(min(max(Pb_X, Pumin), Pumax))) //
 Vu1 = 2*Mprc/hn -> tonf // Cortante con Mpr de la columna en ambos extremos
 Vu2 = 1.25*SMnv/hn -> tonf // Límite por las vigas: Mpr de vigas repartido a las dos columnas del nudo
 Vu = max(min(Vu1, Vu2), Vua) // Cortante de diseño
-d = hc - recl - db(est) - db(bar)/2 // Peralte efectivo
+d = b - recl - db(est) - db(bar)/2 // Peralte efectivo en la dirección del pórtico (dimensión b)
 phiv = 0.85 // Cortante [0.75..0.85]
-Vc = 0.53*sqrtfc(fc)*(1 + Pumin/(140 kgf/cm^2*Ag))*b*d -> tonf // Vc con compresión axial (ec. 11-4, Anexo II)
+Vc0 = 0.53*sqrtfc(fc)*(1 + Pumin/(140 kgf/cm^2*Ag))*hc*d -> tonf // Vc con compresión axial (ec. 11-4, Anexo II); ancho del alma = hc
+Vc = si(Pumin < Ag*fc/20, 0 tonf, Vc0) // En Lo, Vc = 0 si Pu < Ag f'c/20 y el cortante sísmico es ≥ 50 % del total (E.060 21.6.5.2; con Ve por capacidad el sismo domina)
 Av = nramas*Ab(est) // Área de estribos
 Vs = max(Vu/phiv - Vc, 0 tonf) // Resistencia requerida del acero
-s_v = si(Vs > 0 tonf, Av*fy*d/Vs, 30 cm) // Espaciamiento por cortante
+s_v = si(Vs > 0 tonf, Av*fy*d/Vs, 30 cm) -> cm // Espaciamiento por cortante
 # Refuerzo de confinamiento (E.060 21.6.4)
 so = rounddown(max(min(min(b, hc)/3, 6*db(bar), 10 cm, s_v), 2.5 cm), 2.5 cm) // Espaciamiento en Lo (21.6.4.2)
 Lo = max(max(b, hc), hn/6, 50 cm) -> cm // Longitud de confinamiento (21.6.4.4)
-bc = hc - 2*recl - db(est) // Dimensión del núcleo c. a c. de estribos
+bc = max(b, hc) - 2*recl - db(est) // Dimensión del núcleo c. a c. de estribos (la mayor de las dos direcciones, conservador si la sección no es cuadrada)
 Ach = (b - 2*recl)*(hc - 2*recl) // Área del núcleo al exterior del estribo
 Ash1 = 0.3*so*bc*fc/fy*(Ag/Ach - 1) // ec. 21-3
 Ash2 = 0.09*so*bc*fc/fy // ec. 21-4
 check Av >= max(Ash1, Ash2) // Refuerzo de confinamiento Ash
-hx = (hc - 2*recl)/(nramas - 1) // Separación entre ramas
+hx = (max(b, hc) - 2*recl)/(nramas - 1) // Separación entre ramas (dirección más larga)
 check hx <= 35 cm // hx ≤ 350 mm (21.6.4.3)
 phiVn = phiv*(Vc + Av*fy*d/so) -> tonf // Resistencia de diseño con so
 check Vu <= phiVn // Resistencia a cortante

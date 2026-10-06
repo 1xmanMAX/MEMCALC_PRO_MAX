@@ -115,6 +115,10 @@ dlim = dlimE030(mat) // Distorsión máxima permitida (Art. 51, Tabla N° 14)
 check max(deriva_max) <= dlim // Distorsión máxima de entrepiso, en el extremo del edificio (Art. 51)
 u_i = cumsum(Delta_i) // Desplazamiento lateral inelástico de cada nivel (centro de masas)
 umax = max(rt .* u_i) -> cm // Desplazamiento inelástico máximo de la azotea en el extremo (para la junta sísmica, Art. 52)
+## Efectos de segundo orden (P-Δ)
+Ni = P - cumsum(P_i) + P_i // Peso acumulado sobre cada entrepiso
+Q = Ni .* Delta_i ./ (Vi .* hei)/R // Índice de estabilidad Q = Ni·Δi/(Vi·hei·R), Δi inelástico (E.030; equivale al coeficiente θ de ASCE 7 §12.8.7)
+check max(Q) <= 0.10 // Efectos P-Δ despreciables si Q ≤ 0.10; en caso contrario se incluyen en el análisis
 ## Verificación del periodo con la fórmula de Rayleigh
 di = cumsum(De) // Desplazamiento elástico de cada nivel bajo Fi (traslación pura)
 g0 = 9.81 m/s^2 // Aceleración de la gravedad [9.78..9.83]
@@ -131,6 +135,7 @@ Dmax = rt .* Dprom // Desplazamiento relativo máximo en el extremo del edificio
   { type: 'irregE030', K: 'Ki', P: 'P_i', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva_max', dlim: 'dlim', disc: '0', esq: false, diaf: false, nopar: false, cat: 'categoria', zona: 'zona' },
   calc(`check Ia <= Ia_ev // El factor Ia supuesto no excede el evaluado (Art. 24.1)
 check Ip <= Ip_ev // El factor Ip supuesto no excede el evaluado (Art. 24.2)
+check irr >= si(Ia_ev*Ip_ev < 1, 1, 0) // Si la estructura resulta irregular, los desplazamientos se amplifican por 0.85R y no por 0.75R (Art. 50.2)
 check Ia_ev*Ip_ev == 1 or zona == 1 or ((sistema == 9 or sistema == 10 or sistema == 11) and hn <= 15 m) // Análisis estático permitido: estructura regular, zona 1, o muros portantes de C°A°/albañilería de hasta 15 m (Art. 33.2)`),
   { type: 'spectrum', Z: 'Z', U: 'U', S: 'S', Tp: 'Tp', Tl: 'Tl', R: 'R', T: 'T', titulo: 'Espectro de diseño ZUCS/R (E.030-2026 Art. 18 y 41) y periodo fundamental' },
   text(`> **Notas.** (1) El análisis se repite en la dirección Y con $e_i = 0.05\\,L_x$. (2) Si la estructura resultara irregular, el método estático solo se permite en la zona 1 o para muros portantes de C°A° y albañilería de hasta 15 m (Art. 33.2); en otro caso use el análisis dinámico modal espectral. (3) Para verificaciones por esfuerzos admisibles las fuerzas sísmicas se multiplican por 0.8 (Art. 29).`),
@@ -161,6 +166,7 @@ Ki = [72000, 61000, 56000, 50000, 41000] tonf/m // Rigidez lateral de entrepiso 
 irr = 0 // Regularidad de la estructura [0 : Regular|1 : Irregular]
 fd = fdespE030(irr)*R // Factor de desplazamientos inelásticos 0.75R / 0.85R (Art. 50)
 pmin = si(irr == 1, 0.90, 0.80) // Fracción mínima del cortante estático (Art. 44.1)
+check irr >= si(Ia*Ip < 1, 1, 0) // Coherencia: con Ia·Ip < 1 la estructura es irregular (0.85R y 90 % del cortante estático)
 dlim = dlimE030(1) // Distorsión máxima para concreto armado (Tabla N° 14)`),
   { type: 'plot', expr: 'Sa(x); Z*U*CE030(x, Tp, Tl)*S/R', var: 'x', desde: '0', hasta: '3', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Sa/g', leyenda: true, nombres: 'Espectro dinámico (Tabla N° 6, con rama T < 0.2 TP); Factor del análisis estático (C = 2.5 para T ≤ TP)', titulo: 'Espectro inelástico de pseudo-aceleraciones E.030-2026' },
   calc(`# Análisis modal espectral

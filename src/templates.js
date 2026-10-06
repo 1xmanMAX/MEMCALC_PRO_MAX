@@ -62,7 +62,10 @@ epst = 0.003*(d - c)/c // Deformación unitaria del acero en tracción
 phiMn = phif*Asc*fy*(d - a/2) -> tonf*m // Momento resistente de diseño
 check Mu <= phiMn // Resistencia a flexión
 sl = (b - 2*rec - 2*db(est) - n*db(bar))/max(n - 1, 1) // Espaciamiento libre entre varillas
-check sl >= max(2.5 cm, db(bar)) // Espaciamiento mínimo (E.060 Art. 7.6.1)`),
+check sl >= max(2.5 cm, db(bar)) // Espaciamiento mínimo (E.060 Art. 7.6.1)
+barsup = 5 // Varilla superior corrida (montaje / continuidad) [4 : 1/2"|5 : 5/8"|6 : 3/4"]
+nsup = max(2, ceil(Asmin/Ab(barsup))) // Barras superiores corridas: al menos 2 y As ≥ As,mín en toda la longitud (E.060 10.5.2 y 21.4.4.1)
+check nsup*Ab(barsup) >= Asmin // Refuerzo continuo superior ≥ As,mín (E.060 21.4.4.1)`),
       calc(`## Diseño por cortante
 phiv = 0.85 // Factor de reducción por cortante (E.060 9.3.2.3)
 Vc = 0.53*sqrtfc(fc)*b*d // Resistencia del concreto (E.060 11.3.1.1)
@@ -70,7 +73,7 @@ Vs = max(Vu/phiv - Vc, 0 tonf) // Resistencia requerida del refuerzo
 Vsmax = 2.1*sqrtfc(fc)*b*d // Límite (E.060 11.5.7.9)
 check Vs <= Vsmax // Dimensiones de la sección adecuadas
 Av = 2*Ab(est) // Área de refuerzo por cortante (2 ramas)
-s1 = si(Vs > 0 tonf, Av*fy*d/Vs, 100 cm) // Espaciamiento requerido por resistencia
+s1 = si(Vs > 0 tonf, Av*fy*d/Vs, 100 cm) -> cm // Espaciamiento requerido por resistencia
 smax = si(Vs <= 1.1*sqrtfc(fc)*b*d, min(d/2, 60 cm), min(d/4, 30 cm)) // Espaciamiento máximo (E.060 11.5.5)
 s = rounddown(max(min(s1, smax), 2.5 cm), 2.5 cm) // Espaciamiento adoptado (múltiplo de 2.5 cm)
 phiVn = phiv*(Vc + Av*fy*d/s) -> tonf // Resistencia de diseño a cortante
@@ -82,7 +85,7 @@ so = rounddown(min(max(d/4, 15 cm), 10*db(bar), 24*db(est), 30 cm), 2.5 cm) // Z
 Lconf = 2*h // Longitud de confinamiento desde la cara del apoyo (21.4.4.4)
 check s <= d/2 // Fuera de la zona confinada s ≤ 0.5 d (21.4.4.5)
 "Distribución de estribos #{est}: 1 @ 5 cm (≤ 10 cm de la cara), resto @ {min(so, s)} en {Lconf} a cada extremo; resto @ {s}. El cortante de diseño de vigas sísmicas debe además cumplir 21.4.3 (capacidad o 2.5 CS).`),
-      { type: 'section', b: 'b', h: 'h', recub: 'rec', estribo: 'est', inf: '{min(n, 12)}#{bar}', sup: '2#4', lat: '0', sest: '@ {s}', titulo: 'Sección de diseño de la viga' },
+      { type: 'section', b: 'b', h: 'h', recub: 'rec', estribo: 'est', inf: '{min(n, 12)}#{bar}', sup: '{nsup}#{barsup}', lat: '0', sest: '@ {s}', titulo: 'Sección de diseño de la viga' },
       { type: 'summary' },
     ],
   },
@@ -170,7 +173,7 @@ check deltamax_CV <= deltaadm // Deflexión inmediata por CV (sección bruta)
         { var: 'rhog', esperado: 0.0142, tol: 0.001, desc: 'Cuantía de acero' },
         { var: 'so', unidad: 'cm', esperado: 10, tol: 0.0001, desc: 'Espaciamiento en Lo' },
         { var: 's_fuera', unidad: 'cm', esperado: 17.5, tol: 0.0001, desc: 'Espaciamiento fuera de Lo' },
-        { var: 'DCpm', esperado: 0.7096, tol: 0.002, desc: 'D/C en el diagrama P-M' },
+        { var: 'DCpm', esperado: 0.72544, tol: 0.002, desc: 'D/C en el diagrama P-M (bloque pmgen, φ por carga axial E.060 9.3.2.2)' },
       ],
     },
     blocks: [
@@ -188,8 +191,9 @@ ln = 2.70 m // Luz libre de la columna [2..6]`),
 Las cargas axiales y momentos últimos se ingresan en el diagrama como pares $(P_u, M_u)$, uno por línea. Los momentos ya deben incluir los efectos de esbeltez (E.060 10.10–10.13).
 
 > Verificación rápida de una dirección. Para flexión biaxial use *co-biaxial*; para esbeltez, *co-colesbelta*; para el diseño por capacidad (columna fuerte–viga débil y cortante con $M_{pr}$, Art. 21.6.2 y 21.6.5) use *co-colductil*; para secciones arbitrarias (L, T, placas) el bloque **pmgen**.`),
-      { type: 'pm', b: 'b', h: 'h', fc: 'fc', fy: 'fy', dp: 'rd', nx: 'nx', ny: 'ny', barra: 'bar', norma: 'E060', demandas: '180 tonf, 12 tonf*m // 1.4CM+1.7CV\n140 tonf, 22 tonf*m // 1.25(CM+CV)+CS\n95 tonf, 20 tonf*m // 0.9CM+CS', titulo: '' },
+      { type: 'pmgen', geom: '0 0 h b', barras: 'R rd rd h-rd b-rd ny+2 nx bar', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'X', demandas: '180 tonf, 12 tonf*m // 1.4CM+1.7CV\n140 tonf, 22 tonf*m // 1.25(CM+CV)+CS\n95 tonf, 20 tonf*m // 0.9CM+CS', titulo: 'Columna {b} × {h}: sección y diagrama de interacción (φ según E.060 9.3.2.2)' },
       calc(`## Verificaciones complementarias
+DCpm = DCpmg // Relación demanda/capacidad máxima del diagrama P–M (φ de 0.70 a 0.90 por carga axial, E.060 9.3.2.2)
 Ag = b*h // Área bruta
 Ast = (2*nx + 2*ny)*Ab(bar) // Acero longitudinal total
 rhog = Ast/Ag // Cuantía
@@ -280,10 +284,18 @@ es = (M + MS)/(P + PS) -> m // Excentricidad con sismo
 q1s = (P + PS)/(B*L)*(1 + 6*es/L) -> tonf/m^2 // Presión máxima con sismo (resultante en el núcleo central)
 check es <= L/6 // Resultante con sismo dentro del núcleo central
 check q1s <= qns // Presión máxima con sismo ≤ 1.20 qa neta`),
-      calc(`## Presión última de diseño
-Pu = 1.4*PD + 1.7*PL // Carga última (E.060 9.2.1)
-Mu = 1.4*MD + 1.7*ML // Momento último
-qu = Pu/(B*L) + 6*Mu/(B*L^2) -> tonf/m^2 // Presión última (máxima, conservadora)
+      calc(`## Presión última de diseño (E.060 9.2)
+"Las fuerzas de sismo $P_S$, $M_S$ provienen del análisis con la E.030 (nivel de resistencia) y entran con factor 1.0 en las combinaciones de la E.060 9.2.3; en la verificación de presiones de servicio se tomaron completas (conservador frente al factor 0.8 de la E.030 para esfuerzos admisibles).
+Pu1 = 1.4*PD + 1.7*PL // U1 = 1.4 CM + 1.7 CV (E.060 9.2.1)
+Mu1 = 1.4*MD + 1.7*ML
+Pu2 = 1.25*(PD + PL) + PS // U2 = 1.25(CM + CV) + CS (E.060 9.2.3)
+Mu2 = 1.25*(MD + ML) + MS
+qu1 = Pu1/(B*L) + 6*Mu1/(B*L^2) -> tonf/m^2 // Presión última máxima con U1
+qu2 = Pu2/(B*L)*(1 + 6*min(Mu2/Pu2, L/6)/L) -> tonf/m^2 // Presión última máxima con U2 (resultante en el núcleo; si sale, ver la verificación con sismo)
+Pu = max(Pu1, Pu2) // Carga última que gobierna
+Mu = si(qu2 > qu1, Mu2, Mu1) // Momento último concomitante
+qu = max(qu1, qu2) // Presión última de diseño (máxima, aplicada uniforme: conservador)
+"La combinación $0.9\\,CM \\pm CS$ (9.2.3) no gobierna la presión; controla el levantamiento, que se cubre con la verificación de la resultante en el núcleo central.
 d = hz - 7.5 cm - db(bar) // Peralte efectivo (al centro de la malla, conservador)
 check d >= 30 cm // Altura sobre el refuerzo inferior ≥ 300 mm (E.060 15.7)
 ## Verificación por punzonamiento (E.060 11.12)
@@ -324,6 +336,11 @@ ld = ldE060(bar, fc, fy) // Longitud de desarrollo en tracción, barra recta (E.
 check ld <= min(lv_L, lv_B) - 7.5 cm // Longitud disponible
 ldc = ldcE060(barcol, fc, fy) // Anclaje en compresión de las barras de la columna (E.060 12.3.2)
 check d >= ldc // Peralte suficiente para el anclaje de la columna
+## Aplastamiento en la unión columna–zapata (E.060 10.17)
+A1 = c1*c2 // Área cargada (sección de la columna)
+A2 = (c1 + 2*min(lv_L, lv_B))*(c2 + 2*min(lv_L, lv_B)) // Mayor área de la base geométricamente semejante a A1 (pendiente 1:2 dentro de la zapata)
+phiPnb = 0.70*0.85*fc*A1*min(sqrt(A2/A1), 2) -> tonf // φ = 0.70 para aplastamiento (E.060 9.3.2.4); √(A2/A1) ≤ 2 (10.17.1)
+check Pu <= phiPnb // Aplastamiento del concreto de la zapata bajo la columna
 "En zapatas rectangulares, una fracción $\\gamma_s$ = {gammas} del acero de la dirección corta se concentra en la franja central de ancho B (15.4.4.2). Para zapatas combinadas, conectadas, medianeras o con presión no uniforme (Winkler) vea las plantillas *ge-combinada*, *ge-conectada*, *ge-medianera* y *ge-winkler*.`),
       { type: 'footing', B: 'B', L: 'L', hz: 'hz', c1: 'c1', c2: 'c2', Df: 'Df', d: 'd', q1: 'q1', q2: 'q2', acero: 'Malla #{bar} @ {sep_L} (dir. L)  /  #{bar} @ {sep_B} (dir. B)', titulo: '' },
       { type: 'summary' },
@@ -734,6 +751,7 @@ k = kE030(T) // Exponente de distribución en altura (Art. 35.2)
 wi = [210, 210, 210, 160] tonf // Peso sísmico por nivel 1 → n, con el % de carga viva del Art. 31
 hi = [3, 6, 9, 12] m // Altura de cada nivel desde la base
 P = sum(wi) // Peso sísmico total
+check abs(max(hi) - hn) <= 0.05 m // Coherencia de datos: la altura del último nivel coincide con hn (usada en T, Art. 33.2 y Tabla N° 13)
 V = Z*U*S*CR*P -> tonf // Fuerza cortante en la base V = Z·U·C·S·P/R (Art. 34.1)
 alpha_i = wi .* hi.^k / sum(wi .* hi.^k) // Factor de distribución (Art. 35.1)
 Fi = alpha_i*V // Fuerza en cada nivel

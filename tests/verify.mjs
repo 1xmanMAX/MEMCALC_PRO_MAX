@@ -124,6 +124,7 @@ console.log('Plantillas base: valores de control');
   r = runT('columna');
   near('E.060 21.6.4.2: so = min(b/3, 6db, 10 cm) = 10 cm', r.v('so', 'cm'), 10);
   near('E.060 21.6.4.5: fuera de Lo ≤ min(10db, 25 cm) → 17.5 cm', r.v('s_fuera', 'cm'), 17.5);
+  near('E.060 9.3.2.2: con Pu = 95 t > 0.1 f\'c Ag, φ = 0.70 → D/C(0.9CM+CS) = 20/φMn = 0.699 (el bloque pm daba 0.59 con φ por deformación)', 20 / r.v('phiMn_X')(math.unit(95, 'tonf')).toNumber('tonf*m'), 0.699, 0.003);
   r = runT('asce7');
   near('ASCE 7-22: T = min(Tmodelo, Cu·Ta) = 1.4·0.0466·15^0.9 (s)', r.v('T'), 1.4 * 0.0466 * 15 ** 0.9);
   r = runT('zapata');
@@ -187,6 +188,19 @@ console.log('Plantillas base: «validacion», rangos usuales y modo de dimension
   const za = runT('zapata', [['PD = 60 tonf', 'PD = 120 tonf']]);
   const aok = za.v('B', 'm') > 2.05 && za.ctx.errors.length === 0;
   aok ? pass++ : fail++; console.log((aok ? '  ✔ ' : '  ✘ ') + 'Zapata en modo automático con PD = 120 t: B crece (' + za.v('B', 'm').toFixed(2) + ' m)');
+}
+console.log('Segunda opinión (docs/referencias/segunda-opinion.md)');
+{
+  const ok = (name, c) => { c ? pass++ : fail++; console.log((c ? '  ✔ ' : '  ✘ ') + name); };
+  const vg = runT('viga');
+  ok('Viga: barras superiores corridas ≥ As,mín (E.060 10.5.2 / 21.4.4.1)', vg.v('nsup') * 1.99 >= vg.v('Asmin', 'cm^2') && vg.ctx.errors.length === 0);
+  const zs = runT('zapata', [['MS = 4.0 tonf*m', 'MS = 20 tonf*m'], ['PS = 5 tonf', 'PS = 15 tonf']]);
+  near('Zapata: con sismo grande gobierna U2 = 1.25(CM+CV) + CS en qu', zs.v('qu', 'tonf/m^2'), zs.v('qu2', 'tonf/m^2'), 1e-9);
+  ok('Zapata: qu2 > qu1 con MS = 20 t·m (antes solo se usaba 1.4CM + 1.7CV)', zs.v('qu2', 'tonf/m^2') > zs.v('qu1', 'tonf/m^2'));
+  const z0 = runT('zapata');
+  near('Zapata: aplastamiento φPnb = 0.70·0.85·f\'c·A1·2 (A2/A1 ≥ 4)', z0.v('phiPnb', 'tonf'), 0.70 * 0.85 * 210 * 50 * 40 * 2 / 1000, 1e-6);
+  const sh = runT('sismo', [['hn = 12.0 m', 'hn = 15.0 m']]);
+  ok('Sismo: hn incoherente con hi → NO CUMPLE «Coherencia de datos»', sh.fails.some(l => l.includes('Coherencia de datos')));
 }
 console.log(`\nResultado: ${pass} correctas, ${fail} fallidas`);
 process.exit(fail ? 1 : 0);

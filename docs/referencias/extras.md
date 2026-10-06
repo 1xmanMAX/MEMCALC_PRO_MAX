@@ -38,8 +38,8 @@ FRP a cortante y confinamiento de columnas (ACI 440.2R-17 Cap. 11 y 12).
 | id | Categoría | Contenido principal | Validación |
 |---|---|---|---|
 | `ex-escalera-2t` | Concreto armado | Tramo + descanso simplemente apoyados, cargas distintas, Mmáx en forma cerrada contrastada con el análisis matricial (bloque `beam`), As+, As−, temperatura, cortante, A.010 | Control (equilibrio) |
-| `ex-piso-ind` | Cimentaciones | Westergaard interior/borde/esquina, montacargas y racks, FS de ACI 360R, punzonamiento de concreto simple (ACI 318-19 14.5.5), carga repartida PCA, juntas, pasadores, acero por arrastre | Fórmulas de Huang recalculadas |
-| `ex-pav-rigido` | Cimentaciones | Ecuación AASHTO 93 resuelta por bisección, ZR por confiabilidad, W18 admisible, juntas, pasadores D/8, barras de amarre | **Ejemplo publicado**: nomograma AASHTO 93 (Garber y Hoel), D = 9.75 in; la ecuación da 9.72 in |
+| `ex-piso-ind` | Cimentaciones | Westergaard interior/borde/esquina, montacargas y racks, FS de ACI 360R, punzonamiento de concreto simple (ACI 318-19 14.5.5, h − 50 mm), carga repartida PCA, juntas, pasadores (ACI 302.1R), acero por arrastre | Funciones validadas con Huang Ej. 4.1–4.3 (publicados) |
+| `ex-pav-rigido` | Cimentaciones | Ecuación AASHTO 93 resuelta por bisección, ZR por confiabilidad, W18 admisible, juntas, pasadores D/8, barras de amarre | **Ejemplo publicado**: Huang Ej. 12.6 (nomograma AASHTO 93), D = 9.75 in; la ecuación da 9.72 in; Ej. 12.7 término a término |
 | `ex-cim-maquina` | Cimentaciones | Masa mínima, presiones, rigideces y amortiguamientos de Richart–Hall–Woods (vertical, horizontal, cabeceo), frecuencias y relaciones de frecuencia, amplitud y velocidad con la fuerza de desbalance ISO 21940-11 | Control (fórmulas recalculadas) |
 | `ex-viga-acople` | Concreto armado | ℓn/h y Vu, Avd = Vu/(2φfy sen α), límite 0.83√f'c Acw (2.65√f'c kgf/cm²), confinamiento de toda la sección (18.10.7.4 d), anclaje 1.25ℓd | Control |
 | `ex-diafragma` | Concreto armado | Fpx con límites 0.5ZUS–ZUS (equivalencia con ASCE 7-22 12.10.1.1, SDS ≈ 2.5ZUS), viga horizontal, cortante ACI 12.5.3.3, cuerdas, colectores con Ω0, δ diafragma ≤ 2Δ | Control |
@@ -81,7 +81,7 @@ Bloques (`src/blocks/extras.js`): `exEscalera`, `exCapas`, `exMaquina`, `exAcopl
 
 - AASHTO (1993). *Guide for Design of Pavement Structures*, Parte II Cap. 3. Ejemplo del nomograma (k = 72 pci,
   Ec = 5×10⁶ psi, S'c = 650 psi, J = 3.2, Cd = 1.0, ΔPSI = 1.7, R = 95 %, So = 0.29, W18 = 5.1×10⁶ → D = 9.75 in) en
-  Garber y Hoel, *Traffic and Highway Engineering*; ecuación de diseño en pavementinteractive.org.
+  Huang, *Pavement Analysis and Design*, 2.ª ed., Ej. 12.6 y 12.7; ecuación de diseño en pavementinteractive.org.
 - MTC (2014). *Manual de Carreteras: Suelos, Geología, Geotecnia y Pavimentos*, Sección Pavimentos, Cap. 14.
 - Huang, Y. H. (2004). *Pavement Analysis and Design*, 2.ª ed., Cap. 4 (Westergaard).
 - ACI 360R-10 *Guide to Design of Slabs-on-Ground*; PCA EB075 *Concrete Floors on Ground* (Packard).
@@ -94,3 +94,11 @@ Bloques (`src/blocks/extras.js`): `exEscalera`, `exCapas`, `exMaquina`, `exAcopl
 - ACI 440.2R-17 *Guide for the Design and Construction of Externally Bonded FRP Systems*, Ej. 16.3 (Tabla 16.3c).
 - Matlock y Reese (1960); Reese y Van Impe (2011) *Single Piles and Pile Groups Under Lateral Loading*.
 - Eurocódigo 8-3 (EN 1998-3) Anexo A.4.2.2; ACI 369.1-17.
+
+## 6. Revisión del supervisor (octubre 2026)
+
+Ver `docs/referencias/revision-extras.md`: cabeceo de la cimentación de máquina alrededor del eje de la máquina,
+deflexiones de la escalera, cortante-fricción losa–muro en el diafragma, momento transversal y flexión biaxial de la
+torre del pase aéreo, pandeo/torsión/pernos combinados en el letrero, cuantía de espiral de pilotes según la Tabla
+18.13.5.7.1, citas corregidas (ACI 360R-10, ACI 318-19 18.10.7.2, E.020 Art. 21–22) y ejemplos publicados nuevos
+(Huang Ej. 4.1–4.3 y 12.7; ACI 440.2R-17 Ej. 16.3: k, kd, ff,s, Mnf en SI).

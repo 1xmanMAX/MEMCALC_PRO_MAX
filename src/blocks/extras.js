@@ -94,31 +94,31 @@ registerBlock('exCapas', {
 registerBlock('exMaquina', {
   name: 'Cimentación de máquina', icon: 'footing', group: 'Cimentaciones',
   fields: [F('B', 'Ancho del bloque', 'B'), F('L', 'Largo del bloque', 'L'), F('hb', 'Altura del bloque', 'hb'), F('Df', 'Empotramiento', 'Df'), F('hm', 'Altura del eje de la máquina sobre el bloque', 'hm'), F('titulo', 'Título', '')],
-  hint: 'Elevación del bloque de cimentación, la máquina, el eje de rotación y los modos vertical, horizontal y de cabeceo.',
-  def: { B: '2 m', L: '4 m', hb: '1.5 m', Df: '1 m', hm: '0.8 m' },
+  hint: 'Corte transversal (perpendicular al eje de la máquina) del bloque de cimentación, la máquina, el eje de rotación y los modos vertical, horizontal y de cabeceo alrededor del eje longitudinal.',
+  def: { B: '2.4 m', L: '4 m', hb: '1.5 m', Df: '1 m', hm: '0.8 m' },
   render(b, ctx) {
     const g0 = P(b, ctx.scope);
     const B = g0('B', 'm'), L = g0('L', 'm'), hb = g0('hb', 'm'), Df = g0('Df', 'm', 0), hm = g0('hm', 'm', 0.5);
     pos({ B, L, hb });
-    const W = 680, sc = Math.min(360 / L, 200 / (hb + hm + 0.6)), ox = 110, ys = 60 + (hm + 0.5) * sc + (hb - Df) * sc;
+    const W = 680, sc = Math.min(360 / Math.max(B, 0.5), 200 / (hb + hm + 0.6)), ox = 110, ys = 60 + (hm + 0.5) * sc + (hb - Df) * sc;
     const X = (x) => ox + x * sc, Y = (z) => ys - z * sc; // z hacia arriba desde el terreno
     let g = arrowDefs;
-    g += rect(X(-0.8), Y(0), (L + 1.6) * sc, (Df + 0.4) * sc + 20, 'url(#soilp)', 'none', 0);
-    g += Lne(X(-0.8), Y(0), X(L + 0.8), Y(0), C.ink, 1.2);
-    g += rect(X(0), Y(hb - Df), L * sc, hb * sc, C.conc, C.ink, 1.5);
-    const mw = L * 0.55, mx = (L - mw) / 2, top = hb - Df;
+    g += rect(X(-0.8), Y(0), (B + 1.6) * sc, (Df + 0.4) * sc + 20, 'url(#soilp)', 'none', 0);
+    g += Lne(X(-0.8), Y(0), X(B + 0.8), Y(0), C.ink, 1.2);
+    g += rect(X(0), Y(hb - Df), B * sc, hb * sc, C.conc, C.ink, 1.5);
+    const mw = B * 0.55, mx = (B - mw) / 2, top = hb - Df;
     g += rect(X(mx), Y(top + hm + 0.25), mw * sc, (hm + 0.25) * sc, '#c7d3e0', C.ink, 1.2, ' rx="6"');
-    g += Lne(X(mx - 0.25), Y(top + hm), X(mx + mw + 0.25), Y(top + hm), C.red, 1.2, '6,3') + T(X(mx + mw + 0.3), Y(top + hm) + 4, 'eje', { fs: 9.5, c: C.red, a: 'start' });
-    g += T(X(L / 2), Y(top + hm / 2 + 0.1) + 4, 'Máquina', { fs: 10.5, b: 1 });
+    g += `<circle cx="${X(B / 2).toFixed(1)}" cy="${Y(top + hm).toFixed(1)}" r="5" fill="#fff" stroke="${C.red}" stroke-width="1.4"/><circle cx="${X(B / 2).toFixed(1)}" cy="${Y(top + hm).toFixed(1)}" r="1.6" fill="${C.red}"/>` + T(X(mx + mw) + 6, Y(top + hm) + 4, 'eje (⊙)', { fs: 9.5, c: C.red, a: 'start' });
+    g += T(X(B / 2), Y(top + hm / 2 + 0.1) + 4, 'Máquina', { fs: 10.5, b: 1 });
     // modos
-    const cx = X(L / 2), cz = Y(top - hb / 2);
+    const cx = X(B / 2), cz = Y(top - hb / 2);
     g += arrow(cx, cz + 12, cx, cz - 26, C.blue, 1.6) + T(cx + 6, cz - 18, 'z', { fs: 10, c: C.blue, a: 'start', b: 1 });
     g += arrow(cx - 6, cz + 12, cx + 30, cz + 12, C.blue, 1.6) + T(cx + 34, cz + 16, 'x', { fs: 10, c: C.blue, a: 'start', b: 1 });
     g += `<path d="M${cx - 34},${cz + 4} A 34 22 0 0 1 ${cx - 10},${cz - 18}" fill="none" stroke="${C.green}" stroke-width="1.6" marker-end="url(#ar)"/>` + T(cx - 44, cz - 14, 'ψ', { fs: 11, c: C.green, b: 1 });
-    g += dimH(X(0), X(L), Y(-Df) + 22, 'L = ' + f2(L) + ' m');
-    g += dimV(X(0) - 26, Y(top), Y(-Df), 'hb = ' + f2(hb) + ' m') + dimV(X(L) + 26, Y(0), Y(-Df), 'Df = ' + f2(Df) + ' m', C.ink, 1);
-    g += T(X(L) + 60, Y(top) + 4, 'B = ' + f2(B) + ' m (perpendicular)', { fs: 10, a: 'start' });
-    return `<div class="figure">${svgWrap(W, Y(-Df) + 40, g)}${caption(ctx, b.titulo || 'Bloque de cimentación, máquina y grados de libertad considerados')}</div>`;
+    g += dimH(X(0), X(B), Y(-Df) + 22, 'B = ' + f2(B) + ' m');
+    g += dimV(X(0) - 26, Y(top), Y(-Df), 'hb = ' + f2(hb) + ' m') + dimV(X(B) + 26, Y(0), Y(-Df), 'Df = ' + f2(Df) + ' m', C.ink, 1);
+    g += T(X(B) + 60, Y(top) + 4, 'L = ' + f2(L) + ' m (paralelo al eje)', { fs: 10, a: 'start' });
+    return `<div class="figure">${svgWrap(W, Y(-Df) + 40, g)}${caption(ctx, b.titulo || 'Corte transversal del bloque de cimentación, máquina y grados de libertad considerados')}</div>`;
   },
 });
 

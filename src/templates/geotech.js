@@ -282,7 +282,7 @@ check min(st1, st2) >= db(bart) + 2.5 cm // Espaciamiento mínimo: libre ≥ db 
         { var: 'Bz1', unidad: 'm', esperado: 1.45, tol: 0.001, desc: 'Control: ancho de la zapata exterior' },
         { var: 'Bz2', unidad: 'm', esperado: 2.4, tol: 0.001, desc: 'Control: lado de la zapata interior' },
         { var: 'Muv', unidad: 'tonf*m', esperado: 42.975, tol: 0.002, desc: 'Control: momento en la viga de conexión' },
-        { var: 'Vup', unidad: 'tonf', esperado: 112.27, tol: 0.002, desc: 'Control: punzonamiento de la zapata interior' },
+        { var: 'Vup', unidad: 'tonf', esperado: 115.66, tol: 0.002, desc: 'Control: punzonamiento de la zapata interior (sin alivio, Ru2d = Pu2)' },
       ],
     },
     name: 'Zapata conectada (medianera + viga de conexión)',
@@ -328,16 +328,19 @@ wv = bv*hv*2.4 tonf/m^3 // Peso propio de la viga
 R1 = (P1*l12 + wv*l12^2/2)/(l12 - ec) -> tonf // Reacción en la zapata exterior
 q1 = R1/(Bz1*Tz1) -> tonf/m^2 // Presión en la zapata exterior
 check q1 <= qn // Presión zapata exterior ≤ qn
-R2 = P2 + P1 + wv*l12 - R1 -> tonf // Reacción en la zapata interior
-Bz2 = roundup(sqrt(R2/qn), 0.05 m) // Lado de la zapata interior (cuadrada)
-q2 = R2/Bz2^2 -> tonf/m^2
+R2 = P2 + P1 + wv*l12 - R1 -> tonf // Reacción en la zapata interior (con el alivio de la viga)
+"El alivio $P_2 - R_2$ solo existe mientras la columna exterior esté cargada (p. ej., no con carga viva solo en la columna interior ni durante la construcción): por ello la zapata interior se dimensiona y se diseña **sin** el alivio, $R_{2d} = \\max(R_2, P_2)$ (criterio conservador usual; Calavera, *Cálculo de estructuras de cimentación*, cap. 4).
+R2d = max(R2, P2) // Reacción de diseño de la zapata interior (sin alivio)
+Bz2 = roundup(sqrt(R2d/qn), 0.05 m) // Lado de la zapata interior (cuadrada)
+q2 = R2d/Bz2^2 -> tonf/m^2
 check q2 <= qn // Presión zapata interior ≤ qn
 ## Cargas últimas
 Pu1 = 1.4*PD1 + 1.7*PL1
 Pu2 = 1.4*PD2 + 1.7*PL2
 wvu = 1.4*wv
 Ru1 = (Pu1*l12 + wvu*l12^2/2)/(l12 - ec) -> tonf // Reacción última en la zapata exterior
-Ru2 = Pu1 + Pu2 + wvu*l12 - Ru1 -> tonf`),
+Ru2 = Pu1 + Pu2 + wvu*l12 - Ru1 -> tonf // Reacción última en la zapata interior con alivio
+Ru2d = max(Ru2, Pu2) // Reacción última de diseño de la zapata interior (sin alivio)`),
       { type: 'beam', tramos: 'ec, l12 - ec', apoyos: 'L, A, A', E: '2.17e6 tonf/m^2', I: 'bv*hv^3/12', cargas: 'P 0 Pu1\nU * wvu', deflexion: false, convencion: 'arriba', sufijo: 'v', titulo: 'Viga de conexión: modelo con apoyo en el centro de la zapata exterior (cargas últimas)' },
       calc(`# Diseño de la viga de conexión (E.060)
 dv = hv - 6 cm // Peralte efectivo
@@ -371,9 +374,9 @@ n1 = ceil(As1/Ab(5))
 s1 = rounddown((Bz1 - 15 cm)/max(n1 - 1, 1), 2.5 cm)
 check s1 <= min(3*hz, 40 cm) // Espaciamiento zapata exterior
 ## Zapata interior (cuadrada, columna centrada)
-qu2 = (Ru2)/Bz2^2 -> tonf/m^2 // Presión última
+qu2 = Ru2d/Bz2^2 -> tonf/m^2 // Presión última (sin alivio)
 bo = 4*(c2 + d) // Perímetro crítico
-Vup = Ru2 - qu2*(c2 + d)^2 -> tonf // Cortante de punzonamiento (carga neta transmitida)
+Vup = Ru2d - qu2*(c2 + d)^2 -> tonf // Cortante de punzonamiento (carga neta transmitida)
 phiVcp = 0.85*1.06*sqrtfc(fc)*bo*d -> tonf
 check Vup <= phiVcp // Punzonamiento zapata interior
 lv2 = (Bz2 - c2)/2 -> m

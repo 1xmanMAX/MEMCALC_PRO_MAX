@@ -371,5 +371,11 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('pe-'))) {
   truthy(`${t.id}: tiene «validacion» con fuente, nota y valores`, !!(v && v.fuente && v.nota && Array.isArray(v.valores) && v.valores.length >= 3));
 }
 truthy('Listas desplegables intactas con rango (zona, categoría, sistema; hl y C_pi con rango)', (() => { const f = (id, n) => runTemplate(id).res.ctx.inputs.find(i => i.name === n); return f('pe-e030-estatico', 'zona').options.length === 4 && f('pe-e030-estatico', 'sistema').options.length === 8 && f('pe-e020-metrado', 'hl').options.length === 4 && f('pe-e020-metrado', 'hl').range.max === 0.30 && f('pe-e020-viento', 'C_pi').options.length === 3 && f('pe-e020-viento', 'C_pi').range.max === 0.8; })());
+{
+  const st = runTemplate('pe-e030-estatico');
+  near('Estático: índice de estabilidad del 1.er entrepiso Q = P·Δ1/(V·h1·R)', st('Q').toArray()[0], st('P', 'tonf') * st('Delta_i').toArray()[0].toNumber('m') / (st('V', 'tonf') * 3.5 * 7), 1e-6);
+  const dy = runTemplate('pe-e030-dinamico', d => { for (const b of d.blocks) if (b.type === 'calc') b.src = b.src.replace(/^Ia = 1\.0 /m, 'Ia = 0.75 '); });
+  truthy('Dinámico: Ia = 0.75 con «irr = Regular» → NO CUMPLE la coherencia (0.85R y 90 %)', dy.res.ctx.checks.some(c => !c.ok && /Coherencia/.test(c.label)));
+}
 truthy('Plantilla dinámica: validacion con T1 y Vdin del cálculo independiente (numpy)', TEMPLATES.find(x => x.id === 'pe-e030-dinamico').validacion.valores.some(v => v.var === 'T1' && v.esperado === 0.44102));
 done();

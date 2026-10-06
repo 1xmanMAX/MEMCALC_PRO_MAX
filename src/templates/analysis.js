@@ -101,7 +101,7 @@ El pórtico se modela con 9 nudos y 10 barras; los casos de carga CM, CV y CS se
 "Esfuerzos de la envolvente exportados por el análisis: $M^-$ = {Mneg_7}, $M^+$ = {Mpos_7}, $V$ = {Vmax_7}.
 Mu_n = -Mneg_7 // Momento negativo último (envolvente E.060)
 Mu_p = Mpos_7 // Momento positivo último (envolvente E.060)
-Vu = Vmax_7 // Cortante último (conservador: en el eje del nudo)
+Vu_an = Vmax_7 // Cortante último del análisis (conservador: en el eje del nudo)
 bar = 6 // Varilla longitudinal [5 : 5/8"|6 : 3/4"|8 : 1"]
 est = 3 // Estribo [3 : 3/8"|4 : 1/2"]
 d = hv - 4 cm - db(est) - db(bar)/2 // Peralte efectivo
@@ -124,15 +124,25 @@ As_p = max(0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*Rp/(0.85*fc))))*bv*d, Asmin) // Ace
 n_p = max(2, ceil(As_p/Ab(bar))) // Número de varillas
 phiMn_p = phif*n_p*Ab(bar)*fy*(d - n_p*Ab(bar)*fy/(0.85*fc*bv)/2) -> tonf*m // Momento resistente
 check Mu_p <= phiMn_p // Flexión positiva (E.060 10)
-## Cortante
+check phiMn_p >= phiMn_n/2 // Resistencia a momento positivo en la cara ≥ 1/2 de la negativa (E.060 21.5.2.2)
+## Cortante de diseño por capacidad (E.060 21.5.4.1)
+"Con $R = 8$ (pórticos) la viga pertenece a un pórtico especial: el cortante de diseño no puede ser menor que el asociado a las resistencias probables $M_{pr}$ ($f_s = 1.25 f_y$, $\\phi = 1$) en ambos extremos de la luz libre más el cortante isostático de $1.25(CM + CV)$ (E.060 21.5.4.1). Se usa el acero negativo en un extremo y el positivo en el otro (sismo en ambos sentidos con el mismo armado).
+ln = L1 - hc // Luz libre de la viga del vano 1
+Mprn = mprRect(n_n*Ab(bar), bv, d, fc, fy) // Momento probable negativo (1.25 fy)
+Mprp = mprRect(n_p*Ab(bar), bv, d, fc, fy) // Momento probable positivo
+wug = 1.25*(wD1 + wpv + wL1) // Carga de gravedad amplificada 1.25(CM + CV)
+Vcap = (Mprn + Mprp)/ln + wug*ln/2 -> tonf // Cortante por capacidad
+Vu = max(Vu_an, Vcap) // Cortante de diseño
 phiv = 0.85 // Factor de reducción por cortante (E.060 9.3.2.3)
 Vc = 0.53*sqrtfc(fc)*bv*d // Aporte del concreto (E.060 11.3.1.1)
 Vs = max(Vu/phiv - Vc, 0 tonf) // Aporte requerido del acero
 check Vs <= 2.1*sqrtfc(fc)*bv*d // Límite de Vs (E.060 11.5.7.9)
-s_req = si(Vs > 0 tonf, 2*Ab(est)*fy*d/Vs, 60 cm) // Espaciamiento requerido
-s = rounddown(min(s_req, d/4, 15 cm), 2.5 cm) // Espaciamiento en zona de confinamiento (E.060 21.4.4.4)
+s_req = si(Vs > 0 tonf, 2*Ab(est)*fy*d/Vs, 60 cm) -> cm // Espaciamiento requerido
+s = rounddown(min(s_req, d/4, 8*db(bar), 24*db(est), 30 cm), 2.5 cm) // Espaciamiento en la zona de confinamiento 2h: d/4, 8 db, 24 de, 300 mm (E.060 21.5.3.2)
 check s <= d/4 // Espaciamiento máximo en zona de confinamiento
-"Viga {bv} × {hv}: refuerzo superior {n_n} Ø #{bar}, inferior {n_p} Ø #{bar}, estribos Ø #{est} @ {s} en zona confinada.`),
+phiVn = phiv*(Vc + 2*Ab(est)*fy*d/s) -> tonf // Resistencia de diseño con el espaciamiento adoptado
+check Vu <= phiVn // Resistencia a cortante por capacidad
+"Viga {bv} × {hv}: refuerzo superior {n_n} Ø #{bar}, inferior {n_p} Ø #{bar}, estribos Ø #{est}: 1 @ 5 cm, resto @ {s} en {2*hv} desde cada cara (21.5.3.1) y @ {rounddown(min(d/2, s_req), 2.5 cm)} en el centro (21.5.3.4). Para el detalle completo use la plantilla *co-vigaductil*.`),
       calc(`## Verificación de columnas (resumen)
 Pu_c = Nc_COL // Máxima compresión última en columnas (envolvente)
 Ag = bc*hc // Área bruta de la columna

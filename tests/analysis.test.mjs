@@ -278,6 +278,12 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('an-'))) {
   const mpb = runTemplate('an-modal-pdelta', d => { d.blocks[1].src = d.blocks[1].src.replace('bc = 60 cm', 'bc = 30 cm').replace('hc = 60 cm', 'hc = 30 cm'); });
   truthy('Modal + P-Δ con columnas 30×30: derivas NO CUMPLEN, sin errores', mpb.res.ctx.errors.length === 0 && mpb.res.ctx.checks.some(c => !c.ok && /Deriva/.test(c.label)), mpb.res.ctx.errors.map(e => e.msg).join('; '));
 }
+{
+  const p = runTemplate('an-portico-ca');
+  const ln = 5.6, wug = 1.25 * (0.5 * 4.5 + 2.4 * 0.30 * 0.55 + 0.2 * 4.5);
+  near('Pórtico C°A°: cortante por capacidad (Mpr⁻ + Mpr⁺)/ln + 1.25(CM+CV)ln/2 (E.060 21.5.4.1)', p('Vcap', 'tonf'), (p('Mprn', 'tonf*m') + p('Mprp', 'tonf*m')) / ln + wug * ln / 2, 1e-4);
+  truthy('Pórtico C°A°: Vu = máx(Vu del análisis, Vcap)', Math.abs(p('Vu', 'tonf') - Math.max(p('Vu_an', 'tonf'), p('Vcap', 'tonf'))) < 1e-9 && p('Vcap', 'tonf') > p('Vu_an', 'tonf'));
+}
 section('QA de plantillas: «validacion» y rangos usuales [mín..máx] de los datos');
 for (const t of TEMPLATES.filter(x => x.id.startsWith('an-'))) {
   const v = t.validacion;

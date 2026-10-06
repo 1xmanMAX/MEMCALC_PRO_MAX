@@ -63,9 +63,11 @@ rec = 2.5 cm // Recubrimiento libre (E.060 7.7.1, losas) [2..4]
 npas = round(L1/p) // Número de pasos del tramo
 check 2*cp + p >= 60 cm // 2cp + p ≥ 60 cm (A.010 Art. 29)
 check 2*cp + p <= 64 cm // 2cp + p ≤ 64 cm (A.010 Art. 29)
+check p >= 25 cm // Paso mínimo 25 cm (A.010 Art. 29)
+check cp <= 18 cm // Contrapaso máximo 18 cm (A.010 Art. 29)
 check npas + 1 <= 17 // Máximo 17 contrapasos por tramo (A.010 Art. 29)
 Ltot = L1 + L2 // Luz de cálculo
-check tg >= Ltot/25 // Garganta ≥ Ltot/25: práctica Ltot/25 – Ltot/20 (E.060 9.6.2, Tabla 9.1 como referencia)
+check tg >= Ltot/25 // Garganta ≥ Ltot/25 (práctica peruana ℓ/25–ℓ/20; es menor que ℓ/20 de la E.060 Tabla 9.1, por eso se calculan las deflexiones en 9.6.2)
 ## Metrado por metro de ancho (E.020)
 theta = atan(cp/p) -> deg // Inclinación del tramo
 hm = tg/cos(theta) + cp/2 // Espesor medio equivalente (garganta + mitad del paso)
@@ -95,6 +97,21 @@ sepn = rounddown(max(min(Ab(bar)/Asneg*100 cm, 3*tg, 40 cm), 5 cm), 2.5 cm) // E
 check Ab(bar)/sepn*100 cm >= Asneg // Acero negativo colocado (E.060 10.5.4)
 Ast = 0.0018*100 cm*tg // Acero transversal de temperatura (E.060 9.7.2)
 sept = rounddown(max(min(Ab(3)/Ast*100 cm, 5*tg, 40 cm), 5 cm), 2.5 cm) // Espaciamiento con 3/8" (≤ 5h y 40 cm)
+## Deflexiones (E.060 9.6.2, sección agrietada de Branson)
+Ecs = 15000*sqrtfc(fc) // Módulo del concreto (E.060 8.5.2)
+Igs = 100 cm*tg^3/12 -> cm^4 // Inercia bruta de la garganta (conservador)
+Mcr = 2*sqrtfc(fc)*Igs/(tg/2) -> tonf*m // Momento de agrietamiento, fr = 2√f'c (E.060 9.6.2.3)
+Asp = Ab(bar)/sep*100 cm // Acero positivo colocado por metro
+nmod = 2000000 kgf/cm^2/Ecs // Relación modular
+kcr = sqrt(2*nmod*Asp/(100 cm*d) + (nmod*Asp/(100 cm*d))^2) - nmod*Asp/(100 cm*d) // Eje neutro agrietado kd/d
+Icr = 100 cm*(kcr*d)^3/3 + nmod*Asp*(d - kcr*d)^2 -> cm^4 // Inercia agrietada transformada
+Ma = Mmax*(wD1 + sc)*1 m/wu1 -> tonf*m // Momento de servicio (CM + CV)
+rcr = min(1, (Mcr/Ma)^3) // (Mcr/Ma)³ acotado a 1
+Ie = rcr*Igs + (1 - rcr)*Icr -> cm^4 // Inercia efectiva (E.060 Ec. 9-8)
+dlti = 5*Ma*Ltot^2/(48*Ecs*Ie) -> mm // Flecha inmediata CM + CV (viga simplemente apoyada)
+dltD = dlti*wD1/(wD1 + sc) -> mm // Parte por carga muerta
+dltLP = 2*dltD + (dlti - dltD) -> mm // Diferida (ξ = 2, ρ' = 0; E.060 9.6.2.5) + inmediata por carga viva
+check dltLP <= Ltot/240 // Flecha después de colocar acabados ≤ ℓ/240 (E.060 Tabla 9.2)
 ## Cortante (E.060 11.3 y 11.1.3.1)
 Vu = max((RA - wu1*d)*cos(theta), RB - wu2*d) -> tonf // Cortante último a «d» de la cara (componente normal a la losa)
 phiVc = 0.85*0.53*sqrtfc(fc)*100 cm*d -> tonf // Resistencia del concreto por metro
@@ -116,7 +133,7 @@ const pisoInd = {
   titulo: 'Diseño de losa de piso industrial sobre terreno',
   validacion: {
     fuente: 'Control: fórmulas de Westergaard (Huang, Pavement Analysis and Design, 2.ª ed., Ec. 4.4, 4.7, 4.11 y 4.13) y PCA',
-    nota: 'Valores de control de esta implementación; ℓ, σi y σe se recalculan independientemente en tests/extras.test.mjs.',
+    nota: 'Valores de control de esta implementación (los datos por defecto no son de un ejemplo publicado). Las funciones lrelWest, sigIntWest, sigBordeWest y sigEsqWest reproducen en tests/extras.test.mjs los Ejemplos 4.1–4.3 de Huang (k = 100 pci, h = 10 in, a = 6 in, P = 10 000 lb → ℓ = 42.97 in, σc = 186.6 psi, σi = 143.7 psi, σe = 279.4 psi).',
     valores: [
       { var: 'lrel', unidad: 'cm', esperado: 74.69, tol: 0.002, desc: 'Radio de rigidez relativa ℓ' },
       { var: 'sigi', unidad: 'kgf/cm^2', esperado: 10.81, tol: 0.003, desc: 'Esfuerzo interior por rueda' },
@@ -125,7 +142,7 @@ const pisoInd = {
   },
   blocks: [
     text(`# Generalidades
-Losa de piso de concreto **simple** (sin refuerzo estructural) apoyada sobre una sub-base granular compactada, para un almacén con montacargas y estanterías (racks). Se diseña por **esfuerzos de tracción por flexión** con las soluciones de Westergaard en que se basan las cartas de la PCA y el ACI 360R-10, comparando el esfuerzo actuante con el módulo de rotura dividido por un factor de seguridad (ACI 360R-10 Cap. 7). Se verifican además el punzonamiento bajo los postes (ACI 318-19 14.5.5), la carga repartida en pasillos (PCA), las juntas (ACI 360R-10 Cap. 6) y el acero por arrastre de subrasante.
+Losa de piso de concreto **simple** (sin refuerzo estructural) apoyada sobre una sub-base granular compactada, para un almacén con montacargas y estanterías (racks). Se diseña por **esfuerzos de tracción por flexión** con las soluciones de Westergaard en que se basan las cartas de la PCA y el ACI 360R-10, comparando el esfuerzo actuante con el módulo de rotura dividido por un factor de seguridad (ACI 360R-10 5.9 y 7.2). Se verifican además el punzonamiento bajo los postes (ACI 318-19 14.5.5, con $h$ reducido 50 mm por vaciarse contra el terreno, 14.5.1.7), la carga repartida en pasillos (PCA), el espaciamiento de juntas (ACI 360R-10 7.4), la transferencia con pasadores (6.2) y el acero por arrastre de subrasante (8.3).
 
 La E.060 no trata las losas sobre terreno; se usan el ACI 360R-10 y la PCA como referencia, y el módulo de rotura se determina con el ensayo NTP 339.078 (viga con cargas a los tercios).`),
     calc(`# Datos
@@ -140,12 +157,12 @@ gammac = 2.4 tonf/m^3 // Peso específico del concreto [2.2..2.5]
 ## Montacargas (rueda delantera más cargada)
 Peje = 6.0 tonf // Carga del eje delantero con carga (ficha del equipo: ≈ 2.2–2.5 × capacidad; montacargas de 2.5 t) [1..30]
 qc = 10 kgf/cm^2 // Presión de contacto (llanta maciza ≈ 10; neumática ≈ 6) [4..20]
-FSm = 2.0 // Factor de seguridad para montacargas (ACI 360R-10 Cap. 7, > 400 000 repeticiones) [1.4..2.2]
+FSm = 2.0 // Factor de seguridad para montacargas (ACI 360R-10 5.9; PCA: 2.0 para > 400 000 repeticiones) [1.4..2.2]
 fLT = 0.75 // Reducción del esfuerzo de borde por transferencia de carga (pasadores 0.75; trabazón 0.80; borde libre 1.0) [0.75|0.80|1.0] [0.7..1.0]
 ## Racks (estanterías)
 Pr = 4.5 tonf // Carga por poste (suma de dos postes adyacentes espalda con espalda) [0.5..15]
 cpl = 15 cm // Lado de la placa base del poste [8..30]
-FSr = 1.7 // Factor de seguridad para postes de racks (ACI 360R-10 Cap. 7) [1.4..2.2]
+FSr = 1.7 // Factor de seguridad para postes de racks y carga repartida (ACI 360R-10 5.9) [1.4..2.2]
 ## Carga repartida en pasillos
 qal = 3.0 tonf/m^2 // Carga repartida almacenada sobre el piso [0..10]
 Lj = 4.5 m // Espaciamiento de juntas de contracción [2..6]
@@ -158,28 +175,30 @@ lrel = lrelWest(Ec, hl, nuc, ks) // Radio de rigidez relativa (Huang Ec. 4.7)
 sigi = sigIntWest(Pw, hl, lrel, aw, nuc) // Carga interior (Huang Ec. 4.11, con el radio equivalente b)
 sige = sigBordeWest(Pw, hl, Ec, ks, aw, nuc) // Carga en el borde libre (Westergaard 1948, Huang Ec. 4.13)
 sigc = sigEsqWest(Pw, hl, lrel, aw) // Carga en la esquina (Huang Ec. 4.4)
-sigadm = MR/FSm // Esfuerzo admisible por fatiga (ACI 360R-10 Cap. 7)
-check sigi <= sigadm // Carga interior (ACI 360R-10 Cap. 7)
-check fLT*sige <= sigadm // Carga en junta con transferencia (ACI 360R-10 Cap. 7)
-check fLT*sigc <= sigadm // Carga en esquina con transferencia (ACI 360R-10 Cap. 7)
+sigadm = MR/FSm // Esfuerzo admisible por fatiga (ACI 360R-10 5.9)
+check sigi <= sigadm // Carga interior (ACI 360R-10 7.2)
+check fLT*sige <= sigadm // Carga en junta con transferencia (ACI 360R-10 6.2 y 7.2)
+check fLT*sigc <= sigadm // Carga en esquina con transferencia (ACI 360R-10 6.2 y 7.2)
 # Postes de racks
 ar = sqrt(cpl^2/pi) -> cm // Radio equivalente de la placa base
 sigr = sigIntWest(Pr, hl, lrel, ar, nuc) // Esfuerzo interior bajo el poste
-check sigr <= MR/FSr // Flexión bajo postes (ACI 360R-10 Cap. 7)
+check sigr <= MR/FSr // Flexión bajo postes (ACI 360R-10 7.2; PCA, ACI 360R-10 A1.3)
 ## Punzonamiento (concreto simple, ACI 318-19 14.5.5.1, φ = 0.60)
-bo = 4*(cpl + hl) // Perímetro crítico a h/2 de la placa
-phiVn = 0.60*0.70*sqrtfc(fc)*bo*hl -> tonf // φ·0.22√f'c (MPa)·bo·h en kgf/cm²: 0.70√f'c
+hp = hl - 5 cm // Espesor de cálculo: h − 50 mm por vaciarse contra el terreno (ACI 318-19 14.5.1.7)
+bo = 4*(cpl + hp) // Perímetro crítico a h/2 de la placa
+phiVn = 0.60*0.70*sqrtfc(fc)*bo*hp -> tonf // φ·0.22√f'c (MPa)·bo·h en kgf/cm²: 0.70√f'c (β = 1)
 check 1.6*Pr <= phiVn // Punzonamiento con carga amplificada (1.6 carga almacenada)
 check 1.6*Pr <= 0.60*0.85*fc*cpl^2 // Aplastamiento bajo la placa (14.5.6)
 # Carga repartida en pasillos (PCA, pasillo crítico sin junta)
 wadm = 257.876*(MR/FSr)/(1 psi)*sqrt((ks/(1 lbf/in^3))*(hl/(1 in))/(Ec/(1 psi)))*(1 lbf/ft^2) -> tonf/m^2 // PCA (Packard): w = 257.876·s·√(k·h/E)
-check qal <= wadm // Carga repartida admisible (ACI 360R-10 Cap. 7; PCA)
+check qal <= wadm // Carga repartida admisible (ACI 360R-10 7.2; PCA)
 # Juntas y refuerzo
-check Lj <= min(30*hl, 4.5 m) // Espaciamiento de juntas 24h–36h y ≤ 4.5 m (ACI 360R-10 Cap. 6)
+check Lj <= min(30*hl, 4.5 m) // Juntas: ACI 360R-10 7.4 recomienda 24h–36h; se adopta ≤ 30h y ≤ 4.5 m (PCA, práctica conservadora)
 "Las juntas se cortan a una profundidad de $h/4$ a $h/3$ = {hl/4} – {hl/3} dentro de las 4–12 h del vaciado; los paños deben ser aproximadamente cuadrados (relación de lados ≤ 1.5).
-dpas = si(hl <= 15 cm, 5/8, si(hl <= 20 cm, 3/4, 1)) // Pasadores lisos en juntas de construcción (ACI 360R-10 Cap. 5), pulgadas
-As_arr = 1.5*Lj*gammac*hl/(2*0.75*fyr)*1 m -> cm^2 // Acero por arrastre de subrasante As = F·L·w/(2fs), F = 1.5 (ACI 360R-10 Cap. 9; PCA)
-"Pasadores lisos de {dpas}\\" × 40 cm @ 30 cm en juntas de construcción. Si se desea controlar el ancho de las fisuras entre juntas se puede colocar una malla en el tercio superior de al menos {As_arr} por metro (la losa se diseña como concreto simple; el acero no se considera en la resistencia).`),
+dpas = si(hl <= 15.5 cm, 3/4, si(hl <= 20.5 cm, 1, si(hl <= 28 cm, 1.25, 1.5))) // Pasador liso redondo (ACI 360R-10 6.2 / ACI 302.1R Tabla 3.1: h 5–6" → 3/4", 7–8" → 1", 9–11" → 1 1/4"), pulgadas
+Lpas = si(hl <= 15.5 cm, 35 cm, si(hl <= 20.5 cm, 40 cm, 45 cm)) // Longitud del pasador (14", 16", 18")
+As_arr = 1.5*Lj*gammac*hl/(2*0.75*fyr)*1 m -> cm^2 // Acero por arrastre de subrasante As = F·L·w/(2fs), F = 1.5, fs = 0.75fy (ACI 360R-10 8.3; PCA)
+"Pasadores lisos de {dpas}\\" × {Lpas} @ 30 cm en juntas de construcción. Si se desea controlar el ancho de las fisuras entre juntas se puede colocar una malla en el tercio superior de al menos {As_arr} por metro (la losa se diseña como concreto simple; el acero no se considera en la resistencia).`),
     summary(),
   ],
 };
@@ -194,8 +213,8 @@ const pavRig = {
   desc: 'Espesor de losa por la ecuación AASHTO 93 (W18, confiabilidad ZR, So, ΔPSI, S\'c, Ec, k, J, Cd), verificación del tráfico admisible, juntas, pasadores y barras de amarre.',
   titulo: 'Diseño de pavimento rígido por el método AASHTO 93',
   validacion: {
-    fuente: 'Garber y Hoel, Traffic and Highway Engineering (ejemplo de diseño AASHTO 93 de pavimento rígido, nomograma AASHTO 93 Fig. 3.7): k = 72 pci, Ec = 5×10⁶ psi, S\'c = 650 psi, J = 3.2, Cd = 1.0, ΔPSI = 1.7, R = 95 %, So = 0.29, W18 = 5.1×10⁶ → D = 9.75 in (≈ 10 in)',
-    nota: 'Datos por defecto = datos del ejemplo convertidos a kgf/cm (S\'c = 45.7 kgf/cm², Ec = 351 500 kgf/cm², k = 1.99 kgf/cm³). La ecuación da 9.72 in frente a 9.75 in leídos en el nomograma; se adopta D = 25 cm (≈ 10 in, como en el ejemplo).',
+    fuente: 'Huang, Pavement Analysis and Design, 2.ª ed., Ej. 12.6 (nomograma AASHTO 93, Fig. 12.17 = Fig. 3.7 de la Guía): k = 72 pci, Ec = 5×10⁶ psi, S\'c = 650 psi, J = 3.2, Cd = 1.0, ΔPSI = 4.2 − 2.5 = 1.7, R = 95 %, So = 0.29, W18 = 5.1×10⁶ → D = 9.75 in, redondeado a 10 in',
+    nota: 'Datos por defecto = datos del ejemplo convertidos a kgf/cm (S\'c = 45.7 kgf/cm², Ec = 351 500 kgf/cm², k = 1.99 kgf/cm³). La ecuación da 9.72 in frente a 9.75 in leídos en el nomograma; se adopta D = 25 cm (≈ 10 in, como en el ejemplo). El Ej. 12.7 de Huang (W18 con D = 9.75 in) se contrasta término a término en las pruebas.',
     valores: [
       { var: 'ZR', esperado: -1.645, tol: 0.001, desc: 'ZR para R = 95 %' },
       { var: 'Dreq', unidad: 'in', esperado: 9.75, tol: 0.01, desc: 'Espesor requerido (nomograma 9.75 in)' },
@@ -230,9 +249,9 @@ Dd = 25 cm // Espesor de losa adoptado [15..40]
 dPSI = po - pt // Pérdida de serviciabilidad
 ZR = ZRconf(R) // Desviación normal estándar (AASHTO Tabla 4.1)
 Dreq = DAASHTO93(W18, ZR, So, dPSI, pt, Sc, Cd, J, Ec, kef) // Espesor requerido (ecuación AASHTO 93, Fig. 3.7)
-check Dd >= Dreq - 0.2 cm // Espesor adoptado ≥ requerido (tolerancia de 2 mm por redondeo)
+check Dd >= Dreq // Espesor adoptado ≥ requerido por la ecuación AASHTO 93
 W18adm = W18AASHTO93(Dd, ZR, So, dPSI, pt, Sc, Cd, J, Ec, kef) // Ejes admisibles con el espesor adoptado
-check W18adm >= 0.95*W18 // Tráfico admisible (tolerancia del 5 % por redondeo, práctica AASHTO)
+check W18adm >= W18 // Tráfico admisible con el espesor adoptado ≥ tráfico de diseño (AASHTO 93)
 check Dd >= 15 cm // Espesor mínimo (MTC; CE.010 vías locales 15 cm)
 # Juntas, pasadores y barras de amarre
 check Lj <= min(24*Dd, 4.5 m) // Espaciamiento de juntas L ≤ 24D y ≤ 4.5 m (FHWA TA 5040.30; MTC)
@@ -260,18 +279,20 @@ const maquina = {
   titulo: 'Diseño de cimentación de máquina rotativa',
   validacion: {
     fuente: 'Control: fórmulas de Richart, Hall y Woods (1970) — Das y Ramana, Principles of Soil Dynamics, 2.ª ed., Cap. 5',
-    nota: 'Valores de control de esta implementación; kz = 4Gr0/(1 − ν), Bz = (1 − ν)m/(4ρr0³) y fz = √(kz/m)/2π se recalculan en tests/extras.test.mjs.',
+    nota: 'Valores de control de esta implementación (no es un ejemplo publicado); kz = 4Gr0/(1 − ν), Bz = (1 − ν)m/(4ρr0³), fz = √(kz/m)/2π y el cabeceo kψ = 8Gr0³/(3(1 − ν)) alrededor del eje de la máquina se recalculan en tests/extras.test.mjs.',
     valores: [
-      { var: 'r0z', unidad: 'm', esperado: 1.5958, tol: 0.001, desc: 'Radio equivalente vertical' },
-      { var: 'kz', unidad: 'tonf/m', esperado: 69947, tol: 0.002, desc: 'Rigidez vertical' },
-      { var: 'fz', unidad: 'Hz', esperado: 22.345, tol: 0.002, desc: 'Frecuencia natural vertical' },
+      { var: 'r0z', unidad: 'm', esperado: 1.7481, tol: 0.001, desc: 'Radio equivalente vertical √(BL/π)' },
+      { var: 'kz', unidad: 'tonf/m', esperado: 76623, tol: 0.002, desc: 'Rigidez vertical' },
+      { var: 'fz', unidad: 'Hz', esperado: 21.663, tol: 0.002, desc: 'Frecuencia natural vertical' },
+      { var: 'r0p', unidad: 'm', esperado: 1.5563, tol: 0.001, desc: 'Radio equivalente de cabeceo (L·B³/3π)^¼' },
+      { var: 'fpsi', unidad: 'Hz', esperado: 20.650, tol: 0.003, desc: 'Frecuencia natural de cabeceo (eje longitudinal)' },
     ],
   },
   blocks: [
     text(`# Generalidades
 Bloque macizo de concreto armado que soporta un equipo rotativo (bomba, ventilador o compresor centrífugo acoplado a motor). Se analiza como **cuerpo rígido sobre un semiespacio elástico** con el modelo de parámetros concentrados de Richart, Hall y Woods (1970), recomendado por el ACI 351.3R-18 (Cap. 4): para cada modo (vertical, horizontal y cabeceo) se calcula la rigidez, el amortiguamiento geométrico y la frecuencia natural, que debe alejarse de la frecuencia de operación al menos ±20 % (ACI 351.3R-18, criterio de no resonancia). La amplitud forzada se obtiene con la fuerza de desbalance del rotor según el grado de balanceo G (ISO 21940-11) y se compara con un límite de velocidad de vibración.
 
-Simplificación: modos desacoplados y empotramiento despreciado (conservador para las frecuencias).`),
+La fuerza de desbalance gira en el plano perpendicular al eje de la máquina: su componente horizontal actúa en la dirección del **ancho** $B$ y produce **cabeceo alrededor del eje longitudinal** (paralelo al eje de la máquina, dirección $L$), que es la dirección más flexible del bloque. Simplificación: modos desacoplados y empotramiento despreciado (conservador para las frecuencias).`),
     calc(`# Datos
 ## Máquina
 Wm = 6.0 tonf // Peso total de la máquina y el motor [0.5..100]
@@ -281,8 +302,8 @@ Gbal = 2.5 mm/s // Grado de balanceo G (ISO 21940-11: G2.5 para turbomáquinas y
 SFd = 2.0 // Factor de servicio de la fuerza de desbalance (ACI 351.3R-18 Cap. 3) [1..3]
 hm = 0.80 m // Altura del eje sobre la cara superior del bloque [0.2..3]
 ## Bloque
-B = 2.00 m // Ancho del bloque [0.5..10]
-L = 4.00 m // Largo del bloque (dirección del cabeceo) [1..20]
+B = 2.40 m // Ancho del bloque, perpendicular al eje de la máquina [0.5..10]
+L = 4.00 m // Largo del bloque, paralelo al eje de la máquina [1..20]
 hb = 1.50 m // Altura del bloque [0.5..4]
 Df = 1.00 m // Empotramiento en el terreno [0..4]
 gammac = 2.4 tonf/m^3 // Concreto armado [2.3..2.5]
@@ -295,7 +316,8 @@ vlim = 2.5 mm/s // Velocidad de vibración admisible (ACI 351.3R-18, carta de Bl
 # Masas y verificaciones geométricas (ACI 351.3R-18 Cap. 3 y 4)
 Wb = gammac*B*L*hb -> tonf // Peso del bloque
 check Wb >= 3*Wm // Masa del bloque ≥ 3 veces la de la máquina rotativa (regla práctica ACI 351.3R)
-check hb >= max(0.6 m, B/5, L/10) // Espesor ≥ 0.60 m, ≥ B/5 y ≥ L/10 (ACI 351.3R-18 Cap. 3, bloque rígido)
+check hb >= max(0.6 m, B/5, L/10) // Espesor ≥ 0.60 m, ≥ 1/5 de la menor y ≥ 1/10 de la mayor dimensión (ACI 351.3R, reglas prácticas de bloques rígidos)
+check B >= hb + hm // Ancho ≥ 1 a 1.5 veces la altura del eje de la máquina sobre la base (ACI 351.3R, reglas prácticas)
 Wt = Wb + Wm // Peso total vibrante
 qs = Wt/(B*L) -> tonf/m^2 // Presión estática en la base
 check qs <= 0.5*qa // Presión ≤ 50 % de la admisible (práctica ACI 351.3R; asentamientos dinámicos)
@@ -326,11 +348,11 @@ fx = sqrt(kx/mt)/(2*pi) -> Hz // Frecuencia natural horizontal
 rx = fop/fx // Relación de frecuencias
 check abs(rx - 1) >= 0.2 // Fuera de la banda de resonancia (ACI 351.3R-18 Cap. 3)
 Ax = Fo/kx/sqrt((1 - rx^2)^2 + (2*Dx*rx)^2) -> mm // Amplitud horizontal en la base
-# Modo de cabeceo (alrededor del eje paralelo a B)
-r0p = (B*L^3/(3*pi))^(1/4) -> m // Radio equivalente para cabeceo
+# Modo de cabeceo (alrededor del eje longitudinal, paralelo a L; fuerza en la dirección de B)
+r0p = (L*B^3/(3*pi))^(1/4) -> m // Radio equivalente para cabeceo r0 = (L·B³/3π)^¼
 kpsi = 8*Gs*r0p^3/(3*(1 - nus)) -> tonf*m // Rigidez al cabeceo
 zb = (Wb*hb/2 + Wm*(hb + hm/2))/Wt -> m // Centro de gravedad sobre la base
-Ipsi = Wb/(9.80665 m/s^2)*((L^2 + hb^2)/12 + (hb/2)^2) + Wm/(9.80665 m/s^2)*(hb + hm/2)^2 -> kg*m^2 // Momento de inercia de masa respecto al eje de giro en la base
+Ipsi = Wb/(9.80665 m/s^2)*((B^2 + hb^2)/12 + (hb/2)^2) + Wm/(9.80665 m/s^2)*(hb + hm/2)^2 -> kg*m^2 // Momento de inercia de masa respecto al eje de giro en la base
 Bpsi = 3*(1 - nus)/8*Ipsi/(rhos*r0p^5) // Relación de inercia
 Dpsi = 0.15/((1 + Bpsi)*sqrt(Bpsi)) // Amortiguamiento geométrico
 fpsi = sqrt(kpsi/Ipsi)/(2*pi) -> Hz // Frecuencia natural de cabeceo
@@ -367,7 +389,7 @@ const acople = {
   },
   blocks: [
     text(`# Generalidades
-Viga que acopla dos muros de concreto armado (placas) en un sistema de muros acoplados. Cuando $\\ell_n/h < 2$ y $V_u > 0.33\\lambda\\sqrt{f'_c}A_{cw}$ (MPa), el ACI 318-19 18.10.7.3 exige **dos grupos de barras diagonales** que se cruzan en el centro de la luz; la resistencia la aportan solo las diagonales:
+Viga que acopla dos muros de concreto armado (placas) en un sistema de muros acoplados. Cuando $\\ell_n/h < 2$ y $V_u \\ge 0.33\\lambda\\sqrt{f'_c}A_{cw}$ (MPa), el ACI 318-19 18.10.7.2 exige **dos grupos de barras diagonales** que se cruzan en el centro de la luz; la resistencia la aportan solo las diagonales:
 
 $$V_n = 2A_{vd} f_y \\operatorname{sen}\\alpha \\le 0.83\\sqrt{f'_c}\\,A_{cw}\\ \\text{(MPa)} = 2.65\\sqrt{f'_c}\\,A_{cw}\\ \\text{(kgf/cm²)}$$
 
@@ -387,9 +409,9 @@ rec = 4 cm // Recubrimiento al estribo [3..5]
 phi = 0.85 // ACI 318-19 21.2.4.4 [0.75..0.85]
 # Clasificación (ACI 318-19 18.10.7)
 Acw = bw*hv // Área de la sección
-check ln/hv < 2 // ℓn/h < 2: viga corta (ACI 318-19 18.10.7.3)
-Vlim = 1.06*sqrtfc(fc)*Acw -> tonf // 0.33√f'c Acw en kgf/cm²
-check Vu > Vlim // Se requieren diagonales (18.10.7.3); si no, puede diseñarse como viga
+check ln/hv < 4 // ℓn/h < 4: se permite el refuerzo diagonal (ACI 318-19 18.10.7.1 y 18.10.7.3); con ℓn/h ≥ 4 se diseña como viga 18.6
+Vlim = 1.06*sqrtfc(fc)*Acw -> tonf // 0.33√f'c Acw (4√f'c psi) en kgf/cm²
+"Clasificación: ℓn/h = {ln/hv}; Vu = {Vu} frente a 0.33√f'c·Acw = {Vlim}. Si ℓn/h < 2 y Vu ≥ 0.33√f'c·Acw las diagonales son **obligatorias** (18.10.7.2); en los demás casos son opcionales (18.10.7.3).
 # Refuerzo diagonal (18.10.7.4 a)
 alfa = atan((hv - 2*yd)/ln) -> deg // Ángulo de las diagonales con el eje
 Avd = Vu/(2*phi*fy*sin(alfa)) -> cm^2 // Área por grupo
@@ -398,21 +420,21 @@ check nd*Ab(bard) >= Avd // Acero colocado por grupo (18.10.7.4 a)
 Vnmax = 2.65*sqrtfc(fc)*Acw -> tonf // Límite 0.83√f'c Acw
 Vn = min(2*nd*Ab(bard)*fy*sin(alfa), Vnmax) -> tonf // Resistencia nominal
 check Vu <= phi*Vn // Resistencia a cortante (ACI 318-19 18.10.7.4)
-check 2*nd*Ab(bard)*fy*sin(alfa) <= 1.25*Vnmax // Diagonales no excesivas: Vn,diag ≤ 1.25 Vn,máx (criterio de capacidad, ACI 318-19 R18.10.7)
 # Confinamiento de toda la sección (18.10.7.4 d y 18.7.5.4)
 bc1 = bw - 2*rec // Núcleo perpendicular a la altura
 bc2 = hv - 2*rec // Núcleo en la dirección de la altura
 Ach = bc1*bc2 // Área del núcleo
-check sst <= min(6*db(bard), 15 cm) // Espaciamiento ≤ 6 db de la diagonal y ≤ 150 mm (18.10.7.4 d)
+check sst <= min(6*db(bard), 15 cm) // Espaciamiento ≤ 6 db de la diagonal más pequeña y ≤ 150 mm (18.10.7.4 d)
 Ash1 = max(0.09*sst*bc1*fc/fy, 0.3*sst*bc1*(Acw/Ach - 1)*fc/fy) // Área requerida paralela a h (cortes horizontales)
 Ash2 = max(0.09*sst*bc2*fc/fy, 0.3*sst*bc2*(Acw/Ach - 1)*fc/fy) // Área requerida paralela a bw (cortes verticales)
-nr1 = max(2, ceil(Ash1/Ab(est))) // Ramas verticales (en el ancho)
-nr2 = max(2, ceil(Ash2/Ab(est))) // Ramas horizontales (en la altura)
+nr1 = max(2, ceil(Ash1/Ab(est)), ceil(bc1/(20 cm)) + 1) // Ramas verticales (en el ancho), separadas ≤ 200 mm
+nr2 = max(2, ceil(Ash2/Ab(est)), ceil(bc2/(20 cm)) + 1) // Ramas horizontales (en la altura), separadas ≤ 200 mm
 check nr1*Ab(est) >= Ash1 // Confinamiento en el ancho (18.7.5.4)
 check nr2*Ab(est) >= Ash2 // Confinamiento en la altura (18.7.5.4)
-check bc2/(nr2 - 1) <= 20 cm // Grapas a no más de 200 mm (18.10.7.4 d)
+check bc2/(nr2 - 1) <= 20 cm // Grapas y ramas a no más de 200 mm en vertical y horizontal (18.10.7.4 d)
+check bc1/(nr1 - 1) <= 20 cm // Ramas en el ancho a no más de 200 mm (18.10.7.4 d)
 # Refuerzo distribuido y anclaje
-Asd = 0.002*bw*sst // Refuerzo longitudinal y transversal distribuido mínimo por espaciamiento (18.10.7.4 c iv)
+Asd = 0.002*bw*sst // Refuerzo distribuido en el perímetro ≥ 0.002·bw·s (obligatorio en la opción c; se adopta como mínimo de práctica en la opción d)
 ldd = 1.25*ldE060(bard, fc, fy) // Anclaje de las diagonales en los muros 1.25 ℓd (18.10.7.4 b)
 "Cada grupo diagonal: {nd} barras #{bard} con anclaje de {roundup(ldd, 5 cm)} dentro de cada muro; confinamiento de toda la sección con estribos #{est} @ {sst}: {nr1} ramas en el ancho y {nr2} ramas en la altura (grapas). Refuerzo longitudinal adicional distribuido ≥ {Asd} por cada {sst}, sin anclaje en los muros (solo se prolonga 15 cm).`),
     { type: 'exAcople', ln: 'ln', h: 'hv', yd: 'yd', diag: '2 grupos de {nd} #{bard} (α = {alfa})', conf: 'estribos #{est} @ {sst}, {nr1} × {nr2} ramas', titulo: '' },
@@ -440,7 +462,7 @@ const diafragma = {
   },
   blocks: [
     text(`# Generalidades
-La losa de cada piso transmite las fuerzas sísmicas a los elementos verticales (muros y pórticos). Se analiza como una **viga horizontal de gran peralte** apoyada en los muros extremos: el cortante lo toma la losa, el momento lo toman las **cuerdas** (vigas de borde) como un par tracción–compresión, y los **colectores** recogen el cortante de la losa y lo entregan a los muros cuando estos no ocupan todo el ancho.
+La losa de cada piso transmite las fuerzas sísmicas a los elementos verticales (muros y pórticos). Se analiza como una **viga horizontal de gran peralte** apoyada en los muros extremos: el cortante lo toma la losa, el momento lo toman las **cuerdas** (vigas de borde) como un par tracción–compresión, y los **colectores** recogen el cortante de la losa y lo entregan a los muros cuando estos no ocupan todo el ancho. En la unión losa–muro el cortante se transfiere por cortante-fricción (ACI 318-19 12.5.3.7).
 
 La NTE E.030-2026 exige diafragmas capaces de transmitir las fuerzas de piso pero no define fuerzas mínimas de diafragma; se adopta el criterio del ASCE 7-22 12.10.1.1 ($0.2S_{DS}I_e w_{px} \\le F_{px} \\le 0.4 S_{DS} I_e w_{px}$) con la equivalencia $S_{DS} \\approx 2.5\\,Z U S$ (meseta del espectro elástico E.030), es decir $0.5\\,ZUS\\,w_{px} \\le F_{px} \\le ZUS\\,w_{px}$. Los colectores se amplifican con $\\Omega_0$ (ASCE 7-22 12.10.2.1). La resistencia de la losa se calcula con el ACI 318-19 12.5.3.3 (equivalente en kgf/cm²).`),
     calc(`# Datos
@@ -486,12 +508,19 @@ Ascol = Fcm/(0.9*fy) -> cm^2 // Acero del colector (ACI 318-19 12.5.4)
 ncol = max(2, ceil(Ascol/Ab(5))) // Barras #5 continuas a lo largo del colector y ancladas en el muro
 check ncol*Ab(5) >= Ascol // Acero del colector (ACI 318-19 12.5.4)
 check Fcm/Acol <= 0.5*fc // Compresión con Ω0 ≤ 0.5 f'c: no requiere confinamiento especial (18.12.7.6)
+# Transferencia del cortante al muro (ACI 318-19 12.5.3.7 y 22.9, cortante-fricción)
+vuw = Vud/lw -> tonf/m // Cortante por metro en la interfaz losa–muro (longitud del muro)
+Avfd = vuw*1 m/(0.75*1.0*fy) -> cm^2 // Avf por metro, φ = 0.75, μ = 1.0 (junta de construcción rugosa, Tabla 22.9.4.2)
+Asl = rhot*te*1 m -> cm^2 // Acero de la malla que cruza la interfaz por metro
+sdw = rounddown(max(min(Ab(3)/max(Avfd - Asl, 0.01 cm^2)*1 m, 40 cm), 10 cm), 5 cm) // Espaciamiento de dowels #3 adicionales a la malla
+check Asl + Ab(3)/sdw*1 m >= Avfd // Acero de cortante-fricción en la interfaz (22.9.4.2)
+check vuw*1 m <= 0.75*min(0.2*fc, 55 kgf/cm^2)*te*1 m // Límite de cortante-fricción 0.2f'c y 5.5 MPa sobre Acv = te·1 m (22.9.4.4)
 # Rigidez del diafragma (ASCE 7-22 12.3.1.3)
 Ecd = 15000*sqrtfc(fc) // Módulo del concreto
 Id = te*Bd^3/12 -> m^4 // Inercia de la losa como viga horizontal
-deltad = (5*wd*Ld^4/(384*Ecd*Id) + wd*Ld^2/(8*Ecd/2.4*te*Bd)) -> mm // Flecha por flexión + cortante
+deltad = (5*wd*Ld^4/(384*Ecd*Id) + 1.2*wd*Ld^2/(8*Ecd/2.4*te*Bd)) -> mm // Flecha por flexión + cortante (G = Ec/2.4, factor de forma 1.2)
 check deltad <= 2*Ddrift // Diafragma no flexible (δ ≤ 2Δ): se acepta la hipótesis de diafragma rígido
-"Cuerdas: {nch} #5 continuas en cada viga de borde (empalmes clase B); colectores: {ncol} #5 en la prolongación del eje de cada muro, anclados ℓd dentro del muro.`),
+"Cuerdas: {nch} #5 continuas en cada viga de borde (empalmes clase B); colectores: {ncol} #5 en la prolongación del eje de cada muro, anclados ℓd dentro del muro; dowels #3 @ {sdw} en la unión losa–muro, adicionales a la malla.`),
     { type: 'exDiafragma', L: 'Ld', B: 'Bd', lw: 'lw', w: 'wd', Tu: 'Tu', Fc: 'Fcm', titulo: '' },
     summary(),
   ],
@@ -541,7 +570,7 @@ FSc = 3.0 // Factor de seguridad mínimo de cables (práctica 3–5) [2..6]
 bt = 40 cm // Lado de la columna [25..100]
 fc = 210 kgf/cm^2 // Concreto [175..420]
 fy = 4200 kgf/cm^2 // Acero [2800..4200]
-nbt = 8 // Barras longitudinales [4..16]
+nbt = 8 // Barras longitudinales, repartidas en las 4 caras [4|8|12|16]
 bart = 6 // Barra [5 : 5/8"|6 : 3/4"|8 : 1"]
 ## Cámara de anclaje
 BA = 1.8 m // Ancho [0.5..5]
@@ -569,7 +598,7 @@ check FSp >= FSc // Cable principal (FS mínimo de cables, guías PNSR)
 Tpen = wv*sp + Pm -> kgf // Tensión en la péndola más cargada
 check cableRot(dpen)/Tpen >= FSc // Péndola (FS mínimo de cables, guías PNSR)
 # Fiador y torre
-a1 = atan(4*fcab/Lc) -> deg // Inclinación del cable en la torre
+a1 = atan(Vc/Hc) -> deg // Inclinación del cable en la torre (= atan(4f/L) sin carga puntual)
 a2 = atan((ht - 0.3 m)/Lf) -> deg // Inclinación del fiador
 check abs(a2 - a1) <= 15 deg // Ángulos similares: fuerza horizontal pequeña sobre la torre (práctica de diseño de torres con silla)
 Hd = Tmax*abs(cos(a1) - cos(a2)) -> tonf // Desequilibrio horizontal en la silla
@@ -577,13 +606,16 @@ Pv = Tmax*(sin(a1) + sin(a2)) -> tonf // Carga vertical de los cables sobre la t
 Wt = 2.4 tonf/m^3*bt^2*ht -> tonf // Peso propio de la torre
 qt = PhE020(1.5, Vh)*bt -> kgf/m // Viento sobre la torre, C = 1.5 (elemento con dimensión corta, E.020 Tabla 4)
 Pu = 1.4*(Pv + Wt) -> tonf // Carga axial última (E.060 9.2.1, cables como CM)
-Mu = max(1.4*Hd*ht, 1.25*(Hd*ht + qt*ht^2/2)) -> tonf*m // Momento en la base (E.060 9.2.1 y 9.2.2)
+Mul = max(1.4*Hd*ht, 1.25*(Hd*ht + qt*ht^2/2)) -> tonf*m // Momento longitudinal en la base (E.060 9.2.1 y 9.2.2)
+Mut = 1.25*(wh*Lc/2*ht + qt*ht^2/2) -> tonf*m // Momento transversal: viento sobre media luz de tubería y sobre la torre (E.060 9.2.2)
+Mu = max(Mul, Mut) -> tonf*m // Momento de la dirección dominante
 ## Esbeltez de la torre en voladizo (E.060 10.11 y 10.13)
 kl = 2*ht // Longitud efectiva (k = 2, voladizo)
 check kl/(0.3*bt) <= 100 // klu/r ≤ 100 (E.060 10.11.5)
 EIt = 0.4*15000*sqrtfc(fc)*bt^4/12/(1 + 0.6) -> tonf*m^2 // EI = 0.4EcIg/(1 + βd) (E.060 10.12.3)
 Pc = pi^2*EIt/kl^2 -> tonf // Carga crítica
-dlt = max(1, 1/(1 - Pu/(0.75*Pc))) // Magnificación de momentos (Cm = 1)
+dlt = max(1, 1/max(1 - Pu/(0.75*Pc), 0.01)) // Magnificación de momentos (Cm = 1); si Pu ≥ 0.75Pc la torre es inestable
+check Pu <= 0.75*Pc // Estabilidad de la torre: Pu < 0.75 Pc (E.060 10.12.3)
 Mc = dlt*Mu -> tonf*m // Momento amplificado
 ## Resistencia de la sección (flexocompresión simplificada)
 Ast = nbt*Ab(bart) // Acero longitudinal
@@ -591,16 +623,17 @@ check Ast/bt^2 >= 0.01 // Cuantía mínima 1 % (E.060 10.9.1)
 phiPn = 0.70*0.80*(0.85*fc*(bt^2 - Ast) + fy*Ast) -> tonf // φPn,máx (E.060 10.3.6.2)
 check Pu <= 0.1*fc*bt^2 // Carga axial baja (Pu ≤ 0.1f'cAg): se verifica como elemento en flexión (E.060 10.3.5; conservador)
 dt = bt - 6 cm // Peralte efectivo
-phiMn = 0.9*Ast/2*fy*(dt - Ast/2*fy/(1.7*fc*bt)) -> tonf*m // φMn con la mitad del acero en tracción (despreciando P, conservador)
-check Mc <= phiMn // Flexión en la base de la torre (E.060 10.13)
+Atr = (nbt/4 + 1)*Ab(bart) // Acero de la cara en tracción (nbt/4 + 1 barras por cara)
+phiMn = 0.9*Atr*fy*(dt - Atr*fy/(1.7*fc*bt)) -> tonf*m // φMn con solo la cara traccionada (despreciando P y las barras intermedias, conservador)
+check dlt*Mul/phiMn + dlt*Mut/phiMn <= 1 // Flexión biaxial en la base (interacción lineal Mx/φMnx + My/φMny ≤ 1, conservadora; E.060 10.13)
 check Pu <= phiPn // Compresión (E.060 10.3.6.2)
 # Cámara de anclaje (estabilidad)
 WA = 2.3 tonf/m^3*BA*LA*HA -> tonf // Peso de concreto ciclópeo
 T2 = Tmax // Tensión del fiador (silla sin fricción)
 FSdes = mu*(WA - T2*sin(a2))/(T2*cos(a2)) // Deslizamiento (sin empuje pasivo, conservador)
-check FSdes >= 1.5 // FS al deslizamiento ≥ 1.5 (E.050 39.13.6)
+check FSdes >= 1.5 // FS al deslizamiento ≥ 1.5 (práctica para bloques de anclaje; la E.020 Art. 22 exige ≥ 1.25)
 FSarr = WA/(T2*sin(a2)) // Arrancamiento vertical
-check FSarr >= 2.0 // FS al arrancamiento ≥ 2.0 (práctica para bloques de anclaje, E.050 Art. 39)
+check FSarr >= 2.0 // FS al arrancamiento ≥ 2.0 (práctica para bloques de anclaje; E.020 Art. 21 exige ≥ 1.5 al volteo)
 check T2 <= 0.5*fy*Ab(8) // Barra de anclaje de 1" (lisa con ojo): σ ≤ 0.5 fy (esfuerzo admisible ≈ 0.5 fy, práctica)`),
     { type: 'exCable', L: 'Lc', f: 'fcab', ht: 'ht', Lf: 'Lf', sp: 'sp', H: 'Hc', Tmax: 'Tmax', titulo: '' },
     summary(),
@@ -612,7 +645,7 @@ check T2 <= 0.5*fy*Ab(8) // Barra de anclaje de 1" (lisa con ojo): σ ≤ 0.5 fy
 // ---------------------------------------------------------------------
 const muroAnclado = {
   id: 'ex-muro-anclado', pais: 'PE', cat: 'Muros de contención', icon: 'wall',
-  normas: 'FHWA-IF-99-015 (GEC-4) Ground Anchors and Anchored Systems · PTI DC35.1-14 · NTE E.050 Art. 39 · ' + E060,
+  normas: 'FHWA-IF-99-015 (GEC-4) Ground Anchors and Anchored Systems · PTI DC35.1-14 · NTE E.050 · ' + E060,
   name: 'Muro anclado para sótanos (anclajes postensados)',
   desc: 'Envolvente aparente trapezoidal (Terzaghi–Peck / GEC-4), cargas por anclaje por áreas tributarias, número de torones, longitud libre más allá de la cuña activa, longitud de bulbo por adherencia, pantalla de concreto a flexión y punzonamiento bajo la placa.',
   titulo: 'Diseño de muro anclado con anclajes postensados',
@@ -635,7 +668,7 @@ Muro pantalla de concreto armado construido por paños descendentes (método tí
 3. Longitud libre que sobrepasa la cuña activa $45° + \\phi/2$ en $\\max(1.5\\,m,\\,0.2H)$ y ≥ 4.5 m; bulbo por adherencia con FS = 2.0 y entre 4.5 y 12 m.
 4. Torones de 0.6": carga de diseño ≤ 0.60 $f_{pu}$, bloqueo ≤ 0.70 $f_{pu}$, prueba 1.33 DL ≤ 0.80 $f_{pu}$.
 
-La estabilidad global (Kranz, superficie profunda) y el empotramiento bajo el fondo se verifican aparte con el estudio de suelos (E.050 Art. 39).`),
+La estabilidad global (Kranz, superficie profunda) y el empotramiento bajo el fondo se verifican aparte con el estudio de suelos (NTE E.050).`),
     calc(`# Datos
 ## Suelo (EMS, E.050)
 gammas = 2.0 tonf/m^3 // Peso unitario (grava arenosa de Lima ≈ 2.0–2.2) [1.5..2.3]
@@ -711,7 +744,7 @@ check Pu <= phiVc // Punzonamiento (E.060 11.12.2.1)
 // ---------------------------------------------------------------------
 const letrero = {
   id: 'ex-letrero', pais: 'PE', cat: 'Acero estructural', icon: 'column',
-  normas: 'NTE E.020 Art. 12 (viento) · ASCE/SEI 7-22 29.3.4 (excentricidad en letreros) · AISC 360-16 F8, G5, H3 / NTE E.090 · ACI 318-19 Cap. 17 · NTE E.050',
+  normas: 'NTE E.020 Art. 12 (viento) · ASCE/SEI 7-22 29.3.1 y Fig. 29.3-1 (excentricidad en letreros) · AISC 360-16 F8, G5, H3 / NTE E.090 · ACI 318-19 Cap. 17 · NTE E.050',
   name: 'Panel publicitario monoposte (viento, poste tubular y zapata)',
   desc: 'Presión de viento E.020 sobre el panel (C = 1.5) y el poste, momento y torsión por excentricidad 0.2B, poste tubular (flexión F8, torsión H3, interacción), deflexión, pernos de anclaje y zapata por volteo y presiones.',
   titulo: 'Diseño de panel publicitario monoposte',
@@ -726,7 +759,7 @@ const letrero = {
   },
   blocks: [
     text(`# Generalidades
-Panel publicitario (letrero) sostenido por un solo poste tubular de acero empotrado en una zapata aislada. La acción dominante es el **viento**: la NTE E.020 Art. 12 da la velocidad de diseño $V_h = V(h/10)^{0.22}$ y la presión $P_h = 0.005\\,C\\,V_h^2$ con $C = 1.5$ para anuncios (Tabla 4). Para la torsión del poste se considera la resultante desplazada $0.2B$ del eje (ASCE 7-22 29.3.4, caso B). El poste se diseña con el AISC 360-16 (igual a la NTE E.090) y la combinación $1.2D + 1.6W$; la estabilidad de la zapata se verifica con cargas de servicio.`),
+Panel publicitario (letrero) sostenido por un solo poste tubular de acero empotrado en una zapata aislada. La acción dominante es el **viento**: la NTE E.020 Art. 12 da la velocidad de diseño $V_h = V(h/10)^{0.22}$ y la presión $P_h = 0.005\\,C\\,V_h^2$ con $C = 1.5$ para anuncios (Tabla 4). Para la torsión del poste se considera la resultante desplazada $0.2B$ del eje (ASCE 7-22 Fig. 29.3-1, caso B). El poste se diseña con el AISC 360-16 (igual a la NTE E.090) y la combinación $1.2D + 1.6W$ (la NTE E.090 usa $1.3W$, seleccionable); la estabilidad de la zapata se verifica con cargas de servicio.`),
     calc(`# Datos
 ## Panel y viento
 Bp = 12.0 m // Ancho del panel [2..20]
@@ -761,7 +794,7 @@ Fp = Ph*Ap -> tonf // Fuerza resultante sobre el panel
 zp = hc + Hp/2 // Altura de aplicación
 Fpo = PhE020(0.7, Vh)*Dp*hc -> tonf // Viento sobre el poste (C = 0.7, cilindro)
 Mw = Fp*zp + Fpo*hc/2 -> tonf*m // Momento de servicio en la base
-Tw = Fp*0.2*Bp -> tonf*m // Torsión por excentricidad 0.2B (ASCE 7-22 29.3.4 caso B)
+Tw = Fp*0.2*Bp -> tonf*m // Torsión por excentricidad 0.2B (ASCE 7-22 Fig. 29.3-1 caso B)
 # Poste (AISC 360-16)
 Ag = pi*(Dp - tp)*tp -> cm^2 // Área
 Zp = (Dp - tp)^2*tp -> cm^3 // Módulo plástico de tubo delgado
@@ -777,9 +810,16 @@ Mu = gW*Mw // Momento último
 Vu = gW*(Fp + Fpo) // Cortante último
 Tu = gW*Tw // Torsión última
 check Mu <= phiMn // Flexión del poste (AISC 360-16 F8.1)
-phiTn = 0.9*0.6*Fy*pi*(Dp - tp)^2*tp/2 -> tonf*m // φTn, fluencia por cortante (H3-1, Fcr = 0.6Fy para tubos robustos)
-phiVn = 0.9*0.6*Fy*Ag/2 -> tonf // φVn (G5)
-phiPn = 0.9*Fy*Ag -> tonf // Compresión (sección compacta, esbeltez baja; conservador sin pandeo)
+FcrT = min(max(1.23*Es/(sqrt(hc/Dp)*lam^(5/4)), 0.60*Es/lam^(3/2)), 0.6*Fy) -> kgf/cm^2 // Fcr de torsión (H3-2a, H3-2b ≤ 0.6Fy)
+phiTn = 0.9*FcrT*pi*(Dp - tp)^2*tp/2 -> tonf*m // φTn = φ·Fcr·C, C = π(D − t)²t/2 (H3-1)
+FcrV = min(max(1.60*Es/(sqrt(hc/Dp)*lam^(5/4)), 0.78*Es/lam^(3/2)), 0.6*Fy) -> kgf/cm^2 // Fcr de cortante (G5-2a, G5-2b ≤ 0.6Fy), Lv = hc
+phiVn = 0.9*FcrV*Ag/2 -> tonf // φVn (G5-1)
+rgy = sqrt(Ip/Ag) -> cm // Radio de giro
+KLr = 2*hc/rgy // Esbeltez del poste en voladizo (K = 2)
+check KLr <= 200 // Esbeltez recomendada KL/r ≤ 200 (AISC 360-16 E2)
+Fe = pi^2*Es/KLr^2 -> kgf/cm^2 // Esfuerzo de pandeo elástico (E3-4)
+Fcr = si(Fy/Fe <= 2.25, 0.658^(Fy/Fe)*Fy, 0.877*Fe) -> kgf/cm^2 // Esfuerzo crítico (E3-2, E3-3)
+phiPn = 0.9*Fcr*Ag -> tonf // Compresión con pandeo por flexión (E3-1)
 IH3 = Pu/phiPn + Mu/phiMn + (Vu/phiVn + Tu/phiTn)^2 // Interacción AISC H3-6
 check IH3 <= 1.0 // Flexión + axial + cortante + torsión (H3.2)
 ## Deflexión de servicio
@@ -790,17 +830,24 @@ Tb = 4*Mu/(nb*Dbc) - Pu/nb -> tonf // Tracción en el perno más esforzado
 Abp = pi*dbp^2/4 -> cm^2 // Área nominal
 phiRt = 0.75*0.75*Fub*Abp -> tonf // φRn = 0.75·Fnt·Ab con Fnt = 0.75Fu (AISC J3)
 check Tb <= phiRt // Tracción en pernos (AISC 360-16 J3.6)
+frv = (Vu/nb + Tu/(nb*Dbc/2))/Abp -> kgf/cm^2 // Cortante en el perno más esforzado (corte directo + torsión)
+check frv <= 0.75*0.450*Fub // Cortante en pernos, rosca incluida Fnv = 0.450Fu (J3.6, Tabla J3.2)
+Fntp = min(1.3*0.75*Fub - 0.75*Fub/(0.75*0.450*Fub)*frv, 0.75*Fub) -> kgf/cm^2 // F'nt por interacción tracción–cortante (J3-3a)
+check Tb <= 0.75*Fntp*Abp // Tracción con cortante combinado (J3.7)
+Ntg = nb*Tb/pi -> tonf // Tracción total de los pernos traccionados (≈ n·Tmáx/π, distribución en coseno)
+Asar = Ntg/(0.75*4200 kgf/cm^2) -> cm^2 // Refuerzo de anclaje vertical que toma toda la tracción (ACI 318-19 17.5.2.1, φ = 0.75, fy = 4200)
+"Refuerzo de anclaje: barras verticales de la zapata con área total ≥ {Asar} junto a los pernos traccionados, desarrolladas por encima y por debajo del cono de arrancamiento (ACI 318-19 17.5.2.1 y R17.5.2.1); con ello no se requiere la verificación de arrancamiento del concreto en tracción.
 # Zapata (estabilidad con cargas de servicio)
 Wz = 2.4 tonf/m^3*Bz^2*hz + gammas*Bz^2*(Df - hz) + Wd -> tonf // Peso de zapata, relleno, poste y panel
 Mo = Mw + (Fp + Fpo)*Df -> tonf*m // Momento de volteo en la base de la zapata
 FSv = Wz*Bz/2/Mo // Factor de seguridad al volteo
-check FSv >= 1.5 // Volteo (E.020 Art. 21; E.050)
+check FSv >= 1.5 // Volteo FS ≥ 1.5 (E.020 Art. 21)
 ez = Mo/Wz -> m // Excentricidad
-check ez <= Bz/6 // Resultante en el tercio central, sin levantamiento (E.050 Art. 21)
+check ez <= Bz/6 // Resultante en el núcleo central (e ≤ B/6), sin levantamiento de la zapata
 qmax = Wz/Bz^2*(1 + 6*ez/Bz) -> tonf/m^2 // Presión máxima
-check qmax <= qa // Presión admisible (E.050 Art. 21)
+check qmax <= qa // Presión máxima ≤ capacidad admisible del EMS (NTE E.050)
 FSd = 0.5*Wz/(Fp + Fpo) // Deslizamiento (μ = 0.5, sin pasivo)
-check FSd >= 1.5 // Deslizamiento (E.050 Art. 39)`),
+check FSd >= 1.25 // Deslizamiento FS ≥ 1.25 (E.020 Art. 22)`),
     { type: 'exLetrero', Bp: 'Bp', Hp: 'Hp', hc: 'hc', Bz: 'Bz', Df: 'Df', F: 'Fp', tubo: 'Tubo Ø {Dp} × {tp}', titulo: '' },
     summary(),
   ],
@@ -817,7 +864,7 @@ const frp = {
   titulo: 'Reforzamiento a flexión de viga de concreto armado con FRP',
   validacion: {
     fuente: 'ACI 440.2R-17, Ejemplo 16.3 «Flexural strengthening of an interior reinforced concrete beam with FRP laminates» (Tabla 16.3c)',
-    nota: 'Datos por defecto = datos del ejemplo convertidos a SI (b = 12 in, d = 21.5 in, h = 24 in, 3 #9, f\'c = 5000 psi, fy = 60 ksi, 2 capas de CFRP de 0.040 in × 12 in, ffu* = 90 ksi, εfu* = 0.015, Ef = 5360 ksi). Publicado: εbi = 0.00061, εfd = 0.009 (redondeado; la fórmula da 0.00878, por eso Mnf resulta 2.6 % menor), c = 5.17 in, Mnf = 85 kip-ft, Mns ≈ 292 kip-ft, fs,s = 40.4 ksi.',
+    nota: 'Datos por defecto = datos del ejemplo convertidos a SI (b = 12 in, d = 21.5 in, h = 24 in, 3 #9, f\'c = 5000 psi, fy = 60 ksi, 2 capas de CFRP de 0.040 in × 12 in, ffu* = 90 ksi, εfu* = 0.015, Ef = 5360 ksi). Publicado: εbi = 0.00061 (k = 0.334, Icr = 2471×10⁶ mm⁴), εfd = 0.009 (redondeado; la fórmula SI da 0.00878, por eso Mnf resulta 2.6 % menor), c = 5.17 in, Mnf = 85 kip-ft (114 kN·m), Mns ≈ 292 kip-ft, servicio k = 0.343, fs,s = 40.4 ksi, ff,s = 38 N/mm².',
     valores: [
       { var: 'ebi', esperado: 0.00061, tolAbs: 0.00002, desc: 'Deformación inicial en la fibra inferior' },
       { var: 'efd', esperado: 0.009, tolAbs: 0.0003, desc: 'Deformación de diseño por despegue' },
@@ -825,6 +872,9 @@ const frp = {
       { var: 'Mnf', unidad: 'kip*ft', esperado: 85, tol: 0.03, desc: 'Contribución del FRP' },
       { var: 'Mns', unidad: 'kip*ft', esperado: 292, tol: 0.02, desc: 'Contribución del acero' },
       { var: 'fss', unidad: 'ksi', esperado: 40.4, tol: 0.02, desc: 'Esfuerzo de servicio del acero' },
+      { var: 'kcr', esperado: 0.334, tol: 0.01, desc: 'k de la sección agrietada existente' },
+      { var: 'ksv', esperado: 0.343, tol: 0.01, desc: 'k elástico con FRP (servicio)' },
+      { var: 'ffs', unidad: 'MPa', esperado: 38, tol: 0.02, desc: 'Esfuerzo de servicio del FRP (SI: 38 N/mm²)' },
     ],
   },
   blocks: [
@@ -937,7 +987,7 @@ Pilote de concreto armado **vaciado in situ sin camisa** (perforado), de cabeza 
 - Resistencia axial: $\\phi P_n = \\phi[0.85f'_c(A_g-A_{st}) + f_yA_{st}]$ con $\\phi = 0.55$ para pilotes vaciados sin camisa (ACI 318-19 13.4.3.2).
 - Carga lateral sísmica: pilote largo en suelo granular con módulo de reacción creciente $k_h = n_h z$; longitud característica $T = (EI/n_h)^{1/5}$ y coeficientes de Matlock y Reese para cabeza empotrada.
 - Flexocompresión: diagrama P–M de la sección circular por compatibilidad de deformaciones (E.060 10.2).
-- Cortante (E.060 11, sección circular con $d = 0.8D$) y espiral de confinamiento en la zona de $3D$ bajo el cabezal (ACI 318-19 18.13.5).`),
+- Cortante (E.060 11, sección circular con $d = 0.8D$) y espiral de confinamiento en la zona de $3D$ bajo el cabezal (ACI 318-19 Tabla 18.13.5.7.1 e IBC 1810.3.9.4.2: refuerzo de 18.7.5.2 a 18.7.5.4 con cuantía de espiral ≥ la mitad de la de la Tabla 18.10.6.4(g)).`),
     calc(`# Datos
 D = 60 cm // Diámetro del pilote [30..200]
 Lp = 15 m // Longitud del pilote [5..60]
@@ -945,7 +995,7 @@ fc = 210 kgf/cm^2 // Concreto (vaciado bajo agua: ≥ 280 recomendado) [210..420
 fy = 4200 kgf/cm^2 // Acero [4200..5000]
 nb = 8 // Número de barras longitudinales [6..30]
 bar = 6 // Barra longitudinal [5 : 5/8"|6 : 3/4"|8 : 1"]
-est = 3 // Espiral [3 : 3/8"|4 : 1/2"]
+est = 4 // Espiral (≥ #3 hasta D = 50 cm, ≥ #4 para D mayores) [3 : 3/8"|4 : 1/2"]
 rec = 7.5 cm // Recubrimiento libre (concreto contra el terreno, E.060 7.7.1) [7..10]
 sesp = 10 cm // Paso de la espiral en la zona confinada [5..15]
 ## Cargas en la cabeza (del análisis del cabezal, por pilote)
@@ -959,7 +1009,7 @@ ylim = 25 mm // Desplazamiento lateral admisible de la cabeza [5..50]
 Ag = pi*D^2/4 // Área bruta
 Ast = nb*Ab(bar) // Acero longitudinal
 rhol = Ast/Ag // Cuantía longitudinal
-check rhol >= 0.005 // Cuantía mínima de pilotes en zonas sísmicas (ACI 318-19 18.13.5.7.1)
+check rhol >= 0.005 // Cuantía mínima de pilotes en zonas sísmicas (ACI 318-19 Tabla 18.13.5.7.1)
 check nb >= 6 // Al menos 6 barras en sección circular (E.060 10.9.2)
 dc = rec + db(est) + db(bar)/2 // Recubrimiento al centro de las barras
 # Resistencia axial (ACI 318-19 13.4.3)
@@ -987,11 +1037,15 @@ check Vh <= phiVc + 0.85*Vs // Cortante (E.060 11.1.1)
 # Espiral de confinamiento (ACI 318-19 18.13.5.7.1 y 18.7.5.4)
 Dcn = D - 2*rec // Diámetro del núcleo
 rhosp = 4*Ab(est)/(Dcn*sesp) // Cuantía volumétrica de la espiral
-check rhosp >= 0.12*fc/fy // ρs ≥ 0.12 f'c/fyt en la zona de 3D bajo el cabezal (18.7.5.4 b)
-check sesp <= min(6*db(bar), 15 cm) // Paso ≤ 6 db y ≤ 150 mm (18.7.5.3)
-Lconf = max(3*D, 1.2 m) // Longitud de la zona confinada bajo el cabezal (ACI 318-19 18.13.5.7.1)
-sesp2 = rounddown(4*Ab(est)/(Dcn*0.06*fc/fy), 2.5 cm) // Paso fuera de la zona confinada (ρs ≥ 0.06 f'c/fyt, 18.13.5.6)
-"Refuerzo: {nb} barras #{bar} en toda la longitud (o hasta 2/3 L con la mitad del acero si el momento lo permite); espiral #{est} con paso {sesp} en los primeros {Lconf} y paso {min(sesp2, 30 cm)} en el resto. Anclar las barras en el cabezal con ℓdg = {ldgE060(bar, fc, fy)}.`),
+Agc = pi*Dcn^2/4 // Área del núcleo Ach
+rhoreq = 0.5*max(0.45*(Ag/Agc - 1), 0.12)*fc/fy // ½ de la Tabla 18.10.6.4(g): ½·máx[0.45(Ag/Ach − 1), 0.12]·f'c/fyt
+check rhosp >= rhoreq // Cuantía de la espiral en la zona de 3D bajo el cabezal (ACI 318-19 Tabla 18.13.5.7.1; IBC 1810.3.9.4.2)
+check sesp <= min(D/4, 6*db(bar), 15 cm) // Paso ≤ D/4, ≤ 6 db y ≤ 150 mm (18.7.5.3)
+check est >= si(D > 50 cm, 4, 3) // Espiral ≥ #4 si D > 50 cm (≥ #3 si menor; IBC 1810.3.9.4.2)
+Lconf = 3*D // Longitud de la zona confinada bajo el cabezal (Tabla 18.13.5.7.1)
+Lref = max(Lp/2, 3 m, 3*D) // Longitud mínima con refuerzo longitudinal (½L, 3 m, 3D y longitud de flexión)
+sesp2 = rounddown(min(12*db(bar), D/2, 30 cm), 2.5 cm) // Paso fuera de la zona confinada ≤ 12 db, D/2 y 300 mm
+"Refuerzo: {nb} barras #{bar} en al menos {Lref} desde la cabeza (y hasta donde el momento sea menor que el de agrietamiento; se recomienda toda la longitud); espiral #{est} con paso {sesp} en los primeros {Lconf} y paso {sesp2} en el resto. Anclar las barras en el cabezal con ℓdg = {ldgE060(bar, fc, fy)}.`),
     summary(),
   ],
 };
@@ -1018,7 +1072,7 @@ const encamisado = {
     text(`# Generalidades
 Columna existente de un edificio que, por cambio de uso o por la evaluación sísmica con la E.030-2026, no resiste las nuevas cargas. Se refuerza con un **encamisado de concreto armado** en las cuatro caras (vaciado o lanzado), con barras longitudinales que pasan a través de las losas y estribos cerrados.
 
-Criterios: la sección encamisada se diseña como **monolítica** usando el $f'_c$ del concreto existente (el menor) y despreciando las barras existentes (conservador); el Eurocódigo 8-3 (Anexo A.4.2.2) permite tomar la resistencia a flexión del elemento monolítico y reduce la resistencia a cortante a $0.9 V_R$. La transferencia de carga entre el núcleo existente y la camisa se asegura con conectores epóxicos dimensionados por **cortante-fricción** (E.060 11.7, superficie rugosa intencional $\\mu = 1.0$).`),
+Criterios: la sección encamisada se diseña como **monolítica** usando el $f'_c$ del concreto existente (el menor) y despreciando las barras existentes (conservador: el Eurocódigo 8-3, Anexo A.4.2.2, permite usar el $f'_c$ de la camisa en toda la sección, tomar la resistencia a flexión del elemento monolítico y reducir la resistencia a cortante a $0.9 V_R$). La transferencia de carga entre el núcleo existente y la camisa se asegura con conectores epóxicos dimensionados por **cortante-fricción** (E.060 11.7, superficie rugosa intencional $\\mu = 1.0$).`),
     calc(`# Datos
 ## Columna existente
 b0 = 30 cm // Lado de la columna existente [20..80]
@@ -1040,7 +1094,8 @@ Vu = 15 tonf // Cortante último [0..200]
 # Capacidad de la columna existente (E.060 10.3.6.2)
 Ast0 = n0b*Ab(bar0) // Acero existente
 phiPn0 = 0.80*0.70*(0.85*fc0*(b0^2 - Ast0) + fy*Ast0) -> tonf // Resistencia axial máxima existente
-check Pu > phiPn0 // La columna existente NO resiste: se requiere reforzamiento
+DC0 = Pu/phiPn0 // Demanda/capacidad axial de la columna existente
+"Columna existente: Pu/φPn,máx = {DC0} (> 1: no resiste y se requiere el reforzamiento).
 # Sección encamisada
 bj = b0 + 2*tj // Lado de la sección reforzada
 check tj >= 7.5 cm // Espesor mínimo práctico de camisa vaciada (ACI 369.1; ≥ 3 in)
@@ -1057,9 +1112,9 @@ Vc = 0.53*sqrtfc(fceq)*(1 + Pu/(140 kgf/cm^2*bj^2))*bj*dj -> tonf // Aporte del 
 sj = 10 cm // Espaciamiento de estribos en la zona de confinamiento
 Vs = 2*Ab(est)*fy*dj/sj -> tonf // Aporte de los estribos de la camisa
 phiVnj = 0.85*0.9*(Vc + Vs) // φVn con la reducción 0.9 de elementos encamisados
-check Vu <= phiVnj // Cortante
+check Vu <= phiVnj // Cortante φ·0.9·(Vc + Vs) (E.060 11.1; EC8-3 A.4.2.2)
 # Confinamiento (E.060 21.4.5)
-check sj <= min(8*db(barj), bj/2, 10 cm) // Espaciamiento en la zona de confinamiento ℓo
+check sj <= min(8*db(barj), bj/2, 10 cm) // Espaciamiento en la zona de confinamiento ℓo (E.060 21.4.5.3)
 Lo = max(bj, hcol/6, 50 cm) // Longitud de la zona de confinamiento
 # Conectores en la interfaz (cortante-fricción, E.060 11.7)
 dPu = Pu - phiPn0 // Carga que debe transferirse a la camisa
@@ -1069,7 +1124,7 @@ nc = 4*nlv // Número total de conectores
 check nc*Ab(barc) >= Avf // Acero de conectores
 sc = rounddown(hcol/nlv, 5 cm) // Separación vertical de los niveles de conectores
 check sc <= 50 cm // Separación máxima práctica de conectores (≤ 50 cm, ACI 369.1 como referencia)
-check dPu <= 0.85*0.2*fc0*4*b0*hcol // Límite de cortante-fricción 0.2 f'c Ac en la interfaz (11.7.5)
+check dPu <= 0.85*min(0.2*fc0, 55 kgf/cm^2)*4*b0*hcol // Límite de cortante-fricción Vn ≤ 0.2 f'c Ac y ≤ 55 Ac (kgf/cm²) en la interfaz (E.060 11.7.5)
 "Camisa de {tj} con f'c = {fcj}: 12 barras #{barj} continuas a través de las losas (perforaciones rellenas con epóxico), estribos #{est} @ {sj} en ℓo = {Lo} y @ 20 cm en el resto; {nc} conectores #{barc} con epóxico (un nivel por cada {sc}, uno por cara), anclados 10 db en el núcleo. La superficie existente se escarifica hasta una rugosidad de 6 mm (E.060 11.7.9).`),
     summary(),
   ],

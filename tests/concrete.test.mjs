@@ -307,6 +307,13 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('co-'))) {
   const v = t.validacion;
   truthy(`${t.id}: tiene «validacion» con fuente, nota y valores`, !!(v && v.fuente && v.nota && Array.isArray(v.valores) && v.valores.length >= 3));
 }
+{
+  const c0 = runTemplate('co-colductil'), c1 = runTemplate('co-colductil', setData({ Pumin: '20 tonf' }));
+  truthy('Columna sísmica: Vc = 0 en Lo si Pu < Ag f\'c/20 (E.060 21.6.5.2)', c0('Vc', 'tonf') > 0 && c1('Vc', 'tonf') === 0);
+  const c2 = runTemplate('co-colductil', setData({ b: '40 cm', hc: '60 cm' }));
+  near('Columna sísmica rectangular: d medido en b (dirección del pórtico)', c2('d', 'cm'), 40 - 4 - 0.9525 - 2.54 / 2, 0.002);
+  near('Columna sísmica rectangular: bc con la dimensión mayor (conservador)', c2('bc', 'cm'), 60 - 8 - 0.9525, 0.002);
+}
 truthy('Listas desplegables intactas con rango (f\'c, espesor de losa, estribo del voladizo)', (() => { const f = (id, n) => runTemplate(id).res.ctx.inputs.find(i => i.name === n); return f('co-placa', 'fc').options.length === 3 && f('co-placa', 'fc').range.max === 420 && f('co-losa2d', 'h').options.length === 4 && f('co-voladizo', 'est').options.length === 2; })());
 truthy('Losas: validacion con los coeficientes de la E.060 (Tabla 13.1 y Art. 8.3.3)', ['co-losa2d', 'co-losa1d'].every(id => /Tabla 13\.1|8\.3\.3/.test(TEMPLATES.find(x => x.id === id).validacion.fuente)));
 done();

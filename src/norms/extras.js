@@ -90,7 +90,7 @@ defineFns({
         let efe = 0.003 * (Df - c) / c - e0, ecc = 0.003;
         if (efe > ed) { efe = ed; ecc = (efe + e0) * c / (Df - c); }
         const esx = (efe + e0) * (D - c) / (Df - c);
-        const fs = Math.min(es * esx, Fy), ffe = ef * efe;
+        const fs = Math.max(-Fy, Math.min(es * esx, Fy)), ffe = ef * efe;
         const x = Math.min(ecc, 0.003), b1 = (4 * ecp - x) / (6 * ecp - 2 * x), a1 = (3 * ecp * x - x * x) / (3 * b1 * ecp * ecp);
         const a1b1 = ecc >= 0.003 - 1e-12 ? 0 : a1 * b1;
         const comp = (a1b1 || (0.85 * (f <= 28 ? 0.85 : Math.max(0.65, 0.85 - 0.05 * (f - 28) / 7)))) * f * B * c;

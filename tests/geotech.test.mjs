@@ -371,6 +371,10 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('ge-'))) {
   const v = t.validacion;
   truthy(`${t.id}: tiene «validacion» con fuente, nota y valores`, !!(v && v.fuente && v.nota && Array.isArray(v.valores) && v.valores.length >= 3));
 }
+{
+  const cn = runTemplate('ge-conectada');
+  truthy('Zapata conectada: la interior se diseña sin el alivio (R2d = máx(R2, P2), Ru2d = máx(Ru2, Pu2))', cn('R2d', 'tonf') >= cn('R2', 'tonf') && Math.abs(cn('Ru2d', 'tonf') - 140.5) < 1e-6);
+}
 truthy('Listas desplegables intactas con rango (φ, f\'c, FS de licuación)', (() => { const f = (id, n) => runTemplate(id).res.ctx.inputs.find(i => i.name === n); return f('ge-portante', 'phi').options.length === 5 && f('ge-portante', 'phi').range.max === 45 && f('ge-combinada', 'fc').options.length === 3 && f('ge-licuacion', 'FSreq').options.length === 3; })());
 truthy('Capacidad portante: validacion con los factores publicados de Das (φ = 30°)', TEMPLATES.find(x => x.id === 'ge-portante').validacion.valores.some(v => v.var === 'Nq' && v.esperado === 18.40));
 done();

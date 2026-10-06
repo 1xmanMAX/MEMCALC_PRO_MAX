@@ -67,6 +67,15 @@ section('Escalera de dos tramos: solución cerrada vs análisis matricial');
   near('Mmax = RA²/(2wu1)', g('Mmax', 'tonf*m'), RA * RA / (2 * wu1), 1e-6);
   near('Mmax = M+ del análisis matricial (bloque beam)', g('Mpos', 'tonf*m'), g('Mmax', 'tonf*m'), 0.005);
   near('RB = R3 del análisis matricial', g('R3', 'tonf'), g('RB', 'tonf'), 0.005);
+  // deflexión con Ie de Branson (E.060 9.6.2.3) recalculada
+  const Ec = 15000 * Math.sqrt(210), Ig = 100 * 15 ** 3 / 12, Mcr = 2 * Math.sqrt(210) * Ig / 7.5;
+  const d = 15 - 2.5 - 1.27 / 2, As = 1.29 / g('sep', 'cm') * 100, n = 2e6 / Ec, r = n * As / (100 * d), k = Math.sqrt(2 * r + r * r) - r;
+  const Icr = 100 * (k * d) ** 3 / 3 + n * As * (d - k * d) ** 2, wD1 = g('wD1', 'tonf/m^2');
+  const Ma = g('Mmax', 'kgf*cm') * (wD1 + 0.2) / wu1, rc = Math.min(1, (Mcr / Ma) ** 3), Ie = rc * Ig + (1 - rc) * Icr;
+  const di = 5 * Ma * 370 ** 2 / (48 * Ec * Ie), dD = di * wD1 / (wD1 + 0.2);
+  near('Flecha diferida + viva = 2ΔD + ΔL (Ie de Branson) [mm]', g('dltLP', 'mm'), (2 * dD + di - dD) * 10, 1e-4);
+  const s2 = status(runTemplate('ex-escalera-2t', setData({ cp: '19 cm', p: '22 cm' })));
+  truthy('Contrapaso 19 cm y paso 22 cm → NO CUMPLE A.010', s2.bad >= 2 && s2.err === 0);
 }
 
 section('Losa sobre terreno: fórmulas de Westergaard (Huang 2004) recalculadas');
@@ -85,17 +94,35 @@ section('Losa sobre terreno: fórmulas de Westergaard (Huang 2004) recalculadas'
   near('PCA: w = 257.876·s·√(kh/E) [psf]', g('wadm', 'lbf/ft^2'), 257.876 * (g('MR', 'psi') / 1.7) * Math.sqrt(k * 36.127 * (h / 2.54) / (E * 14.2233)), 0.002);
 }
 
-section('Pavimento rígido AASHTO 93 (ejemplo del nomograma: D = 9.75 in ≈ 10 in)');
+section('Westergaard — Huang, Pavement Analysis and Design, Ejemplos 4.1, 4.2 y 4.3 (valores publicados)');
+{
+  // k = 100 pci, h = 10 in, a = 6 in, P = 10 000 lb, E = 4×10⁶ psi, ν = 0.15
+  const v = calc('l = lrelWest(4e6 psi, 10 in, 0.15, 100 lbf/in^3)\nsc = sigEsqWest(10000 lbf, 10 in, l, 6 in)\nsi = sigIntWest(10000 lbf, 10 in, l, 6 in, 0.15)\nse = sigBordeWest(10000 lbf, 10 in, 4e6 psi, 100 lbf/in^3, 6 in, 0.15)');
+  near('Ej. 4.1: ℓ = 42.97 in', v('l', 'in'), 42.97, 0.001);
+  near('Ej. 4.1: σc (esquina) = 186.6 psi', v('sc', 'psi'), 186.6, 0.002);
+  near('Ej. 4.2: σi (interior, b = 5.804 in) = 143.7 psi', v('si', 'psi'), 143.7, 0.002);
+  near('Ej. 4.3: σe (borde, Westergaard 1948 / Ioannides) = 279.4 psi', v('se', 'psi'), 279.4, 0.002);
+}
+
+section('Pavimento rígido AASHTO 93 — Huang Ej. 12.6 (nomograma: D = 9.75 in ≈ 10 in) y Ej. 12.7');
 {
   const v = calc('ZR = ZRconf(95)\nZ9 = ZRconf(90)\nD = DAASHTO93(5.1e6, ZR, 0.29, 1.7, 2.5, 650 psi, 1.0, 3.2, 5e6 psi, 72 lbf/in^3)\nW = W18AASHTO93(D, ZR, 0.29, 1.7, 2.5, 650 psi, 1.0, 3.2, 5e6 psi, 72 lbf/in^3)');
   near('ZR(95 %) = −1.645 (AASHTO Tabla 4.1)', v('ZR'), -1.645, 0.001);
   near('ZR(90 %) = −1.282', v('Z9'), -1.282, 0.001);
-  near('D por la ecuación ≈ 9.75 in del nomograma (Garber y Hoel)', v('D', 'in'), 9.75, 0.01);
+  near('D por la ecuación ≈ 9.75 in del nomograma (Huang Ej. 12.6)', v('D', 'in'), 9.75, 0.01);
   near('W18(D) = 5.1×10⁶ (consistencia de la inversión)', v('W'), 5.1e6, 1e-4);
   // ecuación escrita de nuevo en la prueba
   const D = v('D', 'in'), ZR = -1.6449, So = 0.29;
   const logW = ZR * So + 7.35 * Math.log10(D + 1) - 0.06 + Math.log10(1.7 / 3) / (1 + 1.624e7 / (D + 1) ** 8.46) + (4.22 - 0.32 * 2.5) * Math.log10(650 * 1 * (D ** 0.75 - 1.132) / (215.63 * 3.2 * (D ** 0.75 - 18.42 / (5e6 / 72) ** 0.25)));
   near('log W18 recalculado = log(5.1×10⁶)', logW, Math.log10(5.1e6), 0.001);
+  // Huang Ej. 12.7: términos publicados de la ecuación con D = 9.75 in (ZR·So, 7.35 log(D + 1), último término)
+  const D2 = 9.75;
+  near('Ej. 12.7: ZR·So = −0.477', -1.645 * 0.29, -0.477, 0.002);
+  near('Ej. 12.7: 7.35·log(D + 1) = 7.581', 7.35 * Math.log10(D2 + 1), 7.581, 0.001);
+  near('Ej. 12.7: (4.22 − 0.32pt)·log[…] = −0.088', 3.42 * Math.log10(650 * (D2 ** 0.75 - 1.132) / (215.63 * 3.2 * (D2 ** 0.75 - 18.42 / (5e6 / 72) ** 0.25))), -0.088, 0.02);
+  const W975 = calc('W = W18AASHTO93(9.75 in, -1.645, 0.29, 1.7, 2.5, 650 psi, 1.0, 3.2, 5e6 psi, 72 lbf/in^3)')('W');
+  // Huang usa log(ΔPSI/2.7) (−0.195) y obtiene 5.8×10⁶; con log(ΔPSI/3.0) de la Guía AASHTO resulta ≈ 5.3×10⁶, cercano a los 5.2×10⁶ del nomograma
+  near('Ej. 12.7: W18(9.75 in) ≈ 5.2×10⁶ leído en el nomograma (ecuación AASHTO con 4.5 − 1.5)', W975, 5.2e6, 0.04);
   const g = runTemplate('ex-pav-rigido');
   near('Plantilla (datos en kgf/cm): Dreq ≈ 9.75 in', g('Dreq', 'in'), 9.75, 0.01);
 }
@@ -103,7 +130,7 @@ section('Pavimento rígido AASHTO 93 (ejemplo del nomograma: D = 9.75 in ≈ 10 
 section('Cimentación de máquina (Richart, Hall y Woods 1970)');
 {
   const g = runTemplate('ex-cim-maquina');
-  const B = 2, L = 4, hb = 1.5, Wm = 6, Wb = 2.4 * B * L * hb, Wt = Wb + Wm, m = Wt / G, rho = 1.8 / G, Gs = rho * 200 ** 2, nu = 0.33;
+  const B = 2.4, L = 4, hb = 1.5, Wm = 6, Wb = 2.4 * B * L * hb, Wt = Wb + Wm, m = Wt / G, rho = 1.8 / G, Gs = rho * 200 ** 2, nu = 0.33;
   const r0 = Math.sqrt(B * L / Math.PI), kz = 4 * Gs * r0 / (1 - nu), Bz = (1 - nu) / 4 * m / (rho * r0 ** 3);
   near('r0 = √(BL/π)', g('r0z', 'm'), r0, 1e-6);
   near('kz = 4Gr0/(1 − ν) [tonf/m]', g('kz', 'tonf/m'), kz, 1e-6);
@@ -113,6 +140,15 @@ section('Cimentación de máquina (Richart, Hall y Woods 1970)');
   near('fx = √(kx/m)/2π [Hz]', g('fx', 'Hz'), Math.sqrt(kx / m) / (2 * Math.PI), 1e-6);
   const w = 2 * Math.PI * 60, Fo = 2 * (2 / G) * 0.0025 * w;
   near('Fo = SF·mr·G·ω [tonf]', g('Fo', 'tonf'), Fo, 1e-6);
+  // cabeceo alrededor del eje de la máquina (paralelo a L): r0 = (L·B³/3π)^¼, kψ = 8Gr0³/3(1 − ν)
+  const r0p = Math.pow(L * B ** 3 / (3 * Math.PI), 0.25), kpsi = 8 * Gs * r0p ** 3 / (3 * (1 - nu));
+  const Ipsi = Wb / G * ((B * B + hb * hb) / 12 + hb * hb / 4) + Wm / G * (hb + 0.4) ** 2;
+  near('r0ψ = (L·B³/3π)^¼ (cabeceo alrededor del eje de la máquina)', g('r0p', 'm'), r0p, 1e-6);
+  near('fψ = √(kψ/Iψ)/2π [Hz]', g('fpsi', 'Hz'), Math.sqrt(kpsi / Ipsi) / (2 * Math.PI), 1e-6);
+  const Bp = 3 * (1 - nu) / 8 * Ipsi / (rho * r0p ** 5);
+  near('Dψ = 0.15/[(1 + Bψ)√Bψ]', g('Dpsi'), 0.15 / ((1 + Bp) * Math.sqrt(Bp)), 1e-6);
+  const s2 = status(runTemplate('ex-cim-maquina', setData({ B: '1.6 m' })));
+  truthy('Regla ACI 351.3R: B < altura del eje (hb + hm) → NO CUMPLE', s2.bad >= 1 && s2.err === 0);
 }
 
 section('Viga de acoplamiento (ACI 318-19 18.10.7)');
@@ -122,6 +158,9 @@ section('Viga de acoplamiento (ACI 318-19 18.10.7)');
   near('α = atan((h − 2yd)/ℓn) [°]', g('alfa', 'deg'), a * 180 / Math.PI, 1e-6);
   near('Avd = Vu/(2φfy sen α) [cm²]', g('Avd', 'cm^2'), 70000 / (2 * 0.85 * 4200 * Math.sin(a)), 1e-6);
   near('0.83√f\'c(MPa) ≡ 2.65√f\'c(kgf/cm²)', 0.83 * Math.sqrt(280 * 0.0980665) / 0.0980665, 2.65 * Math.sqrt(280), 0.002);
+  truthy('Ramas de confinamiento separadas ≤ 200 mm en el ancho y en la altura (18.10.7.4 d)', (30 - 8) / (g('nr1') - 1) <= 20 && (90 - 8) / (g('nr2') - 1) <= 20, 'nr1 = ' + g('nr1') + ', nr2 = ' + g('nr2'));
+  const s2 = status(runTemplate('ex-viga-acople', setData({ Vu: '20 tonf' })));
+  truthy('Vu bajo (diagonales opcionales, 18.10.7.3): no se marca NO CUMPLE', s2.bad === 0 && s2.err === 0);
 }
 
 section('Diafragma');
@@ -132,6 +171,9 @@ section('Diafragma');
   near('M = wL²/8', g('Mud', 'tonf*m'), w * 576 / 8, 1e-6);
   near('Tu = M/(0.95B)', g('Tu', 'tonf'), w * 576 / 8 / (0.95 * 12), 1e-6);
   near('Colector Ω0·v·(B − lw)/2', g('Fcm', 'tonf'), 2.5 * (w * 12 / 12) * 3, 1e-6);
+  near('Cortante-fricción losa–muro Avf = (V/lw)/(φμfy) [cm²/m]', g('Avfd', 'cm^2'), (w * 12 / 6) * 1000 / (0.75 * 4200), 1e-6);
+  const Ec = 15000 * Math.sqrt(210) * 10; // tonf/m²
+  near('δ = 5wL⁴/384EI + 1.2wL²/(8GA) [mm]', g('deltad', 'mm'), (5 * w * 24 ** 4 / (384 * Ec * 0.05 * 12 ** 3 / 12) + 1.2 * w * 576 / (8 * Ec / 2.4 * 0.05 * 12)) * 1000, 1e-6);
 }
 
 section('Pase aéreo: cable parabólico y cables 6×19');
@@ -146,6 +188,9 @@ section('Pase aéreo: cable parabólico y cables 6×19');
   const H = (wr * L * L / 8 + P * L / 4) / f, V = wr * L / 2 + P / 2;
   near('H = (wL²/8 + PL/4)/f', g('Hc', 'tonf'), H, 1e-6);
   near('Tmáx = √(H² + V²)', g('Tmax', 'tonf'), Math.hypot(H, V), 1e-6);
+  near('Inclinación en la torre α = atan(V/H)', g('a1', 'deg'), Math.atan2(V, H) * 180 / Math.PI, 1e-6);
+  near('Momento transversal 1.25(wh·L/2·ht + qt·ht²/2) [tonf·m]', g('Mut', 'tonf*m'), 1.25 * (g('wh', 'tonf/m') * 20 * 5.5 + g('qt', 'tonf/m') * 5.5 ** 2 / 2), 1e-6);
+  near('Acero de la cara traccionada: nbt/4 + 1 = 3 barras #6', g('Atr', 'cm^2'), 3 * 2.84, 1e-6);
   near('Longitud del cable S ≈ L(1 + 8n²/3 − 32n⁴/5)', g('Scab', 'm'), 40 * (1 + 8 / 3 * 0.01 - 32 / 5 * 1e-4), 1e-6);
 }
 
@@ -169,6 +214,10 @@ section('Panel publicitario (E.020 / AISC F8)');
   near('Vh = V(h/10)^0.22', g('Vh', 'km/h'), Vh, 1e-6);
   near('F = 0.005·C·Vh²·A', g('Fp', 'tonf'), Ph * 48 / 1000, 1e-6);
   near('Zp ≈ (D − t)²t', g('Zp', 'cm^3'), (50.8 - 0.953) ** 2 * 0.953, 1e-6);
+  const Dm = 50.8 - 0.953, Ag = Math.PI * Dm * 0.953, rg = Math.sqrt(Math.PI * Dm ** 3 * 0.953 / 8 / Ag), KLr = 2 * 800 / rg, Fe = Math.PI ** 2 * 2.04e6 / KLr ** 2;
+  near('Pandeo del poste (K = 2): Fcr = 0.658^(Fy/Fe)·Fy (E3-2) [kgf/cm²]', g('Fcr', 'kgf/cm^2'), Math.pow(0.658, 2460 / Fe) * 2460, 1e-6);
+  near('Torsión: Fcr = 0.6Fy (H3-2 no gobierna con D/t = 53)', g('FcrT', 'kgf/cm^2'), 0.6 * 2460, 1e-9);
+  near('Pernos: F\'nt = 1.3Fnt − Fnt·frv/(φFnv) ≤ Fnt (J3-3a)', g('Fntp', 'kgf/cm^2'), Math.min(1.3 * 0.75 * 5273 - 0.75 * 5273 / (0.75 * 0.45 * 5273) * g('frv', 'kgf/cm^2'), 0.75 * 5273), 1e-6);
 }
 
 section('FRP — ACI 440.2R-17 Ejemplo 16.3 (valores publicados)');
@@ -183,6 +232,10 @@ section('FRP — ACI 440.2R-17 Ejemplo 16.3 (valores publicados)');
   near('Mns ≈ 292 kip-ft', g('Mns', 'kip*ft'), 292, 0.02);
   near('Mnf = 85 kip-ft (con εfd redondeado a 0.009)', g('Mnf', 'kip*ft'), 85, 0.03);
   near('fs,s = 40.4 ksi', g('fss', 'ksi'), 40.4, 0.02);
+  near('k (agrietada, existente) = 0.334', g('kcr'), 0.334, 0.005);
+  near('k (servicio con FRP) = 0.343; kd = 187 mm', g('kd', 'mm'), 187, 0.01);
+  near('ff,s = 38 N/mm² (≤ 0.55ffu)', g('ffs', 'MPa'), 38, 0.02);
+  near('Mnf = 114 kN·m (SI, con εfd = 0.009)', g('Mnf', 'kN*m'), 114, 0.03);
   truthy('φMn ≥ Mu = 294 kip-ft', g('phiMn', 'kip*ft') >= 294, 'φMn = ' + g('phiMn', 'kip*ft').toFixed(1) + ' kip-ft');
 }
 
@@ -195,7 +248,7 @@ section('Pilote: Matlock–Reese y P–M circular');
   near('y = 0.93·H·T³/EI [mm]', g('ylat', 'mm'), 0.93 * 8 * T ** 3 / EI * 1000, 1e-6);
   near('φPn = 0.55[0.85f\'c(Ag − Ast) + fyAst]', g('phiPn', 'tonf'), 0.55 * (0.85 * 210 * (Math.PI * 900 - 8 * 2.84) + 4200 * 8 * 2.84) / 1000, 1e-6);
   // integración independiente por franjas para Pn = 0 (flexión pura): busca c con ΣF = 0
-  const D = 60, R = 30, dc = 7.5 + 0.953 + 1.905 / 2, nb = 8, A = 2.84, fc = 210, fy = 4200, b1 = 0.85;
+  const D = 60, R = 30, dc = 7.5 + 1.27 + 1.905 / 2, nb = 8, A = 2.84, fc = 210, fy = 4200, b1 = 0.85;
   const bars = [...Array(nb).keys()].map(i => R - (R - dc) * Math.cos(2 * Math.PI * i / nb));
   const forces = (c) => {
     const a = b1 * c, N = 4000; let F = 0, M = 0;
@@ -210,6 +263,10 @@ section('Pilote: Matlock–Reese y P–M circular');
   const pm = pmCircPts(D, dc, nb, A, fc, fy);
   near('φPn,máx = 0.85·0.75·P0', pm.Pmax, 0.85 * 0.75 * (0.85 * fc * (Math.PI * 900 - 8 * A) + fy * 8 * A), 1e-9);
   const bk = block('exPMcirc', { D: '60 cm', dc: dc + ' cm', nb: '8', barra: '6', fc: '210 kgf/cm^2', fy: '4200 kgf/cm^2', demandas: '120 tonf, 13 tonf*m // a\n120 tonf, 40 tonf*m // b' });
+  const Dc = 60 - 15, rq = 0.5 * Math.max(0.45 * (3600 / (Dc * Dc) - 1), 0.12) * 210 / 4200;
+  near('ρs requerida = ½·máx[0.45(Ag/Ach − 1), 0.12]·f\'c/fyt (Tabla 18.13.5.7.1 / IBC 1810.3.9.4.2)', g('rhoreq'), rq, 1e-6);
+  const s3 = status(runTemplate('ex-pilote-fuste', setData({ est: '3' })));
+  truthy('Espiral 3/8" en pilote de 60 cm → NO CUMPLE (ρs y diámetro mínimo)', s3.bad >= 2 && s3.err === 0, s3.bad + ' NO CUMPLE');
   truthy('Bloque exPMcirc: demanda interior cumple y exterior no cumple', bk.ctx.checks.length === 2 && bk.ctx.checks[0].ok && !bk.ctx.checks[1].ok);
 }
 
