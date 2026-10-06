@@ -42,7 +42,7 @@ alpha${D} = alphaE070(Ve${D}, L${D}, Me${D}) // α = Ve·L/Me, 1/3 ≤ α ≤ 1 
 Vm${D} = VmE070(vm, alpha${D}, t${D}, L${D}, Pg${D}, matE070(uni)) // Vm = 0.5 v'm α t L + 0.23 Pg (Art. 26.3)
 rf${D} = max(Ve${D} ./ (0.55*Vm${D})) // Relación máxima Ve/(0.55 Vm)
 check rf${D} <= 1 // Control de fisuración Ve ≤ 0.55 Vm en todos los muros, dirección ${D} (Art. 26.2)
-SVm${D} = sum(Vm${D}) // Resistencia al corte del entrepiso ΣVm
+SVm${D} = sum(Vm${D}) -> tonf // Resistencia al corte del entrepiso ΣVm
 check SVm${D} >= VE // Resistencia global ΣVm ≥ VE ante sismo severo, dirección ${D} (Art. 26.4)
 f${D} = factE070(Vm${D}, Ve${D}) // Factor de amplificación 2 ≤ Vm1/Ve1 ≤ 3 (Art. 27)
 Vu${D} = f${D} .* Ve${D} // Cortante último ante sismo severo Vu = Ve·(Vm1/Ve1) (Art. 27)
@@ -366,9 +366,9 @@ fpt = 0.30 kgf/cm^2 // Resistencia a tracción indirecta de muretes f't (ensayo)
 check fo >= 10.2 kgf/cm^2 // Resistencia mínima de la unidad (Art. 8.1)
 check fpm >= 6.12 kgf/cm^2 // Resistencia mínima de muretes a compresión (Art. 8.4)
 check fpt >= 0.25 kgf/cm^2 // Resistencia mínima de muretes a tracción indirecta (Art. 8.5)
-fmad = 0.40*fpm // Esfuerzo admisible de compresión fm = 0.40 f'm (Art. 8.4)
-vmad = 0.40*fpt // Esfuerzo admisible de corte vm = 0.40 f't (Art. 8.5)
-ftad = 1.42 kgf/cm^2/2.5 // Tracción por flexión admisible = 1.42/2.5 (Art. 8.6 y 9)
+fmad = 0.40*fpm -> kgf/cm^2 // Esfuerzo admisible de compresión fm = 0.40 f'm (Art. 8.4)
+vmad = 0.40*fpt -> kgf/cm^2 // Esfuerzo admisible de corte vm = 0.40 f't (Art. 8.5)
+ftad = 1.42 kgf/cm^2/2.5 -> kgf/cm^2 // Tracción por flexión admisible = 1.42/2.5 (Art. 8.6 y 9)
 # Criterios de estabilidad — límites geométricos (Art. 6, Fig. 2)
 check esp >= 0.40 m // Espesor mínimo de muro (Art. 6.1)
 check av <= Larr/3 // Ancho de vano a ≤ L/3 (Fig. 2-II)
@@ -544,8 +544,8 @@ fm = fmE010(grupo)
 ft = ftE010(grupo)
 Ck = CkE010(Emin, fc) // Esbeltez límite
 # Cuerda superior — flexocompresión (JUNAC 11.4)
-b1 = 4 cm // Ancho (sección comercial 2" × 5")
-d1 = 11.5 cm // Peralte (en el plano del tijeral)
+b1 = 4 cm // Ancho (sección comercial 2" × 4")
+d1 = 9 cm // Peralte (en el plano del tijeral)
 A1 = b1*d1
 Z1 = b1*d1^2/6
 lef1 = 0.8*Lcs // Longitud efectiva en el plano: 0.8 l (cuerda continua, JUNAC Tabla 11.1)
@@ -657,7 +657,7 @@ eps = epsACIc(rD) // Coeficiente de masa efectiva (Ec. 9-45)
 Ww = gc*pi*(D + tw)*tw*Hw -> tonf // Peso de la pared
 Wr = gc*pi*(D + 2*tw)^2/4*er -> tonf // Peso de la cubierta
 ## Periodos y coeficientes sísmicos (ACI 350.3 Sec. 9.3.4 y 9.4)
-Ti = TiACIc(HL, D, tw, Ec, gc) // Periodo impulsivo (Ec. 9-23 a 9-25)
+Ti = TiACIc(HL, D, tw, Ec, gc) -> s // Periodo impulsivo (Ec. 9-23 a 9-25)
 Tc = TcACIc(D, HL) // Periodo convectivo (Ec. 9-28 a 9-30)
 Ci = CiACI(Ti, SDS, SD1) // Coeficiente impulsivo (Ec. 9-32/33)
 Cc = CcACI(Tc, SDS, SD1) // Coeficiente convectivo (Ec. 9-37/38)
@@ -684,9 +684,14 @@ Niy = 2*Piy/pi // Tensión anular impulsiva: p = 2Piy/(πr)·cosθ → N = p·r
 Ncy = 2*Pcy/pi // Tensión anular convectiva
 Nwy = Pwy/pi // Tensión anular por inercia de la pared
 Nhy = uv*gw*yTmax*D/2 -> tonf/m // Tensión por aceleración vertical (Ec. 4-14)
-Ny = sqrt((Niy + Nwy)^2 + Ncy^2 + Nhy^2) -> tonf/m // Tensión anular hidrodinámica (SRSS, Ec. 5-?)
+Ny = sqrt((Niy + Nwy)^2 + Ncy^2 + Nhy^2) -> tonf/m // Tensión anular hidrodinámica combinada por SRSS (ACI 350.3 Sec. 5.3)
 Tus = 1.65*(1.2*Tmax + 1.0*Ny) -> tonf/m // Combinación 1.2F + 1.0E con coeficiente sanitario
-check Tus <= 0.9*fy*Ash // Refuerzo anular con sismo`),
+check Tus <= 0.9*fy*Ash // Refuerzo anular con sismo
+## Transferencia del cortante sísmico en la unión pared–losa de fondo
+qv = Vs/(pi*(D + tw)/2) -> tonf/m // Flujo de corte tangencial máximo q = V/(π R)
+Avf = 2*Asv // Refuerzo vertical que atraviesa la junta (dos caras)
+phiVn = 0.75*1.0*Avf*fy -> tonf/m // Corte-fricción φ μ Avf fy, μ = 1.0 (junta rugosa, E.060 11.7)
+check qv <= phiVn // Corte-fricción en la base de la pared`),
       summary(),
     ],
   },

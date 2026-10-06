@@ -30,6 +30,7 @@ registerBlock('spectrumCL', {
     F('I', 'Coeficiente de importancia I', 'I'), F('R', 'Ro (NCh433) o R (NCh2369)', 'Ro'),
     F('xi', 'Amortiguamiento ξ (solo NCh2369)', '0.05'), F('T', 'Periodo de la estructura T* [s]', 'Tx'),
     F('comparar', 'Comparar suelos A–E (NCh433)', '', 'check'), F('elastico', 'Mostrar espectro elástico', '', 'check'),
+    F('vertical', 'Mostrar espectro vertical (solo NCh2369:2023, RV = 2, ξV = 0.03)', '', 'check'),
     F('tmax', 'Periodo máximo del gráfico [s]', '3'), F('titulo', 'Título', ''),
   ],
   hint: 'Dibuja el espectro de diseño Sa/g. NCh433+DS61: Sa = S·Ao·α/(R*/I) con R* según T*; NCh2369.Of2003: Sa = 2.75·Ao·I/R·(T\'/T)^n·(0.05/ξ)^0.4 ≤ I·Cmax. Exporta <b>Sa_T</b> (Sa/g en T*), <b>alpha_T</b> y <b>Rs</b> (R* o R).',
@@ -60,7 +61,8 @@ registerBlock('spectrumCL', {
     } else {
       if (b.elastico) series.push({ n: 'Referencia SaH = 1.4·S·Ao·α', y: ts.map(t => 1.4 * S433.S[soil - 1] * Ao * alpha(t, [0.15, 0.30, 0.40, 0.75][soil - 1], [1.85, 1.60, 1.50, 1.00][soil - 1])), c: C.axis, w: 1.2, dash: '6 3' });
       series.push({ n: `Diseño suelo ${SOIL[soil - 1]} (R = ${f2(R)}, ξ = ${f2(xi, 3)})`, y: ts.map(t => fn('SaNCh2369v23', math.unit(t, 's'), soil, Ao, I, R, xi)), c: C.blue, w: 2.2, fill: true, main: true });
-      sub = `NCh2369:2023 (oficial como NCh2369:2025) · zona ${z} · I = ${f2(I)}`;
+      if (b.vertical) series.push({ n: 'Vertical Sa(TV) (RV = 2, ξV = 0.03)', y: ts.map(t => fn('SaVNCh2369v23', math.unit(t, 's'), soil, Ao, I)), c: C.green, w: 1.6, dash: '8 3' });
+      sub = `NCh2369:2023 (oficial como NCh2369:2025) · zona ${z} · suelo ${SOIL[soil - 1]} · I = ${f2(I)}` + (soil === 4 && R > 1 ? ' · ATENCIÓN: suelo D exige espectro de sitio salvo R = 1 o naves livianas (Tabla 5, nota 2)' : '');
     }
     const main = series.find(s => s.main);
     const W = 680, H = 320, pl = 62, pr = 18, pt = 18, pb = 42;

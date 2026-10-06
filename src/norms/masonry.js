@@ -64,7 +64,7 @@ defineFns({
   FaE070: { fn: bc((fm, h, t) => { const r = toNum(h, 'm') / (35 * toNum(t, 'm')); return math.multiply(Math.min(0.2 * (1 - r * r), 0.15), fm); }), tex: 'F_a', desc: "E.070 Art. 19.1.b: Fa = 0.2 f'm [1 − (h/35t)²] ≤ 0.15 f'm", args: 'fm, h, t' },
   alphaE070: { fn: bc((Ve, L, Me) => clamp(toNum(Ve, 'tonf') * toNum(L, 'm') / toNum(Me, 'tonf*m'), 1 / 3, 1)), tex: '\\alpha', desc: 'E.070 Art. 26.3: α = Ve·L/Me, 1/3 ≤ α ≤ 1', args: 'Ve, L, Me' },
   VmE070: {
-    fn: bc((vm, alpha, t, L, Pg, mat = 1) => { const c = Math.round(n0(mat)) === 2 ? 0.35 : 0.5; return math.add(math.multiply(c * n0(alpha), math.multiply(vm, math.multiply(t, L))), math.multiply(0.23, Pg)); }),
+    fn: bc((vm, alpha, t, L, Pg, mat = 1) => { const c = Math.round(n0(mat)) === 2 ? 0.35 : 0.5; const r = math.add(math.multiply(c * n0(alpha), math.multiply(vm, math.multiply(t, L))), math.multiply(0.23, Pg)); return math.isUnit(r) ? r.to('tonf') : r; }),
     tex: 'V_m', desc: "E.070 Art. 26.3: Vm = 0.5 v'm α t L + 0.23 Pg (0.35 para sílice-cal)", args: 'vm, alpha, t, L, Pg, mat',
   },
   factE070: { fn: bc((Vm1, Ve1) => clamp(n0(math.divide(Vm1, Ve1)), 2, 3)), tex: '\\frac{V_{m1}}{V_{e1}}', desc: 'E.070 Art. 27: factor de amplificación 2 ≤ Vm1/Ve1 ≤ 3', args: 'Vm1, Ve1' },

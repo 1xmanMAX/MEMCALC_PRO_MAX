@@ -427,7 +427,9 @@ export function slopeCircle(m, xc, yc, R, n = 30) {
     }
     const yg = Wt > 0 ? my / Wt : (ys + yb) / 2;
     let Q = 0; for (const s of surch) if (x >= s.x1 && x <= s.x2) Q += s.q * b;
-    const sa = dir * (xc - x) / R, ca = Math.sqrt(Math.max(0, 1 - sa * sa)), L = b / Math.max(ca, 1e-6);
+    const sa = dir * (xc - x) / R, ca = Math.sqrt(Math.max(0, 1 - sa * sa));
+    const asn = (t) => Math.asin(Math.max(-1, Math.min(1, t)));
+    const L = R * Math.abs(asn((x + b / 2 - xc) / R) - asn((x - b / 2 - xc) / R)); // longitud exacta del arco de la base
     const lb = layerAt(lay, yb);
     // nivel freático horizontal recortado por la superficie del terreno (sin agua libre sobre el talud)
     const u = ywt === null ? 0 : gw * Math.max(0, Math.min(ywt, ys) - yb);

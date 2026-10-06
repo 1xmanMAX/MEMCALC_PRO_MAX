@@ -46,6 +46,8 @@ function cdStar(T, s) {
 }
 
 // NCh433 Tabla 6.4 — Cmax/(S·Ao/g) según R (interpolación lineal entre valores tabulados)
+// La Tabla 6.4 no tabula R = 5 (acero IMF de la Tabla 5.1): se interpola linealmente (0,45·S·Ao/g),
+// criterio del módulo que el revisor debe aceptar o reemplazar por el valor conservador de R = 4 (0,55).
 const T64R = [2, 3, 4, 5.5, 6, 7], T64C = [0.90, 0.60, 0.55, 0.40, 0.35, 0.35];
 function cmaxFactor(R) {
   if (R < 2 - 1e-9 || R > 7 + 1e-9) throw new Error('Tabla 6.4 NCh433: R debe estar entre 2 y 7');
@@ -73,7 +75,17 @@ function cmax2369(R, xi, Ao) {
 // ---------- NCh2369:2023 (oficializada como NCh2369:2025, D.Ex. 12/2026) ----------
 // Tabla 5: S, T0, p (suelos A–D; E con S = 1,3 y estudio de sitio)
 const T5_23 = { S: [0.90, 1.00, 1.05, 1.20, 1.30], To: [0.15, 0.30, 0.40, 0.75, null], p: [1.85, 1.60, 1.50, 1.00, null] };
+// Espectro vertical de diseño NCh2369:2023 ec. (2) y (4): Sa = 0,7·I·SaV/RV·(0,05/ξV)^0,4,
+// SaV = S·Ao·α(1,7·TV/T0), RV = 2,0 y ξV = 0,03 salvo justificación (5.4)
+function sav2369v23(T, s, Ao, I, RV = 2, xiV = 0.03) {
+  const S = T5_23.S[s], To = T5_23.To[s], p = T5_23.p[s];
+  if (To === null) throw new Error('NCh2369:2023: suelo E requiere espectro de sitio (5.4.3)');
+  if (!(xiV >= 0.02 - 1e-9 && xiV <= 0.05 + 1e-9)) throw new Error('NCh2369:2023: (0,05/ξ)^0,4 válido solo para 0,02 ≤ ξ ≤ 0,05');
+  return 0.7 * I * S * Ao * alpha(1.7 * T, To, p) / RV * (0.05 / xiV) ** 0.4;
+}
 function sa2369v23(T, s, Ao, I, R, xi) {
+  if (!(xi >= 0.02 - 1e-9 && xi <= 0.05 + 1e-9)) throw new Error('NCh2369:2023: (0,05/ξ)^0,4 válido solo para 0,02 ≤ ξ ≤ 0,05 (5.4.2)');
+  if (!(R >= 1)) throw new Error('NCh2369:2023: R ≥ 1 (Tabla 6)');
   const S = T5_23.S[s], To = T5_23.To[s], p = T5_23.p[s];
   if (To === null) throw new Error('NCh2369:2023: suelo E requiere espectro de sitio (5.4.3)');
   const fx = (0.05 / xi) ** 0.4;
@@ -189,8 +201,14 @@ defineFns({
   },
   SaNCh2369v23: {
     fn: (T, s, Ao, I, R, xi) => vmap(T, t => sa2369v23(sec(t), soil433(s), toNum(Ao), toNum(I), toNum(R), toNum(xi))),
-    tex: 'S_a/g', desc: 'Espectro horizontal de diseño NCh2369:2023/2025 (ec. 1, 1.1 y 3; suelo 1=A … 4=D)', args: 'T, suelo, Ao/g, I, R, ξ',
+    tex: 'S_a/g', desc: 'Espectro horizontal de diseño NCh2369:2023/2025 (ec. 1, 1.1 y 3; suelo 1=A … 4=D). Suelo D: la Tabla 5 (nota 2) exige espectro de sitio salvo R = 1 o naves livianas (12.2.5)', args: 'T, suelo, Ao/g, I, R, ξ',
   },
+  SaVNCh2369v23: {
+    fn: (T, s, Ao, I, RV = 2, xiV = 0.03) => vmap(T, t => sav2369v23(sec(t), soil433(s), toNum(Ao), toNum(I), toNum(RV), toNum(xiV))),
+    tex: 'S_{aV}/g', desc: 'Espectro vertical de diseño NCh2369:2023/2025 (ec. 2 y 4): 0,7·I·S·Ao·α(1,7TV/T0)/RV·(0,05/ξV)^0,4, RV = 2, ξV = 0,03', args: 'TV, suelo, Ao/g, I, RV, ξV',
+  },
+  INCh2369v23: { fn: (c) => { c = Math.round(toNum(c)); if (!(c >= 1 && c <= 4)) throw new Error('Categoría de ocupación NCh2369:2023: I a IV (use 1–4)'); return [0.8, 1.0, 1.2, 1.2][c - 1]; }, tex: 'I', desc: 'Coeficiente de importancia NCh2369:2023 (4.3.2): cat. I 0,80; II 1,00; III y IV 1,20', args: 'categoría (1–4)' },
+  CminNCh2369v23: { fn: (I, S, Ao) => 0.25 * toNum(I) * toNum(S) * toNum(Ao), tex: 'C_{min}', desc: 'Coeficiente sísmico mínimo NCh2369:2023 Cmín = 0,25·I·S·Ao/g (5.12.1, ec. 12-13)', args: 'I, S, Ao/g' },
   // ---------------- análisis modal espectral (edificio de cortante) ----------------
   TmodosCL: { fn: (P, k) => math.matrix(modes(P, k).T.map(t => mkUnit(t, 's'))), tex: 'T_n', desc: 'Periodos de un edificio de cortante (pesos P en tonf, rigideces k en tonf/m)', args: 'P, k' },
   phiModosCL: { fn: (P, k) => math.matrix(modes(P, k).phi), tex: '\\Phi', desc: 'Formas modales (columnas, φ = 1 en el nivel superior)', args: 'P, k' },
@@ -228,8 +246,16 @@ const TH = [10, 15, 20, 25, 30, 35, 45];
 const CPW = { 0.25: [[-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.3], [-0.2, 0.3], [0.0, 0.4], [0.0, 0.4]], 0.5: [[-0.9, -0.18], [-0.7, -0.18], [-0.4, 0.0], [-0.3, 0.2], [-0.2, 0.2], [-0.2, 0.3], [0.0, 0.4]], 1.0: [[-1.3, -0.18], [-1.0, -0.18], [-0.7, -0.18], [-0.5, 0.0], [-0.3, 0.2], [-0.2, 0.2], [0.0, 0.3]] };
 const CPL = { 0.25: [-0.3, -0.5, -0.6], 0.5: [-0.5, -0.5, -0.6], 1.0: [-0.7, -0.6, -0.6] };
 function cpRoof(th, hL, caso, lee) {
-  if (th < 10) th = 10; // para θ < 10° se usan los valores de θ = 10° como aproximación conservadora del borde de barlovento
   hL = Math.min(Math.max(hL, 0.25), 1.0);
+  // θ < 10°: ASCE 7-05 Fig. 6-6 da Cp según la distancia desde el borde de barlovento
+  // (0–h/2: −0.9 / −1.3; h–2h: −0.5 / −0.7; > 2h: −0.3 / −0.7, para h/L ≤ 0.5 / ≥ 1.0).
+  // Envolvente conservadora: faldón de barlovento con el valor del borde (0–h/2) y
+  // faldón de sotavento con el de la zona h–2h. Caso 2 (mínima succión): −0.18.
+  if (th < 10) {
+    if (!lee && caso === 2) return -0.18;
+    const k = hL <= 0.5 ? 0 : (hL - 0.5) / 0.5;
+    return lee ? -0.5 - 0.2 * k : -0.9 - 0.4 * k;
+  }
   const byHL = (k) => (lee ? interp1(th, [10, 15, 20], CPL[k]) : interp1(th, TH, CPW[k].map(r => r[caso === 2 ? 1 : 0])));
   return interp1(hL, [0.25, 0.5, 1.0], [byHL(0.25), byHL(0.5), byHL(1.0)]);
 }
