@@ -339,6 +339,34 @@ check da >= 19.05 mm // Diámetro mínimo recomendado ¾ in (DG1 §2.5)
 check ed >= 1.5*da // Distancia del perno al borde de la placa ≥ 1.5da (práctica recomendada DG1 §2.6)
 check hef >= 12*da // Empotramiento ≥ 12da (práctica recomendada DG1 §2.5)
 check (Np2 - Np)/2 + ed >= 6*da // Distancia del anclaje al borde del pedestal ≥ 6da (ACI 318-19 17.9.2, anclajes con torque)
+## Resistencia de los anclajes a tracción y corte (ACI 318-19 Cap. 17; DG1 §3.2–3.5)
+Nua = 4 tonf // Tracción de diseño en el grupo de anclajes (combinación de levante 0.9D − 1.3W u otra condición; dato)
+futa = 4080 kgf/cm^2 // Resistencia a tracción ASTM F1554 Gr. 36 (58 ksi)
+fya = 2530 kgf/cm^2 // Fluencia ASTM F1554 Gr. 36 (36 ksi)
+nt = 10 // Hilos por pulgada UNC [10 : 3/4"|9 : 7/8"|8 : 1"]
+check futa <= min(1.9*fya, 8790 kgf/cm^2) // futa ≤ 1.9fya y ≤ 125 ksi (17.6.1.2)
+Ase = AseACI(da, nt) -> cm^2 // Área efectiva a tracción π/4·(da − 0.9743/nt)² (R17.6.1.2)
+Nua1 = Nua/na -> tonf // Tracción por anclaje (carga concéntrica)
+phiNsa = 0.75*Ase*futa -> tonf // Acero del anclaje, elemento dúctil φ = 0.75 (17.6.1.2, Tabla 17.5.3)
+check Nua1 <= phiNsa // Resistencia del acero del anclaje en tracción
+s1 = Np - 2*ed // Separación de anclajes en la dirección N
+s2 = Bp - 2*ed // Separación de anclajes en la dirección B
+ca1 = (Np2 - Np)/2 + ed // Distancia al borde del pedestal (dirección N)
+ca2 = (Bp2 - Bp)/2 + ed // Distancia al borde del pedestal (dirección B)
+hefp = si(max(ca1, ca2) < 1.5*hef, min(hef, max(max(ca1, ca2)/1.5, max(s1, s2)/3)), hef) // h′ef con bordes cercanos en las cuatro caras (17.6.2.1.2)
+ANc = (2*min(ca1, 1.5*hefp) + s1)*(2*min(ca2, 1.5*hefp) + s2) -> cm^2 // Área proyectada del cono del grupo (17.6.2.1)
+ANco = 9*hefp^2 -> cm^2 // Área proyectada de un anclaje aislado (17.6.2.1.4)
+psied = si(min(ca1, ca2) >= 1.5*hefp, 1, 0.7 + 0.3*min(ca1, ca2)/(1.5*hefp)) // Efecto de borde ψed,N (17.6.2.4)
+psic = 1.0 // Concreto fisurado ψc,N (17.6.2.5); anclaje preinstalado ψcp,N = 1
+Nb = NbACI(fc, hefp, 10) -> tonf // Arrancamiento básico Nb = kc·λa·√f′c·h′ef^1.5, kc = 10 SI (17.6.2.2.1)
+phiNcbg = 0.70*ANc/ANco*psied*psic*Nb -> tonf // Arrancamiento del grupo, preinstalado, condición B φ = 0.70 (17.6.2.1, Tabla 17.5.3)
+check Nua <= phiNcbg // Arrancamiento del concreto (si no cumple: refuerzo de anclaje, 17.5.2.1a)
+Abrg = 0.866*(1.5*da + 3.175 mm)^2 - pi*da^2/4 -> cm^2 // Área de apoyo de tuerca hexagonal pesada (F = 1.5d + 1/8 in; DG1 Tabla 3.2)
+phiNpn = 0.70*1.0*8*Abrg*fc -> tonf // Extracción por deslizamiento Np = 8·Abrg·f′c, ψc,P = 1.0 fisurado (17.6.3.2.2)
+check Nua1 <= phiNpn // Extracción (pullout) del anclaje
+check min(ca1, ca2) >= 0.4*hef // ca,min ≥ 0.4hef: no se requiere verificar el desprendimiento lateral (17.6.4)
+phiVsa = 0.65*0.8*0.6*Ase*futa*na -> tonf // Corte en el acero con mortero de nivelación (17.7.1.2b y 17.7.1.2.1), respaldo si no hay fricción
+check Vu <= phiVsa // Corte en los anclajes (respaldo de la fricción)
 # Transferencia del cortante por fricción (DG1 §3.5)
 mu = 0.55 // Coeficiente de fricción acero–grout (ACI 318-19 Tabla 22.9.4.2)
 phiVf = 0.75*mu*Pumin -> tonf // Resistencia de diseño por fricción
@@ -406,16 +434,19 @@ Mup = wup*Lc^2/8 -> kgf*m // Momento por levante (ala inferior comprimida)`),
       { type: 'beam', tramos: 'Lc', apoyos: 'A A', E: 'E', I: 'Ix', cargas: 'U 1 wun', titulo: 'Correa simplemente apoyada bajo 1.2D + 1.6Lr (componente normal)' },
       calc(`# Anchos efectivos (AISI S100-16, Apéndice 1)
 wf = bf - 2*t // Ancho plano del ala comprimida (aprox. esquinas rectas)
-rho_f = rhoAISI(wf/t, Fy, E, 4) // Ala con labio tratada como atiesada, k = 4 (Ap. 1, 1.1-1 a 1.1-4)
+dl = D - t // Ancho plano del labio
 check D/wf <= 0.8 // Proporción del labio D/w ≤ 0.8 (Ap. 1, §1.3)
-rho_l = rhoAISI((D - t)/t, Fy, E, 0.43) // Labio (no atiesado, k = 0.43, Ap. 1 §1.4)
+k_f = kLabioAISI(wf/t, D/wf, dl/t, Fy, E) // k del ala con labio: S = 1.28√(E/f), Ia, RI = Is/Ia, n (Ap. 1 §1.3)
+RI = RIAISI(wf/t, D/wf, dl/t, Fy, E) // Relación Is/Ia ≤ 1 (labio adecuado si RI = 1)
+rho_f = rhoAISI(wf/t, Fy, E, k_f) // Ala comprimida (Ap. 1, 1.1-1 a 1.1-4)
+rho_l = rhoAISI(dl/t, Fy, E, 0.43) // Labio no atiesado, k = 0.43 (Ap. 1 §1.3: ds = d′s·RI)
 psi = 1 // |f2/f1| en el alma (flexión simétrica)
 kw = 4 + 2*(1 + psi)^3 + 2*(1 + psi) // Coeficiente de pandeo del alma con gradiente (Ap. 1, Ec. 1.2-1)
 rho_w = rhoAISI((d - 2*t)/t, Fy, E, kw) // Alma
 check rho_w == 1 // Alma totalmente efectiva (hipótesis del cálculo simplificado)
 check rho_l == 1 // Labio totalmente efectivo
 check (d - 2*t)/t <= 200 // Límite h/t ≤ 200 (B4.2)
-dA = (1 - rho_f)*wf*t // Área no efectiva del ala comprimida
+dA = (1 - rho_f)*wf*t + (1 - rho_l*RI)*dl*t // Área no efectiva del ala comprimida y del labio (ds = ρ·d′·RI)
 ey = dA*(d/2 - t/2)/(A - dA) // Desplazamiento del eje neutro
 Ie = Ix - dA*(d/2 - t/2)^2 - (A - dA)*ey^2 // Inercia efectiva
 Se = Ie/(d/2 + ey) -> cm^3 // Módulo efectivo a la fibra comprimida
@@ -426,6 +457,9 @@ phiMny = phib*Sy*Fy -> kgf*m // Eje menor (conservador, sección completa)
 check Mux/phiMnx + Muy/phiMny <= 1.0 // Flexión biaxial (H1.2)
 ## Levante por viento — método R (I6.2.1)
 check d <= 165 mm // R = 0.70 válido para C o Z simplemente apoyada con d ≤ 6.5 in (Tabla I6.2.1-1)
+check d/t >= 60 and d/t <= 170 // Límites del método R: 60 ≤ d/t ≤ 170 (I6.2.1)
+check d/bf >= 2.8 and d/bf <= 5.5 // 2.8 ≤ d/b ≤ 5.5 (I6.2.1)
+check bf/t >= 16 and bf/t <= 43 // 16 ≤ b/t ≤ 43 (I6.2.1)
 Rr = 0.70 // Factor de reducción R (Tabla I6.2.1-1)
 phiMnu = phib*Rr*Se*Fy -> kgf*m // Resistencia con ala inferior libre (I6.2.1-1)
 check Mup <= phiMnu // Flexión por levante 0.9D − 1.3W

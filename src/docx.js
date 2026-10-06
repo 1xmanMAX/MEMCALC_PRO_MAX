@@ -243,7 +243,7 @@ function coverXml(m) {
   for (let i = 0; i < 4; i++) x += para('');
   x += para(run('CONTROL DE REVISIONES', { b: 1, color: '3D4854', sz: 16 }), { spacing: 40, keep: 1 });
   const H = (t) => run(t, { b: 1, sz: 17 }), C = (t) => run(t || '', { sz: 17 });
-  x += tblXml([[H('Rev.'), H('Fecha'), H('Descripción'), H('Elaboró'), H('Revisó'), H('Aprobó')], [C(m.rev || '0'), C(m.fecha), C('Emitido para revisión'), C(m.autor), C(m.revisor), C('')], ['', '', '', '', '', ''], ['', '', '', '', '', '']], { header: true, widths: [700, 1700, 2154, 1650, 1650, 1500], jc: ['center', 'left', 'left', 'left', 'left', 'left'] });
+  x += tblXml([[H('Rev.'), H('Fecha'), H('Descripción'), H('Elaboró'), H('Revisó'), H('Aprobó')], [C(m.rev || '0'), C(m.fecha), C('Emitido para revisión'), C(m.autor), C(m.revisor), C(m.aprobador || '')], ['', '', '', '', '', ''], ['', '', '', '', '', '']], { header: true, widths: [700, 1700, 2154, 1650, 1650, 1500], jc: ['center', 'left', 'left', 'left', 'left', 'left'] });
   const sig = (rol, name, extra) => para(run(rol.toUpperCase(), { b: 1, color: '3D4854', sz: 15 }), { spacing: 0 }) + para('', { spacing: 0 }) + para('', { spacing: 0 }) + para('', { spacing: 0 }) + para('', { spacing: 0 })
     + '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="3D4854"/></w:pBdr><w:jc w:val="right"/><w:spacing w:after="40"/></w:pPr>' + run('Firma y sello', { i: 1, color: 'A0A9B3', sz: 14 }) + '</w:p>'
     + para(run(name || ' ', { b: 1, sz: 17 }), { spacing: 0 }) + para(run(extra || ' ', { color: GRAY, sz: 16 }), { spacing: 0 });
