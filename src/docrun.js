@@ -82,7 +82,7 @@ export function summaryHtml(checks, nerr = 0) {
     const r = c.ratio !== null && c.ratio !== undefined && isFinite(c.ratio) ? c.ratio : null;
     const w = r === null ? 0 : Math.min(100, Math.max(0, r * 100));
     const col = r === null ? '#999' : r <= 0.85 ? '#1a7f37' : r <= 1 ? '#bf8700' : '#d1242f';
-    h += `<tr><td>${i + 1}</td><td>${richText(c.label, new Map(), true)}</td><td>${r === null ? '—' : `<div class="dcbar"><i style="width:${(w * 0.72).toFixed(1)}%;background:${col}"></i><span>${fmtPlain(r, 2)}</span></div>`}</td><td>${c.ok ? '<span class="ok">✔ CUMPLE</span>' : c.nv ? '<span class="nvb">⚠ NO VERIFICABLE</span>' : '<span class="bad">✘ NO CUMPLE</span>'}</td></tr>`;
+    h += `<tr><td>${i + 1}</td><td>${richText(c.label, new Map(), true)}</td><td>${r === null ? '—' : `<div class="dcbar"><i style="width:${(w * 0.72).toFixed(1)}%;background:${col}"></i><span>${r.toFixed(2)}</span></div>`}</td><td>${c.ok ? '<span class="ok">✔ CUMPLE</span>' : c.nv ? '<span class="nvb">⚠ NO VERIFICABLE</span>' : '<span class="bad">✘ NO CUMPLE</span>'}</td></tr>`;
   });
   return h + '</tbody></table>';
 }

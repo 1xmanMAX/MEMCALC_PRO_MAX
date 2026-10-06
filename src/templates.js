@@ -1060,6 +1060,8 @@ export const CATEGORIES = [
   'Concreto armado', 'Concreto — normas extranjeras', 'Cimentaciones', 'Geotecnia', 'Muros de contención',
   'Puentes', 'Acero estructural', 'Albañilería', 'Madera y tierra', 'Estructuras especiales',
 ];
+const BASE_PAIS = { aci: 'US', ec2: 'EU', asce7: 'US', japon: 'JP', espectros: 'INT', acero: 'US', puente: 'US', guia: 'INT', blanco: 'INT' };
+for (const t of BASE_TEMPLATES) if (!t.pais) t.pais = BASE_PAIS[t.id] || 'PE';
 export const TEMPLATES = [...BASE_TEMPLATES, ...EXTRA_TEMPLATES];
 {
   const seen = new Set();

@@ -169,7 +169,8 @@ function addGroups() {
   }
   return groups.filter(g => g[1].length);
 }
-const fold = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const DIACR = new RegExp('[\\u0300-\\u036f]', 'g');
+const fold = (s) => String(s || '').normalize('NFD').replace(DIACR, '').toLowerCase();
 const terms = (q) => fold(q).split(/\s+/).filter(Boolean);
 const matchAll = (hay, ts) => { const f = fold(hay); return ts.every(t => f.includes(t)); };
 // resalta términos (insensible a acentos) en un texto plano -> HTML escapado
@@ -566,7 +567,7 @@ function showTemplates(first) {
   draw();
   q.addEventListener('input', () => { st.q = q.value; if (st.cat === '*r') st.cat = ''; draw(); main.scrollTop = 0; });
   q.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { const f = main.querySelector('[data-t]'); if (f) f.click(); }
+    if (e.key === 'Enter') { e.preventDefault(); const f = main.querySelector('[data-t]'); if (f) f.click(); }
     if (e.key === 'ArrowDown') { e.preventDefault(); main.querySelector('[data-t]')?.focus(); }
   });
   main.addEventListener('keydown', e => {
@@ -701,7 +702,7 @@ function showFunctions(initial = '') {
   };
   draw();
   q.addEventListener('input', () => { st.q = q.value; draw(); });
-  q.addEventListener('keydown', e => { if (e.key === 'Enter') main.querySelector('[data-ins-fn]')?.click(); });
+  q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); main.querySelector('[data-ins-fn]')?.click(); } });
   side.addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (!b) return; st.cat = b.dataset.cat; draw(); main.scrollTop = 0; });
   main.addEventListener('click', e => { const b = e.target.closest('[data-ins-fn]'); if (!b) return; m.close(); insertFn(fns.find(f => f.name === b.dataset.insFn)); });
   if (!isMobile()) setTimeout(() => { q.focus(); q.select(); }, 50);
@@ -765,7 +766,9 @@ function showHelp() {
   <h4>Bloques gráficos</h4>
   <p><b>Viga continua</b>: análisis matricial con alternancia de carga viva, diagramas V, M, deformada y reacciones. <b>Diagrama P–M</b>: interacción de columnas rectangulares con verificación de combinaciones. <b>Sección</b>, <b>Zapata</b>, <b>Muro</b>: dibujos acotados. <b>Espectro E.030</b>, <b>Gráfico</b> de funciones y <b>Tabla</b> de vectores. Todos aceptan variables del cálculo en sus campos.</p>
   <h4>Atajos</h4>
-  <p><code>Ctrl+S</code> guardar archivo · <code>Ctrl+P</code> imprimir / PDF · <code>Ctrl+O</code> abrir · clic en una línea de la vista previa para ir a su código.</p>
+  <p><code>Ctrl+K</code> barra de comandos (plantillas, acciones, funciones, secciones, variables) · <code>Ctrl+Shift+F</code> biblioteca de funciones · <code>Ctrl+S</code> guardar archivo · <code>Ctrl+P</code> imprimir / PDF · <code>Ctrl+O</code> abrir · <code>Alt+1…4</code> pestañas.</p>
+  <h4>Edición en la vista previa</h4>
+  <p>Haga clic en un <b>dato de entrada</b> de la memoria (líneas resaltadas en azul) para editar su valor en el lugar: <code>Enter</code> acepta, <code>Tab</code> pasa al siguiente dato, <code>Esc</code> deshace. Clic en cualquier otra fórmula (o <code>Alt</code>+clic en un dato) para ir a su línea en el editor. La pestaña <b>Variables</b> muestra el valor actual de todas las variables.</p>
   <p style="color:var(--mut);font-size:12px">MemoriaCalc ${VERSION}. Motor: math.js (unidades), KaTeX (fórmulas), marked (texto). Inspirado en Calcpad, handcalcs y efficalc. Verifique siempre los resultados: el profesional responsable firma la memoria.</p></div>`);
 }
 

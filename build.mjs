@@ -16,5 +16,5 @@ const icon = `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent('<s
 fs.mkdirSync('dist', { recursive: true });
 const full = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>MemoriaCalc</title>${headExtra}${icon}${pwa ? '<link rel="manifest" href="manifest.webmanifest"><script>window.MC_PWA=1</script>' : ''}${styles}</head><body><script>${js}</script></body></html>`;
 fs.writeFileSync(pwa ? 'dist/pwa/index.html' : 'dist/MemoriaCalc.html', full);
-if (!pwa) fs.writeFileSync('dist/artifact.html', `<title>MemoriaCalc Estructural</title>${styles}<script>window.MC_ARTIFACT=1</script><script>${js}</script>`);
+if (!pwa) fs.writeFileSync('dist/artifact.html', `<meta charset="utf-8"><title>MemoriaCalc Estructural</title>${styles}<script>window.MC_ARTIFACT=1</script><script>${js}</script>`);
 console.log('js', (js.length/1024).toFixed(0)+'KB', 'katex css', (kcss.length/1024).toFixed(0)+'KB', 'total', (full.length/1024).toFixed(0)+'KB');

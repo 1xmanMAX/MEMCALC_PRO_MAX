@@ -757,7 +757,7 @@ function renderCheck(expr, comment, ctx, li) {
   const { label } = parseOptions(comment);
   ctx.checks.push({ ok, label: label || expr, ratio, block: ctx.blockId, line: li });
   const badge = ok ? '<span class="ok">✔ CUMPLE</span>' : '<span class="bad">✘ NO CUMPLE</span>';
-  const r = ratio !== null && isFinite(ratio) ? `<span class="dc">D/C = ${fmtPlain(ratio, 2)}</span>` : '';
+  const r = ratio !== null && isFinite(ratio) ? `<span class="dc">D/C = ${ratio.toFixed(2)}</span>` : '';
   return `<div class="ln chk ${ok ? 'cok' : 'cbad'}" data-b="${ctx.blockId}" data-l="${li}"><div class="eq">${K(eq)}</div><div class="cm">${label ? richText(label, S, true) + ' ' : ''}${badge}${r}</div></div>`;
 }
 
