@@ -466,8 +466,8 @@ qa = 2.5 kgf/cm^2 // Capacidad admisible del suelo
 gammac = 2.4 tonf/m^3 // Peso unitario del concreto
 fc = 210 kgf/cm^2
 fy = 4200 kgf/cm^2
-FSvmin = 2.0 // FS mínimo al volteo [1.5 : Mínimo E.050 Art. 39.13.6|2.0 : Criterio usual de diseño]
-FSdmin = FSminE050(0) // FS mínimo al deslizamiento, condición estática (E.050 Art. 39.13.6)
+FSv_min = 2.0 // FS mínimo al volteo [1.5 : Mínimo E.050 Art. 39.13.6|2.0 : Criterio usual de diseño]
+FSd_min = FSminE050(0) // FS mínimo al deslizamiento, condición estática (E.050 Art. 39.13.6)
 ## Empujes (Rankine)
 Ka = (1 - sin(phis))/(1 + sin(phis)) // Coeficiente de empuje activo
 Ea = 0.5*Ka*gammas*H^2 -> tonf/m // Empuje del relleno
@@ -488,9 +488,9 @@ SWr = W1 + W2 + W3 + W4 // Fuerza vertical estabilizante (sin sobrecarga, conser
 Mr = W1*(Lp + t2 - t1/2) + W2*(Lp + 2/3*(t2 - t1)) + W3*B/2 + W4*(Lp + t2 + Lt/2) -> tonf*m/m // Momento resistente (sin sobrecarga)
 ## Estabilidad
 FSv = Mr/Ma // Factor de seguridad al volteo
-check FSv >= FSvmin // Volteo (E.050 39.13.6: FS ≥ 1.5)
+check FSv >= FSv_min // Volteo (E.050 39.13.6: FS ≥ 1.5)
 FSd = mu*SWr/(Ea + Eq) // Factor de seguridad al deslizamiento (sin empuje pasivo)
-check FSd >= FSdmin // Deslizamiento (E.050 39.13.6: FS ≥ 1.5)
+check FSd >= FSd_min // Deslizamiento (E.050 39.13.6: FS ≥ 1.5)
 xr = (Mr + W5*(Lp + t2 + Lt/2) - Ma)/SW -> m // Ubicación de la resultante desde la punta (con sobrecarga)
 e = B/2 - xr -> m // Excentricidad
 check abs(e) <= B/6 // Resultante en el tercio central
@@ -603,8 +603,8 @@ check (categoria == 2 and (regular == 1 or (zona == 1 and extrema == 0))) or (ca
 check zona == 1 or (regular == 1 and hn <= 30 m) or ((sistema == 9 or sistema == 10 or sistema == 11) and hn <= 15 m) // Método estático aplicable: zona 1, regular ≤ 30 m, o muros portantes ≤ 15 m (Art. 33.2); si no, análisis dinámico
 ## Periodo y factor de amplificación
 R = R0*Ia*Ip // Coeficiente de reducción de las fuerzas sísmicas (Art. 26)
-cajas = 0 // Pórticos de C°A° con muros en las cajas de ascensores y escaleras [0 : No|1 : Sí (CT = 45)]
-CT = si(sistema == 7 and cajas == 1, 45, CTE030(sistema)) // Coeficiente para estimar el periodo (Art. 36.1)
+muroscaja = 0 // Pórticos de C°A° con muros en las muroscaja de ascensores y escaleras [0 : No|1 : Sí (CT = 45)]
+CT = si(sistema == 7 and muroscaja == 1, 45, CTE030(sistema)) // Coeficiente para estimar el periodo (Art. 36.1)
 T = hn/CT*1 s/m -> s // Periodo fundamental aproximado, hn en metros (Art. 36.1)
 C = CE030(T, Tp, Tl) // Factor de amplificación; en el análisis estático C = 2.5 para T ≤ TP (Art. 18.3 y 34.1)
 CR = max(C/R, 0.11) // C/R con su valor mínimo 0.11 (Art. 34.2): es un mínimo que se aplica, no una verificación
@@ -626,8 +626,8 @@ fR = si(regular == 1, 0.75, 0.85) // Factor de desplazamiento inelástico: 0.75 
 fCR = (C/R)/CR // Los desplazamientos no consideran el mínimo C/R (Art. 50.3)
 deriva = fR*R*fCR*Di ./ hei // Distorsión inelástica en el centro de masas
 deriva_max = rt .* deriva // Distorsión máxima de entrepiso, en el extremo del edificio
-mat = si(sistema <= 6, 2, si(sistema == 10, 5, si(sistema == 11, 3, si(sistema == 12, 4, 1)))) // Material predominante según el sistema
-dlim = dlimE030(mat) // Distorsión máxima (Tabla N° 14): C°A° 0.007, acero 0.010, albañilería 0.005, madera 0.010, EMDL 0.004
+material = si(sistema <= 6, 2, si(sistema == 10, 5, si(sistema == 11, 3, si(sistema == 12, 4, 1)))) // Material predominante según el sistema
+dlim = dlimE030(material) // Distorsión máxima (Tabla N° 14): C°A° 0.007, acero 0.010, albañilería 0.005, madera 0.010, EMDL 0.004
 check max(deriva_max) <= dlim // Distorsión máxima de entrepiso en el extremo del edificio (Art. 51)`),
       { type: 'table', columnas: 'Nivel = 1:4\nAltura $h_i$ [m] = hi\nPeso $w_i$ [tonf] = wi\n$\\alpha_i$ = alpha_i\nFuerza $F_i$ [tonf] = Fi\nCortante $V_i$ [tonf] = Vi\n$\\Delta_i/h_{ei}$ CM = deriva\n$\\Delta_{max}/h_{ei}$ extremo = deriva_max', dec: '4', titulo: 'Distribución de la fuerza sísmica en altura y derivas' },
       { type: 'spectrum', Z: 'Z', U: 'U', S: 'S', Tp: 'Tp', Tl: 'Tl', R: 'R', T: 'T', corto: true, titulo: 'Espectro de pseudo-aceleraciones E.030-2026 (incluye rama T < 0.2 TP para análisis dinámico)' },
@@ -646,14 +646,14 @@ SDS = 1.00 // Aceleración espectral de diseño, periodo corto [g] (del espectro
 SD1 = 0.60 // Aceleración espectral de diseño a 1 s [g]
 S1 = 0.60 // Aceleración MCER a 1 s [g]
 TL = 8 // Periodo de transición largo [s]
-sist = 1 // Sistema sísmico resistente (Tabla 12.2-1) [1 : C.1 Pórtico especial de C°A° (SMF)|2 : C.6 Pórtico intermedio de C°A°|3 : C.7 Pórtico ordinario de C°A°|4 : D.3 Dual con SMF y muros especiales de C°A°|5 : B.4 Muros especiales de C°A° (pórtico de edificación)|6 : C.1 Pórtico especial de acero (SMF)|7 : B.1 Acero EBF]
-R = si(sist == 1 or sist == 6 or sist == 7, 8, si(sist == 2, 5, si(sist == 3, 3, si(sist == 4, 7, 6)))) // Coeficiente de modificación de respuesta (Tabla 12.2-1)
-Cd = si(sist == 1 or sist == 4 or sist == 6, 5.5, si(sist == 2, 4.5, si(sist == 3, 2.5, si(sist == 5, 5, 4)))) // Factor de amplificación de deflexiones (Tabla 12.2-1)
+sistema = 1 // Sistema sísmico resistente (Tabla 12.2-1) [1 : C.1 Pórtico especial de C°A° (SMF)|2 : C.6 Pórtico intermedio de C°A°|3 : C.7 Pórtico ordinario de C°A°|4 : D.3 Dual con SMF y muros especiales de C°A°|5 : B.4 Muros especiales de C°A° (pórtico de edificación)|6 : C.1 Pórtico especial de acero (SMF)|7 : B.1 Acero EBF]
+R = si(sistema == 1 or sistema == 6 or sistema == 7, 8, si(sistema == 2, 5, si(sistema == 3, 3, si(sistema == 4, 7, 6)))) // Coeficiente de modificación de respuesta (Tabla 12.2-1)
+Cd = si(sistema == 1 or sistema == 4 or sistema == 6, 5.5, si(sistema == 2, 4.5, si(sistema == 3, 2.5, si(sistema == 5, 5, 4)))) // Factor de amplificación de deflexiones (Tabla 12.2-1)
 riesgo = 2 // Categoría de riesgo (Tabla 1.5-1) [2 : I o II|3 : III|4 : IV]
 Ie = si(riesgo == 4, 1.5, si(riesgo == 3, 1.25, 1.0)) // Factor de importancia sísmica (Tabla 1.5-2)
 hn = 15 // Altura estructural [m]
-Ct = si(sist == 1 or sist == 2 or sist == 3, 0.0466, si(sist == 6, 0.0724, si(sist == 7, 0.0731, 0.0488))) // Tabla 12.8-2 (unidades SI)
-x = si(sist <= 3, 0.9, si(sist == 6, 0.8, 0.75)) // Exponente (Tabla 12.8-2)
+Ct = si(sistema == 1 or sistema == 2 or sistema == 3, 0.0466, si(sistema == 6, 0.0724, si(sistema == 7, 0.0731, 0.0488))) // Tabla 12.8-2 (unidades SI)
+x = si(sistema <= 3, 0.9, si(sistema == 6, 0.8, 0.75)) // Exponente (Tabla 12.8-2)
 ## Periodo fundamental (12.8.2)
 Ta = Ct*hn^x // Periodo aproximado [s] (12.8-8)
 Cu = CuASCE7(SD1) // Coeficiente del límite superior (Tabla 12.8-1)
@@ -661,8 +661,8 @@ Tmod = 0.90 // Periodo fundamental del modelo analítico [s] (0 si no se dispone
 T = si(Tmod > 0, min(Tmod, Cu*Ta), Ta) // Periodo adoptado: el del modelo, no mayor que Cu·Ta (12.8.2)
 ## Aplicabilidad del procedimiento ELF (12.6, Tabla 12.6-1)
 Ts = SD1/SDS // Periodo de esquina del espectro [s]
-reg = 1 // Configuración (12.3) [1 : Regular|2 : Solo irregularidades H2–H5 / V4–V5 (hn ≤ 160 ft)|3 : Otras irregularidades]
-check (reg == 1 and T < 3.5*Ts) or (reg == 2 and hn <= 48.8) // ELF permitido en SDC D–F (Tabla 12.6-1); si no, análisis modal (12.9)
+configuracion = 1 // Configuración (12.3) [1 : Regular|2 : Solo irregularidades H2–H5 / V4–V5 (hn ≤ 160 ft)|3 : Otras irregularidades]
+check (configuracion == 1 and T < 3.5*Ts) or (configuracion == 2 and hn <= 48.8) // ELF permitido en SDC D–F (Tabla 12.6-1); si no, análisis modal (12.9)
 ## Coeficiente de respuesta sísmica (12.8.1.1)
 Cs1 = SDS/(R/Ie) // Valor base
 Cs2 = si(T <= TL, SD1/(T*R/Ie), SD1*TL/(T^2*R/Ie)) // Límite superior
@@ -807,8 +807,8 @@ check (categoria == 2 and (regular == 1 or (zona == 1 and extrema == 0))) or (ca
 check zona == 1 or (regular == 1 and hn <= 30 m) or ((sistema == 9 or sistema == 10 or sistema == 11) and hn <= 15 m) // Método estático aplicable: zona 1, regular ≤ 30 m, o muros portantes de C°A°/albañilería ≤ 15 m (Art. 28.1.2)
 ## Periodo y factor de amplificación
 R = R0*Ia*Ip // Coeficiente de reducción (Art. 22)
-cajas = 0 // Pórticos de C°A° con muros en las cajas de ascensores y escaleras [0 : No|1 : Sí (CT = 45)]
-CT = si(sistema == 7 and cajas == 1, 45, CTE030(sistema)) // Coeficiente para el periodo (Art. 28.4.1)
+muroscaja = 0 // Pórticos de C°A° con muros en las muroscaja de ascensores y escaleras [0 : No|1 : Sí (CT = 45)]
+CT = si(sistema == 7 and muroscaja == 1, 45, CTE030(sistema)) // Coeficiente para el periodo (Art. 28.4.1)
 T = hn/CT*1 s/m -> s // Periodo fundamental aproximado (Art. 28.4.1)
 C = si(T < Tp, 2.5, si(T <= Tl, 2.5*Tp/T, 2.5*Tp*Tl/T^2)) // Factor de amplificación sísmica (Art. 14)
 CR = max(C/R, 0.11) // C/R no menor que 0.11 (Art. 28.2.2): mínimo que se aplica, no una verificación
@@ -1019,7 +1019,7 @@ Pu = cD*PD + cL*PL + cS*PS // Carga axial última
 Mu = cD*MD + cL*ML + cS*MS // Momento último
 Vu = cD*VD + cL*VL + cS*VS // Cortante último
 Pumax = max(Pu) // Máxima carga axial
-Pumin = min(Pu) // Mínima carga axial (crítica para tracción, volteo y flexocompresión con poca carga)
+Pu_min = min(Pu) // Mínima carga axial (crítica para tracción, volteo y flexocompresión con poca carga)
 Mumax = max(abs(Mu)) // Máximo momento
 Vumax = max(abs(Vu)) // Máximo cortante`),
       { type: 'table', columnas: 'Combinación = ["1.4CM+1.7CV", "1.25(CM+CV)+CS", "1.25(CM+CV)−CS", "0.9CM+CS", "0.9CM−CS"]\nPu [tonf] = Pu\nMu [tonf*m] = Mu\nVu [tonf] = Vu', dec: '2', titulo: 'Combinaciones de diseño' },

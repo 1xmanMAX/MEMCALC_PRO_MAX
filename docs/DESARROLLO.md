@@ -112,4 +112,6 @@ npm install
 node build.mjs                 # dist/MemoriaCalc.html
 node tests/run.mjs             # todas las pruebas  (node tests/run.mjs chile  → filtra)
 node tools/shot.mjs $PWD/dist/MemoriaCalc.html salida.png 1440 900 "[data-t=ID]"   # captura con Playwright
+#   opciones: --scroll=SEL  --fig=N (solo la figura N)  --el=SEL  --paper (memoria completa)  --dark
+#   la app acepta ?plantilla=ID en la URL para abrir una plantilla directamente
 ```

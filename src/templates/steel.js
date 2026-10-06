@@ -568,6 +568,8 @@ Fed = pi^2*E/esbd^2
 Fcrd = si(Fya/Fed <= 2.25, 0.658^(Fya/Fed)*Fya, 0.877*Fed)
 phiPdc = 0.90*Fcrd*A_d -> tonf
 check Fdu <= phiPdc // Diagonal a compresión por levante (E5)
+phiPdc_lib = 0.90*PnE5(perfil_d, Fya, Ld, "a", "larga", E) -> tonf // Control: función de librería PnE5 (E5 + E7)
+check abs(phiPdc_lib - phiPdc) <= 0.005*phiPdc // El cálculo paso a paso coincide con la función PnE5
 # Montante extremo — compresión (E5)
 Lrv = ht/rx_d
 esbv = si(Lrv <= 80, 72 + 0.75*Lrv, 32 + 1.25*Lrv) // E5-1 / E5-2
@@ -915,6 +917,165 @@ check dL <= Lv/360 // L/360 (IBC 1604.3)
 dT = 5*(wDs + wLs)*Lv^4/(384*E*Ix) -> cm // Por carga total
 check dT <= Lv/240 // L/240`),
       { type: 'plot', expr: '0.9*MnW(perfil, Fy, x m, Cb, E)/(1 tonf*m); 0.9*MnW(perfil, Fy, x m, 1, E)/(1 tonf*m); Mu/(1 tonf*m)', var: 'x', desde: '0.5', hasta: '10', puntos: '160', xlabel: 'Lb [m]', ylabel: 'φMn [t·m]', nombres: 'φMn con Cb; φMn con Cb = 1; Mu', leyenda: true, titulo: 'Resistencia a flexión del IPE en función de la longitud no arriostrada (AISC F2)' },
+      summary(),
+    ],
+  },
+  // ------------------------------------------------------------------
+  //  11) Casa / vivienda de dos pisos en estructura metálica
+  // ------------------------------------------------------------------
+  {
+    id: 'st-casa', pais: 'PE', cat: CAT, icon: 'steel', settings: TEC,
+    name: 'Casa / vivienda de dos pisos en estructura metálica (HSS, losa colaborante, pórticos y arriostres)',
+    normas: 'NTE E.020 · NTE E.030-2018 (Tabla N° 7: OMF R0 = 4, OCBF R0 = 4) · NTE E.090 1.4 · ANSI/AISC 360-16/22 · AISC 341-16 (OCBF) · ANSI/SDI C-2017 (losa colaborante)',
+    desc: 'Vivienda de 2 pisos: losa sobre placa colaborante (etapas constructiva y compuesta), pórtico resistente a momentos en X (análisis matricial frame2d con CM, CV, viento y sismo), columnas HSS (E3, F7, H1), vigas W (F2) y arriostres concéntricos HSS en cruz en Y, derivas E.030.',
+    titulo: 'Memoria de cálculo — vivienda de dos pisos en estructura metálica',
+    blocks: [
+      text(`# Generalidades
+Vivienda unifamiliar de **dos pisos** en estructura metálica liviana: columnas de **tubo HSS cuadrado** (ASTM A500 Gr. B), vigas de perfil **W** (ASTM A572 Gr. 50), entrepiso de **losa de concreto sobre placa colaborante** (tipo Acero-Deck AD-600, nervios perpendiculares a las vigas de pórtico) y techo liviano de cobertura metálica sobre correas.
+
+- **Sistema sismorresistente:** dirección X, **pórticos ordinarios resistentes a momentos (OMF)**; dirección Y, **pórticos ordinarios concéntricamente arriostrados (OCBF)** con arriostres HSS en cruz en las fachadas. E.030-2018, Tabla N° 7: OMF R0 = 4, OCBF R0 = 4; estructura regular (Ia = Ip = 1). Diafragma rígido en el entrepiso (losa colaborante) y techo con arriostres horizontales.
+- **Análisis:** cargas de gravedad y laterales (sismo estático E.030 Art. 28 y viento E.020) sobre el pórtico X más cargado, resuelto por el **método de rigidez** (bloque *Pórtico 2D*); arriostres en Y por equilibrio de entrepiso. Combinaciones LRFD de la NTE E.090 Art. 1.4.1.
+- **Diseño:** AISC 360-16/22 (E3, F2, F7, G, H1), con los requisitos de detallado de AISC 341-16 para OCBF/OMF a cumplir en los planos (conexiones, relación ancho/espesor de arriostres, Lc/r).
+- **Planta (datos por defecto):** 8 m × 9 m, con 2 vanos de 4 m en X y 3 vanos de 3 m en Y; alturas de entrepiso 2.80 m y 2.60 m.`),
+      { type: 'steelsec', perfil: 'HSS7X7X1/4', sufijo: 'c', tabla: false, titulo: 'Columnas: HSS 7×7×1/4 (ASTM A500 Gr. B, Fy = 46 ksi)' },
+      { type: 'steelsec', perfil: 'W8X18', sufijo: 'v', tabla: false, titulo: 'Vigas de pórtico (entrepiso y techo): W8×18 (ASTM A572 Gr. 50)' },
+      { type: 'steelsec', perfil: 'HSS3X3X1/4', sufijo: 'b', tabla: false, titulo: 'Arriostres en cruz: HSS 3×3×1/4 (ASTM A500 Gr. B)' },
+      calc(`# Datos
+## Geometría
+Lx = 8 m // Longitud en planta, dirección X (2 vanos)
+Ly = 9 m // Longitud en planta, dirección Y (3 vanos)
+bx = 4 m // Vano de los pórticos X
+by = 3 m // Separación de pórticos X (luz de la losa colaborante)
+nfx = 4 // Número de pórticos en X (ejes A–D)
+h1 = 2.8 m // Altura del 1.er piso
+h2 = 2.6 m // Altura del 2.º piso
+## Materiales
+Fyc = 3235 kgf/cm^2 // Fluencia HSS ASTM A500 Gr. B (46 ksi)
+Fyv = 3515 kgf/cm^2 // Fluencia W ASTM A572 Gr. 50 / A992 (50 ksi)
+E = 2039000 kgf/cm^2 // Módulo de elasticidad del acero
+fc = 210 kgf/cm^2 // Concreto de la losa colaborante
+## Placa colaborante AD-600 calibre 22 (datos del catálogo del fabricante, por metro de ancho)
+hr = 6 cm // Altura del nervio
+tc = 5 cm // Concreto sobre la cresta
+Asd = 9.0 cm^2 // Área de acero de la placa por metro
+Ssd = 17 cm^3 // Módulo de sección de la placa por metro (momento positivo)
+Isd = 60 cm^4 // Inercia de la placa por metro
+Fyd = 2320 kgf/cm^2 // Fluencia de la placa ASTM A653 Gr. 33
+nap = 1 // Líneas de apuntalamiento temporal por paño durante el vaciado [0|1|2]
+## Cargas (E.020)
+wlosa = 2400 kgf/m^3*(tc + hr/2) + 8 kgf/m^2 -> kgf/m^2 // Losa: concreto (nervios de sección media) + placa
+wacab = 100 kgf/m^2 // Piso terminado
+wtab = 100 kgf/m^2 // Tabiquería liviana (drywall)
+wL = 200 kgf/m^2 // Carga viva de vivienda (E.020 Tabla 1)
+wtecho = 40 kgf/m^2 // Techo: cobertura, correas, cielo raso e instalaciones
+WLr = 50 kgf/m^2 // Carga viva de techo (E.020 Art. 7.1 a, techo con acceso ocasional)
+wcons = 100 kgf/m^2 // Carga de construcción durante el vaciado (ANSI/SDI C-2017, 20 psf)
+# Losa sobre placa colaborante (ANSI/SDI C-2017)
+## Etapa constructiva: la placa sola resiste el concreto fresco
+Lsd = by/(nap + 1) // Luz libre de la placa entre apoyos/puntales
+wu0 = 1.2*wlosa + 1.6*wcons -> kgf/m^2 // Carga factorizada sobre la placa
+Mu0 = wu0*1 m*Lsd^2/8 -> kgf*m // Por metro de ancho (simplemente apoyada, conservador)
+phiMd = 0.90*Ssd*Fyd -> kgf*m // Resistencia de la placa a flexión (AISI S100 F3)
+check Mu0 <= phiMd // Placa en la etapa constructiva
+d0 = 5*wlosa*1 m*Lsd^4/(384*E*Isd) -> mm // Flecha por concreto fresco
+check d0 <= min(Lsd/180, 19 mm) // Flecha L/180 ≤ 19 mm (ANSI/SDI C-2017)
+## Etapa compuesta: losa como sección armada con la placa (luz by, simplemente apoyada)
+wu1 = 1.2*(wlosa + wacab + wtab) + 1.6*wL -> kgf/m^2 // 1.2D + 1.6L (E.090 1.4.1)
+Mu1 = wu1*1 m*by^2/8 -> kgf*m
+ds = tc + hr/2 // Peralte efectivo al centroide de la placa
+as1 = Asd*Fyd/(0.85*fc*100 cm) // Profundidad del bloque de compresión (b = 1 m)
+check as1 <= tc // Bloque de compresión sobre la cresta
+phiMs = 0.85*Asd*Fyd*(ds - as1/2) -> kgf*m // φ = 0.85 (ANSI/SDI C-2017)
+check Mu1 <= phiMs // Flexión de la losa compuesta
+"Los conectores de corte o la soldadura de la placa a las vigas (puddle welds) se detallan según ANSI/SDI C-2017; la armadura de temperatura es malla de ¼\\" @ 25 cm.
+# Cargas sobre el pórtico X interior (ancho tributario by)
+wD1 = (wlosa + wacab + wtab)*by -> tonf/m // Muerta del entrepiso
+wL1 = wL*by -> tonf/m // Viva del entrepiso
+wD2 = wtecho*by -> tonf/m // Muerta del techo
+wL2 = WLr*by -> tonf/m // Viva de techo
+# Sismo (NTE E.030-2018, análisis estático)
+Ap = Lx*Ly // Área en planta
+P1 = (wlosa + wacab + wtab + 0.25*wL + 40 kgf/m^2)*Ap -> tonf // Peso del 1.er nivel: CM + 25 % CV (categoría C, Art. 26) + estructura y muros
+P2 = (wtecho + 0.25*WLr + 20 kgf/m^2)*Ap -> tonf // Peso del techo: CM + 25 % CV (Art. 26 d) + estructura
+Psis = P1 + P2 -> tonf
+Zs = 0.45 // Factor de zona (Zona 4) [0.10|0.25|0.35|0.45]
+Us = 1.0 // Categoría C, vivienda (Tabla N° 5) [1.0|1.3|1.5]
+Ss = 1.05 // Suelo S2, Zona 4 (Tabla N° 3)
+Tp = 0.6 s // (Tabla N° 4, S2)
+Tl = 2.0 s // (Tabla N° 4, S2)
+hn = h1 + h2 // Altura total
+Rx = 4*1*1 // Dirección X: OMF, R0 = 4 (Tabla N° 7), regular
+Ry = 4*1*1 // Dirección Y: OCBF, R0 = 4 (Tabla N° 7), regular
+Tx = hn/(35 m)*1 s // T = hn/CT, CT = 35 pórticos de acero sin arriostres (Art. 28.4.1)
+Ty = hn/(45 m)*1 s // CT = 45 pórticos de acero arriostrados
+Cx = CE030(Tx, Tp, Tl) // Factor de amplificación sísmica (Art. 14)
+Cy = CE030(Ty, Tp, Tl)
+Vx = Zs*Us*Ss*max(Cx/Rx, 0.11)*Psis -> tonf // Cortante basal X (Art. 28.2)
+Vy = Zs*Us*Ss*max(Cy/Ry, 0.11)*Psis -> tonf // Cortante basal Y
+a1 = P1*h1/(P1*h1 + P2*hn) // α1 = Pi·hi/Σ (k = 1, T ≤ 0.5 s, Art. 28.3)
+a2 = 1 - a1 // α2
+## Reparto al pórtico X de borde con torsión accidental 0.05Ly (Art. 28.5)
+ft = 1/nfx + 0.05*Ly*(Ly/2)/(nfx*(nfx^2 - 1)*by^2/12) // Fracción del cortante: 1/n + V·ea·y/Σy² (pórticos iguales)
+F1x = ft*a1*Vx -> tonf // Fuerza en el 1.er nivel del pórtico X crítico
+F2x = ft*a2*Vx -> tonf // Fuerza en el techo del pórtico X crítico
+# Viento (E.020 Art. 12) — fachada perpendicular a X
+Vh = 75 km/h // V ≥ 75 km/h, h < 10 m: Vh = V (Art. 12.3)
+pw = 0.005*(0.8 + 0.6)*(Vh/(1 km/h))^2*1 kgf/m^2 // Barlovento 0.8 + sotavento 0.6 (Tabla 4)
+W1x = pw*(h1 + h2)/2*Ly/nfx -> tonf // Fuerza de viento en el 1.er nivel por pórtico
+W2x = pw*h2/2*Ly/nfx -> tonf // Fuerza de viento en el techo por pórtico`),
+      {
+        type: 'frame2d', tipo: 'portico', unidades: 't',
+        nudos: '1 0 0\n2 bx 0\n3 2*bx 0\n4 0 h1\n5 bx h1\n6 2*bx h1\n7 0 hn\n8 bx hn\n9 2*bx hn',
+        secciones: 'C E A_c Ix_c\nV E A_v Ix_v',
+        barras: '1 1 4 C\n2 2 5 C\n3 3 6 C\n4 4 7 C\n5 5 8 C\n6 6 9 C\n7 4 5 V\n8 5 6 V\n9 7 8 V\n10 8 9 V',
+        apoyos: '1,2,3 E',
+        cargas: 'CM: U 7,8 wD1\nCM: U 9,10 wD2\nCV: U 7,8 wL1\nCV: U 9,10 wL2\nCS: N 4 F1x 0\nCS: N 7 F2x 0\nW: N 4 W1x 0\nW: N 7 W2x 0',
+        pp: 'CM 7.85 tonf/m^3',
+        combinaciones: 'U1 = 1.4 CM\nU2 = 1.2 CM + 1.6 CV\nU3 = 1.2 CM + 0.5 CV ± 1.3 W\nU4 = 1.2 CM + 0.5 CV ± 1.0 CS\nU5 = 0.9 CM ± 1.0 CS',
+        casos: 'CM Carga muerta (incluye peso propio)\nCV Carga viva (entrepiso y techo)\nW Viento E.020\nCS Sismo E.030 (pórtico de borde, con torsión accidental)',
+        grupos: 'COL 1-6\nCOL1 1-3\nVIG 7-10\nVIG1 7,8', servicio: 'CV', graficos: 'C M N D', deflim: '360', deflbarras: '7,8',
+        deriva_caso: 'CS', deriva_f: '0.75*Rx', deriva_lim: '0.010',
+        titulo: 'Pórtico X de borde (OMF): envolvente de combinaciones E.090',
+      },
+      calc(`# Diseño de las vigas del pórtico (AISC 360 F2, G2, H1)
+check lambdaf_v <= 0.38*sqrt(E/Fyv) // Ala compacta (Tabla B4.1b)
+phiMnv = 0.90*MnW(perfil_v, Fyv, bx/2, 1.0, E) -> tonf*m // Ala inferior comprimida junto a los nudos: Lb = L/2 (arriostre al centro), Cb = 1
+check Mmax_VIG <= phiMnv // Flexión en las vigas (envolvente)
+phiVnv = phivG2(perfil_v, Fyv, E)*VnG2(perfil_v, Fyv, E) -> tonf // Cortante (G2.1)
+check Vmax_VIG <= phiVnv // Cortante en las vigas
+# Diseño de las columnas HSS (AISC 360 E3, F7, H1)
+check lambdaf_c <= 1.40*sqrt(E/Fyc) // Pared no esbelta en compresión (Tabla B4.1a caso 6)
+GA = 1.0 // Base empotrada (Comentario App. 7)
+GB = 2*(Ix_c/h1)/(Ix_v/bx) // Nudo del 1.er nivel, columna interior: columnas arriba y abajo, vigas a ambos lados
+Kc = sqrt((1.6*GA*GB + 4*(GA + GB) + 7.5)/(GA + GB + 7.5)) // K de pórtico no arriostrado (Comentario App. 7)
+Lcx = Kc*h1 -> m // Longitud efectiva en el plano del pórtico X
+Lcy = h1 // Dirección Y arriostrada (OCBF): K = 1
+phiPnc = 0.90*PnE3(perfil_c, Fyc, Lcx, Lcy, E) -> tonf // Compresión (E3/E7)
+phiMnc = 0.90*MnHSS(perfil_c, Fyc, E) -> tonf*m // Flexión del tubo (F7)
+ratioc = H1(Nc_COL, phiPnc, Mmax_COL, phiMnc) // Interacción H1-1 con la envolvente (conservador)
+check ratioc <= 1.0 // Columnas: flexocompresión (H1-1)
+check Vmax_COL <= 0.9*VnG2(perfil_c, Fyc, E) // Cortante en las columnas (G4)
+"Columna fuerte–viga débil: no es exigido en OMF (AISC 341-16 E1); las conexiones viga–columna se diseñan para 1.1RyMp de la viga o para la combinación con sobrerresistencia Ω0 = 3 (AISC 341-16 E1.6b).
+# Arriostres concéntricos en cruz — dirección Y (OCBF)
+nby = 2 // Paños arriostrados en Y (uno en cada fachada)
+ba = by // Ancho del paño arriostrado
+ftY = 1/nby + 0.05*Lx/Lx // Fracción por fachada con torsión accidental (ea = 0.05Lx, brazo Lx/2, Σx² = 2(Lx/2)²)
+VY1 = ftY*Vy -> tonf // Cortante del 1.er piso en un paño (máximo)
+Ld = sqrt(ba^2 + h1^2) // Longitud de la diagonal del 1.er piso
+thb = atan(h1/ba) -> deg // Inclinación de la diagonal
+Fbr = VY1/(2*cos(thb)) -> tonf // Fuerza en cada diagonal: una en tracción y otra en compresión (equilibrio de entrepiso)
+Lcb = 0.5*Ld // Diagonales conectadas en el cruce: Lc = 0.5Ld en ambos planos (Comentario AISC 341 F1)
+check Lcb/rx_b <= 200 // Esbeltez Lc/r ≤ 200 (E2; AISC 341-16 F1.5a para cruces)
+phiPb = 0.90*PnE3(perfil_b, Fyc, Lcb, Lcb, E) -> tonf // Compresión del arriostre (E3)
+check Fbr <= phiPb // Arriostre en compresión
+phiTb = 0.90*Fyc*A_b -> tonf // Tracción: fluencia en el área bruta (D2-1)
+check Fbr <= phiTb // Arriostre en tracción
+## Deriva en Y (rigidez axial de las diagonales)
+Kb = 2*E*A_b*cos(thb)^2/Ld -> tonf/cm // Rigidez lateral del paño (dos diagonales activas)
+Dy = VY1/Kb -> cm // Desplazamiento elástico del 1.er piso
+check 0.75*Ry*Dy/h1 <= 0.010 // Distorsión máxima de acero 0.010 (E.030 Art. 31, Tabla N° 11)
+# Resumen de cargas en la base
+"Reacciones máximas de las columnas del pórtico X (envolvente): R1y, R2y, R3y y momentos R1m, R2m, R3m, para el diseño de las placas base (plantilla «Placa base», AISC DG1) y de las zapatas.`),
       summary(),
     ],
   },

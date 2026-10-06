@@ -153,7 +153,7 @@ const EXTREMOS = [
   ['sismo2018', [['categoria = 4 //', 'categoria = 2 //']], 'Tabla N° 6'],
   ['sismo2018', [['Ip = 1.0 //', 'Ip = 0.75 //'], ['hn = 12.0 m', 'hn = 18 m']], '28.1.2'],
   ['sismo2018', [['Di = [0.22', 'Di = [0.32']], 'Tabla N° 11'],
-  ['asce7', [['reg = 1 //', 'reg = 3 //']], 'ELF permitido'],
+  ['asce7', [['configuracion = 1 //', 'configuracion = 3 //']], 'ELF permitido'],
   ['japon', [['Qu = [3100', 'Qu = [310']], 'Qu ≥ Qun'],
   ['puente', [['fc = 280 kgf/cm^2', 'fc = 100 kgf/cm^2'], ['L = 10.0 m', 'L = 10.0 m'], ['h = roundup(hmin, 0.05 m)', 'h = 0.30 m']], 'Resistencia a flexión'],
   ['acero', [['Lb = 10 ft', 'Lb = 60 ft']], 'Resistencia a flexión'],
