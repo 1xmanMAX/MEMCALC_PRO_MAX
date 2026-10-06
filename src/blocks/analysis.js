@@ -8,9 +8,11 @@
 //  McGuire–Gallagher–Ziemian «Matrix Structural Analysis», Hibbeler
 //  «Análisis estructural», AISC Manual Tabla 3-23, Roark (Tabla 8.1).
 // =====================================================================
-import { registerBlock, F } from '../blockreg.js';
+import { registerBlock as registerBlock0, F } from '../blockreg.js';
 import { evalParam, esc, math, K, symTex, valTex } from '../engine.js';
-import { C, T, Lne, svgWrap, niceTicks, caption, setVar, f2, solveBeam, blockBeam } from '../blocks.js';
+import { C, T, Lne, svgWrap, niceTicks, caption, setVar, f2, solveBeam, blockBeam, fixDt } from '../blocks.js';
+// los títulos .dt conservan la caja de unidades y símbolos (ver dtx en blocks.js)
+const registerBlock = (type, def) => registerBlock0(type, { ...def, render: (b, ctx) => fixDt(def.render(b, ctx)) });
 
 // ---------------------------------------------------------------------
 //  Utilidades
@@ -946,6 +948,11 @@ function drawLoads(md, ci, W, maxH) {
   const hasPP = c.loads.some(l => l.pp);
   const maxW = Math.max(1e-12, ...dl.map(l => Math.max(Math.abs(l.w1), Math.abs(l.w2))));
   const stack = {};
+  // altura máxima del bloque de carga: en pórticos de varios pisos se limita a ~40 % de la separación
+  // vertical mínima entre niveles para que la carga y su rótulo no invadan el piso superior
+  const lvY = [...new Set(md.nodes.map(n => Math.round(v.Y(n.y))))].sort((p, q) => p - q);
+  let dyMin = Infinity; for (let k = 1; k < lvY.length; k++) if (lvY[k] - lvY[k - 1] > 4) dyMin = Math.min(dyMin, lvY[k] - lvY[k - 1]);
+  const hmaxL = Math.max(8, Math.min(28, 0.4 * dyMin - 9));
   const lb = labeler(W);
   const ttl = c.name + (md.cdesc[c.name] ? ' — ' + md.cdesc[c.name] : '');
   lb.add(10 + ttl.length * 3.4, 14, ttl.length * 6.8, 18);
@@ -962,7 +969,7 @@ function drawLoads(md, ci, W, maxH) {
     let nx = -m.s, ny = -m.c; if (ny > 0) { nx = -nx; ny = -ny; } if (Math.abs(m.c) < 0.2) { nx = -1; ny = 0; }
     const key = l.m;
     const off = stack[key] || 0;
-    const hmax = 28, hh = (w) => 7 + hmax * Math.abs(w) / maxW;
+    const hmax = hmaxL, hh = (w) => 7 + hmax * Math.abs(w) / maxW;
     stack[key] = off + Math.max(hh(l.w1), hh(l.w2)) + 4;
     const pt = (x) => { const p = [v.X(n1.x + (n2.x - n1.x) * x / m.L), v.Y(n1.y + (n2.y - n1.y) * x / m.L)]; return [p[0] + nx * off, p[1] + ny * off]; };
     const wAt = (x) => l.w1 + (l.w2 - l.w1) * (x - a) / (b - a);
@@ -1446,8 +1453,10 @@ function renderFrame(b, ctx) {
     html += `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, 'Estados de carga [' + lu + ', ' + lu + '/m, ' + lu + '·m]')}</div>`;
   }
   // tabla de combinaciones
-  html += '<table class="tbl"><thead><tr><th>Combinación</th><th>Expresión</th></tr></thead><tbody>' + combos.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.txt)}${c.auto ? ' (sin combinaciones definidas)' : ''}</td></tr>`).join('') + '</tbody></table>';
-  const sub = verSet ? verSet.name + (verSet.txt ? ' = ' + verSet.txt : '') : (envSets.length > 1 ? 'Envolvente de ' + envSets.length + ' combinaciones (máx. continuo, mín. trazos)' : envSets[0].name);
+  // nombre visible: la combinación automática de un único caso se llama internamente «CM_» (no debe imprimirse el «_»)
+  const dn = (n) => String(n).replace(/_$/, '');
+  html += '<table class="tbl"><thead><tr><th>Combinación</th><th>Expresión</th></tr></thead><tbody>' + combos.map(c => `<tr><td>${esc(dn(c.name))}</td><td>${esc(c.txt)}${c.auto ? ' (sin combinaciones definidas)' : ''}</td></tr>`).join('') + '</tbody></table>';
+  const sub = verSet ? dn(verSet.name) + (verSet.txt ? ' = ' + verSet.txt : '') : (envSets.length > 1 ? 'Envolvente de ' + envSets.length + ' combinaciones (máx. continuo, mín. trazos)' : dn(envSets[0].name));
   const envDraw = (key) => {
     if (verSet || envSets.length === 1) return [envSets[0]];
     const mx = { name: 'máx', mf: md.mems.map((m, mi) => ({ [key]: memRes[mi][key].mx })) }, mn = { name: 'mín', mf: md.mems.map((m, mi) => ({ [key]: memRes[mi][key].mn })) };
@@ -1463,11 +1472,11 @@ function renderFrame(b, ctx) {
   if (want('D')) { const d = drawDeformed(md, serv, W); if (d) html += `<div class="figure">${d}${caption(ctx, 'Deformada amplificada (' + serv.name + ')')}</div>`; }
 
   // ---------- tablas ----------
-  html += `<div class="dt">Desplazamientos nodales — ${esc(serv.name)}</div><table class="tbl"><thead><tr><th>Nudo</th><th>x [m]</th><th>y [m]</th><th>ux [mm]</th><th>uy [mm]</th><th>θz [rad]</th></tr></thead><tbody>` +
+  html += `<div class="dt">Desplazamientos nodales — ${esc(dn(serv.name))}</div><table class="tbl"><thead><tr><th>Nudo</th><th>x [m]</th><th>y [m]</th><th>ux [mm]</th><th>uy [mm]</th><th>θz [rad]</th></tr></thead><tbody>` +
     md.nodes.map((n, i) => `<tr><td>${esc(n.id)}</td><td>${fx(n.x)}</td><td>${fx(n.y)}</td><td>${fx(serv.u[3 * i] * 1000, 3)}</td><td>${fx(serv.u[3 * i + 1] * 1000, 3)}</td><td>${sol.auto.includes(3 * i + 2) ? '—' : fx(serv.u[3 * i + 2], 6)}</td></tr>`).join('') + '</tbody></table>';
   // reacciones
   const rset = [...md.cases.map(c => sets.get(c.name)), ...combSets];
-  html += `<div class="dt">Reacciones en los apoyos [${lu}, ${lu}·m]</div><table class="tbl"><thead><tr><th>Nudo</th>${rset.map(s => `<th>${esc(s.name)}</th>`).join('')}</tr></thead><tbody>`;
+  html += `<div class="dt">Reacciones en los apoyos [${lu}, ${lu}·m]</div><table class="tbl"><thead><tr><th>Nudo</th>${rset.map(s => `<th>${esc(dn(s.name))}</th>`).join('')}</tr></thead><tbody>`;
   for (const i of supN) {
     for (let d = 0; d < 3; d++) {
       if (!md.sup[i].r[d] && !md.sup[i].k[d] && !(md.sup[i].ang !== null && d < 2)) continue;

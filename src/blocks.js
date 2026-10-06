@@ -5,7 +5,16 @@
 import { math, evalParam, evalList, fmtPlain, valTex, K, esc, displayUnit, BARS, richText, symTex, interp } from './engine.js';
 
 export const C = { ink: '#1b2733', grid: '#e3e8ef', axis: '#8a96a3', blue: '#1f6feb', blueF: 'rgba(31,111,235,.16)', red: '#d1242f', redF: 'rgba(209,36,47,.15)', green: '#1a7f37', greenF: 'rgba(26,127,55,.15)', orange: '#d4730c', conc: '#e9ecef', soil: '#c9a46a', steel: '#24292f' };
-export const f2 = (x, d = 2) => fmtPlain(x, d);
+// número para tablas y figuras: sin notación «e» para valores pequeños (−3.52e-5 → −0.0000352) y
+// sin restos de redondeo de coma flotante (|x| < 1e-10 → 0)
+export const f2 = (x, d = 2) => {
+  if (typeof x === 'number' && isFinite(x) && x !== 0 && Math.abs(x) < 1e-4) {
+    if (Math.abs(x) < 1e-10) return '0';
+    return fmtPlain(Number(x.toPrecision(Math.max(1, d + 1))), d).includes('e') ? trimZ(x.toFixed(Math.min(12, d + 1 - Math.floor(Math.log10(Math.abs(x)))))) : fmtPlain(x, d);
+  }
+  return fmtPlain(x, d);
+};
+const trimZ = (s) => s.indexOf('.') >= 0 ? s.replace(/\.?0+$/, '') : s;
 export const T = (x, y, s, o = {}) => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${o.fs || 11}" fill="${o.c || C.ink}" text-anchor="${o.a || 'middle'}"${o.b ? ' font-weight="600"' : ''}${o.r ? ` transform="rotate(${o.r} ${x.toFixed(1)} ${y.toFixed(1)})"` : ''} font-family="Inter,Segoe UI,Arial">${esc(s)}</text>`;
 export const Lne = (x1, y1, x2, y2, c = C.ink, w = 1, dash = '') => `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c}" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
 export function pos(o) { for (const k in o) if (!(o[k] > 0) || !isFinite(o[k])) throw new Error('El parámetro ' + k + ' debe ser mayor que cero'); }
@@ -27,6 +36,10 @@ export function niceTicks(min, max, n = 5) {
   const t = []; if (!(step > 0)) return t; for (let v = Math.ceil(min / step) * step; v <= max + 1e-9 && t.length < 60; v += step) t.push(+v.toFixed(10));
   return t;
 }
+// Títulos de tabla/diagrama (.dt): paper.css los pasa a MAYÚSCULAS; las unidades y los símbolos
+// deben conservar su caja («t·m» no es «T·M», «g = 1.2» no es «G = 1.2»): se protegen con text-transform:none.
+export const dtx = (s) => String(s).replace(/(?:[\wα-ωΑ-Ωθφδ⁺⁻]{1,4}\s*)?\[[^\]]*\]|[\wα-ωΑ-ΩΔφ⁺⁻]{1,4}\s*=\s*[^,;)<]+|\bq<sub>adm<\/sub>/g, (m) => `<span style="text-transform:none">${m}</span>`);
+export const fixDt = (html) => typeof html !== 'string' ? html : html.replace(/<div class="dt"([^>]*)>([\s\S]*?)<\/div>/g, (m, a, t) => /text-transform:none/.test(a) ? m : `<div class="dt"${a}>${dtx(t)}</div>`);
 export function caption(ctx, text) {
   ctx.fig = (ctx.fig || 0) + 1;
   return `<div class="cap">Figura ${ctx.fig}${text ? ': ' + richText(text, ctx.scope, true) : ''}</div>`;
@@ -620,6 +633,8 @@ export function blockPlot(b, ctx) {
 // =====================================================================
 //  8) TABLA DE RESULTADOS (columnas = expresiones vectoriales)
 // =====================================================================
+// unidad legible en encabezados: «tonf*m» → «tonf·m», «m^2» → «m²»
+const prettyU = (u) => String(u).replace(/\s*\*\s*/g, '·').replace(/\^2\b/g, '²').replace(/\^3\b/g, '³').replace(/\^4\b/g, '⁴').replace(/\^-1\b/g, '⁻¹');
 export function blockTable(b, ctx) {
   const S = ctx.scope;
   const cols = [];
@@ -643,7 +658,7 @@ export function blockTable(b, ctx) {
     return esc(String(v));
   };
   const fsz = cols.length > 12 ? 7 : cols.length > 9 ? 8 : cols.length > 7 ? 9 : 0;
-  let h = `<table class="tbl"${fsz ? ` style="font-size:${fsz}pt"` : ''}><thead><tr>` + cols.map(c => `<th>${richText(c.head.replace(/\[[^\]]+\]\s*$/, ''), S, true)}${c.unit ? ' [' + esc(c.unit) + ']' : ''}</th>`).join('') + '</tr></thead><tbody>';
+  let h = `<table class="tbl"${fsz ? ` style="font-size:${fsz}pt"` : ''}><thead><tr>` + cols.map(c => `<th>${richText(c.head.replace(/\[[^\]]+\]\s*$/, ''), S, true)}${c.unit ? ' [' + esc(prettyU(c.unit)) + ']' : ''}</th>`).join('') + '</tr></thead><tbody>';
   for (let r = 0; r < n; r++) h += '<tr>' + cols.map(c => `<td>${fmt(c.vals[r], c.unit)}</td>`).join('') + '</tr>';
   if (b.total) h += '<tr class="tot">' + cols.map((c, i) => { if (i === 0) return '<td>Σ</td>'; try { const s = c.vals.reduce((a, v) => math.add(a, v)); return `<td>${fmt(s, c.unit)}</td>`; } catch (e) { return '<td></td>'; } }).join('') + '</tr>';
   h += '</tbody></table>';

@@ -13,9 +13,11 @@
 //                 (5.10.11.4.1b: φ = 0.90 en zonas sísmicas 3 y 4)
 //  Referencias: AASHTO LRFD 3.6.1.2–3.6.1.4, 3.6.2, 3.4.1 (docs/referencias/bridges.md)
 // =====================================================================
-import { registerBlock, F } from '../blockreg.js';
+import { registerBlock as registerBlock0, F } from '../blockreg.js';
 import { evalParam, evalList, esc, math, K, symTex, valTex, settings, BARS } from '../engine.js';
-import { C, T, Lne, svgWrap, arrowDefs, dimH, dimV, niceTicks, caption, setVar, pos, f2, solveBeam } from '../blocks.js';
+import { C, T, Lne, svgWrap, arrowDefs, dimH, dimV, niceTicks, caption, setVar, pos, f2, solveBeam, fixDt } from '../blocks.js';
+// los títulos .dt conservan la caja de unidades y símbolos (ver dtx en blocks.js)
+const registerBlock = (type, def) => registerBlock0(type, { ...def, render: (b, ctx) => fixDt(def.render(b, ctx)) });
 import { AX_TRUCK, AX_TANDEM, W_LANE } from '../norms/bridges.js';
 
 const U = (v, u) => math.unit(v, u);
@@ -370,6 +372,8 @@ function renderSec(b, ctx) {
   const S = ctx.scope;
   const LU = settings.sys === 'us' ? { f: 3.2808399, u: 'ft' } : { f: 1, u: 'm' };
   const fl = (v) => f2(v * LU.f);
+  // espesores pequeños (losa, alma): en pulgadas en el sistema US, en m (con unidad) en los demás
+  const fsm = (v) => settings.sys === 'us' ? f2(v / 0.0254, 2) + ' in' : f2(v) + ' m';
   const B = evalParam(b.B, S, 'm', 8.4), ts = evalParam(b.ts, S, 'm', 0.2);
   const nv = Math.round(evalParam(b.nv, S, '', 4)), Sg = evalParam(b.S, S, 'm', 2.1);
   const hv = evalParam(b.hv, S, 'm', 1.2), bw = evalParam(b.bw, S, 'm', 0.4);
@@ -453,14 +457,14 @@ function renderSec(b, ctx) {
     g += dimH(X(0), X(xg[0]), yd, fl(vol));
     for (let i = 0; i < nv - 1; i++) g += dimH(X(xg[i]), X(xg[i + 1]), yd, 'S = ' + fl(Sg));
     g += dimH(X(xg[nv - 1]), X(B), yd, fl(vol));
-    g += dimV(X(0) - 14, Y(0), Y(hTot), 'h = ' + fl(hTot), C.ink, -1);
-    g += T(X(xg[0] + bw / 2) + 4, Y(ts + hv / 2), 'bw = ' + fl(bw), { fs: 9, a: 'start', c: C.axis });
+    g += dimV(X(0) - 14, Y(0), Y(hTot), 'h = ' + fl(hTot) + ' ' + LU.u, C.ink, -1);
+    g += T(X(xg[0] + bw / 2) + 4, Y(ts + hv / 2), 'bw = ' + fsm(bw), { fs: 9, a: 'start', c: C.axis });
   }
-  g += Lne(X(B) + 6, Y(0), X(B) + 16, Y(0), C.ink, 0.8) + Lne(X(B) + 6, Y(ts), X(B) + 16, Y(ts), C.ink, 0.8) + Lne(X(B) + 12, Y(0), X(B) + 12, Y(ts), C.ink, 0.8) + T(X(B) + 18, Y(ts / 2) + 4, 'ts = ' + fl(ts), { fs: 10, a: 'start' });
+  g += Lne(X(B) + 6, Y(0), X(B) + 16, Y(0), C.ink, 0.8) + Lne(X(B) + 6, Y(ts), X(B) + 16, Y(ts), C.ink, 0.8) + Lne(X(B) + 12, Y(0), X(B) + 12, Y(ts), C.ink, 0.8) + T(X(B) + 18, Y(ts / 2) + 4, 'ts = ' + fsm(ts), { fs: 10, a: 'start' });
   if (tasf > 0) g += T(X(tipo === 'losa' || nv < 2 ? B / 2 : xg[0] + Sg / 2), Y(ts) + (tipo === 'losa' ? 14 : 14), 'asfalto e = ' + f2(tasf * 100, 1) + ' cm', { fs: 9, c: C.axis });
   const de = vol - bar - ver;
   const tipTxt = { t: 'vigas T de concreto armado', i: 'vigas I de concreto presforzado', cajon: 'vigas cajón', acero: 'vigas de acero compuestas', losa: 'losa maciza' }[tipo] || 'vigas';
-  const info = `<div class="kv">${K('B = ' + fl(B) + '\\,\\mathrm{' + LU.u + '}')} ${K('w_{calzada} = ' + fl(wc) + '\\,\\mathrm{' + LU.u + '}')} ${K('N_L = ' + NL)} ${tipo !== 'losa' ? K('N_b = ' + nv) + ' ' + K('S = ' + fl(Sg) + '\\,\\mathrm{' + LU.u + '}') + ' ' + K('voladizo = ' + fl(vol) + '\\,\\mathrm{' + LU.u + '}') + ' ' + K('d_e = ' + fl(de) + '\\,\\mathrm{' + LU.u + '}') : ''}</div>`;
+  const info = `<div class="kv">${K('B = ' + fl(B) + '\\,\\mathrm{' + LU.u + '}')} ${K('w_{\\text{calzada}} = ' + fl(wc) + '\\,\\mathrm{' + LU.u + '}')} ${K('N_L = ' + NL)} ${tipo !== 'losa' ? K('N_b = ' + nv) + ' ' + K('S = ' + fl(Sg) + '\\,\\mathrm{' + LU.u + '}') + ' ' + K('\\text{voladizo} = ' + fl(vol) + '\\,\\mathrm{' + LU.u + '}') + ' ' + K('d_e = ' + fl(de) + '\\,\\mathrm{' + LU.u + '}') : ''}</div>`;
   return `<div class="figure">${svgWrap(Wd, H, g)}${info}${caption(ctx, b.titulo || 'Sección transversal del tablero (' + tipTxt + ')')}</div>`;
 }
 
@@ -519,8 +523,8 @@ function renderAbut(b, ctx) {
   // cotas
   g += dimH(X(0), X(B), Y(0) + 22, 'B = ' + f2(B) + ' m') + dimH(X(0), X(p), Y(0) + 42, 'punta ' + f2(p)) + dimH(X(p), X(p + t2), Y(0) + 42, f2(t2)) + dimH(X(p + t2), X(B), Y(0) + 42, 'talón ' + f2(B - p - t2));
   g += dimV(X(-0.8) - 22, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimV(X(0) - 8, Y(hz), Y(0), f2(hz), C.ink, -1);
-  g += dimV(X(p + t2) + 10, Y(H), Y(ys), 'hb ' + f2(hb), C.ink, 1);
-  g += T(X(p + bc / 2), Y(ys) + 12, 'cajuela ' + f2(bc), { fs: 9, c: C.axis });
+  g += dimV(X(p + t2) + 10, Y(H), Y(ys), 'hb = ' + f2(hb), C.ink, 1);
+  g += T(X(p) - 4, Y(ys) + 14, 'cajuela ' + f2(bc), { fs: 9, c: C.axis, a: 'end' });   // delante del fuste, sin tapar el apoyo
   g += T(X(p + t2 - t1 / 2), Y(H) - 4, 't1 = ' + f2(t1), { fs: 9 });
   return `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || 'Estribo en voladizo: geometría y empujes')}</div>`;
 }

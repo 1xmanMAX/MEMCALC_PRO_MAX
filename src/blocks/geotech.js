@@ -6,9 +6,11 @@
 //   pilegroup   Grupo de pilotes con cabezal (planta y elevación)
 //   liqchart    Potencial de licuación: CSR, CRR y FS vs profundidad
 // =====================================================================
-import { registerBlock, F } from '../blockreg.js';
+import { registerBlock as registerBlock0, F } from '../blockreg.js';
 import { evalParam, esc, math, K, valTex, symTex, interp } from '../engine.js';
-import { C, T, Lne, svgWrap, arrowDefs, dimH, dimV, niceTicks, caption, setVar, pos, f2 } from '../blocks.js';
+import { C, T, Lne, svgWrap, arrowDefs, dimH, dimV, niceTicks, caption, setVar, pos, f2, fixDt } from '../blocks.js';
+// los títulos .dt conservan la caja de unidades y símbolos (ver dtx en blocks.js)
+const registerBlock = (type, def) => registerBlock0(type, { ...def, render: (b, ctx) => fixDt(def.render(b, ctx)) });
 
 const U = (v, u) => math.unit(v, u);
 const lines = (s) => String(s || '').split('\n').map(l => l.split('//')[0].trim()).filter(Boolean);

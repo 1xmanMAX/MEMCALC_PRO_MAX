@@ -8,10 +8,11 @@ si → mm/kN, us → in/kip).
 | Archivo | Contenido |
 |---|---|
 | `src/norms/dynamics.js` | Núcleo numérico exportado + funciones del editor (`defineFns(…, 'Dinámica')`) |
-| `src/blocks/dynamics.js` | Bloques `thsdof`, `respspec`, `thmdof`, `pushover`, `momcurv`, `simqke` |
-| `src/templates/dynamics.js` | 6 plantillas de la categoría «Dinámica estructural» |
+| `src/blocks/dynamics.js` | Bloques `thsdof`, `respspec`, `thmdof`, `thnl`, `pushover`, `momcurv`, `simqke` |
+| `src/templates/dynamics.js` | 7 plantillas de la categoría «Dinámica estructural» |
 | `src/data/elcentro.js` | El Centro 1940 N-S (1560 puntos, Δt = 0.02 s), enteros de 1e-6 g en base 36 (7.5 KB) |
-| `tests/dynamics.test.mjs` | 104 pruebas contra Chopra, ATC-40/SOFiSTiK, N2, Mander y casos de algoritmos.md |
+| `tests/dynamics.test.mjs` | 146 pruebas contra Chopra, ATC-40/SOFiSTiK, N2, Mander, OpenSeesPy y casos de algoritmos.md |
+| `docs/referencias/revision-dynamics.md` | Revisión independiente (contraste con OpenSeesPy, defectos corregidos, registros) |
 
 ## Núcleo numérico (`src/norms/dynamics.js`)
 
@@ -25,19 +26,20 @@ si → mm/kN, us → in/kip).
 | `shearModes` | Jacobi sobre M^-½ K M^-½; φ normalizada al techo; Γn, Mn* | Chopra cap. 10–13; Bathe §11 |
 | `rhoCQCw`, `combCQC` | CQC con amortiguamientos distintos | Der Kiureghian (1981) |
 | `rayleighCoef` | a0, a1 para ζi, ζj en dos periodos | Chopra §11.4 |
-| `pushoverShear` | Resortes bi/trilineales; control de desplazamiento por bisección; eventos de fluencia | algoritmos.md §10 |
-| `n2Method` | Bilineal de áreas iguales, T*, qu, dt* iterando dm* = dt* | Fajfar (2000); EC8-1 Anexo B |
+| `pushoverShear` | Resortes bi/trilineales; control de desplazamiento por bisección; eventos de fluencia. Con `pdelta` (columna ficticia θi = Pi/hi) y/o `cap` (degradación: deriva de inicio, pendiente −ac·k, residual) se resuelve exactamente el sistema en serie: Vb creciente hasta el máximo y luego control de la deriva del entrepiso crítico con descarga elástica de los demás (localización) | algoritmos.md §10; ASCE 41-17 Fig. 10-1 |
+| `nlShearTH` | THA no lineal de edificio de cortante: Newmark (β = ¼) + Newton-Raphson con K̂T tridiagonal (Thomas), resortes bilineales cinemáticos, P-Δ opcional, Rayleigh con K inicial, subpasos ≤ Tn/20, vibración libre posterior y deriva residual media; detección de colapso (δ/h > 10 %) | Chopra Tabla 16.3.3; OpenSees zeroLength + Steel01 |
+| `n2Method` | Bilineal de áreas iguales (F*y = máximo hasta d*m si hay rama descendente), T*, qu, dt* iterando dm* = dt*, límite d*t ≤ 3d*et | Fajfar (2000); EC8-1 Anexo B |
 | `atc40CSM` | Procedimiento A; κ tipo A/B/C; SRA/SRV con mínimos de la Tabla 8-3; espectro reducido general `min(Sa(Ts)·SRA, Sa(T)·SRV)` | ATC-40 §8.2.2.1 |
 | `fema440ELM` | βeff y Teff/T0 de FEMA 440 §6.2; B = 4/(5.6 − ln βeff); MADRS (M = (Teff/Tsec)²) | FEMA 440 cap. 6 |
-| `coefMethod` | δt = C0·C1·C2·Sa·Te²g/4π² con Te = T1 | ASCE 41-17 §7.4.3.3.2 |
-| `manderFcc`, `manderCurve`, `manderCover`, `confinementRect` | f′cc, εcc, r, ke rectangular, εcu de Priestley | Mander, Priestley y Park (1988) |
+| `idealizeASCE41`, `coefMethod` | Bilineal de ASCE 41 (Ke secante en 0.6Vy, rama por (Δd, Vd), áreas iguales); Te = Ti√(Ki/Ke); δt = C0·C1·C2·Sa(Te)·Te²/4π²; μmax de la Ec. 7-32 con αe = αPΔ + λ(α2 − αPΔ) | ASCE 41-17 §7.4.3.2.4 y §7.4.3.3 |
+| `manderFcc`, `manderFccBiaxial`, `changManderFcc`, `manderCurve`, `manderCover`, `confinementRect` | f′cc (con f′lx ≠ f′ly: superficie de 5 parámetros de William-Warnke/Elwi-Murray = ábaco Fig. 4; aproximación de Chang-Mander 1994), εcc, r, ke rectangular con barras restringidas por ramas, εcu de Priestley | Mander, Priestley y Park (1988); Chang y Mander (1994) |
 | `hognestad`, `steelModel` | Hognestad; acero EPP, bilineal y Park-Paulay | Hognestad (1951); Park y Paulay (1975) |
 | `momentCurvature` | Fibras (120 franjas + barras, concreto desplazado), bisección de ε0 para N = P | algoritmos.md §14 |
 | `simqke` | Senoides con fases aleatorias (LCG con semilla), envolvente de Jennings, ajuste iterativo, corrección de línea base (v y d finales nulos), conserva la mejor iteración | Gasparini y Vanmarcke (1976) |
 
 Funciones del editor: `rayleighA0`, `rayleighA1`, `zetaRayleigh`, `rhoCQC(Ti, Tj, ζi, ζj)`, `SdSa`, `SaSd`, `SvSd`,
 `etaEC8`, `BFEMA440`, `SRAATC40`, `SRVATC40`, `C1ASCE41`, `C2ASCE41`, `RmuN2`, `fccMander`, `eccMander`,
-`ecuPriestley`, `LpPP`, `SaElCentro(T, ζ)` y `SdElCentro(T, ζ)` (memoizadas).
+`ecuPriestley`, `LpPP`, `fccMander2(f′co, f′lx, f′ly)`, `SaElCentro(T, ζ)` y `SdElCentro(T, ζ)` (memoizadas).
 
 ## Bloques
 
@@ -52,17 +54,18 @@ Funciones del editor: `rayleighA0`, `rayleighA1`, `zetaRayleigh`, `rhoCQC(Ti, Tj
 - **thmdof** — masas, rigideces y alturas por piso; amortiguamiento modal o Rayleigh (modos i, j); n.º de modos;
   comparación con RSA (CQC/SRSS) usando el espectro del propio registro y, opcionalmente, un espectro de diseño.
   Exporta `T1…Tn, u_techo, t_techo, Vbmax, Mbmax, umax_i, deriva_i, Vmax_i, derivamax, u_rsa, Vb_rsa, CbTH`.
-- **pushover** — Vy y α por piso, trilineal opcional (Vcr/Vy, rigidez fisurada), patrón modal/triangular/uniforme,
+- **thnl** — tiempo-historia NO lineal de edificio de cortante (Vy y α por entrepiso, P-Δ opcional, Rayleigh modos i, j), comparado con el mismo modelo elástico; lazos V–δ del entrepiso 1 y del crítico, envolventes de deriva, ductilidad y deriva residual; verificaciones de colapso, deriva, ductilidad y deriva residual. Exporta `u_techo, Vbmax, derivamax, deriva_i, mu_i, mumax, dres, u_lin, Vb_lin, CbNL, Ry1`.
+- **pushover** — Vy y α por piso, trilineal opcional (Vcr/Vy, rigidez fisurada), P-Δ y degradación de resistencia opcionales, patrón modal/triangular/uniforme,
   espectro elástico y TC, método gobernante, tipo ATC-40, coeficiente a del sitio y Cm de ASCE 41, niveles de
   desempeño editables. Exporta `dobj, dN2, dATC, dFEMA, dC, Vobj, Tstar, Fystar, dystar, mu, derivamax,
   deriva_obj, Gam, mstar, Tpo1, dcap, Vyb, beffATC, beffFEMA`.
-- **momcurv** — b, h, recubrimiento, capas «n varilla d» (varilla ASTM `8`/`#8` o `16mm`), estribo, s, ramas en cada
+- **momcurv** — opción de confinamiento (triaxial, promedio o mínimo); b, h, recubrimiento, capas «n varilla d» (varilla ASTM `8`/`#8` o `16mm`), estribo, s, ramas en cada
   dirección, P, modelos de concreto (Mander/Hognestad) y acero (Park/bilineal/EPP), L de cortante. Exporta `Mcr,
   phicr, My1, phiy1, Mn, phiy, Mu, phiu, Mmax, muphi, Lp, thetap, muD, fcc, ecu, ke`.
 - **simqke** — espectro objetivo, duración, Δt, envolvente, semilla, n.º de frecuencias e iteraciones; registra el
   acelerograma con un nombre para los otros bloques. Exporta `PGAsim, rmin, rmax, rPGA`.
 
-Rendimiento medido (Node 22): espectro de 120 periodos × 3 ζ ≈ 20–50 ms; thsdof bilineal ≈ 10 ms; thmdof 5 pisos
+Rendimiento medido (Node 22): espectro de 120 periodos × 3 ζ ≈ 20–50 ms; thsdof bilineal ≈ 10 ms; thnl 5 pisos (no lineal + elástico, 2 × 5 000 pasos) ≈ 60–80 ms; thmdof 5 pisos
 ≈ 30 ms; pushover + 4 métodos ≈ 90 ms; momcurv Mander ≈ 170 ms; SIMQKE (300 frecuencias × 12 iteraciones ×
 2000 pasos) ≈ 110 ms. Todos los bloques memoizan por hash de las entradas.
 
@@ -73,7 +76,8 @@ Rendimiento medido (Node 22): espectro de 120 periodos × 3 ζ ≈ 20–50 ms; t
 | `dy-sdof-elcentro` | 1 GDL Tn = 0.5/1/2 s, ζ = 2 % (NJ y Newmark) + elastoplástico Ry = 4 | D = 2.67/5.97/7.47 in (Chopra Fig. 6.4.1) |
 | `dy-espectro-e030` | Espectros de El Centro (2/5/10 %) vs E.030-2026 (Z4, Vs30 = 400 m/s) | Sa(T→0) = PGA; consistencia con `SaElCentro` |
 | `dy-5pisos-chopra` | Edificio de cortante de 5 pisos, THA modal vs RSA CQC, Rayleigh | T1 = 2.0007 s; u5 = 6.840 in; Vb = 73.20 kip |
-| `dy-pushover-n2` | Pórtico de C°A° de 4 pisos trilineal, demanda E.030-2026, N2/ATC-40/FEMA 440/ASCE 41, niveles OP-IO-LS-CP | caso N2 de algoritmos.md en las pruebas |
+| `dy-nl-cortante` | 5 pisos de Chopra con resortes bilineales (Cy = 0.20), El Centro × 1.5, con y sin P-Δ vs elástico; ASCE 7-22 §16.4.1.2 y FEMA P-58 | OpenSeesPy (< 0.1 %) |
+| `dy-pushover-n2` | Pórtico de C°A° de 4 pisos trilineal con P-Δ y degradación (δc/h = 3 %), demanda E.030-2026, N2/ATC-40/FEMA 440/ASCE 41, niveles OP-IO-LS-CP | caso N2 de algoritmos.md en las pruebas |
 | `dy-momcurv-col` | Columna 40 × 60 confinada (Mander + Park), Lp, θp, μΔ | f′cc de Mander; M–φ de algoritmos.md §14 |
 | `dy-aislamiento` | SIMQKE compatible con SaM (E.031) y 1 GDL fijo vs aislado bilineal (LRB) | razón espectral ≥ 0.90 |
 
@@ -95,25 +99,28 @@ Rendimiento medido (Node 22): espectro de 120 periodos × 3 ζ ≈ 20–50 ms; t
 | Mander f′co = 30, f′l = 3 MPa | f′cc = 46.95 MPa; εcc = 0.00765; r = 1.289 | igual |
 | M–φ 300 × 500 (algoritmos.md §14) | M′y = 246.9 kN·m; Mu = 257.3 kN·m | 246.4; 257.3 |
 | SIMQKE E.030 Z4-S2 | razón 0.947–1.188; PGA/ZUS ≈ 1.11 | 0.928–1.137; 1.17 |
+| OpenSeesPy 1 GDL EP (Tn = 0.5 s, Ry = 4) | umax = 0.044304 m; ures = −0.030895 m | igual (6 cifras) |
+| OpenSeesPy 5 pisos NL ± P-Δ (El Centro × 1.5) | techo 0.23924 / 0.33457 m | 0.23928 / 0.33464 m |
+| OpenSeesPy M–φ (Concrete01 + Steel01) | M = 224.74 / 250.30 / 265.64 kN·m | ≤ 0.15 % |
+| Mander f′l1 = f′l2 (superficie de 5 parámetros) | fórmula cerrada | 4 cifras |
 
 ## Limitaciones
 
-- **Registros:** solo El Centro 1940 N-S está embebido (dominio público). No se encontró en formato digital libre el
-  registro de Lima 1974 (USGS OFR 77-587 solo trae gráficos; los datos estaban en cinta) ni de Pisco 2007 / Maule
-  2010 con licencia clara; se sustituyen por el generador SIMQKE compatible con E.030/E.031 o por registros pegados
-  por el usuario (p. ej. descargados de CISMID/REDACIS o del CSN de Chile).
-- **thmdof** es lineal elástico (superposición modal). El tiempo-historia no lineal de varios pisos no está
-  implementado; el pushover usa resortes de entrepiso (edificio de cortante), no rótulas en pórticos generales.
-- **Pushover:** sin degradación de resistencia (la curva termina en la deriva `druEnd`); sin P-Δ. ASCE 41 usa
-  Te = T1 (Ki = Ke, válido si la rama inicial es lineal hasta 0.6Vy). ATC-40 con espectro general usa
-  `min(Sa(Ts)·SRA, Sa(T)·SRV)`, equivalente a la forma Ca/Cv de la norma. Con κ tipo A el benchmark de SOFiSTiK no se
-  reproduce (como indica algoritmos.md); para tipo A el punto fijo convergido (13.89 %) difiere 0.6 % del de la
-  referencia (13.81 %, iteración no relajada).
+- **Registros:** solo El Centro 1940 N-S está embebido (dominio público). No se embebieron registros peruanos ni chilenos
+  porque ninguno tiene una licencia de redistribución explícita (ver `revision-dynamics.md` §5); el usuario puede pegar
+  el archivo descargado tal cual: se omiten las líneas con texto y el número de líneas de encabezado indicado
+  (p. ej. SMC de USGS-NSMP: 27 líneas, cm/s²; Concepción 2010 se probó con PGA = 0.651 g).
+- **thmdof** es lineal (superposición modal); **thnl** es no lineal pero solo para edificios de cortante con resortes
+  bilineales cinemáticos (sin degradación cíclica ni pinching); el amortiguamiento de Rayleigh usa la rigidez inicial
+  (puede sobreamortiguar tras la fluencia; Charney 2008).
+- **Pushover:** edificio de cortante con patrón fijo (no adaptativo); la degradación es monotónica (envolvente tipo
+  ASCE 41) y, tras el máximo, la deformación se concentra en un único entrepiso crítico. ATC-40 con espectro general usa
+  `min(Sa(Ts)·SRA, Sa(T)·SRV)`. Con κ tipo A el benchmark de SOFiSTiK no se reproduce exactamente (13.89 % vs 13.81 %).
 - **FEMA 440:** coeficientes «para cualquier curva de capacidad», sin distinguir el tipo de histéresis.
-- **momcurv:** confinamiento con f′l promedio de las dos direcciones (simplificación documentada de Mander); sin
-  pandeo de barras ni corte; sección rectangular; la ductilidad de desplazamiento usa el voladizo equivalente.
-- **SIMQKE:** la razón espectral mínima suele quedar en 0.90–0.95 y el PGA entre 1.1 y 1.3 veces ZUS (frecuencias
-  altas sin control por encima de 1/Tmin); se reporta siempre PGA/ZUS.
+- **momcurv:** sección rectangular, sin pandeo de barras ni corte; la ductilidad de desplazamiento usa el voladizo
+  equivalente. El recubrimiento sigue el modelo de Mander (recta de 2εco a εsp), más frágil que el Popovics de
+  Concrete04 de OpenSees (diferencia de hasta 6 % solo durante el descascaramiento).
+- **SIMQKE:** la razón espectral mínima suele quedar en 0.90–0.95 y el PGA entre 1.1 y 1.3 veces ZUS.
 
 ## Fuentes
 
@@ -131,4 +138,6 @@ Rendimiento medido (Node 22): espectro de 120 periodos × 3 ζ ≈ 20–50 ms; t
 - Gasparini, D. y Vanmarcke, E. (1976), *SIMQKE*, MIT.
 - NTE E.030-2026 (RM 183-2026-VIVIENDA) Art. 41 y 47; NTE E.031 Art. 14.
 - El Centro 1940: https://www.vibrationdata.com/elcentro.dat (registro USGS/Caltech de dominio público).
+- Chang, G. A. y Mander, J. B. (1994), NCEER-94-0006; Elwi, A. A. y Murray, D. W. (1979), *A 3D hypoelastic concrete
+  constitutive relationship*, J. Eng. Mech. 105(4); ASCE 41-17 §7.4.3; FEMA P-58 (deriva residual); Charney (2008).
 - Implementaciones de referencia: `docs/referencias/investigacion/ref/` (alg.mjs, t1–t5.mjs).

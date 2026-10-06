@@ -9,6 +9,7 @@
 //     --no-shot      no guarda capturas (solo el informe)
 //     --tiles        además de la captura completa, guarda la memoria en tramos de ~1300 px
 //                    (DIR/tiles/ID-01.png…) más fáciles de revisar a simple vista
+//     --figs       guarda además cada figura por separado (DIR/figs/ID-fN.png)
 //     --json         imprime el informe completo en JSON por la salida estándar
 //
 //   Para cada plantilla abre dist/MemoriaCalc.html?plantilla=ID, detecta automáticamente:
@@ -226,6 +227,12 @@ for (const t of todo) {
     if (!opts['no-shot']) {
       const loc = page.locator('#paper');
       await loc.screenshot({ path: path.join(OUT, t.id + '.png'), timeout: 120000 });
+      if (opts.figs) {
+        fs.mkdirSync(path.join(OUT, 'figs'), { recursive: true });
+        const figs = page.locator('#paper .figure');
+        const n = await figs.count();
+        for (let k = 0; k < n; k++) await figs.nth(k).screenshot({ path: path.join(OUT, 'figs', `${t.id}-f${k + 1}.png`), timeout: 30000 }).catch(() => {});
+      }
       if (opts.tiles) {
         const bb = await loc.boundingBox();
         const TH = 1300; let k = 0;

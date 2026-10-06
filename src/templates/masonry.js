@@ -32,23 +32,33 @@ Y6 Y 5.6 10 3.5 0.13 Pg=26 Pm=30`;
 
 const dirAxial = (D) => `## Cargas axiales y esfuerzo axial máximo — dirección ${D} (Art. 19.1.b)
 "Cargas de gravedad acumuladas en el primer piso por área tributaria (Pg con 25 % de sobrecarga para la resistencia al corte, Pm con 100 % para el esfuerzo axial); se ingresan en la planta de muros.
+"Para cada muro se calcula el esfuerzo axial $\\sigma_m = P_m/(L\\,t)$ y el esfuerzo admisible $F_a = 0.2\\,f'_m\\left[1-\\left(\\dfrac{h}{35\\,t}\\right)^2\\right] \\le 0.15\\,f'_m$ (Art. 19.1.b). Los valores de cada muro se presentan en la tabla siguiente.
+@ocultar
 sigma${D} = Pm${D} ./ (L${D} .* t${D}) // Esfuerzo axial σm = Pm/(L·t)
 Fa${D} = FaE070(fm, hl, t${D}) // Fa = 0.2 f'm [1 − (h/35t)²] ≤ 0.15 f'm (Art. 19.1.b)
-ra${D} = max(sigma${D} ./ Fa${D}) // Relación máxima σm/Fa
+@mostrar
+@modo corto
+ra${D} = max(sigma${D} ./ Fa${D}) // Relación máxima σm/Fa entre los muros de la dirección ${D}
+@modo completo
 check ra${D} <= 1 // Esfuerzo axial máximo, dirección ${D} (Art. 19.1.b)`;
 
 const dirSeis = (D) => `## Fuerzas del sismo moderado y resistencia al corte — dirección ${D}
+"Para cada muro (valores en la tabla siguiente): cortante del sismo moderado $V_e = r\\,V_{e1}$, con $r$ = fracción de rigidez más el efecto de la torsión (Art. 24.5 y E.030 Art. 37); momento $M_e = V_e\\,(M_1/V_{e1})$ (voladizo); $\\alpha = V_e\\,L/M_e$ con $1/3 \\le \\alpha \\le 1$; resistencia al agrietamiento diagonal $V_m = 0.5\\,v'_m\\,\\alpha\\,t\\,L + 0.23\\,P_g$ ($0.35\\,v'_m$ en unidades sílico-calcáreas, Art. 26.3); factor de amplificación $2 \\le V_{m1}/V_{e1} \\le 3$ y fuerzas del sismo severo $V_u = V_e\\,(V_{m1}/V_{e1})$, $M_u = M_e\\,(V_{m1}/V_{e1})$ (Art. 27).
+@ocultar
 Ve${D} = r${D}*Ve1 // Cortante por muro: Ve = (k/Σk + torsión)·V (Art. 24.5 y E.030 Art. 37)
 Me${D} = Ve${D}*hM // Momento flector del muro (voladizo): Me = Ve·(M1/V1)
 alpha${D} = alphaE070(Ve${D}, L${D}, Me${D}) // α = Ve·L/Me, 1/3 ≤ α ≤ 1 (Art. 26.3)
-Vm${D} = VmE070(vm, alpha${D}, t${D}, L${D}, Pg${D}, matE070(uni)) // Vm = 0.5 v'm α t L + 0.23 Pg (Art. 26.3)
-rf${D} = max(Ve${D} ./ (0.55*Vm${D})) // Relación máxima Ve/(0.55 Vm)
-check rf${D} <= 1 // Control de fisuración Ve ≤ 0.55 Vm en todos los muros, dirección ${D} (Art. 26.2)
-SVm${D} = sum(Vm${D}) -> tonf // Resistencia al corte del entrepiso ΣVm
-check SVm${D} >= VE // Resistencia global ΣVm ≥ VE ante sismo severo, dirección ${D} (Art. 26.4)
+Vm${D} = VmE070(vm, alpha${D}, t${D}, L${D}, Pg${D}, matE070(unid)) // Vm = 0.5 v'm α t L + 0.23 Pg (Art. 26.3)
 f${D} = factE070(Vm${D}, Ve${D}) // Factor de amplificación 2 ≤ Vm1/Ve1 ≤ 3 (Art. 27)
 Vu${D} = f${D} .* Ve${D} // Cortante último ante sismo severo Vu = Ve·(Vm1/Ve1) (Art. 27)
-Mu${D} = f${D} .* Me${D} // Momento último Mu = Me·(Vm1/Ve1) (Art. 27)`;
+Mu${D} = f${D} .* Me${D} // Momento último Mu = Me·(Vm1/Ve1) (Art. 27)
+@mostrar
+@modo corto
+rf${D} = max(Ve${D} ./ (0.55*Vm${D})) // Relación máxima Ve/(0.55 Vm) entre los muros de la dirección ${D}
+check rf${D} <= 1 // Control de fisuración Ve ≤ 0.55 Vm en todos los muros, dirección ${D} (Art. 26.2)
+SVm${D} = sum(Vm${D}) -> tonf // Resistencia al corte del entrepiso ΣVm
+@modo completo
+check SVm${D} >= VE // Resistencia global ΣVm ≥ VE ante sismo severo, dirección ${D} (Art. 26.4)`;
 
 const tabAxial = (D) => ({
   type: 'table', dec: '2', titulo: `Cargas axiales y esfuerzo axial en los muros del primer piso — dirección ${D}`,
@@ -87,10 +97,10 @@ La presente memoria desarrolla el diseño estructural de un **edificio multifami
 
 **Hipótesis:** muros en voladizo por entrepiso para la distribución del cortante (Art. 24.5), centro de masas en el centroide de la planta típica, cargas de gravedad por área tributaria (Pg con 25 % de sobrecarga y Pm con 100 %, Art. 26.3 y 19.1.b). El análisis estático es válido para edificios regulares de hasta 15 m de altura (E.030 Art. 28).`),
       calc(`# Materiales
-uni = 2 // Unidad de albañilería (E.070 Tabla 9) ${UNI}
-fm = fmE070(uni) // Resistencia característica a compresión de pilas f'm (Tabla 9)
-vm = vmE070(uni) // Resistencia característica a corte de muretes v'm (Tabla 9)
-Em = EmE070(fm, matE070(uni)) // Módulo de elasticidad Em = 500 f'm (Art. 24.7)
+unid = 2 // Unidad de albañilería (E.070 Tabla 9) ${UNI}
+fm = fmE070(unid) // Resistencia característica a compresión de pilas f'm (Tabla 9)
+vm = vmE070(unid) // Resistencia característica a corte de muretes v'm (Tabla 9)
+Em = EmE070(fm, matE070(unid)) // Módulo de elasticidad Em = 500 f'm (Art. 24.7)
 Gm = 0.4*Em // Módulo de corte Gm = 0.4 Em (Art. 24.7)
 fc = 175 kgf/cm^2 // Concreto de confinamiento f'c ≥ 175 kg/cm² (Art. 20.1.f) [175 kgf/cm^2|210 kgf/cm^2] [175..280]
 fy = 4200 kgf/cm^2 // Acero corrugado ASTM A615 grado 60 [2800..4200]
@@ -177,20 +187,20 @@ check An >= Anreq // Área del núcleo por compresión (Art. 27.3.a.1)
 ## Estribos de confinamiento (Art. 27.3.a.3)
 Av = 2*Abmm(6) // Estribo cerrado de 6 mm (dos ramas)
 tn = bc - 2*rec // Espesor del núcleo
-s1 = Av*fy/(0.3*tn*fc*(Ac/An - 1)) -> cm
-s2 = Av*fy/(0.12*tn*fc) -> cm
+s1 = Av*fy/(0.3*tn*fc*(Ac/An - 1)) -> cm // Espaciamiento s1 = Av fy/(0.3 tn f'c (Ac/An − 1)) (Art. 27.3.a.3)
+s2 = Av*fy/(0.12*tn*fc) -> cm // Espaciamiento s2 = Av fy/(0.12 tn f'c)
 s3 = max(dc/4, 5 cm) // d/4 ≥ 5 cm
-s4 = 10 cm
+s4 = 10 cm // Espaciamiento máximo en la zona confinada
 sc = rounddown(min(s1, s2, s3, s4), 2.5 cm) // Espaciamiento en la zona confinada
 zc = max(45 cm, 1.5*dc) // Longitud de confinamiento en cada extremo
-"Estribos: [] 6 mm, 1 @ 5 cm, resto @ {sc} en {zc} de cada extremo y @ 25 cm en la zona central (mínimo [] 6 mm, 1 @ 5, 4 @ 10, r @ 25 cm).
+"Estribos cerrados de 6 mm: 1 @ 5 cm, resto @ {sc} en una longitud {zc} desde cada extremo y @ 25 cm en la zona central (mínimo de la E.070: estribos de 6 mm, 1 @ 5, 4 @ 10, resto @ 25 cm).
 ## Viga solera (Art. 27.3.b)
 Ts = Vm1*Lm/(2*Lw) -> tonf // Tracción en la solera Ts = Vm1 Lm/(2L)
 hsol = 20 cm // Peralte de la solera = espesor del aligerado (Art. 20.4) [17..30]
 Acs = tw*hsol -> cm^2 // Sección de la solera
-Assreq = max(Ts/(0.9*fy), 0.1*fc*Acs/fy) -> cm^2 // As = Ts/(φ fy) ≥ 0.1 f'c Acs/fy, φ = 0.9
+Ass_req = max(Ts/(0.9*fy), 0.1*fc*Acs/fy) -> cm^2 // As = Ts/(φ fy) ≥ 0.1 f'c Acs/fy, φ = 0.9
 Ass = 4*Ab(3) // Refuerzo colocado 4 φ 3/8"
-check Ass >= Assreq // Refuerzo longitudinal de la solera (Art. 27.3.b)
+check Ass >= Ass_req // Refuerzo longitudinal de la solera (Art. 27.3.b)
 ## Refuerzo horizontal en los muros del primer piso (Art. 27.1)
 "Edificio de más de tres pisos: todos los muros portantes del primer nivel llevan refuerzo horizontal continuo anclado en las columnas.
 Ash = Ab(3) // Una varilla de 3/8" en la junta
@@ -215,9 +225,9 @@ Diseño de un muro portante de **albañilería armada** de bloques de concreto (
 
 Fuerzas del análisis elástico ante sismo moderado tomadas del modelo del edificio.`),
       calc(`# Datos
-uni = 10 // Unidad (E.070 Tabla 9) ${UNI}
-fm = fmE070(uni) // Resistencia característica f'm
-vm = vmE070(uni) // Resistencia característica v'm
+unid = 10 // Unidad (E.070 Tabla 9) ${UNI}
+fm = fmE070(unid) // Resistencia característica f'm
+vm = vmE070(unid) // Resistencia característica v'm
 fy = 4200 kgf/cm^2 // Acero de refuerzo [2800..4200]
 L = 4.00 m // Longitud del muro [1.20 m..8.00 m]
 t = 14 cm // Espesor efectivo (bloque de 14 cm) [12..24]
@@ -232,7 +242,7 @@ sigmam = Pm/(L*t) -> kgf/cm^2 // Esfuerzo axial máximo
 Fa = FaE070(fm, hl, t) // Esfuerzo admisible (Art. 19.1.b)
 check sigmam <= Fa // Esfuerzo axial máximo (Art. 19.1.b)
 alpha = alphaE070(Ve, L, Me) // Factor de esbeltez (Art. 26.3)
-Vm = VmE070(vm, alpha, t, L, Pg, matE070(uni)) -> tonf // Resistencia al agrietamiento diagonal
+Vm = VmE070(vm, alpha, t, L, Pg, matE070(unid)) -> tonf // Resistencia al agrietamiento diagonal
 check Ve <= 0.55*Vm // Control de fisuración (Art. 26.2)
 # Diseño por flexocompresión (Art. 28.2 y 28.3)
 Mu = 1.25*Me // Momento de diseño Mu = 1.25 Me (Art. 28.2 a)
@@ -554,11 +564,11 @@ Ix = b*d^3/12 // Inercia
 Zx = b*d^2/6 // Módulo de sección
 # Esbeltez y carga admisible (E.010 Art. 27 y 30)
 lef = k*lc // Longitud efectiva
-lam = lef/d // Esbeltez λ
-check lam <= 50 // Esbeltez máxima λ ≤ 50 (E.010 Art. 27)
+lambda = lef/d // Esbeltez λ
+check lambda <= 50 // Esbeltez máxima λ ≤ 50 (E.010 Art. 27)
 Ck = CkE010(Emin, fc) // Esbeltez límite Ck = 0.7025 √(Emin/fc)
-"Columna {si(lam < 10, 1, si(lam <= Ck, 2, 3))} (1 = corta, 2 = intermedia, 3 = larga).
-Nadm = NadmE010(fc, Emin, A, lam, Ck) -> tonf // Carga admisible
+"Columna {si(lambda < 10, 1, si(lambda <= Ck, 2, 3))} (1 = corta, 2 = intermedia, 3 = larga).
+Nadm = NadmE010(fc, Emin, A, lambda, Ck) -> tonf // Carga admisible
 check Nd <= Nadm // Compresión (E.010 Art. 30)
 # Flexocompresión (E.010 Art. 31)
 Ncr = pi^2*Emin*Ix/lef^2 -> tonf // Carga crítica de Euler
@@ -606,12 +616,12 @@ d1 = 9 cm // Peralte (en el plano del tijeral) [6.5..19]
 A1 = b1*d1
 Z1 = b1*d1^2/6
 lef1 = 0.9*Lcs // Longitud efectiva en el plano: 0.9 l (E.010 Art. 43.2)
-lam1 = lef1/d1 // Esbeltez en el plano
+lambda1 = lef1/d1 // Esbeltez en el plano
 lc1 = 0.55 m // Separación de correas (arriostre fuera del plano) [0.30 m..1.20 m]
-lam1b = lc1/b1 // Esbeltez fuera del plano (correas como arriostre, Art. 43.1)
-check max(lam1, lam1b) <= 50 // Esbeltez máxima en compresión (Art. 43.5)
-check lam1b <= lam1 // Separación de correas: esbeltez fuera del plano ≤ en el plano (Art. 43.4)
-Nadm1 = min(NadmE010(fc, Emin, A1, lam1, Ck), NadmE010(fc, Emin, A1, lam1b, Ck)) -> tonf // Carga admisible
+lambda1b = lc1/b1 // Esbeltez fuera del plano (correas como arriostre, Art. 43.1)
+check max(lambda1, lambda1b) <= 50 // Esbeltez máxima en compresión (Art. 43.5)
+check lambda1b <= lambda1 // Separación de correas: esbeltez fuera del plano ≤ en el plano (Art. 43.4)
+Nadm1 = min(NadmE010(fc, Emin, A1, lambda1, Ck), NadmE010(fc, Emin, A1, lambda1b, Ck)) -> tonf // Carga admisible
 w1 = (wcob + wsc)*st -> kgf/m // Carga repartida de las correas
 M1 = w1*(Lpan)^2/10 -> kgf*m // Momento entre nudos (cuerda continua)
 Ncr1 = pi^2*Emin*b1*d1^3/12/lef1^2 -> tonf
@@ -627,9 +637,9 @@ check Lpan/b2 <= 80 // Esbeltez máxima en tracción (lef/b ≤ 80, Art. 43.5)
 # Diagonales y montantes — compresión
 b3 = 4 cm // Ancho [4..9]
 d3 = 6.5 cm // Sección 2" × 3" [6.5..14]
-lam3 = max(0.9*Ldc/d3, Ldc/b3) // Esbeltez: en el plano 0.9 l/d; fuera del plano l/b (sin arriostre intermedio)
-check lam3 <= 50 // Esbeltez máxima de la diagonal (Art. 43.5)
-Nadm3 = NadmE010(fc, Emin, b3*d3, lam3, Ck) -> tonf
+lambda3 = max(0.9*Ldc/d3, Ldc/b3) // Esbeltez: en el plano 0.9 l/d; fuera del plano l/b (sin arriostre intermedio)
+check lambda3 <= 50 // Esbeltez máxima de la diagonal (Art. 43.5)
+Nadm3 = NadmE010(fc, Emin, b3*d3, lambda3, Ck) -> tonf
 check Ndc <= Nadm3 // Compresión en la diagonal más cargada (E.010 Art. 30 y 43)
 check Ndt/(0.85*b3*d3) <= ft // Tracción en montantes y diagonales
 # Deflexión y contraflecha (E.010 Art. 42)
@@ -711,7 +721,7 @@ check rho <= 0.75*0.85*0.85*fc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy) // Sección
 Asvreq = max(rho*100 cm*dv, 14 kgf/cm^2/fy*100 cm*dv)/(1 m) -> cm^2/m // Acero requerido (mínimo 200 b d/fy, ACI 350 10.5.1)
 Asv = Ab(barv)/sv -> cm^2/m // Acero vertical colocado (cara interior)
 check Asv >= Asvreq // Refuerzo vertical en la base (cara interior)
-check 2*Asv >= 0.003*tw*1 m/m // Cuantía vertical mínima 0.3 % (ACI 350 14.3.2)
+check 2*Asv/tw >= 0.003 // Cuantía vertical mínima 0.3 %, dos caras (ACI 350 14.3.2)
 ## Cortante en la base
 Vu = facv*Vbase -> tonf/m // Cortante último
 phiVc = 0.75*0.53*sqrtfc(fc)*100 cm*dv/(1 m) -> tonf/m // φVc (ACI 350 11.3, φ = 0.75)
@@ -734,7 +744,7 @@ hi = hiHLc(rD)*HL // Altura de Wi (Ec. 9-17/18)
 hc = hcHLc(rD)*HL // Altura de Wc (Ec. 9-19)
 hip = hipHLc(rD)*HL // Altura de Wi con presión en la base (Ec. 9-20/21)
 hcp = hcpHLc(rD)*HL // Altura de Wc con presión en la base (Ec. 9-22)
-eps = epsACIc(rD) // Coeficiente de masa efectiva (Ec. 9-45)
+epsilon = epsACIc(rD) // Coeficiente de masa efectiva (Ec. 9-45)
 Ww = gc*pi*(D + tw)*tw*Hw -> tonf // Peso de la pared
 Wr = gc*pi*(D + 2*tw)^2/4*er -> tonf // Peso de la cubierta
 ## Periodos y coeficientes sísmicos (ACI 350.3 Sec. 9.3.4 y 9.4)
@@ -748,27 +758,27 @@ Ct = CtACI(Tv, SDS, SD1) // Coeficiente vertical (Ec. 9-39/40)
 dmax = D/2*Cc*I -> m // Altura máxima de oleaje (Ec. 7-2)
 fbl = Hw - HL // Borde libre disponible (hasta el fondo de la cubierta)
 Wcr = si(dmax > fbl, Wc, 0 tonf) // Masa convectiva restringida por la cubierta (se suma a la impulsiva)
-"Borde libre {fbl} frente a un oleaje de {dmax}: {si(dmax > fbl, 'la ola alcanza la cubierta; toda la masa convectiva se considera impulsiva (cota superior del método de Malhotra 2005, ACI 350.3 R7.1) y se verifica el anclaje de la cubierta', 'el oleaje no alcanza la cubierta (ACI 350.3 7.1)')}.
+"Borde libre {fbl} frente a un oleaje de {dmax} (ACI 350.3 7.1). Si $d_{max} > f_{bl}$, la ola alcanza la cubierta: toda la masa convectiva se considera impulsiva ($W_{cr} = W_c$, cota superior del método de Malhotra, 2005; ACI 350.3 R7.1) y se verifica el anclaje de la cubierta; en caso contrario, $W_{cr} = 0$.
 ## Fuerzas y momentos sísmicos (ACI 350.3 Cap. 4)
-Pw = Ci*I*eps*Ww/Ri // Fuerza inercial de la pared (Ec. 4-1)
+Pw = Ci*I*epsilon*Ww/Ri // Fuerza inercial de la pared (Ec. 4-1)
 Pr = Ci*I*Wr/Ri // Fuerza inercial de la cubierta (Ec. 4-2)
-Pi = Ci*I*(Wi + Wcr)/Ri // Fuerza impulsiva (Ec. 4-3), incluye la masa convectiva restringida
+P_i = Ci*I*(Wi + Wcr)/Ri // Fuerza impulsiva (Ec. 4-3), incluye la masa convectiva restringida
 Pc = Cc*I*(Wc - Wcr)/Rc // Fuerza convectiva (Ec. 4-4)
-Vs = sqrt((Pi + Pw + Pr)^2 + Pc^2) -> tonf // Cortante basal (Ec. 4-5)
+Vs = sqrt((P_i + Pw + Pr)^2 + Pc^2) -> tonf // Cortante basal (Ec. 4-5)
 hw = Hw/2
 hr = Hw + er/2
-hie = (Wi*hi + Wcr*hc)/(Wi + Wcr) // Altura de la masa impulsiva equivalente (EBP)
-hiep = (Wi*hip + Wcr*hcp)/(Wi + Wcr) // Ídem con presión en el fondo (IBP)
-Mb = sqrt((Pi*hie + Pw*hw + Pr*hr)^2 + (Pc*hc)^2) -> tonf*m // Momento en la base de la pared (Ec. 4-10)
-Mo = sqrt((Pi*hiep + Pw*hw + Pr*hr)^2 + (Pc*hcp)^2) -> tonf*m // Momento de volteo (Ec. 4-13)`),
-      { type: 'tanque', forma: 'circular', tipo: 'apoyado', D: 'D', HL: 'HL', Hw: 'Hw', tw: 'tw', Pi: 'Pi', Pc: 'Pc', dmax: 'dmax', cubierta: 'sí', titulo: '' },
+hie = (Wi*hi + Wcr*hc)/(Wi + Wcr) -> m // Altura de la masa impulsiva equivalente (EBP)
+hiep = (Wi*hip + Wcr*hcp)/(Wi + Wcr) -> m // Ídem con presión en el fondo (IBP)
+Mb = sqrt((P_i*hie + Pw*hw + Pr*hr)^2 + (Pc*hc)^2) -> tonf*m // Momento en la base de la pared (Ec. 4-10)
+Mo = sqrt((P_i*hiep + Pw*hw + Pr*hr)^2 + (Pc*hcp)^2) -> tonf*m // Momento de volteo (Ec. 4-13)`),
+      { type: 'tanque', forma: 'circular', tipo: 'apoyado', D: 'D', HL: 'HL', Hw: 'Hw', tw: 'tw', Pi: 'P_i', Pc: 'Pc', dmax: 'dmax', cubierta: 'sí', titulo: '' },
       calc(`## Tensión anular sísmica (ACI 350.3 Cap. 5 y 6.2)
 yb = HL - yTmax // Nivel de la tensión anular hidrostática máxima, desde la base
-Piy = Pi/2*(4*HL - 6*hie - (6*HL - 12*hie)*yb/HL)/HL^2 -> tonf/m // Fuerza impulsiva por unidad de altura (R5.3.3, media circunferencia)
+P_iy = P_i/2*(4*HL - 6*hie - (6*HL - 12*hie)*yb/HL)/HL^2 -> tonf/m // Fuerza impulsiva por unidad de altura (R5.3.3, media circunferencia)
 Pcy = Pc/2*(4*HL - 6*hc - (6*HL - 12*hc)*yb/HL)/HL^2 -> tonf/m // Fuerza convectiva por unidad de altura (R5.3.3)
 Pwy = Pw/Hw -> tonf/m // Inercia de la pared por unidad de altura (uniforme; conservador)
 uv = max(Ct*I*(2/3)/Ri, 0.2*SDS) // Aceleración vertical üv = Ct I b/Ri ≥ 0.2 SDS, b = 2/3 (Ec. 4-15)
-Niy = 2*Piy/pi // Tensión anular impulsiva: piy = 2Piy cosθ/(πr) → N = p r (R6.2)
+Niy = 2*P_iy/pi // Tensión anular impulsiva: piy = 2Piy cosθ/(πr) → N = p r (R6.2)
 Ncy = 16*Pcy/(9*pi) // Tensión anular convectiva: pcy = 16 Pcy cosθ/(9πr) (R6.2)
 Nwy = Pwy/pi // Tensión anular por inercia de la pared (R6.2)
 Nhy = uv*gw*yTmax*D/2 -> tonf/m // Tensión por aceleración vertical Nhy = üv qhy r (R6.2)
@@ -839,8 +849,10 @@ rhomax = 0.75*0.85*0.85*fc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy) // Cuantía má
 ## Refuerzo vertical
 Mvi = max(MyNa, MyPs) -> tonf*m/m // Cara interior: base con agua / tramo con suelo
 Mve = max(MyPa, MyNs) -> tonf*m/m // Cara exterior: tramo con agua / base con suelo
-Asvi = As(Mvi) -> cm^2/m
-Asve = As(Mve) -> cm^2/m
+@modo corto
+Asvi = As(Mvi) -> cm^2/m // Acero vertical requerido, cara interior
+Asve = As(Mve) -> cm^2/m // Acero vertical requerido, cara exterior
+@modo completo
 Asmin = 0.0015*tw*1 m/m -> cm^2/m // Mínimo por cara: 0.003 tw/2 (ACI 350 Tabla 7.12.2.1, L < 6 m entre juntas)
 s = 20 cm // Espaciamiento [10..30]
 Asp = Ab(bar)/s -> cm^2/m // Acero colocado por cara
@@ -849,9 +861,12 @@ check Asp >= max(Asve, Asmin) // Refuerzo vertical, cara exterior
 ## Refuerzo horizontal
 Mhi = max(MxNa, MxNc, MxPs) -> tonf*m/m // Cara interior: esquinas con agua / tramo con suelo
 Mhe = max(MxPa, MxPc, MxNs) -> tonf*m/m // Cara exterior: tramo con agua / esquinas con suelo
-Ashi = As(Mhi) -> cm^2/m
-Ashe = As(Mhe) -> cm^2/m
-check max(Asvi, Asve, Ashi, Ashe) <= rhomax*100 cm*d/(1 m) // Espesor de pared suficiente: ρ ≤ 0.75 ρb
+@modo corto
+Ashi = As(Mhi) -> cm^2/m // Acero horizontal requerido, cara interior
+Ashe = As(Mhe) -> cm^2/m // Acero horizontal requerido, cara exterior
+@modo completo
+Asmax = rhomax*100 cm*d/(1 m) -> cm^2/m // Acero máximo por metro: ρ ≤ 0.75 ρb
+check max(Asvi, Asve, Ashi, Ashe) <= Asmax // Espesor de pared suficiente: ρ ≤ 0.75 ρb
 check Asp >= max(Ashi, Asmin) // Refuerzo horizontal, cara interior
 check Asp >= max(Ashe, Asmin) // Refuerzo horizontal, cara exterior
 ## Cortante en la base de la pared
@@ -859,20 +874,24 @@ Vu = 1.7*max(Vba, Vbs) -> tonf/m
 phiVc = 0.75*0.53*sqrtfc(fc)*100 cm*d/(1 m) -> tonf/m // φVc (φ = 0.75)
 check Vu <= phiVc // Cortante en la unión con la losa de fondo (ACI 350-06 11.3, φ = 0.75)
 # Losa de techo (placa articulada en sus cuatro bordes)
-wt = 2.4 tonf/m^3*tt + 0.10 tonf/m^2 // Peso propio + acabados
+wt = 2.4 tonf/m^3*tt + 0.10 tonf/m^2 -> tonf/m^2 // Peso propio + acabados
 wlt = 0.25 tonf/m^2 // Sobrecarga del techo (E.020) [0.10..0.50]
 wu = 1.4*wt + 1.7*wlt -> tonf/m^2 // Carga última (E.060 9.2)`),
       { type: 'tankwall', a: 'Li + tw', b: 'Bi + tw', inf: 'articulado', sup: 'articulado', lat: 'articulado', qb: 'wu', qs: 'wu', hq: '', nu: '0.2', ndiv: '20', sufijo: 't', titulo: 'Losa de techo con carga última uniforme (momentos en la luz menor = My)' },
       calc(`dt = tt - 3 cm // Peralte efectivo de la losa de techo
 Ast = (0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*(MyPt*1 m/(0.9*100 cm*dt^2))/(0.85*fc))))*100 cm*dt)/(1 m) -> cm^2/m // Ya incluye factores de carga
-check Ast <= rhomax*100 cm*dt/(1 m) // Espesor de la losa de techo suficiente
+Astmax = rhomax*100 cm*dt/(1 m) -> cm^2/m // Acero máximo por metro: ρ ≤ 0.75 ρb
+check Ast <= Astmax // Espesor de la losa de techo suficiente
 Asmt = 0.0018*tt*1 m/m -> cm^2/m // Mínimo por temperatura (E.060 9.7.2)
 Astc = Ab(3)/(20 cm) -> cm^2/m // φ 3/8" @ 20 cm en ambas direcciones
 check Astc >= max(Ast, Asmt) // Refuerzo de la losa de techo
 # Presión sobre el suelo (tanque lleno)
 Bt = Bi + 2*tw // Ancho exterior
 Lt = Li + 2*tw // Largo exterior
-Wtot = 2.4 tonf/m^3*(Lt*Bt*(tf + tt) + 2*(Lt + Bi)*tw*Hc) + gw*Vol + (wlt + 0.10 tonf/m^2)*Lt*Bt -> tonf // Peso total
+Wcon = 2.4 tonf/m^3*(Lt*Bt*(tf + tt) + 2*(Lt + Bi)*tw*Hc) -> tonf // Peso del concreto: losas de fondo y de techo y paredes
+Wag = gw*Vol -> tonf // Peso del agua
+Wsc = (wlt + 0.10 tonf/m^2)*Lt*Bt -> tonf // Sobrecarga y acabados del techo
+Wtot = Wcon + Wag + Wsc // Peso total
 qs = Wtot/(Lt*Bt) -> kgf/cm^2
 check qs <= qadm // Presión de contacto (E.050)`),
       summary(),
@@ -936,15 +955,15 @@ Ti = 2*pi*sqrt(Wst/(grav*kf)) -> s // Periodo impulsivo (ACI 350.3 R9.7)
 # Coeficientes sísmicos (E.030)
 Sai = Z*U*CE030(Ti, Tp, Tl)*S/Ri // Aceleración impulsiva reducida
 # Fuerzas y momentos
-Pi = Sai*Wst // Fuerza impulsiva (agua + cuba + 1/4 fuste)
+P_i = Sai*Wst // Fuerza impulsiva (agua + cuba + 1/4 fuste)
 Pf = Sai*0.75*Wfus // Fuerza del resto del fuste (a media altura)
 Pc = Sac*(Wc - Wcr) // Fuerza convectiva
-hie = (Wi*hip + Wcr*hcp)/(Wi + Wcr) // Altura de la masa líquida impulsiva sobre el fondo
-Vs = sqrt((Pi + Pf)^2 + Pc^2) -> tonf // Cortante en la base del fuste (SRSS)
-Mbase = sqrt((Pi*(Hf + tb + hie) + Pf*Hf/2)^2 + (Pc*(Hf + tb + hcp))^2) -> tonf*m // Momento de volteo (cuba como masa a Hf + tb + h, aproximación)
-dlat = Pi/kf -> cm // Desplazamiento elástico de la cuba (impulsivo)
-"Desplazamiento inelástico estimado $0.75 R_i \\delta$ = {0.75*Ri*dlat}; borde libre {fbl} frente a un oleaje de {dmax}: {si(dmax > fbl, 'la masa convectiva se considera impulsiva y la cubierta y su unión se diseñan para el empuje del oleaje (ACI 350.3 R7.1)', 'el oleaje no alcanza la cubierta')}.`),
-      { type: 'tanque', forma: 'circular', tipo: 'elevado', D: 'D', HL: 'HL', Hw: 'Hw', tw: 'tw', Hf: 'Hf', Pi: 'Pi', Pc: 'Pc', dmax: 'dmax', titulo: '' },
+hie = (Wi*hip + Wcr*hcp)/(Wi + Wcr) -> m // Altura de la masa líquida impulsiva sobre el fondo
+Vs = sqrt((P_i + Pf)^2 + Pc^2) -> tonf // Cortante en la base del fuste (SRSS)
+Mbase = sqrt((P_i*(Hf + tb + hie) + Pf*Hf/2)^2 + (Pc*(Hf + tb + hcp))^2) -> tonf*m // Momento de volteo (cuba como masa a Hf + tb + h, aproximación)
+dlat = P_i/kf -> cm // Desplazamiento elástico de la cuba (impulsivo)
+"Desplazamiento inelástico estimado $0.75 R_i \\delta$ = {0.75*Ri*dlat}; borde libre {fbl} frente a un oleaje de {dmax}. Si $d_{max} > f_{bl}$, la masa convectiva se considera impulsiva y la cubierta y su unión se diseñan para el empuje del oleaje (ACI 350.3 R7.1); en caso contrario, el oleaje no alcanza la cubierta.`),
+      { type: 'tanque', forma: 'circular', tipo: 'elevado', D: 'D', HL: 'HL', Hw: 'Hw', tw: 'tw', Hf: 'Hf', Pi: 'P_i', Pc: 'Pc', dmax: 'dmax', titulo: '' },
       calc(`# Diseño del fuste (sección tubular delgada)
 rm = (De - tf)/2 // Radio medio
 Ag = pi*(De^2 - (De - 2*tf)^2)/4 // Área bruta
@@ -956,8 +975,8 @@ rhof = Asf/Ag // Cuantía
 check rhof >= 0.0025 // Cuantía mínima de muros (E.060 11.10)
 Pu = 0.9*(Wcuba + Wfus + WL) // Carga axial mínima concomitante (0.9 D)
 Mu = Mbase // Momento último (sismo a nivel de resistencia)
-thf = (Pu + Asf*fy)/(1.7*fc*tf*rm + 2*Asf*fy/pi) // Semiángulo comprimido θ (rad)
-Mn = 1.7*fc*tf*rm^2*sin(thf) + 2*Asf*fy*rm*sin(thf)/pi -> tonf*m // Mn de anillo delgado (bloque plástico)
+thetaf = (Pu + Asf*fy)/(1.7*fc*tf*rm + 2*Asf*fy/pi) // Semiángulo comprimido θ (rad)
+Mn = 1.7*fc*tf*rm^2*sin(thetaf) + 2*Asf*fy*rm*sin(thetaf)/pi -> tonf*m // Mn de anillo delgado (bloque plástico)
 phif = max(0.70, min(0.90, 0.90 - 0.20*Pu/(0.1*fc*Ag))) // φ: 0.9 → 0.7 según Pu/(0.1 f'c Ag) (E.060 9.3.2.2)
 check phif*Mn >= Mu // Flexocompresión del fuste (E.060 10.2 y 9.3.2.2; anillo plástico ≈ compatibilidad ±2 %)
 Vuf = Vs // Cortante último
@@ -968,8 +987,8 @@ rhoh = 2*Ab(barh)/(shf*tf) // Cuantía horizontal
 check rhoh >= 0.0025 // Cuantía horizontal mínima (E.060 11.10.7)
 phiVf = 0.85*Acw*(0.53*sqrtfc(fc) + rhoh*fy) -> tonf // φVn = φ Acw (0.53√f'c + ρh fy) (E.060 11.10)
 check Vuf <= phiVf // Cortante en el fuste (E.060 11.10)
-sigc = (1.25*(Wcuba + Wfus + WL))/Ag -> kgf/cm^2 // Compresión por gravedad
-check sigc <= 0.1*fc // Esfuerzo axial bajo: validez de la fórmula de anillo plástico (hipótesis de esta memoria)`),
+sigma_gc = (1.25*(Wcuba + Wfus + WL))/Ag -> kgf/cm^2 // Compresión por gravedad
+check sigma_gc <= 0.1*fc // Esfuerzo axial bajo: validez de la fórmula de anillo plástico (hipótesis de esta memoria)`),
       summary(),
     ],
   },

@@ -1,7 +1,7 @@
 // Pruebas de validación — módulo «chile» (NCh433+DS61, NCh433:2026, NCh2369, NCh432, DS60, NCh3171)
 // Valores de referencia: tablas de las normas (texto refundido NCh433+DS61, NCh2369.Of2003,
 // NCh2369:2023, ASCE 7-05 Tabla 6-3 / NCh432:2010, NCh432.Of71) y cálculos manuales independientes.
-import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES } from './helpers.mjs';
+import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES, math } from './helpers.mjs';
 
 const al = (T, To, p) => (1 + 4.5 * (T / To) ** p) / (1 + (T / To) ** 3);
 
@@ -328,8 +328,8 @@ section('Plantillas: valores de control (cálculo manual independiente)');
     near('Comparación: razón de cortes = 1,20/1,05', k('rQ'), 1.20 / 1.05);
   }
   const c = runTemplate('cl-nch3171');
-  near('NCh3171: Pu máx = 1.2D + 1.4E + L', c('Pumax', 'tonf'), 1.2 * 85 + 1.4 * 32 + 28);
-  near('NCh3171: Pu mín = 0.9D − 1.4E', c('Pumin', 'tonf'), 0.9 * 85 - 1.4 * 32);
+  near('NCh3171: Pu máx = 1.2D + 1.4E + L', c('Pu_max', 'tonf'), 1.2 * 85 + 1.4 * 32 + 28);
+  near('NCh3171: Pu mín = 0.9D − 1.4E', c('Pu_min', 'tonf'), 0.9 * 85 - 1.4 * 32);
 }
 
 section('Datos absurdos no producen «TODAS CUMPLEN» ni errores');
@@ -349,4 +349,15 @@ section('Datos absurdos no producen «TODAS CUMPLEN» ni errores');
   const w = runTemplate('cl-muro-ds60', d => { const b = d.blocks.find(x => /Pu = 520/.test(x.src || '')); b.src = b.src.replace('Pu = 520 tonf', 'Pu = 2000 tonf'); });
   truthy('Carga axial excesiva → falla 0.35 f\'c Ag (DS60 21.9.5.3)', w.res.ctx.checks.some(c => !c.ok));
 }
+section('Rangos usuales [mín..máx] y ejemplos de validación de las plantillas «chile»');
+for (const t of TEMPLATES.filter(x => x.id.startsWith('cl-'))) {
+  const inp = runTemplate(t.id).res.ctx.inputs, rg = inp.filter(i => i.range);
+  const out = rg.filter(i => { let v = parseFloat(i.num); if (i.range.unit && i.unit && i.range.unit !== i.unit) v = math.unit(v, i.unit).toNumber(i.range.unit); return !(v >= i.range.min && v <= i.range.max); });
+  const bad = inp.filter(i => /\.\.|\[/.test(i.label || ''));
+  truthy(`${t.id}: ${rg.length} datos con rango, valores por defecto dentro del rango, etiquetas limpias`, rg.length >= 4 && out.length === 0 && bad.length === 0, out.map(i => i.name).concat(bad.map(i => i.name)).join(', '));
+}
+truthy('Listas desplegables intactas con rango (zona, suelo, R del estático)', (() => { const inp = runTemplate('cl-nch433-estatico').res.ctx.inputs, f = (n) => inp.find(i => i.name === n);
+  return f('zona').options.length === 3 && f('suelo').options.length === 5 && f('R').options.length === 7 && f('R').range.max === 7 && f('hp').range.max === 4 && f('N').range.max === 5; })());
+truthy('Plantillas con validacion: estático (Meriño), 2026 y comparación (prNCh433 C4.2.3.1), NCh2369 y viento (tablas)', ['cl-nch433-estatico', 'cl-nch433-2026', 'cl-nch433-comparacion', 'cl-nch2369', 'cl-viento-galpon'].every(id => TEMPLATES.find(x => x.id === id).validacion));
+{ const r = runTemplate('cl-nch3171'); near('NCh3171: U8 = 1,2D + 1,4E + L (combinación sísmica dominante)', r('U8', 'tonf'), 1.2 * 85 + 1.4 * 32 + 28); }
 done();

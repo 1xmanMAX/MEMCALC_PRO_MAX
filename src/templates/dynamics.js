@@ -149,6 +149,48 @@ rho12 = rhoCQC(T1, T2, zeta) // Correlación CQC entre los modos 1 y 2`),
     ],
   },
   // -------------------------------------------------------------------
+  //  3b) Tiempo-historia NO LINEAL del edificio de 5 pisos con P-Δ
+  // -------------------------------------------------------------------
+  {
+    id: 'dy-nl-cortante', pais: 'INT', cat: CAT, icon: 'quake', settings: { sys: 'us' },
+    name: 'Tiempo-historia no lineal con P-Δ (edificio de 5 pisos)', normas: 'Chopra §16.3 (Tabla 16.3.3), §18.7 — ASCE 7-22 §16.4.1.2 — FEMA P-58 (deriva residual); contrastado con OpenSees',
+    desc: 'Edificio de cortante de 5 pisos (Chopra) con resortes de entrepiso bilineales, ante El Centro × 1.5: Newmark + Newton-Raphson, con y sin P-Δ, frente a la respuesta elástica; ductilidad, deriva máxima y residual.',
+    titulo: 'Análisis tiempo-historia no lineal de un edificio de cortante con efecto P-Δ',
+    blocks: [
+      text(`# Generalidades
+El edificio de cortante de cinco pisos de Chopra (peso 100 kip por nivel, rigidez 31.54 kip/in, h = 12 ft, T1 = 2.0 s) se dota de **resortes de entrepiso bilineales** con endurecimiento cinemático (el material *Steel01* de OpenSees sin transición). La resistencia de cada entrepiso proviene de un coeficiente de fluencia $C_y = V_{y,1}/W$ distribuido según el patrón triangular de fuerzas: $V_{y,i} = C_y W \\sum_{j\\ge i} j/\\sum j$.
+
+La ecuación de movimiento $\\mathbf M\\ddot{\\mathbf u} + \\mathbf C\\dot{\\mathbf u} + \\mathbf f_S(\\mathbf u) = -\\mathbf M\\boldsymbol\\iota\\ddot u_g$ se integra con **Newmark de aceleración promedio** y **Newton-Raphson** en cada paso (Chopra Tabla 16.3.3). El amortiguamiento es de **Rayleigh** con la rigidez inicial (5 % en los modos 1 y 3). El **efecto P-Δ** se representa con una columna ficticia que resta $P_i/h_i$ a la rigidez de cada entrepiso; para este edificio flexible el coeficiente de estabilidad elástica del primer entrepiso es $\\theta = P/(kh) = 500/(31.54\\cdot 144) = 0.11$, cerca del umbral de 0.10 de ASCE 7-22 §12.8.7.
+
+Excitación: El Centro 1940 N-S × 1.5 (sismo severo). Los resultados se contrastaron con un modelo equivalente en **OpenSeesPy** (zeroLength + Steel01, columna ficticia elástica, Rayleigh con la rigidez inicial): techo y derivas coinciden a < 0.1 % (docs/referencias/revision-dynamics.md).`),
+      calc(`# Datos del edificio
+W_i = [100, 100, 100, 100, 100] kip // Peso sísmico por nivel (1 → n)
+k_i = [31.54, 31.54, 31.54, 31.54, 31.54] kip/in // Rigidez lateral inicial de entrepiso
+h_i = [12, 12, 12, 12, 12] ft // Altura de entrepiso
+Wt = 500 kip // Peso total
+Cy = 0.20 // Coeficiente de fluencia del primer entrepiso V_y1/W
+Vy_i = Cy*Wt*[15, 14, 12, 9, 5]/15 // Resistencia de entrepiso con distribución triangular
+alpha = 0.03 // Rigidez post-fluencia α = k2/k
+zeta = 0.05 // Amortiguamiento de Rayleigh (modos 1 y 3)
+fsc = 1.5 // Factor de escala del registro
+## Criterios de aceptación
+dlim = 0.040 // Deriva máxima: 2 × 0.020 (ASCE 7-22 §16.4.1.2 y Tabla 12.12-1, categoría II)
+dres_lim = 0.010 // Deriva residual: estado de daño DS3 de FEMA P-58 (reparación mayor)
+theta1 = Wt/(k_i[1]*h_i[1]) // Coeficiente de estabilidad elástica del primer entrepiso`),
+      calc(`# Respuesta sin P-Δ`),
+      { type: 'thnl', masas: 'W_i', rigideces: 'k_i', Vy: 'Vy_i', alturas: 'h_i', alpha: 'alpha', registro: 'elcentro', escala: 'fsc', zeta: 'zeta', modosR: '1, 3', pdelta: false, dlim: 'dlim', dreslim: 'dres_lim', sufijo: '0', titulo: 'Edificio de 5 pisos no lineal SIN P-Δ ante El Centro × 1.5' },
+      calc(`# Respuesta con P-Δ`),
+      { type: 'thnl', masas: 'W_i', rigideces: 'k_i', Vy: 'Vy_i', alturas: 'h_i', alpha: 'alpha', registro: 'elcentro', escala: 'fsc', zeta: 'zeta', modosR: '1, 3', pdelta: true, fP: '1.0', dlim: 'dlim', dreslim: 'dres_lim', sufijo: 'PD', titulo: 'Edificio de 5 pisos no lineal CON P-Δ ante El Centro × 1.5' },
+      calc(`# Comparación
+rPD = derivamax_PD/derivamax_0 // Amplificación de la deriva máxima por P-Δ
+rNL = u_techo_PD/u_lin_PD // Techo no lineal / elástico (regla de igual desplazamiento ≈ 1 para T1 = 2 s)
+check abs(rNL - 1) <= 0.25 // Igual desplazamiento aproximado en la zona sensible al desplazamiento (Chopra §7.5)
+check mumax_PD <= 4 // Demanda de ductilidad de entrepiso moderada
+"Con P-Δ la deriva máxima crece {(rPD - 1)*100} %; la deriva residual es {dres_0} sin P-Δ y {dres_PD} con P-Δ. Con una resistencia menor (p. ej. $C_y$ = 0.15) el P-Δ produce un desplazamiento progresivo hacia un lado (*ratcheting*): la deriva máxima llega a ≈ 6 % y la residual a ≈ 5 %, que el análisis elástico no detecta. El cortante basal no lineal es {Vbmax_PD} frente a {Vb_lin_PD} elástico ($R_\\mu$ = {Ry1_PD}).`),
+      summary(),
+    ],
+  },
+  // -------------------------------------------------------------------
   //  4) Pushover + N2 de edificio de concreto
   // -------------------------------------------------------------------
   {
@@ -160,10 +202,10 @@ rho12 = rhoCQC(T1, T2, zeta) // Correlación CQC entre los modos 1 y 2`),
       text(`# Generalidades
 Evaluación por desempeño de un edificio aporticado de concreto armado de 4 pisos modelado como **edificio de cortante** con resortes de entrepiso **trilineales** (fisuración, fluencia y endurecimiento). La resistencia de cada entrepiso proviene del mecanismo de columnas/vigas (análisis límite) y la rigidez inicial del modelo elástico con secciones fisuradas.
 
-1. **Pushover** con el patrón modal $\\mathbf s = \\mathbf M\\boldsymbol\\phi_1$ (EC8-1 §4.3.3.4.2) por control de desplazamiento.
+1. **Pushover** con el patrón modal $\\mathbf s = \\mathbf M\\boldsymbol\\phi_1$ (EC8-1 §4.3.3.4.2) por control de desplazamiento, con **efecto P-Δ** (columna ficticia con el peso de los niveles superiores) y **degradación de resistencia** a partir de una deriva de 3 % (rama descendente hasta la resistencia residual); después del máximo la deformación se concentra en el entrepiso crítico y los demás descargan.
 2. **Conversión a 1 GDL** ($\\Gamma$, $m^*$) y formato **ADRS** (ATC-40 §8.2.2.1).
 3. **Demanda**: espectro elástico de la **NTE E.030-2026** ($S_a = ZUCS$, R = 1, sismo de diseño de 475 años).
-4. **Punto de desempeño** por **N2** (Fajfar 2000; EC8-1 Anexo B, que gobierna), **ATC-40** Procedimiento A (comportamiento tipo B), **FEMA 440** (linealización equivalente) y **ASCE 41-17** (método de coeficientes).
+4. **Punto de desempeño** por **N2** (Fajfar 2000; EC8-1 Anexo B, que gobierna), **ATC-40** Procedimiento A (comportamiento tipo B), **FEMA 440** (linealización equivalente) y **ASCE 41-17** (método de coeficientes, con la idealización bilineal de §7.4.3.2.4: $K_e$ secante en $0.6V_y$, $T_e = T_i\\sqrt{K_i/K_e}$, y el límite $\\mu_{max}$ de la Ec. 7-32 por la pendiente negativa).
 5. **Niveles de desempeño** por deriva de entrepiso para pórticos de concreto (FEMA 356 Tabla C1-3 / ASCE 41): OP 0.5 %, IO 1 %, LS 2 %, CP 4 %. El objetivo para una edificación común ante el sismo de diseño es **Seguridad de vida (LS)** (SEAOC Visión 2000).`),
       calc(SITIO_E030),
       calc(`# Modelo del edificio (4 pisos, pórticos de C°A°)
@@ -175,8 +217,12 @@ alpha = 0.05 // Rigidez post-fluencia α = k2/k1
 fcr = 0.40 // Fisuración en Vcr = 0.40 Vy (trilineal)
 r2 = 0.50 // Rigidez fisurada / inicial
 ## Coeficientes del ATC-40 y ASCE 41
-Cm = 0.9 // Factor de masa efectiva (ASCE 41-17 Tabla 7-4, pórtico de concreto de 3 o más pisos)`),
-      { type: 'pushover', masas: 'W_i', rigideces: 'k_i', Vy: 'Vy_i', alturas: 'h_i', alpha: 'alpha', fcr: 'fcr', r2: 'r2', patron: 'modal', druEnd: '0.04', Sa: 'Z*U*CE030d(T, Tp, Tl)*S', Tc: 'Tp', metodo: 'N2', tipo: 'B', asitio: '130', Cm: 'Cm', niveles: 'OP 0.005 // Operacional\nIO 0.010 // Ocupación inmediata\nLS 0.020 // Seguridad de vida\nCP 0.040 // Prevención del colapso', nivel: 'LS', titulo: 'Curva de capacidad y espectro de capacidad del edificio de 4 pisos con la demanda E.030-2026' },
+Cm = 0.9 // Factor de masa efectiva (ASCE 41-17 Tabla 7-4, pórtico de concreto de 3 o más pisos)
+## No linealidad geométrica y degradación
+drc = 0.03 // Deriva de inicio de la degradación de resistencia (columnas de C°A° dúctiles, ASCE 41-17 Tabla 10-8: a + θy ≈ 0.03)
+ac = 0.10 // Pendiente de la rama descendente −ac·k
+resid = 0.20 // Resistencia residual / Vy (ASCE 41-17 Tabla 10-8, c = 0.2)`),
+      { type: 'pushover', masas: 'W_i', rigideces: 'k_i', Vy: 'Vy_i', alturas: 'h_i', alpha: 'alpha', fcr: 'fcr', r2: 'r2', patron: 'modal', druEnd: '0.05', pdelta: true, fP: '1.0', drcap: 'drc', acap: 'ac', rescap: 'resid', Sa: 'Z*U*CE030d(T, Tp, Tl)*S', Tc: 'Tp', metodo: 'N2', tipo: 'B', asitio: '130', Cm: 'Cm', niveles: 'OP 0.005 // Operacional\nIO 0.010 // Ocupación inmediata\nLS 0.020 // Seguridad de vida\nCP 0.040 // Prevención del colapso', nivel: 'LS', titulo: 'Curva de capacidad y espectro de capacidad del edificio de 4 pisos con la demanda E.030-2026' },
       calc(`# Resultados del desempeño
 Te = Tpo1 // Periodo elástico fundamental
 "Desplazamiento objetivo del techo (N2): $u_t$ = {dN2}; ATC-40: {dATC}; FEMA 440: {dFEMA}; ASCE 41: {dC}.
@@ -201,7 +247,8 @@ rN2C = dN2/dC // Razón N2 / método de coeficientes
       text(`# Generalidades
 El diagrama **momento–curvatura** (M–φ) de una sección se obtiene con un **modelo de fibras**: la sección se divide en franjas de concreto (núcleo confinado y recubrimiento) y barras de acero, se impone una curvatura φ, se busca la deformación de referencia que equilibra la carga axial y se integra el momento. Es la base de los modelos de rótula plástica usados en pushover y tiempo-historia no lineal (OpenSees *fiber section*).
 
-- Concreto confinado: **Mander, Priestley y Park (1988)**, con el coeficiente de efectividad $k_e$ para estribos rectangulares; deformación última de **Priestley** por equilibrio de energía.
+- Concreto confinado: **Mander, Priestley y Park (1988)**, con el coeficiente de efectividad $k_e$ para estribos rectangulares (barras restringidas por las ramas) y presiones laterales distintas en cada dirección resueltas con la **superficie triaxial de 5 parámetros** (ábaco de la Fig. 4 de Mander); deformación última de **Priestley** por equilibrio de energía.
+- Estribos: perímetro Ø 3/8" + un gancho suplementario que restringe las barras intermedias de las caras de 60 cm (3 ramas paralelas a b, 2 ramas paralelas a h; las barras intermedias de las caras de 40 cm quedan a menos de 15 cm de una barra restringida, E.060 21.6.4.3 / ACI 318-19 §18.7.5.2).
 - Recubrimiento no confinado: curva de Mander con descascaramiento en $\\varepsilon_{sp} = 0.005$.
 - Acero: curva de **Park y Paulay** con meseta de fluencia y endurecimiento.
 - Rótula plástica: **Paulay y Priestley (1992)**, $L_p = 0.08L + 0.022d_bf_y$.`),
@@ -222,7 +269,7 @@ Ag = b*h // Área bruta
 nu = P/(Ag*fc) // Carga axial normalizada
 check nu <= 0.35 // Carga axial moderada para comportamiento dúctil (Priestley 2007)
 muD_req = 4 // Ductilidad de desplazamiento requerida (pórtico dúctil, R0 = 8)`),
-      { type: 'momcurv', b: 'b', h: 'h', rec: 'rec', fc: 'fc', fy: 'fy', Es: 'Es', capas: '4 8 6.7 cm\n2 8 30 cm\n4 8 53.3 cm', estribo: '3', s: 's', nlb: '2', nlh: '3', fyh: 'fyh', P: 'P', concreto: 'mander', k3: '0.85', acero: 'park', bsh: '0.01', esh: '0.008', esu: 'esu', rsu: '1.35', traccion: true, L: 'L', mureq: '10', titulo: 'Diagrama M–φ de la columna 40 × 60 cm (10 Ø 1", estribos Ø 3/8" @ 10 cm), núcleo confinado de Mander' },
+      { type: 'momcurv', b: 'b', h: 'h', rec: 'rec', fc: 'fc', fy: 'fy', Es: 'Es', capas: '4 8 6.7 cm\n2 8 30 cm\n4 8 53.3 cm', estribo: '3', s: 's', nlb: '3', nlh: '2', fyh: 'fyh', confin: 'triaxial', P: 'P', concreto: 'mander', k3: '0.85', acero: 'park', bsh: '0.01', esh: '0.008', esu: 'esu', rsu: '1.35', traccion: true, L: 'L', mureq: '10', titulo: 'Diagrama M–φ de la columna 40 × 60 cm (10 Ø 1", estribos Ø 3/8" @ 10 cm), núcleo confinado de Mander' },
       calc(`# Resultados
 Mn -> kN*m // Momento nominal (εc = 0.004 o εs = 0.015)
 Mu -> kN*m // Momento último

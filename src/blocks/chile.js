@@ -48,7 +48,7 @@ registerBlock('spectrumCL', {
       Rs = Ts > 0 ? fn('RstarNCh433', math.unit(Ts, 's'), math.unit(S433.To[k], 's'), R) : R;
       const sa = (t, kk) => S433.S[kk] * Ao * I * alpha(t, S433.To[kk], S433.p[kk]);
       if (b.comparar) SOIL.forEach((s, kk) => { if (kk !== k) series.push({ n: 'Suelo ' + s + ' (diseño)', y: ts.map(t => sa(t, kk) / Rs), c: ['#8250df', '#0a7e8c', C.orange, '#6e7781', '#bf3989'][kk], w: 1.2, dash: '5 3' }); });
-      if (b.elastico) series.push({ n: 'Elástico S·Ao·α·I', y: ts.map(t => sa(t, k)), c: C.axis, w: 1.4, dash: '6 3' });
+      if (b.elastico) series.push({ n: 'Elástico S·Ao·α·I (suelo ' + SOIL[k] + ')', y: ts.map(t => sa(t, k)), c: C.ink, w: 1.3, dash: '8 3 2 3' });
       series.push({ n: `Diseño suelo ${SOIL[k]} (R* = ${f2(Rs)})`, y: ts.map(t => sa(t, k) / Rs), c: C.blue, w: 2.2, fill: true, main: true });
       sub = `${norma === 'NCh433' ? 'NCh433+DS61' : 'NCh433:2026 (espectro igual al de DS61)'} · zona ${z} (Ao = ${f2(Ao)} g) · suelo ${SOIL[k]} · I = ${f2(I)} · Ro = ${f2(R)}`;
     } else if (norma === 'NCh2369') {
@@ -83,8 +83,26 @@ registerBlock('spectrumCL', {
       else SaT = fn('SaNCh2369v23', math.unit(Ts, 's'), soil, Ao, I, R, xi);
       const xT = X(Math.min(Ts, Tmax));
       g += Lne(xT, Y(0), xT, Y(SaT), C.red, 1.4, '3 2') + `<circle cx="${xT.toFixed(1)}" cy="${Y(SaT).toFixed(1)}" r="4.5" fill="${C.red}"/>`;
-      const right = xT > W - 230;
-      g += T(xT + (right ? -8 : 8), Y(SaT) - 9, `T* = ${f2(Ts, 3)} s → Sa/g = ${f2(SaT, 4)}`, { fs: 10.5, a: right ? 'end' : 'start', c: C.red, b: 1 });
+      // Etiqueta T*: se elige, entre varias posiciones candidatas, la que menos curvas cruza
+      // (se cuentan los puntos de todas las series dentro del rectángulo del texto) y se dibuja
+      // con halo blanco para que siga legible si toca una curva.
+      const lab = `T* = ${f2(Ts, 3)} s → Sa/g = ${f2(SaT, 3)}`, fsL = 10.5, wL = lab.length * fsL * 0.56, hL = fsL + 2;
+      const yS = Y(SaT), pts = [];
+      for (const s of series) ts.forEach((t, i) => { if (i % 2 === 0) pts.push([X(t), Y(s.y[i])]); });
+      const cands = [];
+      for (const dy of [-9, 18, -26, 34, -44, -62]) for (const side of [1, -1]) cands.push({ x: xT + side * 8, y: yS + dy, a: side > 0 ? 'start' : 'end' });
+      cands.push({ x: xT + 8, y: pt + 12, a: 'start' }, { x: xT - 8, y: pt + 12, a: 'end' });
+      let best = null;
+      cands.forEach((c, k) => {
+        const x0 = c.a === 'start' ? c.x : c.x - wL, y0 = c.y - hL + 3;
+        if (x0 < pl + 2 || x0 + wL > W - pr - 2 || y0 < pt || c.y > H - pb - 3) return;
+        const hit = pts.filter(([px, py]) => px >= x0 - 2 && px <= x0 + wL + 2 && py >= y0 - 2 && py <= y0 + hL + 2).length;
+        const sc = hit * 100 + k;
+        if (!best || sc < best.sc) best = { ...c, sc };
+      });
+      if (!best) { const right = xT > W - 230; best = { x: xT + (right ? -8 : 8), y: yS - 9, a: right ? 'end' : 'start' }; }
+      if (Math.abs(best.y - yS) > 30) g += Lne(xT, Math.min(best.y + 3, yS - 6), xT, Math.max(best.y + 3, yS - 6), C.red, 0.9, '2 2');   // línea de referencia hasta la etiqueta lejana
+      g += `<text x="${best.x.toFixed(1)}" y="${best.y.toFixed(1)}" font-size="${fsL}" font-weight="600" fill="${C.red}" text-anchor="${best.a}" font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="3.5" paint-order="stroke">${esc(lab)}</text>`;
       setVar(ctx, 'Sa_T', SaT);
     }
     setVar(ctx, 'Rs', Rs);

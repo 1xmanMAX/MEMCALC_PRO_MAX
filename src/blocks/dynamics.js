@@ -13,7 +13,7 @@ import { evalParam, esc, math, K, settings, BARS } from '../engine.js';
 import { C, Lne, svgWrap, niceTicks, caption, setVar, f2 } from '../blocks.js';
 import {
   G, pwExact, newmarkLin, newmarkNL, njCoefs, spectrumNJ, logPeriods, recordParams, shearModes, rhoCQCw, combCQC, combSRSS,
-  rayleighCoef, pushoverShear, n2Method, atc40CSM, fema440ELM, coefMethod, reducedSa, momentCurvature, manderCurve, simqke, elCentro,
+  rayleighCoef, pushoverShear, nlShearTH, n2Method, atc40CSM, fema440ELM, coefMethod, reducedSa, momentCurvature, manderCurve, simqke, elCentro,
 } from '../norms/dynamics.js';
 
 const PI2 = 2 * Math.PI;
@@ -103,6 +103,7 @@ const recFields = () => [
   F('registro', 'Acelerograma', '', 'select', REC_OPTS),
   F('nombre', 'Nombre del registro SIMQKE (si aplica)', 'sim'),
   F('datos', 'Datos del usuario: una columna de aceleraciones (Δt abajo) o dos columnas t a', '', 'area'),
+  F('skip', 'Datos del usuario: líneas de encabezado a omitir (las líneas con texto se omiten siempre)', '0'),
   F('dt', 'Δt de los datos del usuario', '0.01 s'),
   F('unidad', 'Unidad de los datos del usuario', '', 'select', UNIT_OPTS),
   F('escala', 'Factor de escala del registro', '1'),
@@ -113,14 +114,18 @@ function getRecord(b, S) {
   const sel = b.registro || 'elcentro';
   if (sel === 'usuario') {
     const txtd = String(b.datos || '').trim(); if (!txtd) throw new Error('Pegue los valores del acelerograma en «Datos del usuario»');
-    const rows = txtd.split(/\n/).map(l => l.split('//')[0].trim()).filter(Boolean).map(l => l.split(/[\s,;]+/).filter(Boolean).map(Number));
+    // formatos de CISMID/REDACIS, CSN (evtdb), SMC de USGS-NSMP o PEER AT2: se omiten el encabezado indicado y toda
+    // línea con texto; números Fortran (1.0D-02) admitidos
+    const nskip = Math.max(0, Math.round(scal(b.skip, S, 0)) || 0);
+    const rows = txtd.split(/\r?\n/).slice(nskip).map(l => l.split('//')[0].trim()).filter(Boolean).map(l => l.split(/[\s,;]+/).filter(Boolean).map(t => Number(t.replace(/[dD]/, 'e')))).filter(r2 => r2.length && r2.every(x => isFinite(x)));
+    if (!rows.length) throw new Error('No se encontraron valores numéricos en «Datos del usuario»');
     let a, dt;
     if (rows.every(r2 => r2.length === 2) && rows.length > 2) { a = rows.map(r2 => r2[1]); dt = rows[1][0] - rows[0][0]; }
     else { a = rows.flat(); dt = evalParam(b.dt, S, 's', 0.01); }
     if (a.some(x => !isFinite(x))) throw new Error('El acelerograma contiene valores no numéricos');
     if (!(dt > 0) || a.length < 4) throw new Error('Acelerograma inválido: se requieren al menos 4 valores y Δt > 0');
     const fu = { g: G, 'm/s2': 1, 'cm/s2': 0.01, 'in/s2': 0.0254 }[b.unidad || 'g'] ?? G;
-    r = { ag: Float64Array.from(a, x => x * fu), dt, name: 'Registro del usuario', key: 'u' + hashStr(txtd) + dt + fu };
+    r = { ag: Float64Array.from(a, x => x * fu), dt, name: 'Registro del usuario', key: 'u' + hashStr(txtd) + dt + fu + '|' + nskip };
   } else if (sel === 'simqke') {
     const nm = String(b.nombre || 'sim').trim() || 'sim', g = REG.get(nm);
     if (!g) throw new Error(`No existe el registro sintético «${nm}»: agregue antes un bloque «Acelerograma sintético (SIMQKE)» con ese nombre`);
@@ -480,6 +485,109 @@ registerBlock('thmdof', {
 });
 
 // =====================================================================
+//  3b) TIEMPO-HISTORIA NO LINEAL DE EDIFICIO DE CORTANTE
+// =====================================================================
+registerBlock('thnl', {
+  name: 'Tiempo-historia no lineal de edificio de cortante', icon: 'quake', group: 'Dinámica',
+  fields: [
+    F('masas', 'Pesos o masas por nivel (1 → n); números = tonf de peso', 'W_i'),
+    F('rigideces', 'Rigidez inicial de cada entrepiso (1 → n); números = tonf/m', 'k_i'),
+    F('Vy', 'Cortante de fluencia de cada entrepiso (1 → n); números = tonf', 'Vy_i'),
+    F('alturas', 'Altura de cada entrepiso (1 → n); números = m', 'h_i'),
+    F('alpha', 'Rigidez post-fluencia α = k2/k (escalar o vector)', '0.03'),
+    ...recFields(),
+    F('zeta', 'Amortiguamiento ζ (Rayleigh con la rigidez inicial)', '0.05'),
+    F('modosR', 'Rayleigh: modos i, j', '1, 3'),
+    F('pdelta', 'Incluir P-Δ (columna ficticia con el peso de los niveles superiores)', '', 'check'),
+    F('fP', 'P-Δ: carga de gravedad / peso sísmico', '1.0'),
+    F('dlim', 'Deriva límite Δ/h (opcional)', ''),
+    F('mulim', 'Ductilidad de entrepiso admisible μ (opcional)', ''),
+    F('dreslim', 'Deriva residual admisible (opcional; FEMA P-58: 0.005)', ''),
+    F('sufijo', 'Sufijo de las variables exportadas', ''), F('titulo', 'Título', ''),
+  ],
+  def: { masas: 'W_i', rigideces: 'k_i', Vy: 'Vy_i', alturas: 'h_i', alpha: '0.03', registro: 'elcentro', zeta: '0.05', modosR: '1, 3', unidad: 'g', escala: '1', nombre: 'sim', fP: '1.0' },
+  hint: 'Integra M·ü + C·u̇ + fS(u) = −M·ι·üg con Newmark (γ = 1/2, β = 1/4) y Newton-Raphson en cada paso (Chopra Tabla 16.3.3); resortes de entrepiso bilineales con endurecimiento cinemático (OpenSees Steel01), P-Δ opcional con columna ficticia y amortiguamiento de Rayleigh con la rigidez inicial. Compara con la respuesta elástica. Exporta <code>u_techo, Vbmax, derivamax, deriva_i, mu_i, mumax, dres, u_lin, CbNL</code>.',
+  render(b, ctx) {
+    const S = ctx.scope, sf = sfx(b);
+    const m = vecSI(b.masas, S, 'mass', 'las masas'), k = vecSI(b.rigideces, S, 'stiff', 'las rigideces'), Vy = vecSI(b.Vy, S, 'force', 'los cortantes de fluencia'), he = vecSI(b.alturas, S, 'length', 'las alturas');
+    const n = m.length;
+    if (k.length !== n || Vy.length !== n || he.length !== n) throw new Error(`Se requieren ${n} valores de rigidez, Vy y altura (uno por entrepiso)`);
+    if ([...m, ...k, ...Vy, ...he].some(x => !(x > 0))) throw new Error('Masas, rigideces, resistencias y alturas deben ser positivas');
+    const av = evalAny(b.alpha || '0.03', S), alpha = math.isMatrix(av) || Array.isArray(av) ? (math.isMatrix(av) ? av.toArray() : av).flat().map(Number) : Number(av);
+    const al = Array.isArray(alpha) ? alpha : m.map(() => alpha);
+    if (al.length !== n || al.some(a => !(a >= 0 && a < 1))) throw new Error('α debe estar entre 0 y 1 (escalar o un valor por entrepiso)');
+    const rec = getRecord(b, S);
+    const z0 = zeta(scal(b.zeta, S, 0.05)), pdelta = truthy(b.pdelta), fP = scal(b.fP, S, 1);
+    const modes = shearModes(m, k);
+    const ij = String(b.modosR || '1, 3').split(/[;,\s]+/).filter(Boolean).map(x => Math.round(scal(x, S)));
+    const mi = Math.min(Math.max(ij[0] || 1, 1), n), mj = n === 1 ? 1 : Math.min(Math.max(ij[1] || Math.min(3, n), 1), n);
+    const ray = n === 1 || mi === mj ? { a0: 0, a1: 2 * z0 / modes[0].w } : rayleighCoef(modes[mi - 1].T, modes[mj - 1].T, z0);
+    const zn = modes.map(md => ray.a0 / (2 * md.w) + ray.a1 * md.w / 2);
+    const hmax = modes[n - 1].T / 20;
+    const H = []; he.reduce((s2, x, i) => (H[i] = s2 + x), 0);
+    const key = ['nl', rec.key, m, k, Vy, al, he, z0, mi, mj, pdelta, fP].join('|');
+    const R = memo(key, () => {
+      const tf = Math.max(3, 5 * modes[0].T);   // vibración libre posterior para la deriva residual
+      const o = { m, k, Vy, alpha: al, h: he, ag: rec.ag, dt: rec.dt, a0: ray.a0, a1: ray.a1, hmax, tfree: tf, tavg: 2 * modes[0].T };
+      return { nl: nlShearTH({ ...o, pdelta, fP }), el: nlShearTH({ ...o, linear: true }) };
+    });
+    const nl = R.nl, el = R.el, dt = rec.dt, N = nl.N;
+    const dy = Vy.map((v, i) => v / k[i]), mu = Array.from(nl.drPk, (d, i) => d / dy[i]), drr = Array.from(nl.drPk, (d, i) => d / he[i]);
+    const drrE = Array.from(el.drPk, (d, i) => d / he[i]), dres = nl.dres.map((d, i) => Math.abs(d) / he[i]);
+    const drMax = Math.max(...drr), muMax = Math.max(...mu), dresMax = Math.max(...dres), iCrit = mu.indexOf(muMax);
+    const Wt = sum(m) * G, collapsed = nl.tCol !== null;
+    const ex = (nme, v) => setVar(ctx, nme + sf, v);
+    ex('u_techo', uL(nl.uPk[n - 1])); ex('t_techo', math.unit(nl.tuPk[n - 1], 's')); ex('Vbmax', uF(nl.VbPk)); ex('derivamax', drMax); ex('deriva_i', math.matrix(drr));
+    ex('mu_i', math.matrix(mu)); ex('mumax', muMax); ex('dres', dresMax); ex('u_lin', uL(el.uPk[n - 1])); ex('Vb_lin', uF(el.VbPk)); ex('CbNL', nl.VbPk / Wt); ex('Ry1', el.VbPk / Vy[0]);
+    // ---------- figura ----------
+    const W = 720, x0 = 62, pw = 630, ph = 92;
+    let g = '', y = 22;
+    const roofNL = nl.U[n - 1], roofE = el.U[n - 1];
+    { const s2 = nL(1); const fr = frame(x0, y, pw, ph, [0, (N - 1) * dt], sym([...Array.from(roofNL, v => v * s2), ...Array.from(roofE, v => v * s2)]), { title: `Desplazamiento del techo u${n}(t) — ${rec.name}`, ta: 'start', yl: `u [${UL()}]`, xl: 'Tiempo t [s]' });
+      g += fr.g + P(pathTS(roofE, dt, fr, x0, pw, s2), C.axis, 0.8, '3 2') + P(pathTS(roofNL, dt, fr, x0, pw, s2), C.blue, 1.1);
+      g += legend(x0 + 8, y + 10, [['no lineal' + (pdelta ? ' + P-Δ' : ''), C.blue], ['elástico', C.axis, '3 2']]);
+      if (collapsed) g += Lne(fr.X(nl.tCol), y, fr.X(nl.tCol), y + ph, C.red, 1.2, '4 2') + TX(fr.X(nl.tCol) + 4, y + 12, `colapso (t = ${f2(nl.tCol, 2)} s)`, { fs: 9, a: 'start', c: C.red }); }
+    y += ph + 50;
+    // lazos de histéresis: entrepiso 1 y entrepiso crítico
+    const loops = iCrit === 0 || n === 1 ? [0] : [0, iCrit];
+    const lw = loops.length === 1 ? 300 : 280, lh = 180;
+    loops.forEach((ii, q) => {
+      const xx = x0 + q * (lw + 70), s2 = nL(1), sF = nF(1);
+      const dX = Array.from(nl.U[ii], (u, t) => (u - (ii ? nl.U[ii - 1][t] : 0)) * s2), fY = Array.from(nl.Fs[ii], f => f * sF);
+      const fr = frame(xx, y, lw, lh, sym(dX, 1.08), sym(fY, 1.15), { title: `Entrepiso ${ii + 1}: V – δ`, xl: `δ [${UL()}]`, yl: q === 0 ? `V [${lab(UF())}]` : '', ny: 5, nx: 5 });
+      const step = Math.max(1, Math.floor(N / 1500)); let d = ''; for (let t = 0; t < N; t += step) d += (t ? 'L' : 'M') + fr.X(dX[t]).toFixed(1) + ',' + fr.Y(fY[t]).toFixed(1);
+      const dM = dX.reduce((a, v) => Math.max(a, Math.abs(v)), 0);
+      g += fr.g + P(d, C.red, 0.9) + Lne(fr.X(-dM), fr.Y(Vy[ii] * sF), fr.X(dM), fr.Y(Vy[ii] * sF), C.orange, 0.7, '4 3') + Lne(fr.X(-dM), fr.Y(-Vy[ii] * sF), fr.X(dM), fr.Y(-Vy[ii] * sF), C.orange, 0.7, '4 3');
+      g += TX(xx + lw - 4, y + 14, `μ = ${f2(mu[ii], 2)}`, { fs: 9.5, a: 'end', b: 1 });
+    });
+    if (loops.length === 1) { const bx = x0 + lw + 50; [['Periodo fundamental', `T1 = ${f2(modes[0].T, 3)} s`], ['Rayleigh (modos ' + mi + ', ' + mj + ')', `a0 = ${fe(ray.a0, 3)} 1/s, a1 = ${fe(ray.a1, 3)} s`], ['Techo no lineal / elástico', `${f2(nL(nl.uPk[n - 1]), 2)} / ${f2(nL(el.uPk[n - 1]), 2)} ${UL()}`], ['Cortante basal NL / elástico', `${f2(nF(nl.VbPk), 1)} / ${f2(nF(el.VbPk), 1)} ${lab(UF())}`], ['Ductilidad máxima', `μ = ${f2(muMax, 2)} (entrepiso ${iCrit + 1})`], ['Iteraciones N-R (máx.)', `${nl.itMax}`]].forEach(([a, c2], i) => { g += TX(bx, y + 14 + i * 26, a, { fs: 9, a: 'start', c: C.axis }) + TX(bx, y + 26 + i * 26, c2, { fs: 10, a: 'start', b: 1 }); }); }
+    y += lh + 52;
+    // envolventes
+    const hu = sys() === 'us' ? 'ft' : 'm', Hd = H.map(x => conv(x, 'm', hu)), Hm = Hd[n - 1], eh = 170, ew = 280;
+    const stair = (fr, v) => { let d = `M${fr.X(0).toFixed(1)},${fr.Y(0).toFixed(1)}`; for (let i = 0; i < n; i++) d += `L${fr.X(v[i]).toFixed(1)},${fr.Y(i ? Hd[i - 1] : 0).toFixed(1)}L${fr.X(v[i]).toFixed(1)},${fr.Y(Hd[i]).toFixed(1)}`; return d; };
+    { const xm = Math.max(...drr, ...drrE) * 1.15 || 1; const fr = frame(62, y, ew, eh, [0, xm], [0, Hm], { title: 'Deriva máxima Δ/h', xl: 'Δ/h', yl: 'Altura [' + hu + ']', nx: 4, xf: t => f2(t, 4), yt: [0, ...Hd], yf: t => f2(t, 1) });
+      g += fr.g + P(stair(fr, drrE), C.axis, 1.4, '5 3') + P(stair(fr, drr), C.blue, 2) + P(stair(fr, dres), C.orange, 1.2, '2 2'); }
+    { const xm = Math.max(...mu, 1) * 1.15; const fr = frame(62 + ew + 70, y, ew, eh, [0, xm], [0, Hm], { title: 'Ductilidad de entrepiso μ = δmax/δy', xl: 'μ', nx: 4, xf: t => f2(t, 1), yt: [0, ...Hd], yf: t => f2(t, 1) });
+      g += fr.g + P(stair(fr, mu), C.red, 2) + Lne(fr.X(1), y, fr.X(1), y + eh, C.axis, 0.8, '3 3'); }
+    y += eh + 38;
+    g += legend(70, y, [['No lineal' + (pdelta ? ' + P-Δ' : ''), C.blue], ['Elástico (mismo amortiguamiento)', C.axis, '5 3'], ['Deriva residual', C.orange, '2 2']]);
+    y += 46;
+    let h = `<div class="figure">${svgWrap(W, y, g)}${caption(ctx, b.titulo || `Tiempo-historia no lineal del edificio de cortante de ${n} niveles ante ${rec.name}`)}</div>`;
+    h += txt(`Ecuación de movimiento ${K('\\mathbf M\\ddot{\\mathbf u} + \\mathbf C\\dot{\\mathbf u} + \\mathbf f_S(\\mathbf u) = -\\mathbf M\\boldsymbol\\iota\\,\\ddot u_g(t)')} con resortes de entrepiso bilineales de endurecimiento cinemático (${K('k_i')}, ${K('V_{y,i}')}, ${K('\\alpha_i k_i')}; equivalente a OpenSees <i>Steel01</i> sin transición) y amortiguamiento de Rayleigh ${K('\\mathbf C = a_0\\mathbf M + a_1\\mathbf K_0')} con la rigidez inicial (ζ = ${f2(z0 * 100, 1)} % en los modos ${mi} y ${mj}: ${K(`a_0 = ${fe(ray.a0, 4)}\;\\mathrm{s^{-1}},\; a_1 = ${fe(ray.a1, 4)}\;\\mathrm{s}`)}; ζ1 = ${f2(zn[0] * 100, 2)} %). Integración de Newmark (γ = 1/2, β = 1/4, incondicionalmente estable) con ${K(`\\Delta t = ${f2(nl.hs, 4)}\;\\mathrm{s}`)}${nl.ns > 1 ? ` (registro subdividido ${nl.ns} veces para ${K('\\Delta t \\le T_n/20')})` : ''} y Newton-Raphson en cada paso: ${K('\\hat{\\mathbf p}_{i+1} - \\mathbf f_S(\\mathbf u) - \\mathbf a_1\\mathbf u = \\mathbf 0')}, ${K('\\hat{\\mathbf K}_T = \\mathbf K_T + \\mathbf M/(\\beta\\Delta t^2) + \\gamma\\mathbf C/(\\beta\\Delta t)')} (tridiagonal; Chopra Tabla 16.3.3); máximo ${nl.itMax} iteraciones por paso${nl.nfail ? `, <b>${nl.nfail} pasos sin convergencia</b>` : ''}.` + (pdelta ? ` P-Δ con columna ficticia: ${K('V_i = F_i(\\delta_i) - (P_i/h_i)\\delta_i')}, ${K('P_i = ' + (fP !== 1 ? f2(fP, 2) + '\\,' : '') + 'g\\sum_{j\\ge i}m_j')} (estabilidad elástica ${K('P_i/(k_ih_i)')} = [${nl.theta.map((t, i) => f2(t / k[i], 4)).join(', ')}]).` : '') + ` Se añaden ${f2(nl.Nf * dt, 1)} s de vibración libre después del registro; la deriva residual es la media de la deriva en los últimos ${K('2T_1')}. Contraste: el mismo modelo con resortes elásticos.`);
+    const rows = []; for (let i = n - 1; i >= 0; i--) rows.push([String(i + 1), f2(nF(Vy[i]), 1), f2(nL(dy[i]), 3), f2(nF(nl.Fpk[i]), 1), f2(nL(nl.drPk[i]), 3), sg(drr[i], 4), sg(drrE[i], 4), f2(mu[i], 2), sg(dres[i], 3), f2(nM(nl.Eh[i]), 2)]);
+    h += tableHtml(ctx, 'Respuesta máxima por entrepiso: no lineal vs elástica', ['Entrepiso', K('V_y') + ` [${lab(UF())}]`, K('\\delta_y') + ` [${UL()}]`, K('|V|_{max}') + ` [${lab(UF())}]`, K('\\delta_{max}') + ` [${UL()}]`, K('(\\Delta/h)_{NL}'), K('(\\Delta/h)_{el}'), K('\\mu'), K('\\Delta_{res}/h'), K('E_h') + ` [${lab(UM())}]`], rows);
+    h += txt(`Techo: ${K(`u_{${n},max} = ${f2(nL(nl.uPk[n - 1]), 3)}\;\\mathrm{${UL()}}`)} (elástico ${f2(nL(el.uPk[n - 1]), 3)}; razón ${f2(nl.uPk[n - 1] / el.uPk[n - 1], 3)}); cortante basal ${K(`V_{b,max} = ${f2(nF(nl.VbPk), 1)}\;\\mathrm{${lab(UF())}} = ${f2(nl.VbPk / Wt, 4)}W`)} frente a ${f2(nF(el.VbPk), 1)} elástico (${K(`R_\\mu = V_{b,el}/V_{y,1} = ${f2(el.VbPk / Vy[0], 2)}`)}); ductilidad máxima ${K(`\\mu = ${f2(muMax, 2)}`)} en el entrepiso ${iCrit + 1}; deriva residual máxima ${K(`${sg(dresMax, 3)}`)}.`);
+    h += chkLine(ctx, !collapsed, collapsed ? `\\delta/h > 0.10\;\\text{en}\; t = ${f2(nl.tCol, 2)}\\,\\mathrm{s}` : `(\\Delta/h)_{max} = ${sg(drMax, 4)} < 0.10`, 'Sin colapso dinámico (deriva de entrepiso < 10 %)', collapsed ? null : drMax / 0.1);
+    if (nl.nfail) h += chkLine(ctx, false, `\\text{pasos sin convergencia} = ${nl.nfail}`, 'Convergencia de Newton-Raphson', null);
+    const dl = String(b.dlim || '').trim() ? scal(b.dlim, S) : 0, ml = String(b.mulim || '').trim() ? scal(b.mulim, S) : 0, rl = String(b.dreslim || '').trim() ? scal(b.dreslim, S) : 0;
+    if (dl > 0) h += chkLine(ctx, !collapsed && drMax <= dl, `(\\Delta/h)_{max} = ${sg(drMax, 4)} \\le ${f2(dl, 4)}`, 'Deriva máxima de entrepiso (tiempo-historia no lineal)', drMax / dl);
+    if (ml > 0) h += chkLine(ctx, !collapsed && muMax <= ml, `\\mu_{max} = ${f2(muMax, 2)} \\le ${f2(ml, 2)}`, 'Ductilidad de entrepiso ≤ admisible', muMax / ml);
+    if (rl > 0) h += chkLine(ctx, !collapsed && dresMax <= rl, `(\\Delta_{res}/h)_{max} = ${sg(dresMax, 3)} \\le ${f2(rl, 4)}`, 'Deriva residual (reparabilidad, FEMA P-58)', dresMax / rl);
+    return h;
+  },
+});
+
+// =====================================================================
 //  4) PUSHOVER + PUNTO DE DESEMPEÑO (N2, ATC-40, FEMA 440, ASCE 41)
 // =====================================================================
 const LEVELS_DEF = 'OP 0.005 // Operacional\nIO 0.010 // Ocupación inmediata (ASCE 41 / FEMA 356 C1-3)\nLS 0.020 // Seguridad de vida\nCP 0.040 // Prevención del colapso';
@@ -530,7 +638,7 @@ registerBlock('pushover', {
     const asit = Number(b.asitio) || 130, Cm = scal(b.Cm, S, 1);
     let po;
     try { po = memo(['po', m, k, Vy, he, alpha, fcr, r2, druEnd, pattern, pdelta, fP, JSON.stringify(capo)].join('|'), () => pushoverShear({ m, k, Vy, h: he, alpha, pattern, fcr, r2, druEnd, pdelta, fP, cap: capo })); }
-    catch (e) { if (e.unstable === undefined) throw e; return txt(esc(e.message)) + chkLine(ctx, false, `\\theta_{${e.unstable + 1}} = P/(k\\,h) \\ge 1`, 'Estabilidad elástica de entrepiso con P-Δ', null); }
+    catch (e) { if (e.unstable === undefined) throw e; { const Ht = sum(he), T0 = shearModes(m, k)[0].T; ['dobj', 'dN2', 'dC'].forEach(nm => setVar(ctx, nm + sf, uL(Ht))); setVar(ctx, 'mu' + sf, 999); setVar(ctx, 'derivamax' + sf, 1); setVar(ctx, 'Tpo1' + sf, math.unit(T0, 's')); }   /* valores centinela finitos: estructura inestable */ return txt(esc(e.message) + ' — la estructura es inestable ante cargas de gravedad: no existe curva de capacidad (se exportan valores centinela: desplazamientos = altura total, μ = 999, deriva = 1).') + chkLine(ctx, false, `\\theta_{${e.unstable + 1}} = P/(k\\,h) \\ge 1`, 'Estabilidad elástica de entrepiso con P-Δ', null); }
     // pendiente global solo por P-Δ (para αP-Δ de ASCE 41 Ec. 7-32): pushover elastoplástico sin degradación
     let aPD = 0;
     if (pdelta) { const pe = memo(['poPD', m, k, Vy, he, fcr, r2, druEnd, pattern, fP].join('|'), () => pushoverShear({ m, k, Vy, h: he, alpha: 1e-5, pattern, fcr, r2, druEnd, pdelta, fP })); const c2 = pe.curve, A = c2[c2.length - 2], B = c2[c2.length - 1]; aPD = Math.min(((B.Vb - A.Vb) / (B.d - A.d || 1)) / (c2[1].Vb / c2[1].d), 0); }
@@ -625,7 +733,7 @@ registerBlock('pushover', {
     if (!solOk) h += chkLine(ctx, false, `\\text{${mlbl[met]}: sin punto de desempeño}`, esc(met === 'ATC40' ? (atc && atc.msg) || 'sin intersección' : met === 'FEMA440' ? (fem && fem.msg) || 'sin solución' : 'sin solución') + ' — la estructura no alcanza la demanda', null);
     else h += chkLine(ctx, within, `u_t = ${f2(nL(dobj), 2)} \\le u_{cap} = ${f2(nL(dEnd), 2)}\\;\\mathrm{${UL()}}`, `Desplazamiento objetivo (${mlbl[met]}) dentro de la capacidad de la curva`, dobj / dEnd);
     if (cm.a2 !== null && cm.a2 < 0) h += chkLine(ctx, !cm.unstable, `\\mu_{strength} = ${f2(cm.mu, 2)} \\le \\mu_{max} = \\Delta_d/\\Delta_y + |\\alpha_e|^{-h}/4 = ${f2(cm.mumax, 2)}`, 'Sin inestabilidad dinámica lateral con pendiente negativa (ASCE 41-17 Ec. 7-32)', cm.mu / cm.mumax);
-    if (lvl) h += chkLine(ctx, drMax <= lvl.lim, `(\\delta/h)_{max} = ${sg(drMax, 4)} \\le ${f2(lvl.lim, 4)}`, `Deriva en el punto de desempeño ≤ límite del nivel ${lvl.id}${lvl.d ? ' (' + lvl.d + ')' : ''}`, drMax / lvl.lim);
+    if (lvl) h += chkLine(ctx, within && drMax <= lvl.lim, `(\\delta/h)_{max} = ${sg(drMax, 4)} \\le ${f2(lvl.lim, 4)}`, `Deriva en el punto de desempeño ≤ límite del nivel ${lvl.id}${lvl.d ? ' (' + lvl.d + ')' : ''}`, drMax / lvl.lim);
     return h;
   },
 });
@@ -650,6 +758,7 @@ registerBlock('momcurv', {
     F('nlb', 'Ramas paralelas a b (cortando h)', '2'), F('nlh', 'Ramas paralelas a h (cortando b)', '3'), F('fyh', 'fyh del estribo', 'fy'),
     F('P', 'Carga axial P (compresión +)', '0 tonf'),
     F('concreto', 'Modelo del concreto', '', 'select', [['mander', 'Mander (núcleo confinado + recubrimiento no confinado)'], ['hognestad', 'Hognestad (sin confinamiento)']]),
+    F('confin', "Mander: f'cc con f'lx ≠ f'ly", '', 'select', [['triaxial', 'Superficie triaxial de 5 parámetros (ábaco de Mander 1988, Fig. 4)'], ['promedio', "Simplificación: f'l promedio (sobrestima f'cc)"], ['minimo', "Conservador: f'l mínimo"]]),
     F('k3', "Hognestad: f''c = k3·f'c", '0.85'),
     F('acero', 'Modelo del acero', '', 'select', [['park', 'Park-Paulay (fluencia, εsh, endurecimiento a fsu)'], ['bilineal', 'Bilineal con endurecimiento b = Esh/Es'], ['epp', 'Elastoplástico perfecto']]),
     F('bsh', 'Bilineal: b = Esh/Es', '0.01'), F('esh', 'Park: εsh', '0.008'), F('esu', 'εsu (acero longitudinal y de estribos)', '0.09'), F('rsu', 'fsu/fy', '1.35'),
@@ -677,9 +786,16 @@ registerBlock('momcurv', {
     const conc = b.concreto === 'hognestad' ? 'hognestad' : 'mander';
     const model = ['park', 'bilineal', 'epp'].includes(b.acero) ? b.acero : 'park';
     const steel = { fy, Es, model, b: scal(b.bsh, S, 0.01), esh: scal(b.esh, S, 0.008), esu: scal(b.esu, S, 0.09), fsu: scal(b.rsu, S, 1.35) * fy };
-    const p = { b: bb, h: hh, cover, dbh: est.db, s: mm(b.s, 100), nlb: scal(b.nlb, S, 2), nlh: scal(b.nlh, S, 2), fyh: MPa(b.fyh, fy), esuh: steel.esu, fc, conc, k3: scal(b.k3, S, 0.85), tension: truthy(b.traccion), steel, layers, P: Pn, nf: 120 };
+    const confMode = ['triaxial', 'promedio', 'minimo'].includes(b.confin) ? b.confin : 'triaxial';
+    const p = { confMode, b: bb, h: hh, cover, dbh: est.db, s: mm(b.s, 100), nlb: scal(b.nlb, S, 2), nlh: scal(b.nlh, S, 2), fyh: MPa(b.fyh, fy), esuh: steel.esu, fc, conc, k3: scal(b.k3, S, 0.85), tension: truthy(b.traccion), steel, layers, P: Pn, nf: 120 };
     const R = memo('mc|' + JSON.stringify(p), () => momentCurvature(p));
-    if (!R.fy1) throw new Error('La sección no alcanzó la fluencia (revise la carga axial o el refuerzo)');
+    if (!R.fy1) {   // sin fluencia (p. ej. carga axial mayor que la capacidad o falla frágil por compresión): NO CUMPLE
+      const UMm0 = UM(), uMom0 = (Nmm) => math.unit(conv(Nmm / 1000, 'N*m', UMm0), UMm0);
+      const ex0 = (n, v) => setVar(ctx, n + sf, v);
+      ex0('Mn', uMom0(R.Mmax)); ex0('Mu', uMom0(R.Mmax)); ex0('Mmax', uMom0(R.Mmax)); ex0('My1', uMom0(R.Mmax)); ex0('muphi', 1); ex0('muD', 1); ex0('thetap', 0); ex0('Lp', math.unit(0, 'cm'));
+      if (conc === 'mander') { ex0('fcc', math.unit(R.conf.fcc, 'MPa')); ex0('ecu', R.conf.ecu); ex0('ke', R.conf.ke); }
+      return txt(`La sección no alcanza la fluencia del acero ni ${K('\\varepsilon_c = 0.002')} antes de la falla (${esc(R.fail || 'sin equilibrio')}); con ${K(`P = ${f2(nF(Pn), 1)}\\;\\mathrm{${lab(UF())}}`)} la carga axial supera la capacidad o la falla es frágil. ${K(`M_{max} = ${f2(conv(R.Mmax / 1000, 'N*m', UMm0), 2)}\\;\\mathrm{${lab(UMm0)}}`)}.`) + chkLine(ctx, false, `\\text{sin fluencia: } \\mu_\\varphi = 1`, 'Comportamiento dúctil de la sección (fluencia antes de la falla)', null);
+    }
     const Lmm = mm(b.L, 1500), dbl = Math.max(...layers.map(l => l.db));
     const Lp = Math.max(0.08 * Lmm + 0.022 * dbl * fy, 0.044 * dbl * fy);    // Paulay-Priestley (1992) Ec. 4.30; ≥ 2Lsp (Priestley 2007)
     const phiY = R.phiY, phiU = R.ult.phi, muphi = phiU / phiY, thp = (phiU - phiY) * Lp;
@@ -731,7 +847,7 @@ registerBlock('momcurv', {
     const As = layers.reduce((a, l) => a + l.As, 0);
     if (conc === 'mander') {
       const c = R.conf;
-      h += txt(`Confinamiento (Mander, Priestley y Park 1988): núcleo ${K(`b_c \\times d_c = ${f2(c.bc, 0)} \\times ${f2(c.dc, 0)}\\;\\mathrm{mm}`)} (a ejes del estribo ${esc(b.estribo || '3')}), ${K(`\\sum (w'_i)^2 = ${f2(c.w2, 0)}\\;\\mathrm{mm^2}`)}, ${K(`s' = ${f2(c.sp, 0)}\\;\\mathrm{mm}`)}, ${K(`\\rho_{cc} = ${f2(c.rcc, 4)}`)}; ${K(`k_e = \\frac{\\left(1 - \\sum (w'_i)^2/6b_cd_c\\right)(1 - s'/2b_c)(1 - s'/2d_c)}{1 - \\rho_{cc}} = ${f2(c.ke, 3)}`)}; ${K(`\\rho_b = ${f2(c.rb, 4)},\\; \\rho_h = ${f2(c.rh, 4)}`)}; ${K(`f'_{l} = k_e\\rho f_{yh}`)} = ${f2(c.flb, 2)} y ${f2(c.flh, 2)} MPa → promedio ${K(`f'_l = ${f2(c.fl, 2)}\\;\\mathrm{MPa}`)}; ${K(`f'_{cc} = f'_{co}\\left(-1.254 + 2.254\\sqrt{1 + 7.94f'_l/f'_{co}} - 2f'_l/f'_{co}\\right) = ${f2(c.fcc, 2)}\\;\\mathrm{MPa}`)} (${f2(c.fcc / fc, 3)}·f'c); ${K(`\\varepsilon_{cc} = 0.002[1 + 5(f'_{cc}/f'_{co} - 1)] = ${f2(c.ecc, 5)}`)}; ${K(`r = E_c/(E_c - E_{sec}) = ${f2(c.r, 3)}`)}; deformación última ${K(`\\varepsilon_{cu} = 0.004 + 1.4\\rho_s f_{yh}\\varepsilon_{su}/f'_{cc} = ${f2(c.ecu, 4)}`)} (Priestley et al. 1996). El recubrimiento sigue la curva no confinada hasta ${K('2\\varepsilon_{co}')} y se descascara en ${K('\\varepsilon_{sp} = 0.005')}.`);
+      h += txt(`Confinamiento (Mander, Priestley y Park 1988): núcleo ${K(`b_c \\times d_c = ${f2(c.bc, 0)} \\times ${f2(c.dc, 0)}\\;\\mathrm{mm}`)} (a ejes del estribo ${esc(b.estribo || '3')}), ${K(`\\sum (w'_i)^2 = ${f2(c.w2, 0)}\\;\\mathrm{mm^2}`)} (barras restringidas por ramas: ${c.nRb} por cara b, ${c.nRh} por cara h), ${K(`s' = ${f2(c.sp, 0)}\\;\\mathrm{mm}`)}, ${K(`\\rho_{cc} = ${f2(c.rcc, 4)}`)}; ${K(`k_e = \\frac{\\left(1 - \\sum (w'_i)^2/6b_cd_c\\right)(1 - s'/2b_c)(1 - s'/2d_c)}{1 - \\rho_{cc}} = ${f2(c.ke, 3)}`)}; ${K(`\\rho_b = ${f2(c.rb, 4)},\\; \\rho_h = ${f2(c.rh, 4)}`)}; ${K(`f'_{lx} = k_e\\rho_b f_{yh} = ${f2(c.flb, 2)}`)} y ${K(`f'_{ly} = k_e\\rho_h f_{yh} = ${f2(c.flh, 2)}\\;\\mathrm{MPa}`)}; ${c.mode === 'triaxial' ? `con presiones distintas, ${K("f'_{cc}")} se obtiene de la superficie de falla de 5 parámetros (William-Warnke, calibrada por Elwi-Murray) que Mander usó para el ábaco de confinamiento triaxial (Fig. 4): se busca ${K("\\sigma_3 = -f'_{cc}")} tal que ${K("(-f'_{lx}, -f'_{ly}, \\sigma_3)")} quede sobre la superficie ${K('\\tau_{oct} = \\tau(\\sigma_{oct}, \\theta)')}: ${K(`f'_{cc} = ${f2(c.fcc, 2)}\\;\\mathrm{MPa}`)} (con ${K("f'_l")} promedio = ${f2(c.fl, 2)} MPa la fórmula cerrada daría ${f2(c.fccAvg, 2)} MPa, ${f2((c.fccAvg / c.fcc - 1) * 100, 1)} % más)` : c.mode === 'minimo' ? `${K(`f'_l = \\min = ${f2(Math.min(c.flb, c.flh), 2)}\\;\\mathrm{MPa}`)} (conservador); ${K(`f'_{cc} = f'_{co}\\left(-1.254 + 2.254\\sqrt{1 + 7.94f'_l/f'_{co}} - 2f'_l/f'_{co}\\right) = ${f2(c.fcc, 2)}\\;\\mathrm{MPa}`)}` : `promedio ${K(`f'_l = ${f2(c.fl, 2)}\\;\\mathrm{MPa}`)} (simplificación: sobrestima ${K("f'_{cc}")} si ${K("f'_{lx} \\ne f'_{ly}")}); ${K(`f'_{cc} = f'_{co}\\left(-1.254 + 2.254\\sqrt{1 + 7.94f'_l/f'_{co}} - 2f'_l/f'_{co}\\right) = ${f2(c.fcc, 2)}\\;\\mathrm{MPa}`)}`} (${f2(c.fcc / fc, 3)}·f'c); ${K(`\\varepsilon_{cc} = 0.002[1 + 5(f'_{cc}/f'_{co} - 1)] = ${f2(c.ecc, 5)}`)}; ${K(`r = E_c/(E_c - E_{sec}) = ${f2(c.r, 3)}`)}; deformación última ${K(`\\varepsilon_{cu} = 0.004 + 1.4\\rho_s f_{yh}\\varepsilon_{su}/f'_{cc} = ${f2(c.ecu, 4)}`)} (Priestley et al. 1996). El recubrimiento sigue la curva no confinada hasta ${K('2\\varepsilon_{co}')} y se descascara en ${K('\\varepsilon_{sp} = 0.005')}.`);
     } else h += txt(`Concreto de Hognestad: ${K(`f''_c = ${f2(p.k3, 2)}f'_c = ${f2(R.conf.fpp, 2)}\\;\\mathrm{MPa}`)}, ${K(`\\varepsilon_0 = 2f''_c/E_c = ${f2(R.conf.ec0, 5)}`)} (${K('E_c = 4700\\sqrt{f\'_c}')}), rama descendente lineal hasta ${K("0.85f''_c")} en ${K(`\\varepsilon_{cu} = ${f2(R.ecuLim, 4)}`)}.`);
     h += txt(`Acero: ${{ park: `Park-Paulay (fluencia ${K(`f_y = ${f2(fy, 0)}`)} MPa hasta ${K(`\\varepsilon_{sh} = ${f2(steel.esh, 4)}`)}, endurecimiento hasta ${K(`f_{su} = ${f2(steel.fsu, 0)}`)} MPa en ${K(`\\varepsilon_{su} = ${f2(steel.esu, 3)}`)})`, bilineal: `bilineal con ${K(`E_{sh} = ${f2(steel.b, 3)}E_s`)} limitado a ${K('f_{su}')}`, epp: 'elastoplástico perfecto' }[model]}; ${K(`A_s = ${f2(As, 0)}\\;\\mathrm{mm^2}`)} en ${layers.length} capas (${K(`\\rho = ${f2(As / (bb * hh) * 100, 2)}\\,\\%`)}). ${p.tension ? `Tracción del concreto lineal hasta ${K(`f_r = 0.62\\sqrt{f'_c} = ${f2(R.fr, 2)}`)} MPa.` : 'Sin tracción en el concreto.'} Equilibrio ${K('N(\\varepsilon_0, \\varphi) = \\sum\\sigma_c A_c + \\sum(\\sigma_s - \\sigma_c)A_s = P')} por bisección; ${K('M = \\sum \\sigma A (h/2 - y)')}. Falla por ${esc(R.fail || 'fin del análisis')}.`);
     const fmtM = (Nmm) => f2(Mout(Nmm), 2), fmtP = (pm) => fe(phiOut(pm), 4);

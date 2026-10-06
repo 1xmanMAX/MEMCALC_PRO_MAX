@@ -303,74 +303,87 @@ export function storyBackbone(st, cap, hgt) {
   const f = (d) => { if (d <= dcap) return pre(d); if (d <= dres) return [Fc - ac * k * (d - dcap), -ac * k]; return [Fr, 0]; };
   return { f, dy, dc, dcap, dres, Fc, Fr };
 }
-function pushoverIncr({ st, theta, Sx, h, druEnd, cap }) {
+// Pushover con P-Δ y/o degradación — solución exacta de entrepisos en serie (sin Newton, sin bifurcaciones):
+//  fase 1: Vb creciente; cada δi = G_i⁻¹(Vb·Sx_i) con G_i(δ) = F_i(δ) − θ_i δ (rama monótona creciente);
+//  fase 2: tras el máximo de Vb se controla la deriva del entrepiso crítico (el primero con tangente neta ≤ 0):
+//          Vb = G_c(δc)/Sx_c, y los demás entrepisos descargan con la rigidez k_i − θ_i (localización).
+function pushoverIncr({ st, theta, Sx, h, druEnd, cap, npts = 160 }) {
   const n = st.length, bb = st.map((x, i) => storyBackbone(x, cap, h[i]));
-  const del = new Float64Array(n), dmx = new Float64Array(n);
-  let lam = 0;
-  const trial = (i, d) => {
-    if (d >= dmx[i] - 1e-15) { const [F, kt] = bb[i].f(d); return [F, kt]; }
-    const Fm = bb[i].f(dmx[i])[0]; return [Fm - st[i].k * (dmx[i] - d), st[i].k];
-  };
-  const solve = (dTarget) => {
-    const dl = Float64Array.from(del); let lm = lam;
-    for (let it = 0; it < 60; it++) {
-      const R = new Float64Array(n), kt = new Float64Array(n); let g = -dTarget, nr = 0;
-      for (let i = 0; i < n; i++) { const [F, t] = trial(i, dl[i]); R[i] = F - theta[i] * dl[i] - lm * Sx[i]; let kk = t - theta[i]; if (Math.abs(kk) < 1e-7 * st[i].k) kk = (kk < 0 ? -1 : 1) * 1e-7 * st[i].k; kt[i] = kk; g += dl[i]; nr = Math.max(nr, Math.abs(R[i]) / st[i].Vy); }
-      if (nr < 1e-10 && Math.abs(g) < 1e-12 * Math.max(dTarget, 1e-9)) return { dl, lm, it };
-      // kt Δδ − Sx Δλ = −R ; ΣΔδ = −g
-      let A = 0, B = 0; for (let i = 0; i < n; i++) { A += Sx[i] / kt[i]; B += R[i] / kt[i]; }
-      const dlam = (-g + B) / A;
-      for (let i = 0; i < n; i++) dl[i] += (Sx[i] * dlam - R[i]) / kt[i];
-      lm += dlam;
+  // envolvente neta lineal por tramos
+  const pl = bb.map((b, i) => {
+    const xs = [0, b.dc, b.dy, b.dcap, b.dres].filter((x, j, a) => isFinite(x) && (j === 0 || x > a[j - 1] + 1e-15));
+    const G = (d) => b.f(d)[0] - theta[i] * d, kt = (d) => b.f(d)[1] - theta[i];
+    let dpk = Infinity; for (const x of xs) if (kt(x + 1e-12 * (1 + x)) <= 0) { dpk = x; break; }
+    return { xs, G, kt, dpk, Gpk: isFinite(dpk) ? G(dpk) : Infinity };
+  });
+  // inversa exacta de la envolvente neta (lineal por tramos) en su rama creciente
+  const inv = (i, V) => {
+    const q = pl[i]; if (V <= 0) return V / (st[i].k - theta[i]); if (V >= q.Gpk) return q.dpk;
+    for (let j = 0; j < q.xs.length; j++) {
+      const x0 = q.xs[j], x1 = j + 1 < q.xs.length ? q.xs[j + 1] : Infinity, g0 = q.G(x0), t = q.kt(x0 + 1e-12 * (1 + x0));
+      const g1 = isFinite(x1) ? q.G(x1) : Infinity;
+      if (V <= g1 || !isFinite(x1)) return x0 + (V - g0) / t;
     }
-    return null;
+    return q.dpk;
   };
-  const dGuess = druEnd * h.reduce((a, b) => a + b, 0);
-  const run = (step) => {
-    del.fill(0); dmx.fill(0); lam = 0;
-    const out = [{ d: 0, Vb: 0, dr: Array(n).fill(0) }];
-    let d = 0, Vmax = 0, endBy = 'deriva', fails = 0, hstep = step;
-    for (let k = 0; k < 6000; k++) {
-      const r = solve(d + hstep);
-      if (!r) { hstep /= 2; if (++fails > 12) { endBy = 'convergencia'; break; } continue; }
-      const drPrev = Math.max(...Array.from(del, (x, i) => x / h[i]));
-      d += hstep; del.set(r.dl); lam = r.lm; for (let i = 0; i < n; i++) dmx[i] = Math.max(dmx[i], del[i]);
-      const Vb = lam;   // λ·Sx1 = λ = cortante basal neto (incluye el efecto P-Δ)
-      const drNow = Math.max(...Array.from(del, (x, i) => x / h[i]));
-      if (drNow >= druEnd) {   // recorta al punto con deriva = druEnd (interpolación lineal)
-        const t = (druEnd - drPrev) / (drNow - drPrev || 1), p0 = out[out.length - 1];
-        out.push({ d: p0.d + t * (d - p0.d), Vb: p0.Vb + t * (Vb - p0.Vb), dr: p0.dr.map((x, i) => x + t * (del[i] - x)) });
-        break;
-      }
-      out.push({ d, Vb, dr: Array.from(del) }); Vmax = Math.max(Vmax, Vb);
-      if (Vb <= 0.2 * Vmax && Vmax > 0) { endBy = 'resistencia'; break; }
-      if (hstep < step) hstep = Math.min(step, hstep * 2);
-    }
-    return { out, endBy, Vmax: Math.max(Vmax, out[out.length - 1].Vb) };
-  };
-  let R = run(dGuess / 500);
-  const dE = R.out[R.out.length - 1].d;
-  if (R.out.length < 150 && dE > 0) R = run(dE / 300);
-  const curve = R.out;
+  const lamPk = Math.min(...pl.map((q, i) => q.Gpk / Sx[i])), ic = isFinite(lamPk) ? pl.findIndex((q, i) => q.Gpk / Sx[i] === lamPk) : -1;
+  const dr1 = (lam) => Sx.map((x, i) => inv(i, lam * x));
+  const sum = (a) => a.reduce((x, y) => x + y, 0), maxR = (dr) => Math.max(...dr.map((d, i) => d / h[i]));
+  // fase 1 hasta min(λpk, deriva druEnd)
+  let lamEnd1 = lamPk, end1 = 'pico';
+  { let hi = isFinite(lamPk) ? lamPk : Math.max(...st.map((x, i) => x.Vy / Sx[i])); if (!isFinite(lamPk)) while (maxR(dr1(hi)) < druEnd) hi *= 1.5;
+    if (maxR(dr1(hi)) >= druEnd) { let lo = 0; for (let it = 0; it < 70; it++) { const mid = (lo + hi) / 2; if (maxR(dr1(mid)) < druEnd) lo = mid; else hi = mid; } lamEnd1 = lo; end1 = 'deriva'; } else lamEnd1 = hi; }
+  const roof1 = (lam) => sum(dr1(lam)), dEnd1 = roof1(lamEnd1);
+  const lamAt1 = (d) => { let lo = 0, hi = lamEnd1; for (let it = 0; it < 70; it++) { const mid = (lo + hi) / 2; if (roof1(mid) < d) lo = mid; else hi = mid; } return (lo + hi) / 2; };
+  const curve = [];
+  const n1 = end1 === 'deriva' ? npts : Math.round(npts * 0.6);
+  for (let j = 0; j <= n1; j++) { const d = dEnd1 * (j / n1) ** 1.3, lam = j === 0 ? 0 : j === n1 ? lamEnd1 : lamAt1(d); curve.push({ d: j === n1 ? dEnd1 : d, Vb: lam, dr: j === n1 ? dr1(lamEnd1) : dr1(lam) }); }
+  let endBy = end1 === 'deriva' ? 'deriva' : 'resistencia';
+  // fase 2: localización en el entrepiso crítico
+  if (end1 === 'pico' && ic >= 0) {
+    const dmx = dr1(lamPk), q = pl[ic], kU = st.map((x, i) => x.k - theta[i]);
+    const state2 = (dc) => { const lam = q.G(dc) / Sx[ic]; return { lam, dr: dmx.map((x, i) => (i === ic ? dc : x - (lamPk - lam) * Sx[i] / kU[i])) }; };
+    // fin: deriva druEnd en algún entrepiso o Vb ≤ 0.2·Vbmax (o ≤ 0)
+    const fEnd = (dc) => { const s2 = state2(dc); return maxR(s2.dr) >= druEnd || s2.lam <= 0.2 * lamPk; };
+    let lo = dmx[ic], hi = Math.max(dmx[ic] * 1.5, druEnd * h[ic]); let k2 = 0; while (!fEnd(hi) && k2++ < 60) hi *= 1.5;
+    for (let it = 0; it < 70; it++) { const mid = (lo + hi) / 2; if (fEnd(mid)) hi = mid; else lo = mid; }
+    const dcE = hi, sE = state2(dcE); endBy = maxR(sE.dr) >= druEnd * (1 - 1e-6) ? 'deriva' : 'resistencia';
+    const n2 = npts - n1; let dPrev = dEnd1;
+    for (let j = 1; j <= n2; j++) { const dc = dmx[ic] + (dcE - dmx[ic]) * j / n2, s2 = state2(dc), d = sum(s2.dr); if (d <= dPrev) continue; curve.push({ d, Vb: s2.lam, dr: s2.dr }); dPrev = d; }
+    // incluye los quiebres de la envolvente del entrepiso crítico
+    for (const x of q.xs) if (x > dmx[ic] && x < dcE) { const s2 = state2(x), d = sum(s2.dr); if (d > dEnd1) curve.push({ d, Vb: s2.lam, dr: s2.dr }); }
+    curve.sort((a, b) => a.d - b.d);
+  }
   const dEnd = curve[curve.length - 1].d;
-  // eventos: fluencia, fisuración e inicio de la degradación por entrepiso (primer cruce)
   const ev = [];
   for (let i = 0; i < n; i++) {
     const marks = [['fluencia', bb[i].dy]]; if (st[i].fcr > 0 && st[i].fcr < 1) marks.push(['fisuración', bb[i].dc]); if (isFinite(bb[i].dcap)) marks.push(['degradación', bb[i].dcap]);
-    for (const [tipo, dl] of marks) { for (let j = 1; j < curve.length; j++) if (curve[j].dr[i] >= dl && curve[j - 1].dr[i] < dl) { const a = curve[j - 1], b = curve[j], t = (dl - a.dr[i]) / (b.dr[i] - a.dr[i]); ev.push({ i, tipo, Vb: a.Vb + t * (b.Vb - a.Vb), d: a.d + t * (b.d - a.d) }); break; } }
+    for (const [tipo, dl] of marks) {
+      if (curve[curve.length - 1].dr[i] < dl) continue;
+      // fase 1: exacto por inversión; fase 2: interpolación en la curva
+      const V1 = pl[i].G(dl) / Sx[i];
+      if (V1 <= lamEnd1 + 1e-9 * lamEnd1 && dl <= (isFinite(pl[i].dpk) ? pl[i].dpk : Infinity)) { ev.push({ i, tipo, Vb: V1, d: roof1(Math.min(V1, lamEnd1)) }); continue; }
+      for (let j = 1; j < curve.length; j++) if (curve[j].dr[i] >= dl && curve[j - 1].dr[i] < dl) { const a = curve[j - 1], b = curve[j], t = (dl - a.dr[i]) / (b.dr[i] - a.dr[i]); ev.push({ i, tipo, Vb: a.Vb + t * (b.Vb - a.Vb), d: a.d + t * (b.d - a.d) }); break; }
+    }
   }
+  ev.forEach(e => { if (curve.every(c => Math.abs(c.d - e.d) > 1e-12)) curve.push({ d: e.d, Vb: e.Vb, dr: e.d <= dEnd1 ? dr1(e.Vb) : null }); });
+  curve.sort((a, b) => a.d - b.d);
+  curve.forEach((c, j) => { if (!c.dr) { const a = curve[j - 1], b = curve[j + 1], t = (c.d - a.d) / (b.d - a.d); c.dr = a.dr.map((x, i) => x + t * (b.dr[i] - x)); } });
   ev.sort((a, b) => a.d - b.d);
-  const stateAt = (d) => { const x = Math.min(Math.max(d, 0), dEnd); for (let j = 1; j < curve.length; j++) if (x <= curve[j].d) { const a = curve[j - 1], b = curve[j], t = (x - a.d) / (b.d - a.d || 1); return { Vb: a.Vb + t * (b.Vb - a.Vb), dr: a.dr.map((y, i) => y + t * (b.dr[i] - y)) }; } const c = curve[curve.length - 1]; return { Vb: c.Vb, dr: c.dr.slice() }; };
-  const VbAt = (d) => stateAt(d).Vb;
-  return { curve, ev, dEnd, VbEnd: curve[curve.length - 1].Vb, stateAt, VbAt, drifts: null, roof: null, endBy: R.endBy, Vbmax: R.Vmax, bb };
+  const stateAt = (d) => { const x = Math.min(Math.max(d, 0), dEnd); if (x <= dEnd1) { const lam = lamAt1(x); return { Vb: lam, dr: dr1(lam) }; } for (let j = 1; j < curve.length; j++) if (x <= curve[j].d) { const a = curve[j - 1], b = curve[j], t = (x - a.d) / (b.d - a.d || 1); return { Vb: a.Vb + t * (b.Vb - a.Vb), dr: a.dr.map((y, i) => y + t * (b.dr[i] - y)) }; } const c = curve[curve.length - 1]; return { Vb: c.Vb, dr: c.dr.slice() }; };
+  const Vbmax = Math.max(...curve.map(c => c.Vb));
+  return { curve, ev, dEnd, VbEnd: curve[curve.length - 1].Vb, stateAt, VbAt: (d) => stateAt(d).Vb, drifts: null, roof: null, endBy, Vbmax, bb, critical: ic, lamPk };
 }
+
 // ---------------------------------------------------------------------
 //  Tiempo-historia NO LINEAL de edificio de cortante (resortes bilineales de entrepiso con endurecimiento
 //  cinemático, P-Δ opcional con columna ficticia, amortiguamiento de Rayleigh con la rigidez inicial)
 //  Newmark-β (γ = 1/2, β = 1/4) + Newton-Raphson con la rigidez tangente tridiagonal (Chopra §16.3, Tabla 16.3.3)
 //  m (kg), k (N/m), Vy (N), h (m); ag (m/s²). linear = true → resortes elásticos (contraste)
 // ---------------------------------------------------------------------
-export function nlShearTH({ m, k, Vy, alpha = 0, h, ag, dt, a0 = 0, a1 = 0, pdelta = false, fP = 1, linear = false, beta = 0.25, gamma = 0.5, hmax = Infinity, collapse = 0.10, tol = 1e-8, maxit = 40 }) {
+// tfree: vibración libre añadida al final (s); la deriva residual es la media de la deriva en los últimos tavg s
+export function nlShearTH({ m, k, Vy, alpha = 0, h, ag: ag0, dt, a0 = 0, a1 = 0, pdelta = false, fP = 1, linear = false, beta = 0.25, gamma = 0.5, hmax = Infinity, collapse = 0.10, tol = 1e-8, maxit = 40, tfree = 0, tavg = 0 }) {
+  const Nf = Math.max(0, Math.round(tfree / dt)), ag = Nf ? Float64Array.from({ length: ag0.length + Nf }, (_, i) => (i < ag0.length ? ag0[i] : 0)) : ag0;
   const n = m.length, N = ag.length;
   const al = Array.isArray(alpha) ? alpha : m.map(() => alpha);
   const th = m.map((_, i) => (pdelta ? G * fP * m.slice(i).reduce((a, b) => a + b, 0) / h[i] : 0));
@@ -433,8 +446,10 @@ export function nlShearTH({ m, k, Vy, alpha = 0, h, ag, dt, a0 = 0, a1 = 0, pdel
     }
     for (let r = 0; r < n; r++) { U[r][i + 1] = u[r]; Fs[r][i + 1] = sp[r].f; }
   }
-  const dres = m.map((_, r) => dPrev[r]);
-  return { U, Fs, uPk, tuPk, drPk, Fpk, Eh, VbPk, tVb, itMax, nfail, tCol, ns, hs, theta: th, dres, steps };
+  let dres = m.map((_, r) => dPrev[r]);
+  const Na = Math.round(tavg / dt);
+  if (Na > 1 && tCol === null) dres = m.map((_, r) => { let sm = 0; for (let t = N - Na; t < N; t++) sm += U[r][t] - (r ? U[r - 1][t] : 0); return sm / Na; });
+  return { N, Nf, U, Fs, uPk, tuPk, drPk, Fpk, Eh, VbPk, tVb, itMax, nfail, tCol, ns, hs, theta: th, dres, steps };
 }
 
 // curva tabulada [x, y] (desde el origen): interpolación y área acumulada
@@ -456,6 +471,7 @@ export function bilinEqualArea(c, dp) {
 // Método N2 (Fajfar 2000; EC8-1 Anexo B). cap: [[Sd(m), Sa(m/s²)]]; Se(T) en m/s²; Tc en s
 export function n2Method(cap, Se, Tc) {
   const c = tab(cap); let dm = Math.min(c.xmax, Se(0.5) * (0.5 / PI2) ** 2), out = null;
+  if (!(dm > 0)) { const Fy = c.P[1][1], dy = c.P[1][0]; return { Fy, dy, Ts: PI2 * Math.sqrt(dy / Fy), det: 0, dt: 0, qu: 0, Se: 0, it: 0, regla: 'demanda nula', beyond: false }; }
   for (let it = 0; it < 100; it++) {
     const dmc = Math.min(dm, c.xmax);
     // F*y = resistencia del mecanismo; con rama descendente (P-Δ, degradación) se toma el máximo hasta d*m
@@ -590,6 +606,7 @@ export function idealizeASCE41(c, dt) {
 export function coefMethod(curve, W, Sa, Ti, C0, a = 130, Cm = 1, opt = {}) {
   const c = tab(curve), Ki = c.k0, lam = opt.lambda ?? 0.8, aPD = Math.min(opt.alphaPD ?? 0, 0);
   let dt = C0 * Sa(Ti) * (Ti / PI2) ** 2, out;
+  if (!(dt > 0)) { const idl = idealizeASCE41(c, c.P[1][0]); return { dt: 0, C0, C1: 1, C2: 1, mu: 1, Vy: idl.Vy, Ke: idl.Ke, Ki, Te: Ti, Ti, SaT: 0, dy: idl.dy, Dd: 0, Vd: 0, a1: 0, a2: null, ae: null, mumax: Infinity, it: 0, unstable: false }; }
   for (let it = 0; it < 100; it++) {
     const idl = idealizeASCE41(c, Math.min(dt, c.xmax));
     const Te = Ti * Math.sqrt(Ki / idl.Ke), SaT = Sa(Te);
@@ -672,9 +689,12 @@ export function confinementRect(p) {
   const Ash = Math.PI * p.dbh ** 2 / 4, sp = p.s - p.dbh;
   const Ast = p.layers.reduce((a, l) => a + l.As, 0), rcc = Ast / (bc * dc);
   const top = p.layers[0], nTop = top.n || 2, nRows = p.layers.length, db = Math.max(...p.layers.map(l => l.db || 0));
+  // w' = separación libre entre barras longitudinales RESTRINGIDAS por ramas de estribo (Mander 1988 Fig. 7):
+  // en las caras b se restringen a lo sumo nlh barras (ramas paralelas a h) y en las caras h a lo sumo nlb
+  const nRb = Math.max(2, Math.min(nTop, Math.round(p.nlh) || 2)), nRh = Math.max(2, Math.min(nRows, Math.round(p.nlb) || 2));
   let w2 = 0;
-  if (nTop > 1) w2 += 2 * (nTop - 1) * Math.max(bc / (nTop - 1) - db, 0) ** 2;
-  if (nRows > 1) w2 += 2 * (nRows - 1) * Math.max(dc / (nRows - 1) - db, 0) ** 2;
+  if (nTop > 1) w2 += 2 * (nRb - 1) * Math.max(bc / (nRb - 1) - db, 0) ** 2;
+  if (nRows > 1) w2 += 2 * (nRh - 1) * Math.max(dc / (nRh - 1) - db, 0) ** 2;
   const ke = Math.max(0, (1 - w2 / (6 * bc * dc)) * (1 - sp / (2 * bc)) * (1 - sp / (2 * dc)) / (1 - rcc));
   const rb = p.nlb * Ash / (p.s * dc), rh = p.nlh * Ash / (p.s * bc);    // ramas paralelas a b y a h
   const flb = ke * rb * p.fyh, flh = ke * rh * p.fyh, fl = (flb + flh) / 2;
@@ -684,7 +704,7 @@ export function confinementRect(p) {
   const fcc = mode === 'promedio' ? fccAvg : mode === 'minimo' ? fccMin : manderFccBiaxial(p.fc, flb, flh);
   const rs = rb + rh;
   const ecu = 0.004 + 1.4 * rs * p.fyh * (p.esuh || 0.09) / fcc;
-  return { bc, dc, ke, rb, rh, rs, flb, flh, fl, fcc, fccAvg, fccMin, mode, ecu, w2, rcc, sp };
+  return { bc, dc, ke, rb, rh, rs, flb, flh, fl, fcc, fccAvg, fccMin, mode, ecu, w2, rcc, sp, nRb, nRh };
 }
 export function momentCurvature(p) {
   const { b, h } = p, nf = p.nf || 120, dy = h / nf;
@@ -842,6 +862,7 @@ defineFns({
   C2ASCE41: { fn: (mu, Te) => C2ASCE41(n0(mu), n0(Te, 's')), tex: 'C_2', desc: 'Coeficiente C2 = 1 + ((μ − 1)/Te)²/800 para Te ≤ 0.7 s (ASCE 41-17 Ec. 7-30)', args: 'μ, Te' },
   RmuN2: { fn: (mu, T, Tc) => { const m = n0(mu), t = n0(T, 's'), c = n0(Tc, 's'); return t < c ? (m - 1) * t / c + 1 : m; }, tex: 'R_\\mu', desc: 'Factor de reducción por ductilidad Rμ (Vidic-Fajfar-Fischinger; N2): (μ − 1)T/TC + 1 si T < TC, μ si T ≥ TC', args: 'μ, T, TC' },
   fccMander: { fn: (fco, fl) => { const f = n0(fco, 'MPa'), l = n0(fl, 'MPa'); return mkUnit(manderFcc(f, l), 'MPa'); }, tex: "f'_{cc}", desc: "Resistencia del concreto confinado f'cc = f'co(−1.254 + 2.254√(1 + 7.94f'l/f'co) − 2f'l/f'co) (Mander et al. 1988)", args: "f'co, f'l" },
+  fccMander2: { fn: (fco, flx, fly) => mkUnit(manderFccBiaxial(n0(fco, 'MPa'), n0(flx, 'MPa'), n0(fly, 'MPa')), 'MPa'), tex: "f'_{cc}", desc: "f'cc de Mander con presiones laterales efectivas distintas f'lx ≠ f'ly: superficie triaxial de 5 parámetros (ábaco de Mander et al. 1988, Fig. 4); con f'lx = f'ly coincide con la fórmula cerrada", args: "f'co, f'lx, f'ly" },
   eccMander: { fn: (fco, fcc, eco) => (eco === undefined ? 0.002 : n0(eco)) * (1 + 5 * (n0(fcc, 'MPa') / n0(fco, 'MPa') - 1)), tex: '\\varepsilon_{cc}', desc: 'Deformación en la resistencia máxima confinada εcc = εco[1 + 5(f\'cc/f\'co − 1)] (Mander 1988)', args: "f'co, f'cc, εco" },
   ecuPriestley: { fn: (rs, fyh, esu, fcc) => 0.004 + 1.4 * n0(rs) * n0(fyh, 'MPa') * n0(esu) / n0(fcc, 'MPa'), tex: '\\varepsilon_{cu}', desc: 'Deformación última del concreto confinado εcu = 0.004 + 1.4ρs·fyh·εsu/f\'cc (Priestley, Seible y Calvi 1996)', args: 'ρs, fyh, εsu, f\'cc' },
   LpPP: { fn: (L, dbl, fy) => mkUnit(0.08 * n0(L, 'mm') + 0.022 * n0(dbl, 'mm') * n0(fy, 'MPa'), 'mm'), tex: 'L_p', desc: 'Longitud de rótula plástica Lp = 0.08L + 0.022·db·fy [mm, MPa] (Paulay y Priestley 1992, Ec. 4.30)', args: 'L, db, fy' },

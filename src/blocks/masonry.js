@@ -217,10 +217,10 @@ registerBlock('tanque', {
     g += dimV(X(-D / 2 - tw) - 14, Y(hi), Y(0), 'hi = ' + f2(hi), C.red);
     g += dimV(X(-D / 2 - tw) - 34, Y(hc), Y(0), 'hc = ' + f2(hc), C.green);
     g += dimH(X(-D / 2), X(D / 2), Y(-Math.max(tw, 0.2)) + (elev ? 16 : 30), (circ0 ? 'D = ' : 'L = ') + f2(D) + ' m');
-    if (Pi > 0) g += arrow(X(D / 2 + tw) + 50, Y(hi), X(D / 2 + tw) + 104, Y(hi), C.red, 1.6) + T(X(D / 2 + tw) + 77, Y(hi) - 5, 'Pi = ' + f2(Pi) + ' t', { fs: 9, c: C.red });
-    if (Pc > 0) g += arrow(X(D / 2 + tw) + 50, Y(hc), X(D / 2 + tw) + 104, Y(hc), C.green, 1.6) + T(X(D / 2 + tw) + 77, Y(hc) - 5, 'Pc = ' + f2(Pc) + ' t', { fs: 9, c: C.green });
+    if (Pi > 0) g += arrow(X(D / 2 + tw) + 50, Y(hi), X(D / 2 + tw) + 104, Y(hi), C.red, 1.6) + T(X(D / 2 + tw) + 77, Y(hi) - 5, 'Pi = ' + f2(Pi) + ' tonf', { fs: 9, c: C.red });
+    if (Pc > 0) g += arrow(X(D / 2 + tw) + 50, Y(hc), X(D / 2 + tw) + 104, Y(hc), C.green, 1.6) + T(X(D / 2 + tw) + 77, Y(hc) - 5, 'Pc = ' + f2(Pc) + ' tonf', { fs: 9, c: C.green });
     const restr = Pi > 0 && !(Pc > 0);   // Pc = 0 con Pi > 0: la cubierta restringe el oleaje (Wc tratada como impulsiva)
-    if (restr) g += T(X(D / 2 + tw) + 50, Y(hc) - 5, 'Pc = 0: Wc restringida → impulsiva', { fs: 9, c: C.green, a: 'start' });
+    if (restr) g += T(X(D / 2 + tw) + 50, Y(hc) - 16, 'Pc = 0: Wc restringida', { fs: 9, c: C.green, a: 'start' }) + T(X(D / 2 + tw) + 50, Y(hc) - 5, '→ se suma a la impulsiva', { fs: 9, c: C.green, a: 'start' });
     // ---- diagramas de presión (por unidad de altura, normalizados)
     const gx = 470, gw = 210, gh = Math.max(160, Math.min(260, HL * sc)), gy0 = elev ? 70 + gh : base - 10, gy1 = gy0 - gh;
     const YP = (y) => gy0 - y / HL * gh;
@@ -287,16 +287,17 @@ registerBlock('cilindro', {
     const fine = Array.from({ length: 101 }, (_, i) => i / 100);
     const Tv = fine.map(y => [y, sh.T(y) * w * H * R]), Mv = fine.map(y => [y, sh.M(y) * w * H ** 3]);
     // pared
-    g += rect(28, top, 18, hgt, C.conc, C.ink, 1.2);
-    g += rect(46, top, 22, hgt, water, 'none') + Lne(46, top, 68, top, C.blue, 1.2);
-    g += `<rect x="20" y="${top + hgt}" width="60" height="10" fill="${basen === 1 ? C.conc : '#fff'}" stroke="${C.ink}"/>`;
-    for (let i = 0; i <= 10; i += 2) g += T(18, Yy(i / 10) + 3, f2(i / 10, 1) + 'H', { fs: 8.5, a: 'end', c: C.axis });
-    g += panel(130, 230, CT.map(c => c * w * H * R), Tv, 'Tensión anular T', '[tonf/m] · T = C_T·w·H·R', C.blue, (v) => f2(v, 1));
+    g += rect(44, top, 18, hgt, C.conc, C.ink, 1.2);
+    g += rect(62, top, 22, hgt, water, 'none') + Lne(62, top, 84, top, C.blue, 1.2);
+    g += `<rect x="36" y="${top + hgt}" width="60" height="10" fill="${basen === 1 ? C.conc : '#fff'}" stroke="${C.ink}"/>`;
+    for (let i = 0; i <= 10; i += 2) g += T(38, Yy(i / 10) + 3, f2(i / 10, 1) + 'H', { fs: 8.5, a: 'end', c: C.axis });
+    g += panel(130, 230, CT.map(c => c * w * H * R), Tv, 'Tensión anular T', '[tonf/m] · T = CT·w·H·R', C.blue, (v) => f2(v, 1));
     g += panel(430, 230, CMv.map(c => c * w * H ** 3), Mv, 'Momento vertical M', '[tonf·m/m] · (−) tracción cara interior', C.red, (v) => f2(v, 2));
     g += T(Wd / 2, Hd - 14, `H²/(D·t) = ${f2(k, 2)} · βH = ${f2(sh.bH, 2)} · base ${basen === 1 ? 'empotrada' : 'articulada'} · Tmax = ${sh.Tmax.toFixed(3)}·wHR en ${f2(sh.yTmax, 2)}H · Mbase = ${sh.Mbase.toFixed(4)}·wH³`, { fs: 9.5, c: '#24292f' });
     // tabla de coeficientes PCA
     ctx.tab = (ctx.tab || 0) + 1;
-    const tbl = `<div class="cap">Tabla ${ctx.tab}: Coeficientes de tensión anular C<sub>T</sub> y momento C<sub>M</sub> (equivalentes a las Tablas A-${basen === 1 ? '1 y A-2' : '5 y A-7'} del PCA), H²/Dt = ${f2(k, 2)}</div><table class="tbl"><thead><tr><th>Punto</th>${ys.map(y => `<th>${f2(y, 1)}H</th>`).join('')}</tr></thead><tbody><tr><td>C<sub>T</sub></td>${CT.map(c => `<td>${f2(c, 3)}</td>`).join('')}</tr><tr><td>C<sub>M</sub></td>${CMv.map(c => `<td>${(c >= 0 ? '+' : '') + c.toFixed(4)}</td>`).join('')}</tr><tr><td>T [tonf/m]</td>${CT.map(c => `<td>${f2(c * w * H * R, 2)}</td>`).join('')}</tr><tr><td>M [t·m/m]</td>${CMv.map(c => `<td>${f2(c * w * H ** 3, 3)}</td>`).join('')}</tr></tbody></table>`;
+    const mn = (x, d) => (Math.abs(x) < 0.5 * 10 ** -d ? 0 : x).toFixed(d).replace('-', '−');
+    const tbl = `<div class="cap">Tabla ${ctx.tab}: Coeficientes de tensión anular C<sub>T</sub> y de momento C<sub>M</sub> (equivalentes a las Tablas A-${basen === 1 ? '1 y A-2' : '5 y A-7'} del PCA), H²/Dt = ${f2(k, 2)}; T = C<sub>T</sub>·w·H·R [tonf/m], M = C<sub>M</sub>·w·H³ [tonf·m/m]</div><table class="tbl" style="font-size:10.5px"><thead><tr><th style="padding:3px 4px">y/H</th>${ys.map(y => `<th style="padding:3px 4px">${f2(y, 1)}</th>`).join('')}</tr></thead><tbody><tr><td style="padding:3px 4px">C<sub>T</sub></td>${CT.map(c => `<td style="padding:3px 4px">${mn(c, 3)}</td>`).join('')}</tr><tr><td style="padding:3px 4px">C<sub>M</sub></td>${CMv.map(c => `<td style="padding:3px 4px">${(c > 0 ? '+' : '') + mn(c, 4)}</td>`).join('')}</tr><tr><td style="padding:3px 4px">T</td>${CT.map(c => `<td style="padding:3px 4px">${mn(c * w * H * R, 2)}</td>`).join('')}</tr><tr><td style="padding:3px 4px">M</td>${CMv.map(c => `<td style="padding:3px 4px">${mn(c * w * H ** 3, 3)}</td>`).join('')}</tr></tbody></table>`;
     return `<div class="figure">${svgWrap(Wd, Hd, g)}${caption(ctx, b.titulo || 'Tensión anular y momento flector vertical en la pared del tanque circular (teoría de cáscaras — PCA)')}</div><div class="figure">${tbl}</div>`;
   },
 });

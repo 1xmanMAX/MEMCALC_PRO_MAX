@@ -196,10 +196,96 @@ section('SIMQKE (E.030 Z4-S2, R = 1)');
   truthy('El registro sintético se usa en thsdof', h('umax', 'mm') > 0);
 }
 
+section('Revisión: contraste con OpenSeesPy 3.7 (docs/referencias/revision-dynamics.md)');
+{
+  const r = D.elCentro();
+  // 1 GDL elastoplástico (Steel01 b = 0, Newmark promedio con el mismo subpaso): Tn = 0.5 s, ζ = 5 %, Ry = 4
+  { const w = 2 * Math.PI / 0.5, u0 = D.spectrumNJ(r.ag, r.dt, [0.5], 0.05)[0].D, nl = D.newmarkNL(r.ag, r.dt, w, 0.05, w * w * u0 / 4, 0);
+    near('OpenSees 1 GDL EP: umax = 0.044304 m (pico en subpasos)', nl.upk, 0.044304, 0.001);
+    near('OpenSees 1 GDL EP: u residual = −0.030895 m', nl.u[nl.u.length - 1], -0.030895, 0.001);
+    truthy('Newton-Raphson converge en todos los pasos', nl.nfail === 0); }
+  { const w = 2 * Math.PI / 1, u0 = D.spectrumNJ(r.ag, r.dt, [1], 0.05)[0].D, nl = D.newmarkNL(r.ag, r.dt, w, 0.05, w * w * u0 / 2, 0.1);
+    near('OpenSees 1 GDL bilineal α = 0.1, Ry = 2: umax = 0.086679 m', nl.upk, 0.086679, 0.001); }
+  // edificio de 5 pisos de Chopra no lineal (zeroLength + Steel01, Rayleigh βK_init, columna ficticia sin amortiguamiento)
+  const kip = 4448.2216, inch = 0.0254, m = Array(5).fill(100 * kip / G), k = Array(5).fill(31.54 * kip / inch), h = Array(5).fill(12 * 0.3048);
+  const md = D.shearModes(m, k), ry = D.rayleighCoef(md[0].T, md[2].T, 0.05), ag = r.ag.map(x => 1.5 * x);
+  const VyOf = (f) => [1, 0.95, 0.85, 0.7, 0.45].map(x => x * f * 500 * kip * 0.4);
+  const run = (f, alpha, pdelta) => D.nlShearTH({ m, k, Vy: VyOf(f), alpha, h, ag, dt: r.dt, a0: ry.a0, a1: ry.a1, pdelta, hmax: md[4].T / 20 });
+  let t = t0(); let R = run(1e9, 0, false); const ms = t0() - t;
+  near('OpenSees 5 pisos lineal (Rayleigh 1-3): techo = 0.26193 m', R.uPk[4], 0.26193, 0.0005);
+  R = run(0.4, 0.03, false);
+  near('OpenSees 5 pisos bilineal α = 0.03: techo = 0.23924 m', R.uPk[4], 0.23924, 0.001);
+  near('OpenSees 5 pisos bilineal: deriva 1 = 0.0898 m', R.drPk[0], 0.0898, 0.003);
+  R = run(0.4, 0.03, true);
+  near('OpenSees 5 pisos bilineal + P-Δ: techo = 0.33457 m', R.uPk[4], 0.33457, 0.002);
+  near('OpenSees 5 pisos bilineal + P-Δ: residual 1 = −0.1420 m', R.dres[0], -0.1420, 0.005);
+  R = run(0.3, 0, true);
+  truthy('Colapso dinámico por P-Δ (EP, δ/h > 10 %) en t ≈ 11.18 s como OpenSees', R.tCol !== null && Math.abs(R.tCol - 11.18) < 0.1, 't = ' + R.tCol);
+  truthy('nlShearTH 5 pisos (3120 pasos) en < 150 ms', ms < 150, ms.toFixed(1) + ' ms');
+  // M–φ: Hognestad (Concrete01 con fpcu = 0.85f''c) + Steel01 b = 0.01, sin tracción, fibras idénticas
+  const mc = D.momentCurvature({ b: 300, h: 500, cover: 40, dbh: 10, s: 100, nlb: 2, nlh: 2, fyh: 420, fc: 30, conc: 'hognestad', k3: 0.85, ecuH: 0.0038, tension: false, steel: { fy: 420, Es: 200000, model: 'bilineal', b: 0.01, esu: 0.1, fsu: 567 }, layers: [{ d: 60, As: 1473, n: 3, db: 25 }, { d: 440, As: 1473, n: 3, db: 25 }], P: 0, nf: 120 });
+  const Mat = (phi) => { const p = mc.pts; for (let i = 1; i < p.length; i++) if (p[i].phi >= phi) return (p[i - 1].M + (p[i].M - p[i - 1].M) * (phi - p[i - 1].phi) / (p[i].phi - p[i - 1].phi)) / 1e6; return NaN; };
+  near('OpenSees M–φ: M(φ = 6.615e-6/mm) = 224.744 kN·m', Mat(6.615e-6), 224.744, 0.002);
+  near('OpenSees M–φ: M(φ = 1.6979e-5/mm) = 250.298 kN·m', Mat(1.69785e-5), 250.298, 0.002);
+  near('OpenSees M–φ: M(φ = 5.020e-5/mm) = 265.640 kN·m', Mat(5.0200e-5), 265.640, 0.002);
+}
+
+section('Revisión: confinamiento triaxial de Mander (f\'lx ≠ f\'ly)');
+{
+  for (const x of [0.05, 0.1, 0.3]) near(`Superficie de 5 parámetros con f'l1 = f'l2 = ${x}f'co = fórmula cerrada`, D.manderFccBiaxial(1, x, x), D.manderFcc(1, x), 0.0005);
+  near("f'cc/f'co (f'l1 = 0, f'l2 = 0.2) = 1.260 (ábaco de Mander Fig. 4: ≈ 1.26)", D.manderFccBiaxial(1, 0, 0.2), 1.260, 0.003);
+  near("Chang-Mander (1994) aproxima la superficie (0.05; 0.2) a ±1 %", D.changManderFcc(1, 0.05, 0.2), D.manderFccBiaxial(1, 0.05, 0.2), 0.01);
+  truthy("f'l promedio sobrestima f'cc (0.05; 0.2): 1.678 vs 1.527", D.manderFcc(1, 0.125) > 1.09 * D.manderFccBiaxial(1, 0.05, 0.2));
+  const p = { b: 400, h: 600, cover: 40, dbh: 9.5, s: 100, nlb: 3, nlh: 2, fyh: 420, esuh: 0.09, fc: 28, layers: [{ d: 67, As: 2040, n: 4, db: 25.4 }, { d: 300, As: 1020, n: 2, db: 25.4 }, { d: 533, As: 2040, n: 4, db: 25.4 }] };
+  const ct = D.confinementRect(p), cp = D.confinementRect({ ...p, confMode: 'promedio' });
+  truthy("Columna 40 × 60: f'cc triaxial ≤ promedio y ≥ mínimo", ct.fcc <= cp.fcc && ct.fcc >= D.manderFcc(28, Math.min(ct.flb, ct.flh)), `${ct.fcc.toFixed(2)} / ${cp.fcc.toFixed(2)} MPa`);
+  const v = calc('f2 = fccMander2(30 MPa, 1.5 MPa, 6 MPa)');
+  near("fccMander2(30; 1.5; 6 MPa) = superficie", v('f2', 'MPa'), D.manderFccBiaxial(30, 1.5, 6), 1e-6);
+}
+
+section('Revisión: pushover con P-Δ y degradación, ASCE 41 y N2');
+{
+  const base = { m: [100e3, 100e3, 80e3], k: [80e6, 70e6, 60e6], Vy: [1500e3, 1300e3, 1000e3], h: [3.5, 3, 3], alpha: 0.05, fcr: 0.4, r2: 0.5 };
+  const ex = D.pushoverShear(base), inc = D.pushoverShear({ ...base, pdelta: true, fP: 0 });
+  near('Solución en serie con θ = 0 reproduce la curva exacta (d = 0.08 m)', inc.stateAt(0.08).Vb, ex.stateAt(0.08).Vb, 1e-9);
+  const pd = D.pushoverShear({ ...base, pdelta: true });
+  near('P-Δ: rigidez inicial = Σ(1/(k − θ))⁻¹ con el patrón', pd.curve[1].Vb / pd.curve[1].d, 1 / pd.Sx.reduce((a, x, i) => a + x / (base.k[i] - pd.theta[i]), 0), 1e-6);
+  const dg = D.pushoverShear({ ...base, pdelta: true, cap: { dr: 0.015, ac: 0.1, res: 0.2 } });
+  const last = dg.curve[dg.curve.length - 1], pk = dg.curve.reduce((a, c) => (c.Vb > a.Vb ? c : a));
+  truthy('Degradación: rama descendente y localización en el entrepiso 1 (los demás descargan)', last.Vb < 0.9 * pk.Vb && last.dr[1] < pk.dr[1] && last.dr[0] / 3.5 > 0.04, `Vb ${(pk.Vb / 1e3).toFixed(0)} → ${(last.Vb / 1e3).toFixed(0)} kN`);
+  // ASCE 41: curva bilineal exacta → idealización recupera Vy y Ke
+  const cb = [[0.01, 1000], [0.05, 1000 + 0.05 * 1e5 * 0.04]];
+  const id = D.idealizeASCE41(D.tab(cb), 0.05);
+  near('ASCE 41 §7.4.3.2.4: curva bilineal → Vy = 1000', id.Vy, 1000, 1e-4);
+  near('ASCE 41: Ke = Ki', id.Ke, 1e5, 1e-4);
+  const cm = D.coefMethod(cb, 10000, () => 0.5 * G, 0.5, 1.3, 130, 1);
+  near('ASCE 41: μstrength = Sa/(Vy/W) = 0.5/0.1 = 5', cm.mu, 5, 1e-6);
+  near('ASCE 41: C1 = 1 + 4/(130·0.25) = 1.1231', cm.C1, 1 + 4 / (130 * 0.25), 1e-6);
+  const cn = [[0.02, 1000], [0.05, 900], [0.10, 500]];
+  const cmn = D.coefMethod(cn, 10000, () => 0.5 * G, 0.6, 1.2, 130, 1, { alphaPD: -0.02 });
+  truthy('ASCE 41 Ec. 7-32: pendiente negativa → μmax finito', cmn.a2 < 0 && isFinite(cmn.mumax), `α2 = ${cmn.a2.toFixed(3)}, μmax = ${cmn.mumax.toFixed(2)}`);
+  const n2 = D.n2Method([[0.002, 2], [0.3, 2.2]], () => 30, 8.0);
+  truthy('N2: d*t ≤ 3d*et (EC8-1 B.5)', n2.cap3 && Math.abs(n2.dt - 3 * n2.det) < 1e-12, n2.regla);
+}
+
+section('Bloque thnl (tiempo-historia no lineal)');
+{
+  settings.sys = 'us';
+  const pre = 'W_i = [100, 100, 100, 100, 100] kip\nk_i = [31.54, 31.54, 31.54, 31.54, 31.54] kip/in\nh_i = [12, 12, 12, 12, 12] ft\nVy_i = [1e5, 1e5, 1e5, 1e5, 1e5] kip';
+  let t = t0();
+  const g = block('thnl', { masas: 'W_i', rigideces: 'k_i', Vy: 'Vy_i', alturas: 'h_i', alpha: '0', registro: 'elcentro', zeta: '0.05', modosR: '1, 2' }, pre);
+  const ms = t0() - t;
+  const gm = block('thmdof', { masas: 'W_i', rigideces: 'k_i', alturas: 'h_i', registro: 'elcentro', amort: 'rayleigh', zeta: '0.05', modosR: '1, 2' }, pre);
+  near('thnl elástico = superposición modal con el mismo Rayleigh (techo)', g('u_techo', 'in'), gm('u_techo', 'in'), 0.005);
+  truthy('thnl de 5 pisos en < 300 ms', ms < 300, ms.toFixed(1) + ' ms');
+  const w = block('thnl', { masas: 'W_i', rigideces: 'k_i', Vy: '[5, 5, 4, 3, 2] kip', alturas: 'h_i', alpha: '0', registro: 'elcentro', escala: '2', zeta: '0.05', pdelta: true, dlim: '0.02' }, pre);
+  truthy('Resistencia muy baja + P-Δ → colapso → NO CUMPLE sin NaN', w.ctx.checks.some(c => !c.ok) && !/NaN/.test(w.html));
+}
+
 section('Plantillas del módulo');
 {
   const ids = TEMPLATES.filter(t => t.cat === 'Dinámica estructural').map(t => t.id);
-  truthy('6 plantillas en la categoría «Dinámica estructural»', ids.length >= 6, ids.join(', '));
+  truthy('7 plantillas en la categoría «Dinámica estructural»', ids.length >= 7, ids.join(', '));
   for (const id of ids) {
     const t = t0(); const g = runTemplate(id); const ms = t0() - t;
     const r = g.res;
@@ -214,6 +300,22 @@ section('Plantillas del módulo');
   // datos absurdos: resistencia muy baja → no cumple
   const bad = runTemplate('dy-pushover-n2', (d) => { const b = d.blocks.find(x => x.type === 'calc' && /Vy_i =/.test(x.src)); b.src = b.src.replace('[3200, 2800, 2400, 1700]', '[900, 800, 700, 500]'); });
   truthy('Pushover con resistencias muy bajas no produce «todas cumplen»', bad.res.ctx.errors.length > 0 || bad.res.ctx.checks.some(c => !c.ok));
+  // datos extremos en cada plantilla: sin errores, sin NaN y con al menos un NO CUMPLE
+  const setSrc = (re, from, to) => (d) => { const b = d.blocks.find(x => x.type === 'calc' && re.test(x.src)); b.src = b.src.replace(from, to); };
+  const extremos = [
+    ['dy-sdof-elcentro', setSrc(/mu_disp =/, 'mu_disp = 6', 'mu_disp = 1.2')],
+    ['dy-espectro-e030', setSrc(/fesc_max =/, 'fesc_max = 4', 'fesc_max = 0.5')],
+    ['dy-5pisos-chopra', setSrc(/dlim =/, 'dlim = 0.020', 'dlim = 0.0005')],
+    ['dy-nl-cortante', setSrc(/Cy = 0.20/, 'Cy = 0.20', 'Cy = 0.03')],
+    ['dy-pushover-n2', setSrc(/k_i =/, '[450000, 400000, 360000, 300000] kN/m', '[2000, 2000, 2000, 2000] kN/m')],
+    ['dy-momcurv-col', setSrc(/P = 1200 kN/, 'P = 1200 kN', 'P = 20000 kN')],
+    ['dy-aislamiento', setSrc(/Dcap =/, 'Dcap = 45 cm', 'Dcap = 5 cm')],
+  ];
+  for (const [id, mut] of extremos) {
+    const t = t0(); const r = runTemplate(id, mut).res; const ms = t0() - t;
+    const html = r.html;
+    truthy(`${id} con datos extremos: sin errores ni NaN y con NO CUMPLE`, r.ctx.errors.length === 0 && r.ctx.checks.some(c => !c.ok) && !/NaN/.test(html), r.ctx.errors.map(e => JSON.stringify(e)).join(' ') + ` (${ms.toFixed(0)} ms)`);
+  }
 }
 void math;
 done();
