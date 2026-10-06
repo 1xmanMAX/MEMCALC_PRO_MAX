@@ -261,7 +261,7 @@ registerBlock('thsdof', {
     if (met === 'nj' || nl) {
       const c = njCoefs(w, z, dt);
       if (met === 'nj') { const ft = (x) => { const t = fe(x, 5); const m = /^(-?[\d.]+)e([-+]\d+)$/.exec(t); return m ? `${m[1]}\\times 10^{${+m[2]}}` : t; };
-        h += txt(`Recurrencia exacta con ${K('p = -\\ddot u_g')} (Chopra Ec. 5.2.5 y Tabla 5.2.1; coeficientes en unidades SI):`) + `<div class="eqd">${K('\\begin{aligned} u_{i+1} &= A u_i + B\\dot u_i + C p_i + D p_{i+1} \\\\ \\dot u_{i+1} &= A\' u_i + B\'\\dot u_i + C\' p_i + D\' p_{i+1} \\end{aligned}', true)}${K(`\\begin{array}{llll} A = ${ft(c.A)} & B = ${ft(c.B)} & C = ${ft(c.C)} & D = ${ft(c.D)} \\\\ A' = ${ft(c.Ap)} & B' = ${ft(c.Bp)} & C' = ${ft(c.Cp)} & D' = ${ft(c.Dp)} \\end{array}`, true)}</div>`; }
+        h += txt(`Recurrencia exacta con ${K('p = -\\ddot u_g')} (Chopra Ec. 5.2.5 y Tabla 5.2.1; coeficientes en unidades SI):`) + `<div class="txt">${K('\\begin{aligned} u_{i+1} &= A u_i + B\\dot u_i + C p_i + D p_{i+1} \\\\ \\dot u_{i+1} &= A\' u_i + B\'\\dot u_i + C\' p_i + D\' p_{i+1} \\end{aligned}', true)}${K(`\\begin{array}{llll} A = ${ft(c.A)} & B = ${ft(c.B)} & C = ${ft(c.C)} & D = ${ft(c.D)} \\\\ A' = ${ft(c.Ap)} & B' = ${ft(c.Bp)} & C' = ${ft(c.Cp)} & D' = ${ft(c.Dp)} \\end{array}`, true)}</div>`; }
     }
     const rows = []; for (let i = 0; i <= Math.min(6, N - 1); i++) rows.push([String(i), f2(i * dt, 2), sg(rec.ag[i] / G), sg(nL(R.u[i])), sg(nV(R.v[i])), sg(R.at[i] / G)]);
     h += tableHtml(ctx, 'Primeros pasos de la integración (para revisión manual)', ['i', K('t_i') + ' [s]', K('\\ddot u_g/g'), K('u_i') + ` [${UL()}]`, K('\\dot u_i') + ` [${lab(UV())}]`, K('\\ddot u^t_i/g')], rows);

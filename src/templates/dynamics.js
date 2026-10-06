@@ -57,13 +57,13 @@ D_ch_a = 2.67 in // Chopra Fig. 6.4.1: D para Tn = 0.5 s
 D_ch_b = 5.97 in // Chopra Fig. 6.4.1: D para Tn = 1 s
 D_ch_c = 7.47 in // Chopra Fig. 6.4.1: D para Tn = 2 s
 tol = 0.01 // Tolerancia relativa admitida frente a la solución publicada [0.001..0.05]`),
-      calc(`# Sistema a: Tn = 0.5 s`),
+      calc(`# Sistema a (periodo corto)`),
       { type: 'thsdof', registro: 'elcentro', T: 'Tn_a', zeta: 'zeta', modelo: 'lineal', metodo: 'nj', sufijo: 'a', escala: '1', titulo: 'Sistema a (Tn = 0.5 s, ζ = 2 %): üg(t), u(t) y A(t)' },
-      calc(`# Sistema b: Tn = 1 s`),
+      calc(`# Sistema b (periodo intermedio)`),
       { type: 'thsdof', registro: 'elcentro', T: 'Tn_b', zeta: 'zeta', modelo: 'lineal', metodo: 'nj', sufijo: 'b', escala: '1', titulo: 'Sistema b (Tn = 1 s, ζ = 2 %): üg(t), u(t) y A(t)' },
       calc(`## Contraste con Newmark-β (aceleración promedio)`),
       { type: 'thsdof', registro: 'elcentro', T: 'Tn_b', zeta: 'zeta', modelo: 'lineal', metodo: 'avg', sufijo: 'bN', escala: '1', titulo: 'Sistema b integrado con Newmark (γ = 1/2, β = 1/4)' },
-      calc(`# Sistema c: Tn = 2 s`),
+      calc(`# Sistema c (periodo largo)`),
       { type: 'thsdof', registro: 'elcentro', T: 'Tn_c', zeta: 'zeta', modelo: 'lineal', metodo: 'nj', sufijo: 'c', escala: '1', titulo: 'Sistema c (Tn = 2 s, ζ = 2 %): üg(t), u(t) y A(t)' },
       calc(`# Comparación con la solución publicada (Chopra Fig. 6.4.1)
 e_a = abs(umax_a - D_ch_a)/D_ch_a // Error relativo del sistema a
