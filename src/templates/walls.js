@@ -6,16 +6,6 @@ import { calc, text, summary } from './_h.js';
 
 const CAT = 'Muros de contención';
 
-// Bloque común de peligro sísmico (E.030-2018/2026, coeficiente pseudoestático)
-const SISMO = `## Coeficientes sísmicos (método pseudoestático)
-zona = 4 // Zona sísmica (E.030 Art. 10) [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
-Z = si(zona == 4, 0.45, si(zona == 3, 0.35, si(zona == 2, 0.25, 0.10))) // Aceleración máxima en roca, en g (E.030 Tabla N° 1)
-perfil = 2 // Perfil de suelo (E.030 Art. 12) [1 : S1 roca o suelo muy rígido|2 : S2 suelo intermedio|3 : S3 suelo blando]
-S = si(perfil == 1, 1.00, si(perfil == 2, si(zona == 4, 1.05, si(zona == 3, 1.15, si(zona == 2, 1.20, 1.60))), si(zona == 4, 1.10, si(zona == 3, 1.20, si(zona == 2, 1.40, 2.00))))) // Factor de suelo (E.030-2018 Tabla N° 3)
-PGA = Z*S // Aceleración máxima del terreno en la superficie (AASHTO 11.6.5.2: kh0 = Fpga·PGA)
-kh = khWall(PGA) // kh = 0.5·kh0: el muro puede desplazarse 25–50 mm (AASHTO 11.6.5.2.2)
-kv = 0 // Coeficiente vertical: se desprecia (AASHTO 11.6.5.2.2) [0..0.15]`;
-
 // Peligro sísmico con la E.030-2026: S interpolado por Vs30 (Tabla N° 4), igual que las plantillas «peru».
 // En zona 4 con Vs30 < 200 m/s (perfil S4) la norma exige un análisis de respuesta de sitio: la verificación
 // no cumple y S se evalúa con 200 m/s para que la memoria no se interrumpa.
@@ -204,13 +194,14 @@ check stemp <= min(3*hz, 40 cm) // Espaciamiento máximo del refuerzo por temper
 const gravedad = {
   id: 'wa-gravedad', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
   name: 'Muro de gravedad de concreto ciclópeo',
-  normas: 'RNE — NTE E.030, E.050 (39.13), E.060 Cap. 22 (concreto simple); Das; Calavera',
+  normas: 'RNE — NTE E.030-2026 (S por Vs30), E.050 (39.13), E.060 Cap. 22 (concreto simple); Das; Calavera',
   desc: 'Empuje de Coulomb y Mononobe–Okabe, estabilidad estática y sísmica y esfuerzos de tracción, compresión y corte en secciones horizontales del cuerpo (concreto simple, E.060 Cap. 22).',
   titulo: 'Diseño de muro de gravedad de concreto ciclópeo H = 4.00 m',
   validacion: {
     fuente: 'Control: Coulomb y Mononobe–Okabe (Das cap. 7; Kramer §11.6) + E.060 Cap. 22; motor validado con Das Ej. 7.6 y Sağlam P2',
-    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). kh = 0.5·Z·S se comprueba a mano.',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). kh = 0.5·Z·S = 0.5·0.45·1.05 se comprueba a mano. Al pasar de la Tabla N° 3 de la E.030-2018 (S2 → 1.05) a S por Vs30 de la E.030-2026 (octubre de 2026) se eligió Vs30 = 450 m/s, que en zona 4 da S = 1.00 + (550 − 450)/200·0.10 = 1.05: los valores de control no cambian.',
     valores: [
+      { var: 'S', esperado: 1.05, tol: 0.0005, desc: 'S por Vs30 = 450 m/s, zona 4 (E.030-2026 Tabla N° 4)' },
       { var: 'kh', esperado: 0.23625, tol: 0.0005, desc: 'kh = 0.5·Z·S' },
       { var: 'Ka', esperado: 0.4873, tol: 0.002, desc: 'Ka de Coulomb (trasdós inclinado, δ = 2φ/3)' },
       { var: 'Kae', esperado: 0.7481, tol: 0.002, desc: 'Kae de Mononobe–Okabe' },
@@ -226,7 +217,7 @@ const gravedad = {
 Muro de gravedad de **concreto ciclópeo** (concreto $f'_c = 140$ kgf/cm² con 30 % de piedra grande de hasta 8") de sección trapezoidal, con talud en ambas caras, sobre un cimiento corrido del mismo material. La estabilidad se obtiene por peso propio: no lleva refuerzo, por lo que se verifican los esfuerzos de **tracción por flexión**, compresión y corte en secciones horizontales del cuerpo.
 
 ## Normas y referencias
-- RNE **NTE E.050** Art. 39.13 (FS ≥ 1.50 estático y ≥ 1.25 pseudodinámico) y Art. 21 (capacidad portante); **NTE E.030** (Z, S).
+- RNE **NTE E.050** Art. 39.13 (FS ≥ 1.50 estático y ≥ 1.25 pseudodinámico) y Art. 21 (capacidad portante); **NTE E.030-2026** ($Z$, Tabla N° 1, y $S$ interpolado por $V_{s30}$, Tabla N° 4).
 - RNE **NTE E.060** Cap. 22 *Concreto estructural simple*: $M_n = 1.3\\sqrt{f'_c}\\,S$ (22.5.1), $V_n = 0.35\\sqrt{f'_c}\\,b\\,h$ (22.5.4), $\\phi = 0.65$ (9.3.2.5).
 - Coulomb (1776) y Mononobe–Okabe en la forma de B. M. Das, *Principios de ingeniería de cimentaciones* (cap. 7) y AASHTO LRFD A11.3; J. Calavera, *Muros de contención y muros de sótano* (muros de gravedad).
 
@@ -259,7 +250,7 @@ qa = 2.00 kgf/cm^2 // Presión admisible (E.050 Art. 22) [0.5..6]
 ## Material
 gammac = 2.30 tonf/m^3 // Peso unitario del concreto ciclópeo [2.2..2.5]
 fc = 140 kgf/cm^2 // Resistencia del concreto ciclópeo (matriz f'c 140 + 30 % P.G.) [100 kgf/cm^2|140 kgf/cm^2|175 kgf/cm^2]
-${SISMO}
+${SISMO26}
 qas = qaSismoE050(qa) // Presión admisible sísmica (E.050 Art. 21)
 ## Coeficientes de empuje (Coulomb)
 theta = atan((B - Lp - ie - b1)/H) -> deg // Inclinación del plano talón–corona respecto a la vertical (+: el suelo apoya sobre él)
@@ -325,13 +316,14 @@ check ftp <= ftadm // Tracción por flexión en la punta del cimiento`),
 const contrafuertes = {
   id: 'wa-contrafuertes', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
   name: 'Muro con contrafuertes',
-  normas: 'RNE — NTE E.030, E.050 (39.13), E.060; Huntington; Calavera; Bowles',
+  normas: 'RNE — NTE E.030-2026 (S por Vs30), E.050 (39.13), E.060; Huntington; Calavera; Bowles',
   desc: 'Estabilidad estática y sísmica, pantalla como losa continua apoyada en contrafuertes (franjas horizontales y momento vertical de Huntington), diseño del contrafuerte en T con acero inclinado y tirantes de unión.',
   titulo: 'Diseño de muro de contención con contrafuertes H = 8.00 m',
   validacion: {
     fuente: 'Control: Rankine + M-O (Das cap. 7), AASHTO 11.6.5 y E.060; motor validado con Das Ej. 8.1',
-    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). kh = 0.5·Z·S = 0.5·0.35·1.15 se comprueba a mano.',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). kh = 0.5·Z·S = 0.5·0.35·1.15 se comprueba a mano. Al pasar de la Tabla N° 3 de la E.030-2018 (S2, zona 3 → 1.15) a S por Vs30 de la E.030-2026 (octubre de 2026) se eligió Vs30 = 350 m/s, que en zona 3 da exactamente S = 1.15 (Tabla N° 4): los valores de control no cambian.',
     valores: [
+      { var: 'S', esperado: 1.15, tol: 0.0005, desc: 'S por Vs30 = 350 m/s, zona 3 (E.030-2026 Tabla N° 4)' },
       { var: 'kh', esperado: 0.20125, tol: 0.0005, desc: 'kh = 0.5·Z·S' },
       { var: 'Pa', unidad: 'tonf/m', esperado: 21.14, tol: 0.002, desc: 'Empuje activo estático' },
       { var: 'FSv', esperado: 5.381, tol: 0.002, desc: 'FS al volteo, estático' },
@@ -347,7 +339,7 @@ const contrafuertes = {
 Para alturas mayores de 6–7 m el muro en voladizo resulta antieconómico; los **contrafuertes** (placas triangulares unidas a la pantalla y al talón) convierten la pantalla y el talón en losas continuas apoyadas en ellos. La pantalla trabaja en **franjas horizontales** entre contrafuertes; cerca de la base, donde está restringida por la zapata, se desarrolla además un momento vertical. El contrafuerte es una **viga en voladizo de sección T** (ala = pantalla) con el refuerzo de tracción a lo largo de su borde inclinado.
 
 ## Normas y referencias
-- RNE **NTE E.050** 39.13 (FS 1.50 / 1.25), **E.030**, **E.060** (9.2.5, 10, 11, 12, 14.3).
+- RNE **NTE E.050** 39.13 (FS 1.50 / 1.25), **E.030-2026** ($S$ por $V_{s30}$, Tabla N° 4), **E.060** (9.2.5, 10, 11, 12, 14.3).
 - W. Huntington, *Earth Pressures and Retaining Walls* (1957): coeficientes $M^- = pL^2/12$, $M^+ = pL^2/16$ en franjas horizontales y momento vertical en la base $M_v \\approx 0.03\\,p\\,h_p\\,L$ (recogidos por J. Bowles, *Foundation Analysis and Design* §12, y J. Calavera, *Muros de contención y muros de sótano*).
 - B. M. Das, *Principios de ingeniería de cimentaciones* cap. 8.
 
@@ -382,7 +374,7 @@ fc = 210 kgf/cm^2 // Concreto [210 kgf/cm^2|280 kgf/cm^2]
 fy = 4200 kgf/cm^2 // Acero de refuerzo [2800..4200]
 gammac = 2.40 tonf/m^3 // Peso unitario del concreto armado (E.020 Anexo 1) [2.2..2.5]
 rec = 5 cm // Recubrimiento en pantalla y contrafuertes (E.060 7.7.1) [2..7.5]
-${SISMO.replace('zona = 4 //', 'zona = 3 //')}
+${SISMO26.replace('zona = 4 //', 'zona = 3 //').replace('Vs30 = 450 m/s', 'Vs30 = 350 m/s')}
 qas = qaSismoE050(qa)
 ## Coeficientes de empuje
 Ka = KaRankine(phis) // Rankine
@@ -475,13 +467,14 @@ check Vupu <= 0.85*0.53*sqrtfc(fc)*dz // Cortante en la punta
 const sotano = {
   id: 'wa-sotano', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
   name: 'Muro de sótano apoyado en losas (empuje en reposo)',
-  normas: 'RNE — NTE E.020, E.030, E.050, E.060; Calavera; Wood (1973)',
+  normas: 'RNE — NTE E.020, E.030-2026 (S por Vs30), E.050, E.060; Calavera; Wood (1973)',
   desc: 'Empuje en reposo K0 (Jaky), modelo de viga apoyada en la losa y empotrada en el cimiento, sismo por Wood para muros rígidos, diseño por flexión de ambas caras, cortante, refuerzo mínimo y conexión con la losa por cortante-fricción.',
   titulo: 'Diseño de muro de sótano de concreto armado',
   validacion: {
     fuente: 'Control: empuje en reposo de Jaky (K0 = 1 − sen φ) + Seed–Whitman, viga apoyada-empotrada (E.060)',
-    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). K0 = 1 − sen 30° = 0.5 y kh = 0.5·0.45·1.05 se comprueban a mano.',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). K0 = 1 − sen 30° = 0.5 y kh = 0.5·0.45·1.05 se comprueban a mano. Al pasar de la Tabla N° 3 de la E.030-2018 (S2 → 1.05) a S por Vs30 de la E.030-2026 (octubre de 2026) se eligió Vs30 = 450 m/s, que en zona 4 da el mismo S = 1.05: los valores de control no cambian.',
     valores: [
+      { var: 'S', esperado: 1.05, tol: 0.0005, desc: 'S por Vs30 = 450 m/s, zona 4 (E.030-2026 Tabla N° 4)' },
       { var: 'K0', esperado: 0.5, tol: 0.0005, desc: 'K0 de Jaky, φ = 30°' },
       { var: 'kh', esperado: 0.23625, tol: 0.0005, desc: 'kh = 0.5·Z·S' },
       { var: 'Mub', unidad: 'tonf*m/m', esperado: 7.525, tol: 0.002, desc: 'Momento último en la base' },
@@ -493,7 +486,7 @@ const sotano = {
     text(`# Generalidades
 Los muros de sótano están arriostrados en su borde superior por la losa del primer piso, por lo que **no pueden desplazarse** lo suficiente para movilizar el estado activo: se diseñan con el **empuje en reposo** $K_0$ (Jaky). El muro se modela como una franja vertical de 1 m **apoyada** en la losa y **empotrada** en el cimiento (Calavera, *Muros de contención y muros de sótano*, cap. 9). El sismo se considera con la solución de **Wood (1973)** para muros rígidos: incremento uniforme $\\Delta p = k_h\\,\\gamma\\,H$ con $k_h = PGA$ (sin reducción por desplazamiento).
 
-**Normas:** RNE NTE E.020 (sobrecarga), E.030 (PGA = Z·S), E.050 16.2.9 (K0 del EMS), E.060 9.2.5, 10.5, 11, 11.7 (cortante-fricción), 14.3.`),
+**Normas:** RNE NTE E.020 (sobrecarga), E.030-2026 (PGA = Z·S, con $S$ por $V_{s30}$, Tabla N° 4), E.050 16.2.9 (K0 del EMS), E.060 9.2.5, 10.5, 11, 11.7 (cortante-fricción), 14.3.`),
     calc(`# Datos
 hs = 3.20 m // Altura del muro entre el cimiento y la losa del primer piso [2.4..4.5]
 tw = 0.30 m // Espesor del muro [0.20..0.50]
@@ -504,7 +497,7 @@ ws = 1.00 tonf/m^2 // Sobrecarga en la vereda/pista contigua (E.020) [0..2]
 fc = 210 kgf/cm^2 // Resistencia del concreto [210 kgf/cm^2|280 kgf/cm^2]
 fy = 4200 kgf/cm^2 // Acero ASTM A615 Grado 60 [2800..4200]
 rec = 5 cm // Recubrimiento cara del suelo (E.060 7.7.1) [2..7.5]
-${SISMO}
+${SISMO26}
 ## Empujes
 K0 = K0Jaky(phis, OCR) // Reposo: K0 = (1 − sen φ)·OCR^sen φ (Jaky 1944; Mayne y Kulhawy 1982)
 pE = K0*gammas*hs // Presión del suelo en la base (triangular)
@@ -614,18 +607,19 @@ check Kpe <= KpR // El sismo reduce la resistencia pasiva`),
 const gaviones = {
   id: 'wa-gaviones', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
   name: 'Muro de gaviones',
-  normas: 'RNE — NTE E.030, E.050 (39.13); Maccaferri; Das; AASHTO LRFD 11.6',
+  normas: 'RNE — NTE E.030-2026 (S por Vs30), E.050 (39.13); Maccaferri; Das; AASHTO LRFD 11.6',
   desc: 'Muro de gravedad de gaviones escalonados: peso con porosidad, estabilidad estática y sísmica por hiladas (vectores), verificación de la junta entre hiladas (φ* y σ admisible de Maccaferri) y presiones en la base.',
   titulo: 'Diseño de muro de gaviones H = 4.00 m',
   validacion: {
     fuente: 'Control: Rankine + M-O (Das cap. 7) y manual Maccaferri (peso del gavión γp(1 − n))',
-    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). γg = 2.6·(1 − 0.30) = 1.82 t/m³ y Ka = 1/3 se comprueban a mano.',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). γg = 2.6·(1 − 0.30) = 1.82 t/m³ y Ka = 1/3 se comprueban a mano. Cambio de octubre de 2026: el sismo pasó de la Tabla N° 3 de la E.030-2018 (S2, zona 2 → S = 1.20) a S por Vs30 de la E.030-2026 (Tabla N° 4). Para reproducir 1.20 haría falta Vs30 = 416.7 m/s; se eligió el valor redondo Vs30 = 400 m/s (perfil S2), que da S = 1.00 + (550 − 400)/200·0.30 = 1.225 y kh = 0.5·0.25·1.225 = 0.1531 (antes 0.150). Por eso FSds bajó de 1.303 a 1.289 (sigue ≥ 1.25); los demás valores son estáticos y no cambian.',
     valores: [
       { var: 'gammag', unidad: 'tonf/m^3', esperado: 1.82, tol: 0.0005, desc: 'Peso unitario del gavión γp(1 − n)' },
       { var: 'Ka', esperado: 0.33333, tol: 0.0005, desc: 'Ka de Rankine, φ = 30°' },
       { var: 'FSv', esperado: 3.597, tol: 0.002, desc: 'FS al volteo, estático' },
       { var: 'FSd', esperado: 2.202, tol: 0.002, desc: 'FS al deslizamiento, estático' },
-      { var: 'FSds', esperado: 1.303, tol: 0.002, desc: 'FS al deslizamiento con sismo' },
+      { var: 'S', esperado: 1.225, tol: 0.0005, desc: 'S por Vs30 = 400 m/s, zona 2 (E.030-2026 Tabla N° 4)' },
+      { var: 'FSds', esperado: 1.289, tol: 0.002, desc: 'FS al deslizamiento con sismo (Vs30 = 400 m/s; antes 1.303 con S = 1.20 de la E.030-2018)' },
       { var: 'qmax', unidad: 'tonf/m^2', esperado: 13.34, tol: 0.002, desc: 'Presión máxima en la base' },
     ],
   },
@@ -633,7 +627,7 @@ const gaviones = {
     text(`# Generalidades
 Muro de gravedad formado por **gaviones caja** de malla hexagonal de doble torsión (alambre galvanizado/PVC) rellenos de piedra, en 4 hiladas de 1.00 m con escalones hacia el relleno. Es una estructura flexible y permeable: tolera asentamientos diferenciales y no genera presión de agua si se coloca un geotextil filtrante entre el relleno y los gaviones.
 
-**Referencias:** RNE NTE E.050 39.13 (FS 1.50 / 1.25) y Art. 21; E.030 (Z, S); Maccaferri do Brasil, *Estructuras flexibles en gaviones en obras de contención* (peso específico con porosidad, ángulo de fricción entre gaviones $\\phi^* = 25\\gamma_g - 10$ y esfuerzo normal admisible $\\sigma_{adm} = 50\\gamma_g - 30$, con $\\gamma_g$ en t/m³ y $\\sigma$ en t/m²); B. M. Das cap. 8. El empuje se calcula con Rankine en el plano vertical que pasa por el talón; el suelo sobre los escalones forma parte del muro.
+**Referencias:** RNE NTE E.050 39.13 (FS 1.50 / 1.25) y Art. 21; E.030-2026 ($Z$ y $S$ por $V_{s30}$, Tabla N° 4); Maccaferri do Brasil, *Estructuras flexibles en gaviones en obras de contención* (peso específico con porosidad, ángulo de fricción entre gaviones $\\phi^* = 25\\gamma_g - 10$ y esfuerzo normal admisible $\\sigma_{adm} = 50\\gamma_g - 30$, con $\\gamma_g$ en t/m³ y $\\sigma$ en t/m²); B. M. Das cap. 8. El empuje se calcula con Rankine en el plano vertical que pasa por el talón; el suelo sobre los escalones forma parte del muro.
 
 > En zonas sísmicas 3 y 4 la inercia del propio muro suele gobernar el deslizamiento: se recomienda ensanchar la base o inclinar el muro 6° hacia el relleno.`),
     calc(`# Datos
@@ -655,7 +649,7 @@ phis = 30 deg // Fricción del relleno [20..40]
 ws = 1.00 tonf/m^2 // Sobrecarga (E.020) [0..2]
 mu = 0.62 // Coeficiente de fricción gavión–suelo de fundación tan φf (EMS) [0.30..0.70]
 qa = 2.00 kgf/cm^2 // Presión admisible [0.5..6]
-${SISMO.replace('zona = 4 //', 'zona = 2 //')}
+${SISMO26.replace('zona = 4 //', 'zona = 2 //').replace('Vs30 = 450 m/s', 'Vs30 = 400 m/s')}
 qas = qaSismoE050(qa)
 # Empujes
 Ka = KaRankine(phis) // Rankine (β = 0)
@@ -729,13 +723,14 @@ check sigu <= sigadm // Compresión en la junta`),
 const mse = {
   id: 'wa-mse', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
   name: 'Muro de suelo reforzado con geomallas (MSE, AASHTO 11.10)',
-  normas: 'AASHTO LRFD 11.10 (MSE), 3.4.1, 3.11; FHWA-NHI-10-024; RNE E.030, E.050',
+  normas: 'AASHTO LRFD 11.10 (MSE), 3.4.1, 3.11; FHWA-NHI-10-024; RNE E.030-2026 (S por Vs30), E.050',
   desc: 'Estabilidad externa por LRFD (deslizamiento, excentricidad, capacidad portante con Meyerhof y caso sísmico) y estabilidad interna capa por capa: rotura (Tal con factores de reducción) y arranque (F*, α, Le) con vectores.',
   titulo: 'Muro de suelo mecánicamente estabilizado con geomallas H = 6.00 m',
   validacion: {
     fuente: 'Control: AASHTO LRFD 11.10 (estabilidad externa e interna de muros MSE con geomallas)',
-    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Kaf = tan²(45° − 15°) = 1/3 y F1 = ½·Kaf·γf·H² se comprueban a mano.',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Kaf = tan²(45° − 15°) = 1/3 y F1 = ½·Kaf·γf·H² se comprueban a mano. Al pasar de la Tabla N° 3 de la E.030-2018 (S2 → 1.05) a S por Vs30 de la E.030-2026 (octubre de 2026) se eligió Vs30 = 450 m/s, que en zona 4 da el mismo S = 1.05: los valores de control no cambian.',
     valores: [
+      { var: 'S', esperado: 1.05, tol: 0.0005, desc: 'S por Vs30 = 450 m/s, zona 4 (E.030-2026 Tabla N° 4)' },
       { var: 'Kaf', esperado: 0.33333, tol: 0.0005, desc: 'Ka del relleno retenido, φ = 30°' },
       { var: 'F1', unidad: 'tonf/m', esperado: 11.4, tol: 0.001, desc: 'Empuje del relleno retenido ½Ka·γ·H²' },
       { var: 'Pdrv', unidad: 'tonf/m', esperado: 21.3, tol: 0.002, desc: 'Fuerza horizontal mayorada' },
@@ -792,7 +787,7 @@ ebb = Mb/Vb -> m
 sigv = Vb/max(L - 2*ebb, 0.01*L) -> tonf/m^2 // Presión uniforme de Meyerhof (11.6.3.2)
 qR = 0.65*qn // φb = 0.65 (Tabla 11.5.7-1)
 check sigv <= qR // Capacidad portante
-${SISMO}
+${SISMO26}
 ## Sismo (Evento Extremo I, 11.10.7.1)
 PIR = 0.5*kh*gammar*H^2 -> tonf/m // Inercia del macizo de ancho 0.5H (11.10.7.1)
 PAE = 0.375*kh*gammaf*H^2 -> tonf/m // Incremento dinámico del relleno retenido (Seed–Whitman)

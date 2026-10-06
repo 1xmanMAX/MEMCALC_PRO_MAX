@@ -480,18 +480,20 @@ check s2 <= min(3*hz, 40 cm) // Espaciamiento zapata interior`),
     id: 'ge-medianera', pais: 'PE', cat: 'Cimentaciones', icon: 'footing',
     validacion: {
       fuente: 'NTE E.050-2018 y NTE E.060-2009 — valores de control',
-      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Momento de excentricidad Mt = P·ec y fuerza de restitución T = Mt/hs.',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Momento de excentricidad Mt = P·ec y fuerza de restitución T = Mt/hs. Sismo (octubre de 2026, a mano): con CM + CV − CS (−X) la columna lleva P + PS = 50 t y el tensor toma 50·0.325 t·m, de modo que al suelo solo llega Mb = MS + VS·hz = 0.8 + 0.6·0.6 = 1.16 t·m; e = −1.16/50 = −0.0232 m y qmax = 50/(1.05·2.05)·(1 + 6·0.0232/1.05) = 26.31 t/m² ≤ 1.20·25 − 2·1.5 = 27 t/m². La mayor excentricidad es la de +X: P − PS = 44 t y e = +1.16/44 = +0.0264 m. Con los datos por defecto U1 sigue gobernando la presión última (U3 da 31.76 t/m² < 32.24 t/m²), por lo que qmax_u no cambia al añadir U2–U5.',
       valores: [
         { var: 'Bz', unidad: 'm', esperado: 1.05, tol: 0.001, desc: 'Control: ancho perpendicular al lindero' },
         { var: 'Lz', unidad: 'm', esperado: 2.05, tol: 0.001, desc: 'Control: lado paralelo al lindero' },
         { var: 'Mt', unidad: 'tonf*m', esperado: 15.275, tol: 0.002, desc: 'Control: momento de excentricidad' },
         { var: 'T', unidad: 'tonf', esperado: 3.8188, tol: 0.002, desc: 'Control: fuerza en el techo' },
-        { var: 'qmax_u', unidad: 'tonf/m^2', esperado: 32.242, tol: 0.002, desc: 'Control: presión última' },
+        { var: 'qmax_u', unidad: 'tonf/m^2', esperado: 32.242, tol: 0.002, desc: 'Control: presión última (envolvente U1–U5; gobierna U1)' },
+        { var: 'qmax_s', unidad: 'tonf/m^2', esperado: 26.31, tol: 0.002, desc: 'A mano: presión máxima de servicio con sismo (−X)' },
+        { var: 'e_R_s', unidad: 'm', esperado: 0.02636, tol: 0.003, desc: 'A mano: excentricidad máxima de servicio con sismo (+X: Mb/(P − PS))' },
       ],
     },
     name: 'Zapata excéntrica (medianera) aislada',
-    normas: E050 + ' (Art. 28) · NTE E.060 Concreto Armado (Art. 11.12, 15)',
-    desc: 'Zapata en lindero sin viga de conexión: presión trapezoidal/triangular o uniforme con tensor en el primer techo; fricción, punzonamiento con perímetro de 3 lados y flexión.',
+    normas: E050 + ' (Art. 21, 28) · NTE E.060 Concreto Armado (Art. 9.2, 11.12, 15) · NTE E.030',
+    desc: 'Zapata en lindero sin viga de conexión: presión trapezoidal/triangular o uniforme con tensor en el primer techo; presiones de servicio con sismo frente a 1.20 qa; envolvente 1.4CM+1.7CV, 1.25(CM+CV)±CS y 0.9CM±CS; fricción, punzonamiento con perímetro de 3 lados y flexión.',
     titulo: 'Diseño de zapata medianera (excéntrica)',
     blocks: [
       text(`# Generalidades
@@ -500,7 +502,16 @@ Zapata de columna ubicada en el límite de propiedad. La carga actúa con excent
 - **Caso 1 – sin restricción**: el momento $P\\,e$ lo resiste el suelo; la presión es trapezoidal si $e \\le B/6$ o triangular si $e > B/6$ (redistribución sin tracción).
 - **Caso 2 – con tensor**: el par $P\\,e$ se equilibra con una fuerza horizontal $T = P\\,e/h$ entre la losa del primer techo y la base (fricción), lográndose presión uniforme. La columna y el diafragma deben diseñarse para $T$ y el momento correspondiente.
 
-El diseño estructural sigue la NTE E.060 (punzonamiento con perímetro crítico de tres lados y $\\alpha_s = 30$).`),
+La columna forma parte del sistema sismorresistente y transmite a la zapata, en la dirección perpendicular al lindero (la que agrava la excentricidad), una fuerza axial $P_S$, un momento $M_S$ y un cortante $V_S$ de sismo (análisis con la E.030, nivel de resistencia). Con el mismo convenio que la zapata combinada, el sismo $+X$ (hacia el interior) descomprime la columna de borde y su momento desplaza la resultante hacia el interior; con $-X$ la columna se comprime y la resultante se acerca al lindero. Con tensor (caso 2), el par $P\\,e$ de cada combinación lo sigue tomando el tensor y al suelo llega el momento sísmico en la base $M_b = M_S + V_S h_z$. Cada combinación se resuelve con el **método rígido con excentricidad** (bloque *winkler*) y el diseño se hace con la **envolvente**:
+
+| Estado | Combinación | Uso |
+|---|---|---|
+| Servicio | $CM + CV$ | Dimensionamiento (presión ≤ $q_n$) |
+| Servicio con sismo | $CM + CV \\pm CS$ | Presión máxima ≤ $1.20\\,q_a$ neta (E.050 Art. 21: FS = 2.5 en vez de 3.0) |
+| Última U1 | $1.4\\,CM + 1.7\\,CV$ | E.060 Art. 9.2.1 |
+| Últimas U2–U5 | $1.25(CM + CV) \\pm CS$; $0.9\\,CM \\pm CS$ | E.060 Art. 9.2.3 |
+
+El diseño estructural sigue la NTE E.060 (punzonamiento con perímetro crítico de tres lados y $\\alpha_s = 30$, con transferencia de momento también en las combinaciones con sismo).`),
       calc(`# Datos
 PD = 35 tonf // Carga muerta de servicio [0..2000]
 PL = 12 tonf // Carga viva de servicio [0..1000]
@@ -516,6 +527,10 @@ fc = 210 kgf/cm^2 // Resistencia del concreto [140..420]
 fy = 4200 kgf/cm^2 // Fluencia del acero [2800..5000]
 hz = 0.60 m // Peralte de la zapata [0.5..2.0]
 bar = 5 // Varilla [4 : 1/2"|5 : 5/8"|6 : 3/4"]
+## Fuerzas de sismo en la base de la columna (perpendicular al lindero; análisis E.030, nivel de resistencia; valores absolutos)
+PS = 3 tonf // Axial sísmica de la columna (tracción con sismo +X) [0..200]
+MS = 0.8 tonf*m // Momento sísmico en la base de la columna [0..150]
+VS = 0.6 tonf // Cortante sísmico en la base de la columna [0..100]
 ## Dimensionamiento
 qn = qa - gammam*Df -> tonf/m^2 // Presión neta
 P = PD + PL // Carga de servicio
@@ -529,15 +544,60 @@ q1 = si(er <= Bz/6, P/(Bz*Lz)*(1 + 6*er/Bz), 2*P/(3*Lz*(Bz/2 - er))) -> tonf/m^2
 check q1 <= qn // Presión máxima ≤ presión neta admisible
 check muf*P >= 1.5*T // Deslizamiento: fricción en la base ≥ 1.5 T
 x0 = t/2 // Eje de la columna medido desde el lindero
-## Cargas últimas
-Pu = 1.4*PD + 1.7*PL
-Mtu = si(caso == 2, Pu*ec, 0 tonf*m) -> tonf*m // Momento último transmitido por la columna (tensor)`),
-      { type: 'winkler', metodo: 'rigido', L: 'Bz', B: 'Lz', E: '2.17e6 tonf/m^2', I: 'Lz*hz^3/12', ks: '', cargas: 'P x0 Pu\nM x0 Mtu', sufijo: 'u', titulo: 'Zapata medianera (dirección perpendicular al lindero): presión última, cortante y momento' },
+## Presiones de servicio con sismo (E.050 Art. 21)
+"Con sismo $+X$ la columna se descomprime ($P - P_S$) y su momento $M_b$ es horario (resultante hacia el interior); con $-X$ cambian los signos. Con tensor (caso 2) el par $(P \\pm P_S)\\,e$ lo toma el tensor; sin tensor lo resiste el suelo.
+ktn = si(caso == 2, 1, 0) // 1 si el tensor toma el par P·e (caso 2)
+Mb = MS + VS*hz -> tonf*m // Momento sísmico en la base de la zapata
+qns = qaSismoE050(qa) - gammam*Df -> tonf/m^2 // Presión neta admisible con sismo: 1.20 qa (FS = 2.5 en lugar de 3.0)
+Psp = P - PS // Columna con CM + CV + CS (sismo +X)
+Msp = ktn*Psp*ec + Mb -> tonf*m // Momento sobre la zapata: tensor + sismo (+X)
+Psn = P + PS // Columna con CM + CV − CS (sismo −X)
+Msn = ktn*Psn*ec - Mb -> tonf*m // Momento sobre la zapata: tensor − sismo (−X)
+check Psp > 0 tonf // Servicio con sismo +X: la columna sigue comprimida
+"Si una combinación con sismo dejara la resultante fuera de la base, el cálculo de la presión se limita a $|e| = 0.45\\,B$ (y $P \\ge 0.05\\,P_{servicio}$): la verificación de excentricidad no cumple, pero la memoria no se interrumpe.
+@ocultar
+Pbk(Pc) = max(Pc, 0.05*P)
+Mbk(Pc, Mc) = Pbk(Pc)*(ec + min(max(Mc/Pbk(Pc) - ec, -0.45*Bz), 0.45*Bz))
+Psp_b = Pbk(Psp)
+Msp_b = Mbk(Psp, Msp)
+Psn_b = Pbk(Psn)
+Msn_b = Mbk(Psn, Msn)
+@mostrar`),
+      { type: 'winkler', metodo: 'rigido', L: 'Bz', B: 'Lz', E: '2.17e6 tonf/m^2', I: 'Lz*hz^3/12', ks: '', qadm: 'qns', solopresion: true, cargas: 'CASO CM + CV + CS (sismo +X)\nP x0 Psp_b\nM x0 Msp_b\nCASO CM + CV − CS (sismo −X)\nP x0 Psn_b\nM x0 Msn_b', sufijo: 's', titulo: 'Presión de contacto de servicio con sismo perpendicular al lindero (método rígido con excentricidad)' },
+      calc(`## Verificaciones de servicio con sismo
+check abs(e_R_s) <= Bz/3 // Resultante con sismo dentro de los 2/3 centrales de la base (criterio sísmico, AASHTO 11.6.3.3)
+Tsis = ktn*Psp*ec/hs -> tonf // Fuerza en el tensor con sismo +X (menor compresión, menor fricción)
+check muf*Psp >= 1.25*(Tsis + VS) // Deslizamiento con sismo: fricción ≥ 1.25 (T + VS) (FS sísmico 1.25, E.050)
+"Las fuerzas $P_S$, $M_S$ y $V_S$ entran completas en las presiones de servicio, lo que es conservador frente al factor 0.8 de la E.030 para esfuerzos admisibles.
+## Cargas últimas (E.060 Art. 9.2)
+Pu = 1.4*PD + 1.7*PL // U1 = 1.4 CM + 1.7 CV (Art. 9.2.1)
+Mtu = si(caso == 2, Pu*ec, 0 tonf*m) -> tonf*m // Momento último transmitido por la columna (tensor)
+Pu2 = 1.25*(PD + PL) - PS // U2 = 1.25(CM + CV) + CS (sismo +X) (Art. 9.2.3)
+Mu2 = ktn*Pu2*ec + Mb -> tonf*m
+Pu3 = 1.25*(PD + PL) + PS // U3 = 1.25(CM + CV) − CS (sismo −X)
+Mu3 = ktn*Pu3*ec - Mb -> tonf*m
+Pu4 = 0.9*PD - PS // U4 = 0.9 CM + CS (sismo +X)
+Mu4 = ktn*Pu4*ec + Mb -> tonf*m
+Pu5 = 0.9*PD + PS // U5 = 0.9 CM − CS (sismo −X)
+Mu5 = ktn*Pu5*ec - Mb -> tonf*m
+check Pu4 > 0 tonf // U4: la columna sigue comprimida (la zapata no se levanta)
+@ocultar
+Pu2_b = Pbk(Pu2)
+Mu2_b = Mbk(Pu2, Mu2)
+Pu3_b = Pbk(Pu3)
+Mu3_b = Mbk(Pu3, Mu3)
+Pu4_b = Pbk(Pu4)
+Mu4_b = Mbk(Pu4, Mu4)
+Pu5_b = Pbk(Pu5)
+Mu5_b = Mbk(Pu5, Mu5)
+@mostrar`),
+      { type: 'winkler', metodo: 'rigido', L: 'Bz', B: 'Lz', E: '2.17e6 tonf/m^2', I: 'Lz*hz^3/12', ks: '', cargas: 'CASO U1 = 1.4CM + 1.7CV\nP x0 Pu\nM x0 Mtu\nCASO U2 = 1.25(CM+CV) + CS\nP x0 Pu2_b\nM x0 Mu2_b\nCASO U3 = 1.25(CM+CV) − CS\nP x0 Pu3_b\nM x0 Mu3_b\nCASO U4 = 0.9CM + CS\nP x0 Pu4_b\nM x0 Mu4_b\nCASO U5 = 0.9CM − CS\nP x0 Pu5_b\nM x0 Mu5_b', sufijo: 'u', titulo: 'Zapata medianera (dirección perpendicular al lindero, envolvente U1–U5): presión última, cortante y momento' },
       calc(`# Diseño estructural (E.060)
 d = hz - 7.5 cm - db(bar) // Peralte efectivo
 ## Punzonamiento — perímetro de 3 lados (E.060 Art. 11.12)
 bo = 2*(t + d/2) + (bc + d) // Perímetro crítico
-Vu = Pu - qmax_u*(t + d/2)*(bc + d) -> tonf // Cortante de punzonamiento
+qu1 = si(er <= Bz/6, Pu/(Bz*Lz)*(1 + 6*er/Bz), 2*Pu/(3*Lz*(Bz/2 - er))) -> tonf/m^2 // Presión máxima de U1 bajo la columna (junto al lindero)
+Vu = Pu - qu1*(t + d/2)*(bc + d) -> tonf // Cortante de punzonamiento (U1)
 betac = max(t, bc)/min(t, bc)
 Vc_a = 0.53*(1 + 2/betac)*sqrtfc(fc)*bo*d -> tonf // Por la forma de la columna (E.060 Art. 11.12.2.1 a)
 Vc_b = 0.27*(30*d/bo + 2)*sqrtfc(fc)*bo*d -> tonf // Por la ubicación: αs = 30, columna de borde (Art. 11.12.2.1 b)
@@ -556,12 +616,21 @@ Mug = abs(Mtu - Vu*eg) -> tonf*m // Momento no balanceado respecto al centroide:
 gvb = 1 - 1/(1 + 2/3*sqrt(b1p/b2p)) // Fracción transferida por excentricidad del cortante γv (ec. 11-39)
 vub = Vu/(bo*d) + gvb*Mug*cAB/Jcb -> kgf/cm^2 // Esfuerzo máximo en el lado interior de la sección crítica
 check vub <= phiVc/(bo*d) // Punzonamiento con transferencia de momento (ec. 11-40)
+## Punzonamiento con sismo y transferencia de momento (E.060 Art. 11.12.6)
+"Con sismo, la columna transfiere además su momento $M_S$: con $+X$ se suma al momento del tensor y con $-X$ se resta. Se usa la presión media de cada combinación, como en la zapata combinada.
+Vu2s = Pu2 - Pu2/(Bz*Lz)*(t + d/2)*(bc + d) -> tonf // Cortante de punzonamiento, U2
+Mug2 = abs(ktn*Pu2*ec + MS - Vu2s*eg) -> tonf*m // Momento no balanceado, U2
+vu2s = Vu2s/(bo*d) + gvb*Mug2*cAB/Jcb -> kgf/cm^2 // Esfuerzo máximo, U2
+Vu3s = Pu3 - Pu3/(Bz*Lz)*(t + d/2)*(bc + d) -> tonf // Cortante de punzonamiento, U3
+Mug3 = abs(ktn*Pu3*ec - MS - Vu3s*eg) -> tonf*m // Momento no balanceado, U3
+vu3s = Vu3s/(bo*d) + gvb*Mug3*cAB/Jcb -> kgf/cm^2 // Esfuerzo máximo, U3
+check max(vu2s, vu3s) <= phiVc/(bo*d) // Punzonamiento con sismo y transferencia de momento
 ## Cortante por flexión
 VudB = qmax_u*Lz*(Bz - t - d) -> tonf // Dirección perpendicular al lindero
 phiVcB = 0.85*0.53*sqrtfc(fc)*Lz*d -> tonf
 check VudB <= phiVcB // Cortante perpendicular al lindero
 lvL = (Lz - bc)/2 -> m // Volado paralelo al lindero
-quav = Pu/(Bz*Lz) -> tonf/m^2
+quav = max(Pu, Pu3)/(Bz*Lz) -> tonf/m^2 // Presión media de la combinación más cargada (U1 o U3)
 VudL = quav*Bz*(lvL - d) -> tonf
 phiVcL = 0.85*0.53*sqrtfc(fc)*Bz*d -> tonf
 check VudL <= phiVcL // Cortante paralelo al lindero
@@ -577,7 +646,7 @@ AsL = max(Asreq(MuL, Bz), 0.0018*Bz*hz)
 nL = ceil(AsL/Ab(bar))
 sL = rounddown((Bz - 15 cm)/max(nL - 1, 1), 2.5 cm)
 check max(sB, sL) <= min(3*hz, 40 cm) // Espaciamiento máximo
-"Refuerzo: #{bar} @ {sB} perpendicular al lindero y #{bar} @ {sL} paralelo al lindero. Tensor del primer techo para $T_u$ = {Mtu/hs -> tonf}.`),
+"Refuerzo: #{bar} @ {sB} perpendicular al lindero y #{bar} @ {sL} paralelo al lindero. Tensor del primer techo para $T_u$ = {ktn*max(Pu, Pu3)*ec/hs -> tonf} (envolvente de U1 y U3).`),
       summary(),
     ],
   },
@@ -1131,9 +1200,9 @@ Según la E.050 Art. 38.5.1 el potencial de licuación de suelos granulares sume
 - Factor de seguridad $FS_L = CRR_M/CSR$ con el mínimo de la Tabla 13A según la categoría E.030, y probabilidad de licuación $P_L$ (Cetin et al. 2004, con su propio $r_d$ función de $V^*_{s,12}$, Art. 38.5.3) que debe ser $\\le 10\\,\\%$ para cimentar (Art. 38.6.2).`),
       { type: 'soilprofile', estratos: '1.5 RELL 1.70 1.85 Relleno arenoso compactado\n4.5 SP 1.85 2.00 Arena pobremente gradada densa\n5.0 SM 1.85 1.95 Arena limosa densa\n4.0 GP 2.00 2.15 Grava arenosa muy densa', nf: '3.0 m', spt: '1.0 14\n2.0 18\n3.0 26\n4.0 25\n5.0 27\n6.0 32\n7.0 32\n8.0 34\n9.0 35\n10.0 37\n11.0 38\n12.0 40\n13.0 42\n14.0 45\n15.0 48', ER: '60', CB: '1.0', CS: '1.0', barra: '1.0 m', zref: '3 m', tabla: true, titulo: 'Perfil estratigráfico, SPT y correcciones (E.050 Art. 5.27)' },
       calc(`# Parámetros sísmicos
-amax = 0.30 // Aceleración máxima horizontal en la superficie amax/g (Art. 38.5.4) [0.05..0.6]
+amax = 0.30 // Aceleración máxima horizontal en la superficie amax/g ≈ Z·S (Art. 38.5.4; E.030-2026 Tablas N° 1 y 4) [0.54 : Zona 4 (costa), suelo blando S3: Z·S = 0.45·1.20|0.50 : Zona 4 (costa), suelo intermedio S2: 0.45·1.10|0.45 : Zona 4 (costa), roca o suelo rígido S0–S1: 0.45·1.00|0.42 : Zona 3, S3: 0.35·1.20|0.40 : Zona 3, S2: 0.35·1.15|0.35 : Zona 3 S0–S1 (0.35·1.00) o zona 2 S3 (0.25·1.40)|0.30 : Zona 2, S2: 0.25·1.20|0.25 : Zona 2, S0–S1: 0.25·1.00|0.16 : Zona 1, S3: 0.10·1.60|0.13 : Zona 1, S2: 0.10·1.30|0.10 : Zona 1, S0–S1: 0.10·1.00] [0.05..0.6]
 Mw = 8.0 // Magnitud momento del sismo de diseño [5..9.5]
-"**Advertencia (segunda opinión):** $a_{max}$ debe salir del estudio de peligro sísmico del sitio; a falta de él, no se tome menor que $Z\\cdot S$ de la E.030 (en la costa, zona 4: $0.45 \\times S \\approx 0.47$–$0.50\\,g$). El valor por defecto 0.30 g corresponde a un sitio de zona 2 ($Z = 0.25$, $S \\approx 1.2$); con 0.45 g este mismo perfil da $FS_L$ = 0.92 a 4 m y $P_L$ ≈ 52 %, es decir, **no cumple**.
+"**Advertencia:** $a_{max}$ debe salir del estudio de peligro sísmico del sitio; a falta de él, no se tome menor que $Z\\cdot S$ de la E.030 (lista desplegable: $Z$ de la Tabla N° 1 y $S$ de la Tabla N° 4 de la E.030-2026 para cada perfil). **En la costa peruana (zona 4) corresponde $a_{max} \\approx 0.45\\,g$ o más** ($0.45 \\times S$: 0.45 g en roca y hasta 0.54 g en suelo blando). El valor por defecto 0.30 g corresponde a un sitio de zona 2 ($Z = 0.25$, $S \\approx 1.2$); con 0.45 g este mismo perfil da $FS_L$ = 0.92 a 4 m y $P_L$ ≈ 52 %, es decir, **no cumple**.
 Dw = 3.0 m // Profundidad del nivel freático (la del perfil) [0..30]
 FSreq = 1.25 // FS_L mínimo según la categoría E.030 [1.25 : A (esencial)|1.15 : B (importante)|1.00 : C (común)] [1.0..1.25]
 FC = [10, 10, 10, 8, 6, 6, 6, 18, 20, 20, 22, 22, 5, 5, 5] // Contenido de finos (% < 75 μm) por ensayo

@@ -235,6 +235,20 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('wa-'))) {
     truthy('Voladizo: perfil S4 en zona 4 → «se requiere análisis de respuesta de sitio» NO CUMPLE, sin errores', v4.ctx.errors.length === 0 && v4.ctx.checks.some(c => !c.ok && /respuesta de sitio/.test(c.label)), v4.ctx.errors.map(e => e.msg).join('; '));
     truthy('Voladizo: ya no usa la Tabla N° 3 de la E.030-2018 (sin dato «perfil»)', !v.res.ctx.inputs.some(i => i.name === 'perfil') && v.res.ctx.inputs.some(i => i.name === 'Vs30'));
   }
+  { // Resto de muros con S por Vs30 (E.030-2026): Vs30 por defecto elegido para reproducir el S de 2018 cuando es posible
+    const sub = (re, to) => (d) => d.blocks.forEach(bl => { if (bl.src) bl.src = bl.src.replace(re, to); });
+    for (const [id, zona, vs, S] of [['wa-gravedad', 4, 450, 1.05], ['wa-contrafuertes', 3, 350, 1.15], ['wa-sotano', 4, 450, 1.05], ['wa-gaviones', 2, 400, 1.00 + 150 / 200 * 0.30], ['wa-mse', 4, 450, 1.05]]) {
+      const r = runTemplate(id), Z = { 4: 0.45, 3: 0.35, 2: 0.25 }[zona];
+      truthy(`${id}: usa Vs30 = ${vs} m/s (E.030-2026), sin dato «perfil» de la E.030-2018`, !r.res.ctx.inputs.some(i => i.name === 'perfil') && Math.abs(r('Vs30', 'm/s') - vs) < 1e-9);
+      near(`${id}: S = SE030(${zona}, ${vs} m/s) = ${S.toFixed(3)}`, r('S'), S, 1e-9);
+      near(`${id}: kh = 0.5·Z·S = 0.5·${Z}·${S.toFixed(3)}`, r('kh'), 0.5 * Z * S, 1e-9);
+      const r4 = runTemplate(id, d => { sub(/^zona = \d \/\//m, 'zona = 4 //')(d); sub(`Vs30 = ${vs} m/s`, 'Vs30 = 150 m/s')(d); }).res;
+      truthy(`${id}: perfil S4 en zona 4 → «respuesta de sitio» NO CUMPLE, sin errores`, r4.ctx.errors.length === 0 && r4.ctx.checks.some(c => !c.ok && /respuesta de sitio/.test(c.label)), r4.ctx.errors.map(e => e.msg).join('; '));
+    }
+    const g3 = runTemplate('wa-gaviones', sub('Vs30 = 400 m/s', 'Vs30 = 250 m/s'));
+    near('Gaviones: Vs30 = 250 m/s (S3, zona 2): S = 1.30 + (350 − 250)/150·0.10', g3('S'), 1.30 + 100 / 150 * 0.10, 1e-9);
+    truthy('Gaviones: S mayor reduce FSds', g3('FSds') < runTemplate('wa-gaviones')('FSds'));
+  }
   const bad = runTemplate('wa-voladizo', d => { d.blocks[1].src = d.blocks[1].src.replace('B = 4.50 m', 'B = 2.20 m'); });
   truthy('Voladizo con base insuficiente (B = 2.2 m) no cumple', bad.res.ctx.checks.some(c => !c.ok));
   const gr = runTemplate('wa-gravedad');

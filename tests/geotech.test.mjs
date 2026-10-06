@@ -416,4 +416,31 @@ section('Segunda opinión — segunda tanda (ge-platea, ge-medianera)');
   near('Medianera: Jc de columna de borde (ACI R8.4.4.2.3)', m('Jcb', 'm^4'), Jc, 1e-9);
   near('Medianera: vu = Vu/(bo d) + γv·|Mtu − Vu·eg|·cAB/Jc', m('vub', 'tonf/m^2'), m('Vu', 'tonf') / (m('bo', 'm') * d) + m('gvb') * Math.abs(m('Mtu', 'tonf*m') - m('Vu', 'tonf') * m('eg', 'm')) * c / Jc, 1e-9);
 }
+section('ge-medianera con sismo (E.060 9.2.3 y E.050 Art. 21)');
+{ const sub2 = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const m = runTemplate('ge-medianera');
+  const P = 47, PS = 3, Mb = 0.8 + 0.6 * 0.6, B = 1.05, L = 2.05, ec = B / 2 - 0.2;
+  near('Medianera: qns = 1.20·qa − γm·Df = 27 t/m²', m('qns', 'tonf/m^2'), 30 - 3, 1e-9);
+  near('Medianera: Mb = MS + VS·hz', m('Mb', 'tonf*m'), Mb, 1e-9);
+  near('Medianera: servicio −X (tensor): qmax = (P + PS)/(BL)·(1 + 6e/B), e = Mb/(P + PS)', m('qmax_s', 'tonf/m^2'), (P + PS) / (B * L) * (1 + 6 * (Mb / (P + PS)) / B), 1e-9);
+  near('Medianera: e máxima de servicio con sismo (+X) = Mb/(P − PS)', m('e_R_s', 'm'), Mb / (P - PS), 1e-9);
+  near('Medianera: U3 = 1.25(CM + CV) + PS', m('Pu3', 'tonf'), 1.25 * P + PS, 1e-9);
+  near('Medianera: U4 = 0.9CM − PS', m('Pu4', 'tonf'), 0.9 * 35 - PS, 1e-9);
+  const q3 = (1.25 * P + PS) / (B * L) * (1 + 6 * (Mb / (1.25 * P + PS)) / B);
+  truthy('Medianera: por defecto gobierna U1 en la presión última (U3 a mano menor)', Math.abs(m('qmax_u', 'tonf/m^2') - 69.4 / (B * L)) < 1e-9 && q3 < m('qmax_u', 'tonf/m^2'), `U3 ${q3.toFixed(2)}`);
+  near('Medianera: punzonamiento U3 con γv·|Pu3·ec − MS − Vu3·eg|·cAB/Jc', m('vu3s', 'tonf/m^2'), m('Vu3s', 'tonf') / (m('bo', 'm') * m('d', 'm')) + m('gvb') * Math.abs((1.25 * P + PS) * ec - 0.8 - m('Vu3s', 'tonf') * m('eg', 'm')) * m('cAB', 'm') / m('Jcb', 'm^4'), 1e-9);
+  const ms = runTemplate('ge-medianera', sub2([['MS = 0.8 tonf*m', 'MS = 6 tonf*m']])), cs = ms.res.ctx;
+  truthy('Medianera con MS = 6 t·m: NO CUMPLE la presión de servicio con sismo (1.20 qa), sin errores', cs.errors.length === 0 && cs.checks.some(x => !x.ok && /qadm/.test(x.label)) && ms('qmax_u', 'tonf/m^2') > m('qmax_u', 'tonf/m^2'), cs.errors.map(e => e.msg).join('; '));
+  const mx = runTemplate('ge-medianera', sub2([['PS = 3 tonf', 'PS = 60 tonf'], ['MS = 0.8 tonf*m', 'MS = 30 tonf*m']])), cx = mx.res.ctx;
+  truthy('Medianera con PS = 60 t y MS = 30 t·m: levantamiento y resultante fuera → NO CUMPLE sin errores', cx.errors.length === 0 && cx.checks.some(x => !x.ok && /U4/.test(x.label)) && cx.checks.some(x => !x.ok && /2\/3 centrales/.test(x.label)), cx.errors.map(e => e.msg).join('; '));
+  const m1 = runTemplate('ge-medianera', sub2([['caso = 2', 'caso = 1'], ['MS = 0.8 tonf*m', 'MS = 20 tonf*m']])).res.ctx;
+  truthy('Medianera sin tensor y MS = 20 t·m: NO CUMPLE sin errores', m1.errors.length === 0 && m1.checks.some(x => !x.ok), m1.errors.map(e => e.msg).join('; '));
+}
+section('ge-licuacion: lista de amax = Z·S (E.030)');
+{ const inp = runTemplate('ge-licuacion').res.ctx.inputs.find(i => i.name === 'amax');
+  truthy('Licuación: amax con lista desplegable Z·S, valor por defecto 0.30 entre las opciones y rango intacto', inp.options && inp.options.length >= 8 && inp.options.includes('0.30') && inp.options.includes('0.45') && inp.range && inp.range.min === 0.05 && inp.range.max === 0.6);
+  truthy('Licuación: opciones de zona 4 = 0.45·S con S de la E.030-2026 (1.00, 1.10, 1.20)', ['0.45', '0.50', '0.54'].every(v => inp.options.includes(v)) && inp.optLabels.filter(t => /Zona 4/.test(t)).length === 3);
+  const src = TEMPLATES.find(x => x.id === 'ge-licuacion').blocks.map(b => b.src || '').join('\n');
+  truthy('Licuación: advierte que en la costa (zona 4) corresponde ≈ 0.45 g', /costa[^"]*zona 4[^"]*0\.45/.test(src));
+}
 done();
