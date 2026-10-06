@@ -143,7 +143,7 @@ registerBlock('steelsec', {
       g += `<circle cx="${X(p.bf / 2)}" cy="${Y(p.y)}" r="3" fill="${C.red}"/>` + T(X(p.bf / 2) + 6, Y(p.y) - 6, 'ȳ = ' + fl(p.y), { fs: 10, a: 'start', c: C.red });
     } else if (s.fam === 'D') {
       g += lead(X(p.b2 * 0.3), Y(p.t / 2), X(0) - 4, Y(0) - 14, 't = ' + fl(p.t), 'start');
-      g += T(X(p.b2 + p.gap / 2), Y(p.d) + 14, 's = ' + fl(p.gap), { fs: 10 });
+      g += T(X(p.b2 + p.gap + p.t) + 6, Y(p.d * 0.8), 's = ' + fl(p.gap), { fs: 10, a: 'start' });
       g += `<circle cx="${X(p.b2 + p.gap / 2)}" cy="${Y(p.y)}" r="3" fill="${C.red}"/>` + T(X(p.b2 + p.gap / 2) + 6, Y(p.y) + 12, 'ȳ = ' + fl(p.y), { fs: 10, a: 'start', c: C.red });
     } else if (s.fam === 'I' || s.fam === 'E' || s.fam === 'C') {
       const xw = s.fam === 'C' ? p.tw / 2 : p.bf / 2;
