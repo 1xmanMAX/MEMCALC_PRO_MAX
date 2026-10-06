@@ -77,10 +77,10 @@ check e_N <= 0.02 // Newmark con Δt/Tn = 0.02 converge a la solución exacta
 "Las pseudo-aceleraciones $A/g = \\omega_n^2 D/g$ resultan {An_g_a}, {An_g_b} y {An_g_c} (Chopra: 1.09, 0.610 y 0.191).`),
       calc(`# Sistema elastoplástico (Chopra §7.4)
 "Se analiza el sistema de Tn = 0.5 s y ζ = 5 % con resistencia $f_y = f_o/R_y$, donde $f_o$ es la fuerza elástica máxima ($R_y$ = factor de reducción de resistencia, Chopra Ec. 7.3.2).
-zetaP = 0.05 // Amortiguamiento del sistema inelástico [0.005..0.20]
+zeta_p = 0.05 // Amortiguamiento del sistema inelástico [0.005..0.20]
 Ry = 4 // Factor de reducción de resistencia [1..8]
 mu_disp = 6 // Ductilidad disponible supuesta (sistema dúctil) [1..10]`),
-      { type: 'thsdof', registro: 'elcentro', T: 'Tn_a', zeta: 'zetaP', modelo: 'bilineal', metodo: 'avg', Ry: 'Ry', alpha: '0', mucap: 'mu_disp', sufijo: 'p', escala: '1', titulo: 'Sistema elastoplástico (Tn = 0.5 s, ζ = 5 %, Ry = 4): üg(t), u(t) y lazo fS–u' },
+      { type: 'thsdof', registro: 'elcentro', T: 'Tn_a', zeta: 'zeta_p', modelo: 'bilineal', metodo: 'avg', Ry: 'Ry', alpha: '0', mucap: 'mu_disp', sufijo: 'p', escala: '1', titulo: 'Sistema elastoplástico (Tn = 0.5 s, ζ = 5 %, Ry = 4): üg(t), u(t) y lazo fS–u' },
       calc(`## Resultados del sistema inelástico
 Cy_p // Coeficiente de fluencia fy/(m·g)
 mu_p // Ductilidad de desplazamiento μ = um/uy
@@ -101,7 +101,7 @@ mu_p // Ductilidad de desplazamiento μ = um/uy
       nota: 'Los datos por defecto NO reproducen un ejemplo publicado: solo el PGA del registro es un valor de Chopra. Los demás son valores de control: Sa elástico E.030 calculado a mano (0.45·1·2.5·1.075, con T1 = 0.5 s < TP) y la ordenada espectral del registro con Nigam-Jennings (la misma rutina reproduce D = 2.67/5.97/7.47 in de Chopra Fig. 6.4.1).',
       valores: [
         { var: 'PGA', esperado: 0.319, tol: 0.002, desc: 'Chopra §6.1: PGA de El Centro (g)' },
-        { var: 'SaE', esperado: 1.209375, tol: 0.001, desc: 'Control: Z·U·C·S = 0.45·1·2.5·1.075' },
+        { var: 'Sa_E', esperado: 1.209375, tol: 0.001, desc: 'Control: Z·U·C·S = 0.45·1·2.5·1.075' },
         { var: 'S', esperado: 1.075, tol: 0.001, desc: 'Control: S interpolado por Vs30 = 400 m/s (zona 4)' },
         { var: 'SaT', esperado: 0.9162, tol: 0.003, desc: 'Control: Sa(0.5 s, ζ = 5 %) de El Centro (g)' },
         { var: 'Ia', unidad: 'm/s', esperado: 1.80, tol: 0.01, desc: 'Control: intensidad de Arias de El Centro' },
@@ -119,14 +119,14 @@ T1 = 0.50 s // Periodo fundamental de la estructura en la dirección de análisi
 fesc_max = 4 // Factor de escala máximo razonable para un registro (práctica: 0.25–4; NIST GCR 11-917-15) [0.25..5]`),
       { type: 'respspec', registro: 'elcentro', zetas: '0.02, 0.05, 0.10', Tmax: '4 s', nT: '120', Sa: 'Z*U*CE030d(T, Tp, Tl)*S', Tref: 'T1', escala: '1', titulo: 'Espectros de respuesta de El Centro 1940 NS (ζ = 2, 5 y 10 %) y espectro elástico E.030-2026' },
       calc(`# Evaluación
-SaE = Z*U*CE030d(T1, Tp, Tl)*S // Espectro elástico E.030 en T1 (R = 1, Art. 41.1)
-rT1 = SaT/SaE // Razón espectral registro/norma en T1 (ζ = 5 %)
-SaEC = SaElCentro(T1, 0.05) // Verificación con la función del editor (Nigam-Jennings)
-check abs(SaEC - SaT)/SaT <= 0.01 // Consistencia entre el bloque y la función SaElCentro
+Sa_E = Z*U*CE030d(T1, Tp, Tl)*S // Espectro elástico E.030 en T1 (R = 1, Art. 41.1)
+rT1 = SaT/Sa_E // Razón espectral registro/norma en T1 (ζ = 5 %)
+Sa_EC = SaElCentro(T1, 0.05) // Verificación con la función del editor (Nigam-Jennings)
+check abs(Sa_EC - SaT)/SaT <= 0.01 // Consistencia entre el bloque y la función SaElCentro
 check abs(SaElCentro(0.02 s, 0.05) - PGA)/PGA <= 0.05 // Sa(T → 0) ≈ PGA (prueba de consistencia del espectro)
 check fesc <= fesc_max // Factor de escala para que el espectro del registro cubra al de diseño en 0.2T1–1.5T1
-PGAesc = fesc*PGA // PGA del registro escalado (g)
-"El registro escalado por {fesc} tiene PGA = {PGAesc} g frente a ZUS = {Z*U*S}; su contenido de frecuencias (Tpk = {Tpk}) difiere del espectro de diseño, por lo que la E.030-2026 exige al menos tres pares de registros (Art. 47.4).`),
+PGA_esc = fesc*PGA // PGA del registro escalado (g)
+"El registro escalado por {fesc} tiene PGA = {PGA_esc} g frente a ZUS = {Z*U*S}; su contenido de frecuencias (Tpk = {Tpk}) difiere del espectro de diseño, por lo que la E.030-2026 exige al menos tres pares de registros (Art. 47.4).`),
       summary(),
     ],
   },
