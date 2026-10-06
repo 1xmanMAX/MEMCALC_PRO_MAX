@@ -753,8 +753,8 @@ d = tw - rec - db(bar)/2 // Peralte efectivo
 fs = 1.3*1.7 // Coeficiente sanitario × factor de carga
 As(Mx) = 0.85*fc/fy*(1 - sqrt(1 - 2*(fs*Mx*1 m/(0.9*100 cm*d^2))/(0.85*fc)))*100 cm*d/(1 m) // Acero requerido para un momento por metro
 ## Refuerzo vertical
-Mvi = max(MyNa, MyPs) // Cara interior: base con agua / tramo con suelo
-Mve = max(MyPa, MyNs) // Cara exterior: tramo con agua / base con suelo
+Mvi = max(MyNa, MyPs) -> tonf*m/m // Cara interior: base con agua / tramo con suelo
+Mve = max(MyPa, MyNs) -> tonf*m/m // Cara exterior: tramo con agua / base con suelo
 Asvi = As(Mvi) -> cm^2/m
 Asve = As(Mve) -> cm^2/m
 Asmin = 0.0015*tw*1 m/m -> cm^2/m // Mínimo por cara: 0.003 tw/2 (ACI 350 Tabla 7.12.2.1, L < 6 m entre juntas)
@@ -763,10 +763,12 @@ Asp = Ab(bar)/s -> cm^2/m // Acero colocado por cara
 check Asp >= max(Asvi, Asmin) // Refuerzo vertical, cara interior
 check Asp >= max(Asve, Asmin) // Refuerzo vertical, cara exterior
 ## Refuerzo horizontal
-Mhi = max(MxNa, MxNc, MxPs) // Cara interior: esquinas con agua / tramo con suelo
-Mhe = max(MxPa, MxPc, MxNs) // Cara exterior: tramo con agua / esquinas con suelo
-check Asp >= max(As(Mhi), Asmin) // Refuerzo horizontal, cara interior
-check Asp >= max(As(Mhe), Asmin) // Refuerzo horizontal, cara exterior
+Mhi = max(MxNa, MxNc, MxPs) -> tonf*m/m // Cara interior: esquinas con agua / tramo con suelo
+Mhe = max(MxPa, MxPc, MxNs) -> tonf*m/m // Cara exterior: tramo con agua / esquinas con suelo
+Ashi = As(Mhi) -> cm^2/m
+Ashe = As(Mhe) -> cm^2/m
+check Asp >= max(Ashi, Asmin) // Refuerzo horizontal, cara interior
+check Asp >= max(Ashe, Asmin) // Refuerzo horizontal, cara exterior
 ## Cortante en la base de la pared
 Vu = 1.7*max(Vba, Vbs) -> tonf/m
 phiVc = 0.75*0.53*sqrtfc(fc)*100 cm*d/(1 m) -> tonf/m // φVc (φ = 0.75)

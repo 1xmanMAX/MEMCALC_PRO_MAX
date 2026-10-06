@@ -264,13 +264,14 @@ export function valText(v, dec) {
 }
 
 const GREEK = ['varepsilon', 'vartheta', 'epsilon', 'upsilon', 'Upsilon', 'lambda', 'Lambda', 'varphi', 'alpha', 'gamma', 'Gamma', 'delta', 'Delta', 'theta', 'Theta', 'kappa', 'sigma', 'Sigma', 'omega', 'Omega', 'beta', 'zeta', 'iota', 'Phi', 'phi', 'chi', 'psi', 'Psi', 'rho', 'tau', 'eta', 'mu', 'nu', 'xi', 'Xi', 'pi', 'Pi'];
+const GSUF = new Set(['max', 'min', 'req', 'adm', 'tot', 'eff', 'lim', 'est', 'sis', 'col', 'vig', 'mur', 'red']);
 const SPECIAL = { fm: "f'_{m}", vm: "v'_{m}", fc: "f'_{c}", fpc: "f'_{c}", fcm: "f'_{cm}", fpy: "f'_{y}", Ec: 'E_{c}', inf: '\\infty' };
 
 function subTex(s) {
   if (/^\d+$/.test(s) || s.length === 1 || s[0] === '\\') return s;
   return '\\mathrm{' + s + '}';
 }
-const WORDS = new Set(['rec', 'bar', 'est', 'sep', 'punta', 'talon', 'total', 'area', 'peso', 'luz', 'base', 'alto', 'ancho', 'largo', 'carga', 'tipo', 'zona', 'uso', 'suelo', 'nivel', 'piso', 'paso', 'barra', 'res', 'ok', 'fs']);
+const WORDS = new Set(['rec', 'bar', 'est', 'sep', 'punta', 'talon', 'total', 'area', 'peso', 'luz', 'base', 'alto', 'ancho', 'largo', 'carga', 'tipo', 'zona', 'uso', 'suelo', 'nivel', 'piso', 'pisos', 'peso', 'vano', 'muro', 'losa', 'viga', 'paso', 'barra', 'res', 'ok', 'fs']);
 function splitBase(b) {
   if (SPECIAL[b]) return { main: SPECIAL[b], sub: [] , full: true };
   if (WORDS.has(b)) return { main: '\\mathrm{' + b + '}', sub: [] };
@@ -279,11 +280,11 @@ function splitBase(b) {
       const rest = b.slice(g.length);
       if (!rest) return { main: '\\' + g, sub: [] };
       if (/^[A-Z]/.test(rest)) { const r = splitBase(rest); return { main: '\\' + g + ' ' + r.main, sub: r.sub, full: r.full }; }
-      if (/^[a-z0-9]{1,4}$/.test(rest)) return { main: '\\' + g, sub: [rest] };
+      if (/^[a-z0-9]{1,4}$/.test(rest) && (g.length >= 4 || rest.length <= 2 || /^\d+$/.test(rest) || GSUF.has(rest))) return { main: '\\' + g, sub: [rest] };
     }
   }
   if (b.length === 1) return { main: b, sub: [] };
-  if (GREEK.includes(b.slice(1))) return { main: b[0], sub: ['\\' + b.slice(1)] };
+  if (GREEK.includes(b.slice(1)) && !/^.(pi|Pi)$/.test(b)) return { main: b[0], sub: ['\\' + b.slice(1)] };
   if (/^[A-Z]{2,4}$/.test(b)) return { main: '\\mathrm{' + b + '}', sub: [] };
   const rest = b.slice(1);
   if (/^[A-Za-z]/.test(b) && (/^[a-z0-9]{1,4}$/.test(rest) || /^\d+$/.test(rest) || /^[A-Z][a-z0-9]{0,2}$/.test(rest))) return { main: b[0], sub: [rest] };
@@ -324,7 +325,7 @@ export function isQty(n, scope) {
       case 'OperatorNode':
         if (x.fn === 'unaryMinus' || x.fn === 'unaryPlus') walk(x.args[0], inExp);
         else if (x.op === '*' || x.op === '/') x.args.forEach(a => walk(a, inExp));
-        else if (x.op === '^') { walk(x.args[0], inExp); walk(x.args[1], true); }
+        else if (x.op === '^') { let hasC = false; x.args[0].traverse(y => { if (y.type === 'ConstantNode') hasC = true; }); if (hasC) ok = false; else { walk(x.args[0], inExp); walk(x.args[1], true); } }
         else ok = false;
         break;
       case 'ParenthesisNode': walk(x.content, inExp); break;
@@ -389,7 +390,7 @@ export function tex(n, o) {
       if (n.op === '^' || n.op === '.^') {
         const b = a[0];
         let bt = tex(b, { ...o, wrapU: true });
-        if (needsParen(b) || (b.type === 'OperatorNode' && b.op === '^')) bt = '\\left(' + bt + '\\right)';
+        if (needsParen(b) || (b.type === 'OperatorNode' && b.op === '^') || (b.type !== 'ConstantNode' && isQty(b, o.scope) && /\\mathrm|\\,/.test(bt) && !/^\\left\(/.test(bt))) bt = '\\left(' + bt + '\\right)';
         if (b.type === 'FunctionNode' && BUILTIN_TEX[fnName(b)] && fnName(b) !== 'exp') bt = '\\left(' + bt + '\\right)';
         const e = strip(a[1]);
         if (e.type === 'ConstantNode' && e.value === 0.5) return '\\sqrt{' + tex(strip(b), o) + '}';
@@ -397,7 +398,7 @@ export function tex(n, o) {
       }
       if (n.op === '*' || n.op === '.*') {
         const l = tex(a[0], { ...o, wrapU: false }), r = tex(a[1], { ...o, wrapU: false });
-        const startsNum = (x) => { while (x.type === 'OperatorNode' && x.args.length === 2 && x.op !== '^' ? true : false) x = x.args[0]; return x.type === 'ConstantNode' || x.fn === 'unaryMinus' || isQty(x, o.scope); };
+        const startsNum = (x) => { while ((x.type === 'OperatorNode' && x.args.length === 2) || x.type === 'ParenthesisNode') x = x.type === 'ParenthesisNode' ? x.content : x.args[0]; return x.type === 'ConstantNode' || x.fn === 'unaryMinus' || isQty(x, o.scope); };
         if (o.mode === 'sym' && !startsNum(a[1]) && (n.implicit || a[0].type === 'ConstantNode')) return l + '\\,' + r;
         return l + ' \\cdot ' + r;
       }

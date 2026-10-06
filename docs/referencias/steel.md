@@ -9,7 +9,7 @@ Archivos: `src/norms/steel_shapes.js` (base de perfiles, generada), `src/norms/s
 | Fuente | Uso |
 |---|---|
 | ANSI/AISC 360-16 y 360-22, *Specification for Structural Steel Buildings* | Caps. B4 (clasificación), D, E (E3, E4, E5, E7), F (F1, F2, F3, F6, F7, F8), G (G2, G4, G5), H1, I (I2.1b, I3, I8), J (J2, J3, J4, J8, J10), Apéndices 7 y 8 |
-| AISC *Steel Construction Manual* 15.ª/16.ª ed. — **AISC Shapes Database v15.0/v16.0** | Propiedades de W, HP, M, S, C, MC, L, HSS y Pipe (archivo `aisc-shapes-database-v15.0`, distribuido en el paquete npm `aisc` 0.1.0; para los perfiles incluidos los valores coinciden con la v16.0) |
+| AISC *Steel Construction Manual* 15.ª/16.ª ed. — **AISC Shapes Database v15.0/v16.0** | Propiedades de W, HP, M, S, C, MC, L, HSS y Pipe (archivo oficial `aisc-shapes-database-v15.0` distribuido en el paquete npm `aisc` 0.1.0; la descarga directa de la v16.0 desde aisc.org estaba bloqueada. Los valores verificados de los ejemplos v16 coinciden) |
 | AISC *Design Examples* v16 (Companion Vol. 1) | Ej. E.1A (φcPn = 893 kip), F.1-1A (φMp = 379 kip·ft), F.1-3A (φMn = 288 kip·ft), G.1A (φVn = 306 kip), H.1A (0.928), D.2 (φPn = 122/125 kip) |
 | AISC Manual, Partes 7, 8 y 10 | Tabla 7-1 (corte en pernos), Parte 8 (1.392 kip/in por 1/16" de filete E70), Parte 10 (placa simple, configuración convencional, Ec. 10-5) |
 | AISC Design Guide 1, 2.ª ed. (Fisher y Kloiber) | Placa base: m, n, λn′, X, λ, tp = ℓ√(2Pu/(0.9FyBN)), fricción |
@@ -88,5 +88,5 @@ Con k = (Iviga/Icol)(h/L):
 - No se implementan F4/F5 (almas no compactas/esbeltas en flexión), E5 como función (se usa en la plantilla de armadura), ángulos dobles 2L, perfiles T, ni el Apéndice 6 de arriostramiento.
 - `MnHSS` para ala esbelta (F7-3) usa una inercia efectiva aproximada sin redistribuir el eje neutro.
 - El ancho efectivo de conformados en frío es simplificado (ala con labio tratada con k = 4 si D/w ≤ 0.8); no se evalúa el pandeo distorsional (S100 F4) ni el método de resistencia directa.
-- La base AISC proviene de la v15.0 (idéntica a la v16.0 para los perfiles incluidos; la v16 añade perfiles nuevos que no figuran).
+- La base AISC proviene de la v15.0; los perfiles usados en los ejemplos v16 coinciden, pero los perfiles añadidos en la v16.0 no figuran y podrían existir diferencias menores de redondeo.
 - El análisis del pórtico de la nave idealiza el techo como horizontal y concentra la carga de viento de muros para la deriva; para techos de mayor pendiente o pórticos de varios vanos use el bloque de análisis de pórticos.

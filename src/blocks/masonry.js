@@ -7,11 +7,11 @@
 //   tijeral    : armadura (tijeral) de madera — método de rigidez para barras articuladas
 // =====================================================================
 import { registerBlock, F } from '../blockreg.js';
-import { evalParam, math, esc } from '../engine.js';
+import { evalParam, math, esc, fixedUnits } from '../engine.js';
 import { C, T, Lne, svgWrap, arrowDefs, dimH, dimV, niceTicks, caption, setVar, pos, f2 } from '../blocks.js';
 import { aci, shellPCA, tankWall } from '../norms/masonry.js';
 
-const U = (v, u) => math.unit(v, u);
+const U = (v, u) => { const x = math.unit(v, u); fixedUnits.set(x, u); return x; };
 const vec = (a, u) => math.matrix(u ? a.map(v => U(v, u)) : a);
 const rect = (x, y, w, h, fill, stroke = C.ink, sw = 1, extra = '') => `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(0.5, w).toFixed(1)}" height="${Math.max(0.5, h).toFixed(1)}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${extra}/>`;
 const poly = (pts, fill, stroke = C.ink, sw = 1, extra = '') => `<path d="${pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${extra}/>`;

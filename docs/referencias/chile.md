@@ -28,6 +28,10 @@ Tabla 6.5 Cd*: A, B, C, D por tramos (suelo E: estudio especial → error).
 Tabla 5.7 (zona 3; ×0,75 zona 2, ×0,50 zona 1): R=1: 0,79/0,68/0,55 · R=2: 0,60/0,49/0,42 · R=3: 0,40/0,34/0,28 · R=4: 0,32/0,27/0,22 · R=5: 0,26/0,23/0,18 para ξ = 0,02/0,03/0,05 (interpolación lineal en R y ξ, criterio propio).
 
 **NCh2369:2023** — Tabla 5: A 0,90/0,15/1,85 · B 1,00/0,30/1,60 · C 1,05/0,40/1,50 · D 1,20/0,75/1,00 (S/T0/p). Sa = 0,7·I·SaH/R·(0,05/ξ)^0,4 con SaH = 1,4·S·Ao·α(T0, p); meseta Smáx = 2,75·I·S·Ao/(R+1)·(0,05/ξ)^0,4 desde T = 0 hasta la intersección con la rama descendente.
+Vertical (ec. 2 y 4, revisión 2026): Sa(TV) = 0,7·I·SaV/RV·(0,05/ξV)^0,4 con SaV = S·Ao·α(1,7·TV/T0), RV = 2,0, ξV = 0,03 (`SaVNCh2369v23`).
+I (4.3.2): cat. I 0,80 · II 1,00 · III y IV 1,20 (`INCh2369v23`). Cmín = 0,25·I·S·Ao/g (5.12.1, `CminNCh2369v23`).
+La columna T1 de la Tabla 5 (0,15/0,27/0,35/0,52 s) solo interviene en R* de cláusulas especiales, no en el espectro de diseño.
+Tabla 6 (R/ξ) leída del texto en consulta pública; la plantilla `cl-nch2369` usa el ítem 5.5 (R = 5, ξ = 0,03 empernado). Suelo D: espectro de sitio obligatorio salvo R = 1 o naves livianas (Tabla 5, nota 2).
 
 ## Funciones (`defineFns`, categorías «Sismo — Chile» y «Viento — Chile»)
 
@@ -50,8 +54,11 @@ Suelo NCh433: código 1..5 (= A..E) o texto `"A"`…`"E"`. Suelo NCh2369.Of2003:
 ## Limitaciones conocidas
 
 1. **NCh432:2010**: no se tuvo acceso al texto completo; Kz, G, Cp (techo según ASCE 7-05 Fig. 6-6, θ < 10° se toma como 10°), GCpi y el factor de importancia (0,87/1,00/1,15) provienen de ASCE 7-05, base declarada de la norma. La carga mínima 0,48 kN/m² se cita de ASCE 7-05 6.1.4.1. Verificar con la versión exigida (NCh432:2025 ya publicada).
-2. **NCh3171**: las combinaciones por tensiones admisibles (factor 1,0 para E, 0,75 en combinaciones con varias cargas eventuales, 0,6D) se basan en ASCE 7-05 adaptado; se recomienda contrastarlas con el texto oficial (existe edición NCh3171:2017).
-3. **NCh2369:2023/2025**: solo se implementa el espectro horizontal de diseño (comparación). Sus tablas de R/ξ (Tabla 6), espectro vertical y requisitos de espectro de sitio para suelos D/E no se implementan.
+2. **NCh3171**: combinaciones LRFD y ASD contrastadas con el apunte CI3201 U. de Chile (2016), que transcribe NCh3171.Of2010 (ASD: D; D+L; D+(Lr o S o R); D+0,75L+0,75(Lr o S o R); D+W; D+E; D+0,75W+0,75L+0,75(Lr…); D+0,75E+0,75L+0,75S; 0,6D+W; 0,6D+E). No se contrastó la edición NCh3171:2017.
+3. **NCh2369:2023/2025**: se implementan los espectros horizontal y vertical de diseño, I y Cmín; la Tabla 6 (R/ξ) se documenta (no como función). El espectro de sitio (suelos D con R > 1 y E) y los análisis especiales no se implementan.
 4. El análisis modal es de **edificio de cortante plano** (un GDL por piso). La torsión accidental 3D (±0,05 b) debe hacerse en el modelo completo.
 5. `muroCL`: sección rectangular con barras de borde en dos capas y malla en el alma; εcu = 0,003, bloque de Whitney, acero elastoplástico (Es = 200 GPa). No cubre muros T/L (DS60 21.9.5.2: ancho efectivo del ala).
 6. Interpolaciones lineales en Tablas 6.4 (NCh433) y 5.7 (NCh2369) para valores no tabulados: criterio del módulo, no de la norma.
+
+7. **DS60 21.9.5.4 y 21.9.6.4 a)**: el PDF oficial del MINVU no fue accesible en la revisión (bloqueo del servidor). La demanda de curvatura se evalúa con la envolvente de φu = 2δu/(lw·Ht) y φu = φy + (δu − δy)/(lp(Ht − lp/2)) (lp = lw/2, δy = 11/40·φy·Ht², forma usada en la memoria de Meriño, U. del Bío-Bío); la longitud a confinar con la envolvente máx(c − lw/(600δu/hw); c − 0,1lw; c/2). Ambos criterios son conservadores; confirmar con el texto oficial.
+8. Revisión independiente: ver `docs/referencias/revision-chile.md`.

@@ -17,12 +17,12 @@ Tl = TlE030(Vs30) // Periodo TL de inicio de desplazamiento constante (Tabla N°
 "Perfil de suelo **S{si(Vs30 >= 800 m/s, 0, si(Vs30 >= 550 m/s, 1, si(Vs30 >= 350 m/s, 2, si(Vs30 >= 200 m/s, 3, 4))))}** según la Tabla N° 3 (S0 ≥ 800 m/s; S1 550–800; S2 350–550; S3 200–350; S4 < 200 m/s).`;
 
 const SISTEMA = `# Categoría, sistema estructural y regularidad
-cat = 4 // Categoría de la edificación (Art. 19, Tabla N° 7) [2 : A2 Esencial|3 : B Importante|4 : C Común]
-U = UE030(cat) // Factor de uso (Tabla N° 7)
+categoria = 4 // Categoría de la edificación (Art. 19, Tabla N° 7) [2 : A2 Esencial|3 : B Importante|4 : C Común]
+U = UE030(categoria) // Factor de uso (Tabla N° 7)
 sistema = 8 // Sistema estructural en la dirección de análisis (Tabla N° 10) [7 : C°A° pórticos|8 : C°A° dual|9 : C°A° muros estructurales|10 : C°A° muros de ductilidad limitada|11 : Albañilería armada o confinada|1 : Acero SMF|4 : Acero SCBF|6 : Acero EBF]
-check sisE030(cat, zona, sistema) == 1 // Sistema estructural permitido para la categoría y la zona (Art. 21, Tabla N° 9)
+check sisE030(categoria, zona, sistema) == 1 // Sistema estructural permitido para la categoría y la zona (Art. 21, Tabla N° 9)
 Ts = 0.30 s // Periodo predominante del terreno por razón espectral H/V (Art. 15.3; obligatorio en categorías A y B de la zona 4, Art. 14.2)
-check Ts < 0.65*Tp or cat == 4 or zona < 4 // Categorías A y B en zona 4: Ts < 0.65 TP; si no, se toma el perfil siguiente más desfavorable o un estudio de sitio (Art. 14.8)
+check Ts < 0.65*Tp or categoria == 4 or zona < 4 // Categorías A y B en zona 4: Ts < 0.65 TP; si no, se toma el perfil siguiente más desfavorable o un estudio de sitio (Art. 14.8)
 R0 = R0E030(sistema) // Coeficiente básico de reducción (Art. 22, Tabla N° 10)
 Ia = 1.0 // Factor de irregularidad en altura supuesto (Art. 24, Tabla N° 11) — se verifica en la sección de irregularidades
 Ip = 1.0 // Factor de irregularidad en planta supuesto (Art. 24, Tabla N° 12)
@@ -128,7 +128,7 @@ Fv = 2/3*Z*U*S // Fracción del peso para la fuerza sísmica vertical (Art. 38.1
   calc(`# Verificación de la regularidad estructural
 Dprom = Delta_e // Desplazamiento relativo promedio de los extremos (≈ centro de masas, del modelo con excentricidad accidental)
 Dmax = rt .* Dprom // Desplazamiento relativo máximo en el extremo del edificio`),
-  { type: 'irregE030', K: 'Ki', P: 'P_i', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva_max', dlim: 'dlim', disc: '0', esq: false, diaf: false, nopar: false, cat: 'cat', zona: 'zona' },
+  { type: 'irregE030', K: 'Ki', P: 'P_i', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva_max', dlim: 'dlim', disc: '0', esq: false, diaf: false, nopar: false, cat: 'categoria', zona: 'zona' },
   calc(`check Ia <= Ia_ev // El factor Ia supuesto no excede el evaluado (Art. 24.1)
 check Ip <= Ip_ev // El factor Ip supuesto no excede el evaluado (Art. 24.2)
 check Ia_ev*Ip_ev == 1 or zona == 1 or ((sistema == 9 or sistema == 10 or sistema == 11) and hn <= 15 m) // Análisis estático permitido: estructura regular, zona 1, o muros portantes de C°A°/albañilería de hasta 15 m (Art. 33.2)`),
@@ -199,10 +199,10 @@ const IRREG = [
 **Datos del modelo:** rigideces laterales de entrepiso $K_i = V_i/\\Delta_i$ en el centro de masas (traslación pura), resistencias de entrepiso y desplazamientos relativos en los extremos con excentricidad accidental, obtenidos del modelo tridimensional con secciones brutas (Art. 30).`),
   calc(`# Datos generales
 zona = 4 // Zona sísmica [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
-cat = 4 // Categoría de la edificación (Tabla N° 7) [2 : A2 Esencial|3 : B Importante|4 : C Común]
-U = UE030(cat) // Factor de uso (Tabla N° 7)
+categoria = 4 // Categoría de la edificación (Tabla N° 7) [2 : A2 Esencial|3 : B Importante|4 : C Común]
+U = UE030(categoria) // Factor de uso (Tabla N° 7)
 sistema = 8 // Sistema estructural (Tabla N° 10) [7 : C°A° pórticos|8 : C°A° dual|9 : C°A° muros estructurales|11 : Albañilería confinada]
-check sisE030(cat, zona, sistema) == 1 // Sistema estructural permitido para la categoría y la zona (Art. 21, Tabla N° 9)
+check sisE030(categoria, zona, sistema) == 1 // Sistema estructural permitido para la categoría y la zona (Art. 21, Tabla N° 9)
 R0 = R0E030(sistema) // Coeficiente básico de reducción (Tabla N° 10)
 Lx = 24 m // Dimensión total en planta en X
 Ly = 16 m // Dimensión total en planta en Y
@@ -259,7 +259,7 @@ Dmax = rt .* Dprom // Desplazamiento relativo elástico máximo en el extremo
 deriva = fd*Dmax ./ hei // Distorsión inelástica máxima de entrepiso
 @modo completo
 dlim = dlimE030(1) // Límite para concreto armado (Tabla N° 14)`),
-  { type: 'irregE030', K: 'Ki', Vr: 'Vr', P: 'P_i', D: 'Dx', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva', dlim: 'dlim', disc: 'discont', esq: 'esquina', diaf: 'diafrag', nopar: 'noparal', cat: 'cat', zona: 'zona', npisos: '[n, hn]' },
+  { type: 'irregE030', K: 'Ki', Vr: 'Vr', P: 'P_i', D: 'Dx', Dmax: 'Dmax', Dprom: 'Dprom', deriva: 'deriva', dlim: 'dlim', disc: 'discont', esq: 'esquina', diaf: 'diafrag', nopar: 'noparal', cat: 'categoria', zona: 'zona', npisos: '[n, hn]' },
   calc(`# Coeficiente de reducción y consecuencias
 Ia = Ia_ev // Factor de irregularidad en altura: menor valor de la Tabla N° 11 (Art. 24.1)
 Ip = Ip_ev // Factor de irregularidad en planta: menor valor de la Tabla N° 12 (Art. 24.2)
@@ -285,7 +285,7 @@ Ly = 18 m // Dimensión en planta en Y
 A = Lx*Ly // Área techada por nivel
 n = 4 // Número de pisos (el último es la azotea)
 he = 2.70 m // Altura de entrepiso
-cat = 4 // Categoría de la edificación (E.030 Tabla N° 7) [2 : A2 Esencial|3 : B Importante|4 : C Común]
+categoria = 4 // Categoría de la edificación (E.030 Tabla N° 7) [2 : A2 Esencial|3 : B Importante|4 : C Común]
 gc = 2400 kgf/m^3 // Peso unitario del concreto armado (E.020 Anexo 1: concreto simple de grava 2300 + 100)
 # Cargas por unidad de área
 ## Losa
@@ -322,7 +322,7 @@ Dz = (wlosa + wa)*A -> tonf // Losa y acabados (impermeabilización) de la azote
 CM = [Dt, Dt, Dt, Dz] + Dvig + [Dcol, Dcol, Dcol, Dcol/2] + [0, 0, 0, 1]*Dpar // Carga muerta por nivel (azotea: ½ columna superior)
 CV = [Lo, Lo, Lo, Lt]*A // Carga viva por nivel
 @modo completo
-pCV = si(cat <= 3, 0.50, 0.25) // Fracción de CV para el peso sísmico (E.030 Art. 31 a, b)
+pCV = si(categoria <= 3, 0.50, 0.25) // Fracción de CV para el peso sísmico (E.030 Art. 31 a, b)
 fCV = [pCV, pCV, pCV, 0.25] // Azotea: 25 % de la carga viva (E.030 Art. 31 d)
 @modo corto
 P_i = CM + fCV .* CV // Peso sísmico por nivel
@@ -481,7 +481,7 @@ w_c = 0.5*Z*U*S*gce*ece -> kgf/m^2 // F = 0.5·Z·U·S·Pe por unidad de área (
   { type: 'table', columnas: 'Nivel = 1:5\n$h_i$ [m] = h_i\n$F_i$ [tonf] = Fi\n$P_i$ [tonf] = P_i\n$a_i/g$ = ai\n$F/P_e$ con C1 3.0 = 3*ai\n$F/P_e$ con C1 2.0 = 2*ai', dec: '3', titulo: 'Coeficientes sísmicos de elementos no estructurales por nivel (mínimo 0.5·Z·U·S = {amin})' },
   calc(`# Separación sísmica entre edificios (Art. 52)
 h1 = sum(hei) // Altura del edificio desde el terreno natural
-d1 = 6.84 cm // Desplazamiento inelástico máximo del edificio en la azotea (Art. 50)
+d1 = 8.07 cm // Desplazamiento inelástico máximo de la azotea, en el extremo del edificio (memoria de análisis estático, Art. 50)
 h2 = 8.4 m // Altura del edificio vecino existente (3 pisos)
 smin = sJuntaE030(Z, S, h2) -> cm // s = 0.02·Z·S·h ≥ 0.03 m evaluado a la altura del edificio vecino (Art. 52.2)
 "El edificio vecino existente **no** cuenta con junta sísmica reglamentaria; su desplazamiento se desconoce, por lo que se usa el criterio del Art. 52.4: separación igual a $s/2$ del proyecto más $s/2$ que le corresponde a la estructura vecina.
@@ -510,8 +510,9 @@ S = SE030(zona, Vs30) // Factor de suelo (E.030 Tabla N° 4)
 Tp = TpE030(Vs30) // Periodo TP (E.030 Tabla N° 5)
 Tl = TlE030(Vs30) // Periodo TL (E.030 Tabla N° 5)
 Ts = 0.22 s // Periodo predominante del terreno por razón espectral H/V (E.031 Art. 14.2)
-check Ts < 0.30 s // Ts compatible con el perfil S1 (E.031 Art. 14.2, Tabla N° 4)
-check Ts < 0.65*Tp // Categoría A en zona 4: Ts < 0.65 TP de la Tabla N° 5 (E.030-2026 Art. 14.8)
+Tsmax = si(Vs30 >= 800 m/s, 0.15 s, si(Vs30 >= 550 m/s, 0.30 s, si(Vs30 >= 350 m/s, 0.40 s, 0.60 s))) // Ts máximo del perfil: S0 0.15, S1 0.30, S2 0.40, S3 0.60 s (E.031 Tabla N° 4)
+check Ts < Tsmax // Ts compatible con el perfil de suelo adoptado (E.031 Art. 14.2; si Ts > 0.6 s, estudio de sitio, Art. 14.3)
+check Ts < 0.65*Tp or zona < 4 // Categoría A en zona 4: Ts < 0.65 TP de la Tabla N° 5 (E.030-2026 Art. 14.8)
 U = 1.0 // Para estructuras aisladas U = 1 en todos los casos (E.031 Art. 14.4)
 SaM(T) = SaME031(T, Z, S, Tp, Tl) // SaM = 1.5·Z·U·C·S (en g), C de la E.030 Tabla N° 6 (E.031 ec. 5)
 # Estructura sobre la interfaz de aislamiento

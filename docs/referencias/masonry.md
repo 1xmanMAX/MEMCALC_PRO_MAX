@@ -131,7 +131,8 @@ para estabilidad numérica). Con **ν = 0.2** reproduce las tablas:
 | MemoriaCalc | — | 0.0023 | 0.0071 | 0.0092 | 0.0098 | 0.0012 | −0.0118 |
 
 Momento en la base −0.0333 (PCA) vs −0.0332; cortante en la base 0.262 (Tabla A-12) vs 0.262; base articulada
-(Tabla A-5) 0.074 / 0.281 / 0.449 / 0.519 / 0.210 vs 0.078 / 0.281 / 0.453 / 0.518 / 0.209.
+(Tabla A-5) 0.074 / 0.281 / 0.449 / 0.519 / 0.210 vs 0.078 / 0.281 / 0.453 / 0.518 / 0.209. Para tanques muy bajos
+(H²/Dt = 0.4) la diferencia absoluta con la Tabla A-1 es ≤ 0.005 (0.134 / 0.101 / 0.066 vs 0.133 / 0.097 / 0.062).
 
 ## 7. Placas rectangulares (PCA *Rectangular Concrete Tanks*)
 

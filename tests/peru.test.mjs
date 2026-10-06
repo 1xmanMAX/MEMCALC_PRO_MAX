@@ -269,4 +269,96 @@ section('Plantillas del módulo (datos por defecto)');
   near('Viento: Ph muro barlovento = 0.005·0.8·Vh²', w('p_mb', 'kgf/m^2'), 0.005 * 0.8 * w('Vh', 'km/h') ** 2);
 }
 
+section('Revisión independiente — ejemplos publicados y casos adicionales');
+{
+  // (1) Ejemplo publicado: Rupay Vargas et al. (2022) «Análisis sísmico de fuerzas estáticas equivalentes de un pórtico
+  //     de 3 niveles», Yotantsipanko 2(2): 88–100. Z = 0.45, U = 1.5, C = 2.5, S = 1.0, R = 8, P = 59.870 tonf,
+  //     Pi = [22.068, 22.068, 15.734] tonf, hi = [3, 6, 9] m → V = 12.629 tonf; F = [2.457, 4.915, 5.256] tonf;
+  //     ki = 4832.391 tonf/m → Δ = [0.0026, 0.0047, 0.0058] m; deriva inelástica (0.75R) piso 1 = 0.0052.
+  const v = calc(`Vr = VE030(0.45, 1.5, 2.5, 1.0, 8, 59.870 tonf)
+Ar = alphaE030([22.068, 22.068, 15.734] tonf, [3, 6, 9] m, kE030(0.257 s))`);
+  near('Rupay et al. (2022): V = 12.629 tonf', v('Vr', 'tonf'), 12.629, 1e-3);
+  const sf = block('storyforces', { P: '[22.068, 22.068, 15.734] tonf', hi: '[3, 6, 9] m', V: '12.629 tonf', T: '0.257 s' });
+  const F = vec(sf, 'Fi_e', 'tonf');
+  near('Rupay et al. (2022): F1 = 2.457 tonf', F[0], 2.457, 2e-3);
+  near('Rupay et al. (2022): F2 = 4.915 tonf', F[1], 4.915, 2e-3);
+  near('Rupay et al. (2022): F3 = 5.256 tonf', F[2], 5.256, 2e-3);
+  const Vi = vec(sf, 'Vi_e', 'tonf'), kk = 4832.391;
+  const d = [Vi[0] / kk, Vi[0] / kk + Vi[1] / kk, Vi[0] / kk + Vi[1] / kk + Vi[2] / kk];
+  near('Rupay et al. (2022): Δ1 = 0.0026 m', d[0], 0.0026, 0.02);
+  near('Rupay et al. (2022): Δ2 = 0.0047 m', d[1], 0.0047, 0.02);
+  near('Rupay et al. (2022): Δ3 = 0.0058 m', d[2], 0.0058, 0.02);
+  near('Rupay et al. (2022): deriva inelástica piso 1 = 0.75·8·Δ1/3 = 0.0052', 0.75 * 8 * d[0] / 3, 0.0052, 0.01);
+
+  // (2) Chopra, Dynamics of Structures, Ej. 12.x/13.x: pórtico de cortante uniforme de 5 pisos, m = 100 kips/g,
+  //     k = 31.54 kips/in → Tn = 2.0, 0.6852, 0.4346, 0.3383, 0.2966 s; masas efectivas 87.95, 8.72, 2.42, 0.75, 0.16 %.
+  const ch = block('modal', { masas: '[100, 100, 100, 100, 100] kip', rigideces: '[1,1,1,1,1]*31.54 kip/in', alturas: '[12,12,12,12,12] ft', Sa: '0.5', comb: 'SRSS', fdesp: '1' });
+  [2.0, 0.6852, 0.4346, 0.3383, 0.2966].forEach((T, i) => near(`Chopra 5 pisos: T${i + 1} = ${T} s`, ch('T' + (i + 1), 's'), T, 2e-3));
+  const chm = block('modal', { masas: '[100, 100, 100, 100, 100] kip', rigideces: '[1,1,1,1,1]*31.54 kip/in', alturas: '[12,12,12,12,12] ft', Sa: '0.5', comb: 'SRSS', fdesp: '1', modos: '1' });
+  near('Chopra 5 pisos: M1*/M = 87.95 %', chm('Mpart'), 0.8795, 1e-3);
+  truthy('Modal con 1 modo: NO CUMPLE el mínimo de 3 modos y el 90 % de masa (Art. 40.2)', chm.ctx.checks.filter(c => !c.ok).length === 2);
+
+  // (3) Verificación independiente (numpy, autovalores generalizados + CQC de Der Kiureghian con β = 5 %)
+  //     del edificio de la plantilla dinámica: T1 = 0.44102 s, Vdin = 185.788 tonf; derivas combinadas desde
+  //     las derivas modales: [0.0038706, 0.0050522, 0.0045636, 0.0036196, 0.0020917] (restando desplazamientos
+  //     combinados se obtendría 0.0050412 en el piso 2: error no conservador).
+  const dy = runTemplate('pe-e030-dinamico');
+  near('Dinámico vs numpy: T1 = 0.44102 s', dy('T1', 's'), 0.44102, 1e-4);
+  near('Dinámico vs numpy: Vdin CQC = 185.788 tonf', dy('Vdin', 'tonf'), 185.788, 1e-4);
+  const dd = vec(dy, 'deriva_din');
+  [0.0038706, 0.0050522, 0.0045636, 0.0036196, 0.0020917].forEach((x, i) => near(`Dinámico vs numpy: deriva CQC piso ${i + 1}`, dd[i], x, 1e-4));
+
+  // (4) Tablas de la RM 183-2026 revisadas
+  const t = calc(`ct2 = CTE030(2)
+ct3 = CTE030(3)
+ct4 = CTE030(4)
+p1 = sisE030(4, 4, 10)
+p2 = sisE030(3, 4, 10)
+p3 = sisE030(2, 4, 7)
+p4 = sisE030(2, 4, 8)
+p5 = sisE030(11, 4, 8)
+p6 = sisE030(11, 2, 8)
+p7 = sisE030(1, 4, 7)
+p8 = sisE030(3, 1, 10)
+p9 = sisE030(3, 3, 3)`);
+  near('CT acero IMF (pórtico a momentos sin arriostrar) = 35 (Art. 36.1)', t('ct2'), 35);
+  near('CT acero OMF = 35', t('ct3'), 35);
+  near('CT acero SCBF (arriostrado) = 45', t('ct4'), 45);
+  truthy('Tabla N° 9: C admite EMDL en zona 4', t('p1') === 1);
+  truthy('Tabla N° 9: B no admite EMDL en zona 4', t('p2') === 0);
+  truthy('Tabla N° 9: A2 no admite pórticos de C°A° en zona 4', t('p3') === 0);
+  truthy('Tabla N° 9: A2 admite sistema dual en zona 4', t('p4') === 1);
+  truthy('Tabla N° 9: A1 sin aislamiento no se permite en zona 4', t('p5') === 0);
+  truthy('Tabla N° 9: A1 sin aislamiento, dual, en zona 2', t('p6') === 1);
+  truthy('Tabla N° 9: A1 aislada, cualquier sistema', t('p7') === 1);
+  truthy('Tabla N° 9: B en zona 1, cualquier sistema', t('p8') === 1);
+  truthy('Tabla N° 9: B no admite OMF en zona 3', t('p9') === 0);
+  let thrown = false; try { calc('w = pAligE020(0.12 m)'); } catch (e) { thrown = true; }
+  truthy('pAligE020 fuera del rango tabulado 0.17–0.30 m produce error (no extrapola)', thrown);
+  const irc = block('irregE030', { K: '[38000, 52000, 50000, 47000] tonf/m', cat: '2', zona: '4', disc: '0' });
+  truthy('irregE030 acepta el código de categoría de UE030 (2 = A2 → no se permiten irregularidades)', !irc.ctx.checks[0].ok);
+}
+
+section('Plantillas con datos extremos: NO CUMPLE sin errores ni NaN');
+{
+  const set = (subs) => (d) => { for (const b of d.blocks) if (b.type === 'calc') for (const [re, val] of subs) b.src = b.src.replace(new RegExp('^' + re + ' = .*?(?= //|$)', 'm'), re + ' = ' + val); };
+  const cases = [
+    ['pe-e030-estatico', [['Ki', '[7200, 6100, 5600, 5000, 4100] tonf/m'], ['sistema', '10'], ['categoria', '3']], ['Sistema estructural permitido', 'Distorsión máxima']],
+    ['pe-e030-estatico', [['hei', '[6, 6, 6, 6, 9] m'], ['Ki', '[72000, 20000, 56000, 50000, 41000] tonf/m']], ['Aplicabilidad del método estático', 'Análisis estático permitido']],
+    ['pe-e030-dinamico', [['Ki', '[7200, 6100, 5600, 5000, 4100] tonf/m'], ['categoria', '2'], ['sistema', '7']], ['Sistema estructural permitido', 'torsión accidental']],
+    ['pe-e030-irregularidades', [['K1', '10000 tonf/m'], ['fdesal', '0.5']], ['Restricciones a la irregularidad']],
+    ['pe-e020-metrado', [['Lo', '500 kgf/m^2'], ['Ltab', '300 m'], ['bc', '0.25 m']], ['orden de magnitud', 'Sección de columna']],
+    ['pe-e020-viento', [['V', '150 km/h'], ['pend', '0.6'], ['d_v', '20 cm']], ['15°', 'Levantamiento', '1 %']],
+    ['pe-e030-noestructurales', [['hp', '2.0 m'], ['s', '2 cm'], ['Pe_tq', '30 tonf']], ['esfuerzos admisibles', 'anclaje', 'Junta']],
+    ['pe-e031-aislamiento', [['Qd', '1 tonf'], ['kd', '5 tonf/m'], ['Vs30', '300 m/s'], ['zona', '2']], ['TM ≤ 5.0 s']],
+    ['pe-e031-aislamiento', [['Qd', '40 tonf'], ['kd', '400 tonf/m']], ['tres veces', '20 %', 'Deriva']],
+  ];
+  for (const [id, subs, expect] of cases) {
+    const r = runTemplate(id, set(subs)).res;
+    const bad = r.ctx.checks.filter(c => !c.ok).map(c => c.label || '');
+    const ok = r.ctx.errors.length === 0 && !/NaN/.test(r.html) && expect.every(x => bad.some(l => l.includes(x)));
+    truthy(`${id} extremo ${subs.map(x => x[0]).join(',')}: NO CUMPLE esperado, sin errores`, ok, ok ? '' : JSON.stringify({ err: r.ctx.errors.slice(0, 2), bad }));
+  }
+}
+
 done();

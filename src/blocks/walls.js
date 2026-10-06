@@ -27,6 +27,22 @@ function KpeM(phi, kh, kv) { // δ = 0, β = 0, θ = 0
   const psi = atan(kh / (1 - kv)), r = sqrt(sin(phi) * sin(phi - psi) / cos(psi));
   return cos(phi - psi) ** 2 / (cos(psi) * cos(psi) * (1 - r) ** 2);
 }
+// polígono: recorte por la recta horizontal y = yc (below = parte inferior) y propiedades (área, centroide)
+function clipY(poly, yc, below) {
+  const out = [], inside = (p) => (below ? p[1] <= yc : p[1] >= yc);
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length], ia = inside(a), ib = inside(b);
+    if (ia) out.push(a);
+    if (ia !== ib) { const t = (yc - a[1]) / (b[1] - a[1]); out.push([a[0] + t * (b[0] - a[0]), yc]); }
+  }
+  return out;
+}
+function polyProps(p) {
+  let A = 0, cx = 0, cy = 0;
+  for (let i = 0; i < p.length; i++) { const [x1, y1] = p[i], [x2, y2] = p[(i + 1) % p.length], c = x1 * y2 - x2 * y1; A += c; cx += (x1 + x2) * c; cy += (y1 + y2) * c; }
+  if (abs(A) < 1e-12) return { A: 0, x: 0, y: 0 };
+  return { A: abs(A) / 2, x: cx / (3 * A), y: cy / (3 * A) };
+}
 const tri = (p) => { // área y centroide de un triángulo
   const A = abs((p[1][0] - p[0][0]) * (p[2][1] - p[0][1]) - (p[2][0] - p[0][0]) * (p[1][1] - p[0][1])) / 2;
   return { A, x: (p[0][0] + p[1][0] + p[2][0]) / 3, y: (p[0][1] + p[1][1] + p[2][1]) / 3 };
@@ -51,6 +67,9 @@ function renderRetwall(b, ctx) {
   const Df = P('Df', 'm', hz), fp = P('fp', '', 0);
   const kh = P('kh', '', 0), kv = P('kv', '', 0), ysis = P('ysis', '', 0.6), qsis = P('qsis', '', 0.5);
   const qa = P('qa', 'tonf/m^2', 0), qas = P('qas', 'tonf/m^2', 1.2 * qa);
+  // nivel freático en el relleno (altura sobre el fondo de la base; 0 = relleno drenado)
+  const hw = max(0, P('hw', 'm', 0)), gw = P('gw', 'tonf/m^3', 1.0), gsat = P('gsat', 'tonf/m^3', gs + 0.2);
+  const gsub = gsat - gw;
   const fsv = P('fsv', '', 1.5), fsd = P('fsd', '', 1.5), fsvs = P('fsvs', '', 1.25), fsds = P('fsds', '', 1.25);
   const metodo = /coul/i.test(b.metodo || '') ? 'coulomb' : 'rankine';
   const qest = bool(b.qest, false), verif = bool(b.verif, true), si = bool(b.si, false);
@@ -60,12 +79,22 @@ function renderRetwall(b, ctx) {
   if (p + t2 > B + 1e-9) throw new Error('La punta más el espesor de la pantalla excede el ancho de la base B');
   if (hz >= H) throw new Error('El espesor de la zapata debe ser menor que la altura total H');
   if (beta > phi) throw new Error('El talud del relleno β no puede superar a φ');
+  if (hw > 0 && !(gsub > 0)) throw new Error('Con nivel freático, γsat debe ser mayor que γw');
+  if (!(fp >= 0 && fp <= 1)) throw new Error('La fracción de empuje pasivo fp debe estar entre 0 y 1');
   const hp = H - hz, xbb = p + t2, xbt = p + ie + t1, Lt = B - xbb, Lb = B - xbt;
   const seis = kh > 0;
 
   // ---------- pesos ----------
   const parts = [];
   const add = (id, desc, A, g, x, y, grp) => { if (A > 1e-9) parts.push({ id, desc, A, g, W: A * g, x, y, grp }); };
+  // suelo: polígono [[x,y],...]; si hay nivel freático se divide en parte seca (γ) y saturada (γsat)
+  const addSoil = (id, desc, poly) => {
+    if (hw > 0) {
+      const lo = polyProps(clipY(poly, hw, true)), hi = polyProps(clipY(poly, hw, false));
+      if (hi.A > 1e-9) add(id, desc, hi.A, gs, hi.x, hi.y, 's');
+      if (lo.A > 1e-9) add(id + 'w', desc + ' (bajo el N.F., γsat)', lo.A, gsat, lo.x, lo.y, 's');
+    } else { const pp = polyProps(poly); add(id, desc, pp.A, gs, pp.x, pp.y, 's'); }
+  };
   add('1', 'Pantalla (rectángulo)', t1 * hp, gc, p + ie + t1 / 2, hz + hp / 2, 'm');
   if (ie > 1e-9) { const t = tri([[p, hz], [p + ie, hz], [p + ie, H]]); add('2', 'Pantalla (triángulo frontal)', t.A, gc, t.x, t.y, 'm'); }
   if (ib > 1e-9) { const t = tri([[xbt, hz], [xbb, hz], [xbt, H]]); add('3', 'Pantalla (triángulo posterior)', t.A, gc, t.x, t.y, 'm'); }
@@ -74,25 +103,38 @@ function renderRetwall(b, ctx) {
   let Hv, theta = 0, xplane = (y) => B, Kth, tb;
   if (metodo === 'rankine') {
     Hv = H + Lb * tan(beta);
-    if (Lt > 1e-9) add('S1', 'Relleno sobre el talón', Lt * hp, gs, xbb + Lt / 2, hz + hp / 2, 's');
-    if (ib > 1e-9) { const t = tri([[xbt, H], [xbb, H], [xbb, hz]]); add('S2', 'Relleno sobre el trasdós inclinado', t.A, gs, t.x, t.y, 's'); }
-    if (beta > 1e-9 && Lb > 1e-9) { const t = tri([[xbt, H], [B, H], [B, Hv]]); add('S3', 'Cuña del talud sobre el talón', t.A, gs, t.x, t.y, 's'); }
+    if (Lt > 1e-9) addSoil('S1', 'Relleno sobre el talón', [[xbb, hz], [B, hz], [B, H], [xbb, H]]);
+    if (ib > 1e-9) addSoil('S2', 'Relleno sobre el trasdós inclinado', [[xbt, H], [xbb, H], [xbb, hz]]);
+    if (beta > 1e-9 && Lb > 1e-9) addSoil('S3', 'Cuña del talud sobre el talón', [[xbt, H], [B, H], [B, Hv]]);
   } else {
     Hv = H; theta = atan(Lb / H); xplane = (y) => B - Lb * y / H;
     const xph = xplane(hz);
-    if (xph - xbb > 1e-9 || ib > 1e-9) { const t = tri([[xbb, hz], [xph, hz], [xbt, H]]); add('S1', 'Suelo entre el trasdós y el plano de Coulomb', t.A, gs, t.x, t.y, 's'); }
+    if (xph - xbb > 1e-9 || ib > 1e-9) addSoil('S1', 'Suelo entre el trasdós y el plano de Coulomb', [[xbb, hz], [xph, hz], [xbt, H]]);
   }
   const Ka = b.Ka ? P('Ka', '', 0.33) : (metodo === 'rankine' ? KaRk(phi, beta) : KaCl(phi, delta, beta, theta));
   // ángulo del empuje con la horizontal
   tb = metodo === 'rankine' ? beta : delta + theta;
   Kth = metodo === 'rankine' ? 1 : cos(theta) * cos(beta) / cos(theta - beta);
   const Kae = seis ? (b.Kae ? P('Kae', '', Ka) : (metodo === 'rankine' ? KaeM(phi, beta, kh, kv, beta, 0) : KaeM(phi, delta, kh, kv, beta, theta))) : Ka;
+  // relleno sumergido (agua retenida, Matsuzawa et al. 1985; Kramer 1996 §11.6.2): kh' = kh·γsat/γ'
+  const khw = hw > 0 ? kh * gsat / gsub : kh;
+  const Kaew = seis && hw > 0 ? (b.Kae ? Kae : (metodo === 'rankine' ? KaeM(phi, beta, khw, kv, beta, 0) : KaeM(phi, delta, khw, kv, beta, theta))) : Kae;
   const Kp = b.Kp ? P('Kp', '', 3) : KpRk(phif);
   const Kpe = seis ? KpeM(phif, kh, kv) : Kp;
 
   // ---------- empujes ----------
-  const Pa = 0.5 * Ka * gs * Hv * Hv, Pq = Ka * q * Hv * Kth;
-  const Pae = seis ? 0.5 * Kae * gs * Hv * Hv * (1 - kv) : Pa, DPae = Pae - Pa;
+  // empuje del suelo por tramos (seco sobre el N.F. con γ, sumergido con γ'): resultante y altura
+  const yw = min(hw, Hv), dw = Hv - yw;
+  const soilThr = (K1, K2) => { // K1 sobre el N.F., K2 bajo el N.F.
+    const s1 = gs * dw, P1 = 0.5 * K1 * s1 * dw, y1 = yw + dw / 3;
+    if (yw <= 0) return { P: P1, y: y1 };
+    const a = K2 * s1, c = K2 * (s1 + gsub * yw), P2 = (a + c) / 2 * yw, y2 = yw * (c + 2 * a) / (3 * (a + c) || 1);
+    const P = P1 + P2; return { P, y: P > 0 ? (P1 * y1 + P2 * y2) / P : Hv / 3 };
+  };
+  const EA = soilThr(Ka, Ka), Pa = EA.P, Pq = Ka * q * Hv * Kth;
+  const EAE = seis ? soilThr(Kae, Kaew) : EA;
+  const Pae = seis ? EAE.P * (1 - kv) : Pa, DPae = Pae - Pa;
+  const Pw = 0.5 * gw * yw * yw, Uw = 0.5 * gw * yw * B; // agua: hidrostático en el plano y subpresión triangular (talón → punta)
   const Pqe = seis ? Kae * qsis * q * Hv * Kth : 0;
   const Dp = Df + (bk > 0 ? hk : 0), ybot = bk > 0 ? -hk : 0;
   const pass = (Kx) => { const P1 = 0.5 * Kx * gf * Dp * Dp, P2 = 2 * cf * sqrt(Kx) * Dp; const Pt = fp * (P1 + P2); return { P: Pt, y: Pt > 0 ? ybot + fp * (P1 * Dp / 3 + P2 * Dp / 2) / Pt : 0 }; };
@@ -100,10 +142,13 @@ function renderRetwall(b, ctx) {
   const xa = (y) => xplane(y);
   const ch = cos(tb), sv = sin(tb);
   const thr = [];
-  thr.push({ id: 'Ea', desc: 'Empuje activo del relleno', P: Pa, y: Hv / 3, c: 'e' });
+  const wTh = { id: 'Ew', desc: 'Presión hidrostática del agua en el relleno (N.F. a ' + f2(yw) + ' m)', P: Pw / cos(theta), y: yw / 3, ch: cos(theta), sv: sin(theta) };
+  thr.push({ id: 'Ea', desc: 'Empuje activo del relleno' + (yw > 0 ? ' (γ\' bajo el N.F.)' : ''), P: Pa, y: EA.y, c: 'e' });
   if (q > 0) thr.push({ id: 'Eq', desc: 'Empuje de la sobrecarga', P: Pq, y: Hv / 2, c: 'e' });
+  if (yw > 0) thr.push(wTh);
   const thrS = [];
-  thrS.push({ id: 'Ea', desc: 'Empuje activo estático', P: Pa, y: Hv / 3 });
+  thrS.push({ id: 'Ea', desc: 'Empuje activo estático', P: Pa, y: EA.y });
+  if (yw > 0) thrS.push(wTh);
   if (seis) thrS.push({ id: 'ΔEae', desc: 'Incremento dinámico M-O (a ' + f2(ysis, 2) + 'H)', P: DPae, y: ysis * Hv });
   if (Pqe > 0) thrS.push({ id: 'Eqe', desc: 'Sobrecarga en sismo (' + f2(qsis, 2) + 'q, Kae)', P: Pqe, y: Hv / 2 });
 
@@ -113,7 +158,8 @@ function renderRetwall(b, ctx) {
   const qW = q * Lb, qx = xbt + Lb / 2;
   function stab(list, wf, Ppass, inert, qf) {
     let Fh = 0, Fv = 0, Mo = 0, Mrv = 0;
-    for (const t of list) { Fh += t.P * ch; Fv += t.P * sv; Mo += t.P * ch * t.y; Mrv += t.P * sv * xa(t.y); }
+    for (const t of list) { const c1 = t.ch ?? ch, s1 = t.sv ?? sv; Fh += t.P * c1; Fv += t.P * s1; Mo += t.P * c1 * t.y; Mrv += t.P * s1 * xa(t.y); }
+    if (Uw > 0) { Fv -= Uw; Mo += Uw * 2 * B / 3; } // subpresión: reduce ΣV y su momento se suma al de volteo
     let Mi = 0, Fi = 0;
     if (inert) for (const r of parts) { Fi += kh * r.W; Mi += kh * r.W * r.y; }
     const V = sumW(wf) + Fv + (qest ? qf * qW : 0), Mr = sumMW(wf) + Mrv + (qest ? qf * qW * qx : 0);
@@ -134,7 +180,8 @@ function renderRetwall(b, ctx) {
   const tf = (v) => U(v, 'tonf/m'), tfm = (v) => U(v, 'tonf*m/m'), tm2 = (v) => U(v, 'tonf/m^2');
   const ex = (n, v) => setVar(ctx, n + sfx, v);
   ex('Ka', Ka); ex('Kp', Kp); ex('Hv', U(Hv, 'm')); ex('Pa', tf(Pa + Pq)); ex('Pah', tf((Pa + Pq) * ch)); ex('SV', tf(st.V)); ex('SMr', tfm(st.Mr)); ex('SMo', tfm(st.MoT));
-  ex('FSv', st.FSv); ex('FSd', st.FSd); ex('xr', U(st.xr, 'm')); ex('e', U(st.e, 'm')); ex('qmax', tm2(st.qmax)); ex('qmin', tm2(st.qmin)); ex('Ep', tf(Pp.P));
+  ex('FSv', st.FSv); ex('FSd', st.FSd); ex('xr', U(st.xr, 'm')); ex('e', U(st.e, 'm')); ex('qmax', tm2(st.qmax)); ex('qmin', tm2(st.qmin)); ex('Ep', tf(Pp.P)); ex('yEa', U(EA.y, 'm'));
+  if (yw > 0) { ex('Pw', tf(Pw)); ex('Uw', tf(Uw)); }
   ex('qtoe', tm2(st.toeMax ? st.qmax : st.qmin)); ex('qheel', tm2(st.toeMax ? st.qmin : st.qmax));
   if (seis) {
     ex('Kae', Kae); ex('Pae', tf(Pae)); ex('DPae', tf(DPae)); ex('FSvs', ss.FSv); ex('FSds', ss.FSd); ex('es', U(ss.e, 'm')); ex('qmaxs', tm2(ss.qmax)); ex('qmins', tm2(ss.qmin));
@@ -143,11 +190,11 @@ function renderRetwall(b, ctx) {
   const rows = [
     { l: 'Factor de seguridad al volteo F.S.v = ΣMr/ΣMo', a: st.FSv, s: ss && ss.FSv, la: fsv, ls: fsvs, ge: true },
     { l: 'Factor de seguridad al deslizamiento F.S.d = (μΣV + ca·B + Ep)/ΣFh', a: st.FSd, s: ss && ss.FSd, la: fsd, ls: fsds, ge: true },
-    { l: 'Excentricidad |e| (estático ≤ B/6, sismo ≤ B/3)', a: abs(st.e), s: ss && abs(ss.e), la: B / 6, ls: B / 3, ge: false, u: 'm' },
+    { l: 'Excentricidad |e| (estático ≤ B/6: sin tracción; sismo ≤ B/3)', a: abs(st.e), s: ss && abs(ss.e), la: B / 6, ls: B / 3, ge: false, u: 'm' },
   ];
   if (qa > 0) rows.push({ l: 'Presión máxima en el suelo q<sub>max</sub> ≤ q<sub>a</sub>', a: st.qmax, s: ss && ss.qmax, la: qa, ls: qas, ge: false, u: si ? 'kPa' : 't/m²', k: si ? 9.80665 : 1 });
   const lbl = ['Volteo', 'Deslizamiento', 'Excentricidad en la base (resultante en el núcleo)', 'Presión máxima sobre el suelo'];
-  const art = [' (E.050 39.13.6)', ' (E.050 39.13.6)', ' (AASHTO 11.6.3.3 / 11.6.5.1)', ' (E.050 Art. 21–22)'];
+  const art = [' (E.050 39.13.6)', ' (E.050 39.13.6)', ' (estático: núcleo central B/6, Das 8.4; sismo: 2/3 centrales, AASHTO 11.6.5.1)', ' (E.050 Art. 21–22)'];
   if (verif) rows.forEach((r, i) => {
     const okA = r.ge ? r.a >= r.la : r.a <= r.la + 1e-12;
     ctx.checks.push({ ok: okA && isFinite(r.a), label: lbl[i] + ' — estático' + art[i], ratio: r.ge ? r.la / r.a : r.a / r.la, block: ctx.blockId });
@@ -160,10 +207,11 @@ function renderRetwall(b, ctx) {
   let t1h = `<table class="tbl"><thead><tr><th>#</th><th>Elemento</th><th>Área [m²]</th><th>γ [${uG}]</th><th>W [${uF}]</th><th>x [m]</th><th>W·x [${uM}]</th>${seis ? `<th>y [m]</th><th>k<sub>h</sub>·W·y [${uM}]</th>` : ''}</tr></thead><tbody>`;
   for (const r of parts) t1h += `<tr><td>W${esc(r.id)}</td><td style="text-align:left">${esc(r.desc)}</td><td>${n2(r.A, 3)}</td><td>${n2(r.g * kF)}</td><td>${n2(r.W * kF)}</td><td>${n2(r.x, 3)}</td><td>${n2(r.W * r.x * kF)}</td>${seis ? `<td>${n2(r.y, 3)}</td><td>${n2(kh * r.W * r.y * kF)}</td>` : ''}</tr>`;
   t1h += `<tr class="tot"><td>Σ</td><td></td><td></td><td></td><td>${n2(sumW() * kF)}</td><td></td><td>${n2(sumMW() * kF)}</td>${seis ? `<td></td><td>${n2(parts.reduce((t, r) => t + kh * r.W * r.y, 0) * kF)}</td>` : ''}</tr></tbody></table>`;
-  const thrRow = (t) => `<tr><td>${esc(t.id)}</td><td style="text-align:left">${esc(t.desc)}</td><td>${n2(t.P * kF)}</td><td>${n2(t.P * ch * kF)}</td><td>${n2(t.P * sv * kF)}</td><td>${n2(t.y, 3)}</td><td>${n2(xa(t.y), 3)}</td><td>${n2(t.P * ch * t.y * kF)}</td><td>${n2(t.P * sv * xa(t.y) * kF)}</td></tr>`;
+  const thrRow = (t) => { const c1 = t.ch ?? ch, s1 = t.sv ?? sv; return `<tr><td>${esc(t.id)}</td><td style="text-align:left">${esc(t.desc)}</td><td>${n2(t.P * kF)}</td><td>${n2(t.P * c1 * kF)}</td><td>${n2(t.P * s1 * kF)}</td><td>${n2(t.y, 3)}</td><td>${n2(xa(t.y), 3)}</td><td>${n2(t.P * c1 * t.y * kF)}</td><td>${n2(t.P * s1 * xa(t.y) * kF)}</td></tr>`; };
   let t2h = `<table class="tbl"><thead><tr><th>Caso</th><th>Empuje</th><th>E [${uF}]</th><th>E<sub>h</sub></th><th>E<sub>v</sub></th><th>y [m]</th><th>x [m]</th><th>M<sub>o</sub> = E<sub>h</sub>·y</th><th>M<sub>r</sub> = E<sub>v</sub>·x</th></tr></thead><tbody>`;
   t2h += thr.map(t => thrRow(t).replace('<tr>', '<tr><td rowspan="1">Estático</td>')).join('');
   if (seis) t2h += thrS.map(t => thrRow(t).replace('<tr>', '<tr><td>Sismo</td>')).join('') + `<tr><td>Sismo</td><td>Fi</td><td style="text-align:left">Inercia del muro y del suelo (k<sub>h</sub>ΣW)</td><td>${n2(ss.Fi * kF)}</td><td>${n2(ss.Fi * kF)}</td><td>0</td><td>—</td><td>—</td><td>${n2(ss.Mi * kF)}</td><td>0</td></tr>`;
+  if (Uw > 0) t2h += `<tr><td>Ambos</td><td>U</td><td style="text-align:left">Subpresión en la base (triangular: γ<sub>w</sub>h<sub>w</sub> en el talón, 0 en la punta)</td><td>${n2(Uw * kF)}</td><td>—</td><td>−${n2(Uw * kF)}</td><td>—</td><td>${n2(2 * B / 3, 3)}</td><td>${n2(Uw * 2 * B / 3 * kF)}</td><td>—</td></tr>`;
   if (Pp.P > 0) t2h += `<tr><td>Estático</td><td>Ep</td><td style="text-align:left">Empuje pasivo (${f2(fp * 100, 0)} %, D = ${f2(Dp)} m)</td><td>${n2(Pp.P * kF)}</td><td>${n2(Pp.P * kF)}</td><td>0</td><td>${n2(Pp.y, 3)}</td><td>—</td><td>—</td><td>—</td></tr>`;
   t2h += '</tbody></table>';
   // fila con 10 celdas → la cabecera necesita una columna más
@@ -184,8 +232,8 @@ function renderRetwall(b, ctx) {
   let eqs = '';
   const Kname = metodo === 'rankine' ? `K_a = ${fmtPlain(Ka, 4)}\\;\\text{(Rankine, }\\beta=${fmtPlain(beta / D2R, 1)}^\\circ)` : `K_a = ${fmtPlain(Ka, 4)}\\;\\text{(Coulomb, }\\delta=${fmtPlain(delta / D2R, 1)}^\\circ,\\ \\theta=${fmtPlain(theta / D2R, 2)}^\\circ,\\ \\beta=${fmtPlain(beta / D2R, 1)}^\\circ)`;
   eqs += ln(Kname + (seis ? `\\qquad K_{ae} = ${fmtPlain(Kae, 4)}\\;\\text{(M-O, }k_h=${fmtPlain(kh, 3)},\\ k_v=${fmtPlain(kv, 3)})` : ''));
-  eqs += ln(`E_a = \\tfrac12 K_a\\,\\gamma\\,H'^2 = \\tfrac12\\cdot ${fmtPlain(Ka, 4)}\\cdot ${kt(gs)}\\cdot ${fmtPlain(Hv, 3)}^2 = ${kt(Pa)}\\;${uK}/\\mathrm{m}` + (q > 0 ? `\\qquad E_q = K_a\\,q\\,H'${Kth !== 1 ? '\\,\\tfrac{\\cos\\theta\\cos\\beta}{\\cos(\\theta-\\beta)}' : ''} = ${kt(Pq)}\\;${uK}/\\mathrm{m}` : ''));
-  if (seis) eqs += ln(`E_{ae} = \\tfrac12 K_{ae}\\,\\gamma\\,H'^2(1-k_v) = ${kt(Pae)}\\;${uK}/\\mathrm{m}\\qquad \\Delta E_{ae} = E_{ae}-E_a = ${kt(DPae)}\\;${uK}/\\mathrm{m}`);
+  eqs += ln((yw > 0 ? `E_a = K_a\\left[\\tfrac12\\gamma d_w^2 + \\gamma d_w h_w + \\tfrac12\\gamma' h_w^2\\right] = ${kt(Pa)}\\;${uK}/\\mathrm{m}\\;(d_w = ${fmtPlain(dw, 2)},\\ h_w = ${fmtPlain(yw, 2)}\\,\\mathrm{m},\\ \\gamma' = ${kt(gsub)})\\qquad E_w = \\tfrac12\\gamma_w h_w^2 = ${kt(Pw)}\\qquad U = \\tfrac12\\gamma_w h_w B = ${kt(Uw)}` : `E_a = \\tfrac12 K_a\\,\\gamma\\,H'^2 = \\tfrac12\\cdot ${fmtPlain(Ka, 4)}\\cdot ${kt(gs)}\\cdot ${fmtPlain(Hv, 3)}^2 = ${kt(Pa)}\\;${uK}/\\mathrm{m}`) + (q > 0 ? `\\qquad E_q = K_a\\,q\\,H'${Kth !== 1 ? '\\,\\tfrac{\\cos\\theta\\cos\\beta}{\\cos(\\theta-\\beta)}' : ''} = ${kt(Pq)}\\;${uK}/\\mathrm{m}` : ''));
+  if (seis) eqs += ln((yw > 0 ? `K_{ae}' = ${fmtPlain(Kaew, 4)}\\;(k_h' = k_h\\gamma_{sat}/\\gamma' = ${fmtPlain(khw, 3)},\\ \\text{bajo el N.F.})\\qquad ` : '') + `E_{ae} = ${yw > 0 ? '' : "\\tfrac12 K_{ae}\\,\\gamma\\,H'^2(1-k_v) = "}${kt(Pae)}\\;${uK}/\\mathrm{m}\\qquad \\Delta E_{ae} = E_{ae}-E_a = ${kt(DPae)}\\;${uK}/\\mathrm{m}`);
   eqs += ln(`F.S._v = \\dfrac{\\Sigma M_r}{\\Sigma M_o} = \\dfrac{${kt(st.Mr)}}{${kt(st.MoT)}} = ${fmtPlain(st.FSv, 2)}\\qquad F.S._d = \\dfrac{\\mu\\,\\Sigma V + c_a B + E_p}{\\Sigma F_h} = \\dfrac{${fmtPlain(mu, 3)}\\cdot ${kt(st.V)} + ${kt(ca * B)} + ${kt(Pp.P)}}{${kt(st.FhT)}} = ${fmtPlain(st.FSd, 2)}`);
   eqs += ln(`\\bar x = \\dfrac{\\Sigma M_r - \\Sigma M_o}{\\Sigma V} = \\dfrac{${kt(st.Mq)} - ${kt(st.MoT)}}{${kt(st.Vq)}} = ${fmtPlain(st.xr, 3)}\\,\\mathrm{m}\\qquad e = \\dfrac{B}{2}-\\bar x = ${fmtPlain(st.e, 3)}\\,\\mathrm{m}\\qquad q_{max,min} = ${kt(st.qmax)}\\,/\\,${kt(st.qmin)}\\;${si ? '\\mathrm{kPa}' : '\\mathrm{t/m^2}'}`);
   if (ss) eqs += ln(`\\text{Sismo: } F.S._v = \\dfrac{${kt(ss.Mr)}}{${kt(ss.MoT)}} = ${fmtPlain(ss.FSv, 2)}\\quad F.S._d = \\dfrac{${fmtPlain(mu, 3)}\\cdot ${kt(ss.V)} + ${kt(ca * B)} + ${kt(Ppe.P)}}{${kt(ss.FhT)}} = ${fmtPlain(ss.FSd, 2)}\\quad e = ${fmtPlain(ss.e, 3)}\\,\\mathrm{m}\\quad q_{max} = ${kt(ss.qmax)}`);
@@ -222,18 +270,24 @@ function renderRetwall(b, ctx) {
   const xb0 = X(xR + 0.3) + 8;
   if (metodo === 'rankine') g += Lne(X(B), Y(0), X(B), Y(Hv), C.red, 1, '5 3') + T(X(B) - 4, Y(Hv * 0.75), 'plano virtual', { fs: 9, a: 'end', c: C.red, r: -90 });
   else g += Lne(X(B), Y(0), X(xbt), Y(H), C.red, 1, '5 3') + T(X(B - Lb * 0.12) + 6, Y(H * 0.12), 'plano de Coulomb', { fs: 9, a: 'start', c: C.red, r: -90 + theta / D2R });
-  const pa = Ka * gs * Hv, pq = Ka * q * Kth, pd = seis ? 2 * DPae / Hv : 0; // ΔEae como triángulo invertido (≈0.67H) — se dibuja con su resultante real
-  const pmax = max(pa + pq, 1e-6) + (seis ? pd : 0), ph = (pressW - 20) / pmax, yH = Y(Hv), y0 = Y(0);
+  const pS = (y) => Ka * (y >= yw ? gs * (Hv - y) : gs * dw + gsub * (yw - y)); // presión del suelo (efectiva) a la altura y
+  const pWt = (y) => (y < yw ? gw * (yw - y) : 0); // presión del agua
+  const pa = pS(0), pw0 = pWt(0), pq = Ka * q * Kth, pd = seis ? 2 * DPae / Hv : 0; // ΔEae dibujado como triángulo invertido
+  const pmax = max(pa + pq + pw0, 1e-6) + (seis ? pd : 0), ph = (pressW - 20) / pmax, yH = Y(Hv), y0 = Y(0);
   if (pq > 0) g += `<path d="M${xb0},${yH} L${xb0 + pq * ph},${yH} L${xb0 + pq * ph},${y0} L${xb0},${y0} Z" fill="rgba(212,115,12,.18)" stroke="${C.orange}"/>`;
-  g += `<path d="M${xb0 + pq * ph},${yH} L${xb0 + (pq + pa) * ph},${y0} L${xb0 + pq * ph},${y0} Z" fill="${C.redF}" stroke="${C.red}"/>`;
-  if (seis) g += `<path d="M${xb0 + pq * ph},${yH} L${xb0 + (pq + pd) * ph},${yH} L${xb0 + (pq + pa) * ph},${y0} L${xb0 + pq * ph + pa * ph},${y0} Z" fill="none" stroke="${C.blue}" stroke-dasharray="4 2"/>`;
-  for (let i = 1; i <= 7; i++) { const yy = Hv * (1 - i / 7.5), w = pq + Ka * gs * (Hv - yy); g += Lne(xb0 + w * ph, Y(yy), xb0 + 2, Y(yy), C.red, 0.7).replace('/>', ' marker-end="url(#arr)"/>'); }
-  g += T(xb0 + (pq + pa) * ph + 3, y0 + 12, f2((pa + pq) * kF) + ' ' + uP, { fs: 9, a: 'middle', c: C.red });
+  const ys = yw > 0 && yw < Hv ? [Hv, yw, 0] : [Hv, 0];
+  g += `<path d="M${xb0 + pq * ph},${yH} ${ys.map(y => `L${(xb0 + (pq + pS(y)) * ph).toFixed(1)},${Y(y).toFixed(1)}`).join(' ')} L${xb0 + pq * ph},${y0} Z" fill="${C.redF}" stroke="${C.red}"/>`;
+  if (yw > 0) g += `<path d="M${xb0 + (pq + pS(yw)) * ph},${Y(yw)} L${xb0 + (pq + pa + pw0) * ph},${y0} L${xb0 + (pq + pa) * ph},${y0} Z" fill="${C.blueF}" stroke="${C.blue}"/>` + T(xb0 + (pq + pa + pw0) * ph + 2, Y(yw / 2), 'agua', { fs: 9, a: 'start', c: C.blue });
+  if (seis) g += `<path d="M${xb0 + pq * ph},${yH} L${xb0 + (pq + pd) * ph},${yH} L${xb0 + (pq + pa + pw0) * ph},${y0}" fill="none" stroke="${C.blue}" stroke-dasharray="4 2"/>`;
+  for (let i = 1; i <= 7; i++) { const yy = Hv * (1 - i / 7.5), w = pq + pS(yy) + pWt(yy); g += Lne(xb0 + w * ph, Y(yy), xb0 + 2, Y(yy), C.red, 0.7).replace('/>', ' marker-end="url(#arr)"/>'); }
+  g += T(xb0 + (pq + pa + pw0) * ph + 3, y0 + 12, f2((pa + pq + pw0) * kF) + ' ' + uP, { fs: 9, a: 'middle', c: C.red });
+  if (yw > 0) { g += Lne(X(xbb), Y(yw), xs, Y(yw), C.blue, 1.2, '7 3') + `<path d="M${xs - 30},${Y(yw) - 9} l8,0 l-4,7 z" fill="${C.blue}"/>` + T(xs - 34, Y(yw) - 3, 'N.F.', { fs: 9, a: 'end', c: C.blue, b: 1 });
+    g += `<path d="M${X(0)},${Y(min(0, ybot)) + 2} L${X(B)},${Y(min(0, ybot)) + 2} L${X(B)},${Y(min(0, ybot)) + 2 + 10} Z" fill="${C.blueF}" stroke="${C.blue}" stroke-width=".8"/>`; }
   if (pq > 0) g += T(xb0, yH - 4, 'Ka·q = ' + f2(pq * kF), { fs: 9, a: 'start', c: C.orange });
   if (seis) g += T(xb0 + (pq + pd) * ph + 3, yH + 12, 'sismo (M-O)', { fs: 9, a: 'start', c: C.blue });
   // resultantes
   const arrowAt = (yy, lab, col, mk) => { const xx = X(metodo === 'rankine' ? B : xa(yy)); return Lne(xx + 46, Y(yy) - 46 * tan(tb), xx + 2, Y(yy), col, 1.6).replace('/>', ` marker-end="url(#${mk})"/>`) + T(xx + 48, Y(yy) - 46 * tan(tb) - 3, lab, { fs: 10, a: 'start', c: col, b: 1 }); };
-  g += arrowAt(Hv / 3, 'Ea', C.red, 'arr');
+  g += arrowAt(EA.y, 'Ea', C.red, 'arr');
   if (q > 0) g += arrowAt(Hv / 2, 'Eq', C.orange, 'aro');
   if (seis) g += arrowAt(ysis * Hv, 'ΔEae', C.blue, 'arb');
   // pasivo
@@ -282,12 +336,13 @@ registerBlock('retwall', {
     F('beta', 'Talud del relleno β', '0 deg'), F('q', 'Sobrecarga q', '1 tonf/m^2'), F('gs', 'γ relleno', '1.8 tonf/m^3'), F('phi', 'φ relleno', '30 deg'), F('delta', 'δ muro-suelo (Coulomb)', '2/3*phi'),
     F('gc', 'γ del muro', '2.4 tonf/m^3'), F('gf', 'γ suelo de fundación', ''), F('phif', 'φ suelo de fundación', ''), F('cf', 'c suelo de fundación', '0'),
     F('mu', 'μ base (def. tan(2φf/3))', ''), F('ca', 'Adherencia ca (def. 2cf/3)', ''), F('Df', 'Altura de suelo frente a la punta (desde el fondo)', ''), F('fp', 'Fracción de empuje pasivo (0–1)', '0'),
+    F('hw', 'Nivel freático: altura sobre el fondo de la base (0 = drenado)', '0 m'), F('gsat', 'γsat del relleno (def. γ + 0.2)', ''), F('gw', 'γ del agua', '1 tonf/m^3'),
     F('kh', 'kh (0 = sin sismo)', '0'), F('kv', 'kv', '0'), F('ysis', 'Altura de ΔEae (×H)', '0.6'), F('qsis', 'Fracción de q en sismo', '0.5'),
     F('qa', 'Presión admisible qa', '2.5 kgf/cm^2'), F('qas', 'qa sísmica (def. 1.2qa)', ''),
     F('fsv', 'FS volteo mín.', '1.5'), F('fsd', 'FS deslizamiento mín.', '1.5'), F('fsvs', 'FS volteo sismo', '1.25'), F('fsds', 'FS desliz. sismo', '1.25'),
     F('qest', 'Sobrecarga estabiliza', false, 'check'), F('contrafuerte', 'Dibujar contrafuerte', false, 'check'), F('si', 'Tablas en kN', false, 'check'), F('sufijo', 'Sufijo de variables', ''), F('titulo', 'Título', ''),
   ],
-  hint: 'Estabilidad externa (volteo, deslizamiento, excentricidad y presiones) de muros en voladizo o de gravedad, con dentellón, talud del relleno, sobrecarga y sismo (Mononobe–Okabe + inercia). Exporta <code>FSv, FSd, e, qmax, qmin, Ka, Pa</code> y, con sismo, <code>Kae, Pae, FSvs, FSds, es, qmaxs</code>.',
+  hint: 'Estabilidad externa (volteo, deslizamiento, excentricidad y presiones) de muros en voladizo o de gravedad, con dentellón, talud del relleno, sobrecarga y sismo (Mononobe–Okabe + inercia). Nivel freático opcional en el relleno (γ\' bajo el N.F., empuje hidrostático, subpresión triangular y, en sismo, k<sub>h</sub>\' = k<sub>h</sub>γ<sub>sat</sub>/γ\'). Exporta <code>FSv, FSd, e, qmax, qmin, Ka, Pa</code> y, con sismo, <code>Kae, Pae, FSvs, FSds, es, qmaxs</code>.',
   def: { tipo: 'voladizo', metodo: 'rankine', H: '5 m', B: '3.2 m', hz: '0.5 m', punta: '0.8 m', t1: '0.25 m', t2: '0.45 m', q: '1 tonf/m^2', gs: '1.8 tonf/m^3', phi: '30 deg', qa: '2.5 kgf/cm^2', fsv: '2', fsd: '1.5' },
   render: renderRetwall,
 });
@@ -301,7 +356,7 @@ function renderWallRebar(b, ctx) {
   const hp = P('hp', 'm', 4.5), t1 = P('t1', 'm', 0.25), t2 = P('t2', 'm', 0.45);
   const Ka = P('Ka', '', 0.33), gs = P('gs', 'tonf/m^3', 1.8), q = P('q', 'tonf/m^2', 0);
   const DK = P('DKae', '', 0), kh = P('kh', '', 0), gc = P('gc', 'tonf/m^3', 2.4), ysis = P('ysis', '', 0.6), qsis = P('qsis', '', 0.5);
-  const fE = P('fE', '', 1.7), fQ = P('fQ', '', 1.7), fE2 = P('fE2', '', 1.25), fS = P('fS', '', 1.0);
+  const fE = P('fE', '', 1.7), fQ = P('fQ', '', 1.7), fE2 = P('fE2', '', 1.7), fS = P('fS', '', 1.0);
   const fc = P('fc', 'kgf/cm^2', 210), fy = P('fy', 'kgf/cm^2', 4200), rec = P('rec', 'cm', 5);
   const bar = Math.round(P('barra', '', 5)), s = P('s', 'cm', 20), corte = P('corte', '', 0.5);
   const sfx = String(b.sufijo || '').trim();
@@ -376,7 +431,7 @@ registerBlock('wallrebar', {
     F('hp', 'Altura de la pantalla hp', '4.5 m'), F('t1', 'Espesor corona t1', '0.25 m'), F('t2', 'Espesor base t2', '0.45 m'),
     F('Ka', 'Ka', 'Ka'), F('gs', 'γ relleno', '1.8 tonf/m^3'), F('q', 'Sobrecarga q', '1 tonf/m^2'),
     F('DKae', 'ΔKae = Kae − Ka (0 sin sismo)', '0'), F('kh', 'kh (inercia de la pantalla)', '0'), F('gc', 'γ concreto', '2.4 tonf/m^3'),
-    F('fE', 'Factor empuje (E.060 9.2.3)', '1.7'), F('fQ', 'Factor sobrecarga', '1.7'), F('fE2', 'Factor empuje con sismo', '1.25'), F('fS', 'Factor sismo', '1.0'), F('qsis', 'Fracción de q con sismo', '0.5'),
+    F('fE', 'Factor empuje (E.060 9.2.5)', '1.7'), F('fQ', 'Factor sobrecarga', '1.7'), F('fE2', 'Factor del empuje estático con sismo (1.7: E.060 9.2.5 + ACI 318-19 5.3.8)', '1.7'), F('fS', 'Factor sismo', '1.0'), F('qsis', 'Fracción de q con sismo', '0.5'),
     F('fc', "f'c", '210 kgf/cm^2'), F('fy', 'fy', '4200 kgf/cm^2'), F('rec', 'Recubrimiento libre', '5 cm'),
     F('barra', 'Varilla #', '5'), F('s', 'Espaciamiento', '20 cm'), F('corte', 'Fracción de barras cortadas', '0.5'), F('sufijo', 'Sufijo', ''), F('titulo', 'Título', ''),
   ],
