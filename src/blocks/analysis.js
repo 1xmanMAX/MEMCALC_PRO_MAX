@@ -1492,7 +1492,7 @@ function renderFrame(b, ctx) {
     html += '</tbody></table>';
   }
   // esfuerzos por barra
-  const envName = verSet ? verSet.name : (envSets.length > 1 ? 'envolvente' : envSets[0].name);
+  const envName = verSet ? dn(verSet.name) : (envSets.length > 1 ? 'envolvente' : dn(envSets[0].name));
   if (md.truss) {
     html += `<div class="dt">Fuerzas axiales por barra (${esc(envName)}) [${lu}]</div><table class="tbl"><thead><tr><th>Barra</th><th>Nudos</th><th>L [m]</th><th>Sección</th>${envSets.length === 1 ? '<th>N</th><th>Estado</th>' : '<th>N tracción máx.</th><th>N compresión máx.</th>'}</tr></thead><tbody>` +
       md.mems.map((m, mi) => { const r = memRes[mi]; const N = envSets[0].mf[mi].N[0]; return `<tr><td>${esc(m.id)}</td><td>${esc(md.nodes[m.i].id)}–${esc(md.nodes[m.j].id)}</td><td>${fx(m.L, 3)}</td><td>${esc(md.secs[m.sec].id)}</td>${envSets.length === 1 ? `<td>${fx(N)}</td><td>${Math.abs(N) < 1e-6 ? 'sin fuerza' : N > 0 ? '<span style="color:' + COL.T + '">Tracción</span>' : '<span style="color:' + COL.Cc + '">Compresión</span>'}</td>` : `<td>${fx(r.Nt)}</td><td>${fx(-r.Nc)}</td>`}</tr>`; }).join('') + '</tbody></table>';

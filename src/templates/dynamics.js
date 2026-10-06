@@ -10,7 +10,7 @@ const CAT = 'Dinámica estructural';
 const SITIO_E030 = `# Peligro sísmico y parámetros de sitio (E.030-2026)
 zona = 4 // Zona sísmica (Art. 10, Anexo II) [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
 Z = ZE030(zona) // Factor de zona (Art. 11, Tabla N° 1)
-Vs30 = 400 m/s // Velocidad promedio de ondas de corte en 30 m (Art. 15.2)
+Vs30 = 400 m/s // Velocidad promedio de ondas de corte en 30 m (Art. 15.2) [100..1500]
 S = SE030(zona, Vs30) // Factor de suelo interpolado por Vs30 (Art. 17, Tabla N° 4)
 Tp = TpE030(Vs30) // Periodo TP (Tabla N° 5)
 Tl = TlE030(Vs30) // Periodo TL (Tabla N° 5)
@@ -26,6 +26,21 @@ export default [
     name: 'Respuesta de 1 GDL a El Centro (Chopra)', normas: 'Chopra, Dynamics of Structures §5.2, §6.4, §7.4 — Nigam-Jennings (1968), Newmark (1959)',
     desc: 'Tiempo-historia de osciladores de 1 GDL lineales (Tn = 0.5, 1 y 2 s; ζ = 2 %) ante El Centro 1940 NS, comparado con Chopra Fig. 6.4.1, y sistema elastoplástico con Ry = 4.',
     titulo: 'Respuesta sísmica de sistemas de un grado de libertad — El Centro 1940',
+    validacion: {
+      fuente: 'A. K. Chopra, Dynamics of Structures (4.ª ed.), Fig. 6.4.1: espectro de respuesta de El Centro 1940 N-S con ζ = 2 % (D = 2.67, 5.97 y 7.47 in; A/g = 1.09, 0.610 y 0.191)',
+      nota: 'Datos por defecto = datos del ejemplo de Chopra para los sistemas a, b y c. El sistema elastoplástico (Tn = 0.5 s, ζ = 5 %, Ry = 4) no es un ejemplo publicado: sus valores son de control, contrastados con OpenSeesPy 3.7 (Steel01 b = 0, docs/referencias/revision-dynamics.md).',
+      valores: [
+        { var: 'umax_a', unidad: 'in', esperado: 2.67, tol: 0.005, desc: 'Chopra: D(Tn = 0.5 s)' },
+        { var: 'umax_b', unidad: 'in', esperado: 5.97, tol: 0.005, desc: 'Chopra: D(Tn = 1 s)' },
+        { var: 'umax_c', unidad: 'in', esperado: 7.47, tol: 0.005, desc: 'Chopra: D(Tn = 2 s)' },
+        { var: 'An_g_a', esperado: 1.09, tol: 0.005, desc: 'Chopra: A/g (Tn = 0.5 s)' },
+        { var: 'An_g_b', esperado: 0.610, tol: 0.005, desc: 'Chopra: A/g (Tn = 1 s)' },
+        { var: 'An_g_c', esperado: 0.191, tol: 0.005, desc: 'Chopra: A/g (Tn = 2 s)' },
+        { var: 'PGA_a', esperado: 0.319, tol: 0.002, desc: 'Chopra §6.1: PGA de El Centro' },
+        { var: 'umax_p', unidad: 'm', esperado: 0.044304, tol: 0.001, desc: 'Control (OpenSees): umax del sistema elastoplástico' },
+        { var: 'ures_p', unidad: 'm', esperado: 0.030895, tol: 0.002, desc: 'Control (OpenSees): |u residual| del sistema elastoplástico' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Se calcula la respuesta tiempo-historia de osciladores de un grado de libertad (1 GDL) sometidos a la componente N-S del registro de **El Centro, Imperial Valley (18 de mayo de 1940)**, el acelerograma de referencia de A. K. Chopra (*Dynamics of Structures*, Fig. 6.1.4). La ecuación de movimiento es
@@ -34,14 +49,14 @@ Para los sistemas lineales se usa el método **exacto por tramos lineales** de N
 
 **Validación:** Chopra (Fig. 6.4.1) reporta, para ζ = 2 %, los desplazamientos máximos D = 2.67, 5.97 y 7.47 in para Tn = 0.5, 1 y 2 s.`),
       calc(`# Datos
-zeta = 0.02 // Fracción de amortiguamiento crítico (Chopra Fig. 6.4.1)
-Tn_a = 0.5 s // Periodo del sistema a
-Tn_b = 1.0 s // Periodo del sistema b
-Tn_c = 2.0 s // Periodo del sistema c
+zeta = 0.02 // Fracción de amortiguamiento crítico (Chopra Fig. 6.4.1) [0.005..0.20]
+Tn_a = 0.5 s // Periodo del sistema a [0.05..5]
+Tn_b = 1.0 s // Periodo del sistema b [0.05..5]
+Tn_c = 2.0 s // Periodo del sistema c [0.05..5]
 D_ch_a = 2.67 in // Chopra Fig. 6.4.1: D para Tn = 0.5 s
 D_ch_b = 5.97 in // Chopra Fig. 6.4.1: D para Tn = 1 s
 D_ch_c = 7.47 in // Chopra Fig. 6.4.1: D para Tn = 2 s
-tol = 0.01 // Tolerancia relativa admitida frente a la solución publicada`),
+tol = 0.01 // Tolerancia relativa admitida frente a la solución publicada [0.001..0.05]`),
       calc(`# Sistema a: Tn = 0.5 s`),
       { type: 'thsdof', registro: 'elcentro', T: 'Tn_a', zeta: 'zeta', modelo: 'lineal', metodo: 'nj', sufijo: 'a', escala: '1', titulo: 'Sistema a (Tn = 0.5 s, ζ = 2 %): üg(t), u(t) y A(t)' },
       calc(`# Sistema b: Tn = 1 s`),
@@ -62,9 +77,9 @@ check e_N <= 0.02 // Newmark con Δt/Tn = 0.02 converge a la solución exacta
 "Las pseudo-aceleraciones $A/g = \\omega_n^2 D/g$ resultan {An_g_a}, {An_g_b} y {An_g_c} (Chopra: 1.09, 0.610 y 0.191).`),
       calc(`# Sistema elastoplástico (Chopra §7.4)
 "Se analiza el sistema de Tn = 0.5 s y ζ = 5 % con resistencia $f_y = f_o/R_y$, donde $f_o$ es la fuerza elástica máxima ($R_y$ = factor de reducción de resistencia, Chopra Ec. 7.3.2).
-zetaP = 0.05 // Amortiguamiento del sistema inelástico
-Ry = 4 // Factor de reducción de resistencia
-mu_disp = 6 // Ductilidad disponible supuesta (sistema dúctil)`),
+zetaP = 0.05 // Amortiguamiento del sistema inelástico [0.005..0.20]
+Ry = 4 // Factor de reducción de resistencia [1..8]
+mu_disp = 6 // Ductilidad disponible supuesta (sistema dúctil) [1..10]`),
       { type: 'thsdof', registro: 'elcentro', T: 'Tn_a', zeta: 'zetaP', modelo: 'bilineal', metodo: 'avg', Ry: 'Ry', alpha: '0', mucap: 'mu_disp', sufijo: 'p', escala: '1', titulo: 'Sistema elastoplástico (Tn = 0.5 s, ζ = 5 %, Ry = 4): üg(t), u(t) y lazo fS–u' },
       calc(`## Resultados del sistema inelástico
 Cy_p // Coeficiente de fluencia fy/(m·g)
@@ -81,6 +96,18 @@ mu_p // Ductilidad de desplazamiento μ = um/uy
     name: 'Espectro de respuesta vs espectro E.030-2026', normas: 'NTE E.030-2026 (RM 183-2026-VIVIENDA) Art. 41 y 47 — Chopra §6.6',
     desc: 'Espectros Sd, Sv y Sa de El Centro para ζ = 2, 5 y 10 % comparados con el espectro elástico ZUCS de la E.030-2026; parámetros del registro y factor de escala.',
     titulo: 'Espectro de respuesta de un acelerograma y comparación con la NTE E.030-2026',
+    validacion: {
+      fuente: 'A. K. Chopra, Dynamics of Structures (4.ª ed.), §6.1 y Fig. 6.4.1 (registro de El Centro 1940 N-S); NTE E.030-2026 Art. 14–17 y Tablas N° 1, 4 y 5',
+      nota: 'Los datos por defecto NO reproducen un ejemplo publicado: solo el PGA del registro es un valor de Chopra. Los demás son valores de control: Sa elástico E.030 calculado a mano (0.45·1·2.5·1.075, con T1 = 0.5 s < TP) y la ordenada espectral del registro con Nigam-Jennings (la misma rutina reproduce D = 2.67/5.97/7.47 in de Chopra Fig. 6.4.1).',
+      valores: [
+        { var: 'PGA', esperado: 0.319, tol: 0.002, desc: 'Chopra §6.1: PGA de El Centro (g)' },
+        { var: 'SaE', esperado: 1.209375, tol: 0.001, desc: 'Control: Z·U·C·S = 0.45·1·2.5·1.075' },
+        { var: 'S', esperado: 1.075, tol: 0.001, desc: 'Control: S interpolado por Vs30 = 400 m/s (zona 4)' },
+        { var: 'SaT', esperado: 0.9162, tol: 0.003, desc: 'Control: Sa(0.5 s, ζ = 5 %) de El Centro (g)' },
+        { var: 'Ia', unidad: 'm/s', esperado: 1.80, tol: 0.01, desc: 'Control: intensidad de Arias de El Centro' },
+        { var: 'fesc', esperado: 2.071, tol: 0.005, desc: 'Control: factor de escala (Art. 47.5)' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 El **espectro de respuesta** de un acelerograma es la gráfica del valor máximo de la respuesta de osciladores de 1 GDL en función de su periodo, para un amortiguamiento fijo. Se calcula con la recurrencia exacta de Nigam-Jennings para 120 periodos (rejilla logarítmica) y tres amortiguamientos, y se compara con el **espectro elástico de la NTE E.030-2026** ($S_a = Z\\,U\\,C\\,S$, con R = 1), tal como exige el Art. 47 para seleccionar y escalar registros en análisis tiempo-historia.
@@ -88,8 +115,8 @@ El **espectro de respuesta** de un acelerograma es la gráfica del valor máximo
 Registro: El Centro 1940 N-S (Imperial Valley), Δt = 0.02 s, PGA = 0.319 g.`),
       calc(SITIO_E030),
       calc(`# Estructura y criterio de escalamiento
-T1 = 0.50 s // Periodo fundamental de la estructura en la dirección de análisis
-fesc_max = 4 // Factor de escala máximo razonable para un registro (práctica: 0.25–4; NIST GCR 11-917-15)`),
+T1 = 0.50 s // Periodo fundamental de la estructura en la dirección de análisis [0.05..4]
+fesc_max = 4 // Factor de escala máximo razonable para un registro (práctica: 0.25–4; NIST GCR 11-917-15) [0.25..5]`),
       { type: 'respspec', registro: 'elcentro', zetas: '0.02, 0.05, 0.10', Tmax: '4 s', nT: '120', Sa: 'Z*U*CE030d(T, Tp, Tl)*S', Tref: 'T1', escala: '1', titulo: 'Espectros de respuesta de El Centro 1940 NS (ζ = 2, 5 y 10 %) y espectro elástico E.030-2026' },
       calc(`# Evaluación
 SaE = Z*U*CE030d(T1, Tp, Tl)*S // Espectro elástico E.030 en T1 (R = 1, Art. 41.1)
@@ -111,6 +138,19 @@ PGAesc = fesc*PGA // PGA del registro escalado (g)
     name: 'Tiempo-historia modal de edificio de 5 pisos (Chopra)', normas: 'Chopra, Dynamics of Structures §12.8, §13.1–13.2 (Ejemplos 13.2–13.3) — Der Kiureghian (1981)',
     desc: 'Edificio de cortante de 5 pisos (m = 100/g kip, k = 31.54 kip/in) ante El Centro con ζ = 5 %: modos, superposición modal en el tiempo y comparación con el análisis espectral CQC/SRSS.',
     titulo: 'Análisis tiempo-historia por superposición modal — edificio de 5 pisos',
+    validacion: {
+      fuente: 'A. K. Chopra, Dynamics of Structures (4.ª ed.), §12.8 y Ejemplos 13.2–13.3: edificio de cortante de 5 pisos ante El Centro, ζ = 5 % (T1 = 2.0 s, techo ≈ 6.85 in, Vb ≈ 73.3 kip)',
+      nota: 'Datos por defecto = datos del ejemplo de Chopra. Los valores de techo y cortante basal (6.840 in, 73.20 kip) y las estimaciones CQC son los de la implementación de referencia (docs/referencias/algoritmos.md §4), que coinciden con las gráficas de Chopra (6.85 in, 73.3 kip).',
+      valores: [
+        { var: 'T1', unidad: 's', esperado: 2.0007, tol: 0.0005, desc: 'Chopra: periodo fundamental' },
+        { var: 'T2', unidad: 's', esperado: 0.6854, tol: 0.0005, desc: 'Chopra: periodo del modo 2' },
+        { var: 'T5', unidad: 's', esperado: 0.2967, tol: 0.0005, desc: 'Chopra: periodo del modo 5' },
+        { var: 'u_techo', unidad: 'in', esperado: 6.840, tol: 0.002, desc: 'Desplazamiento máximo del techo (THA modal)' },
+        { var: 'Vbmax', unidad: 'kip', esperado: 73.20, tol: 0.002, desc: 'Cortante basal máximo (THA modal)' },
+        { var: 'u_rsa', unidad: 'in', esperado: 6.793, tol: 0.003, desc: 'Techo por RSA con CQC' },
+        { var: 'Vb_rsa', unidad: 'kip', esperado: 66.45, tol: 0.003, desc: 'Cortante basal por RSA con CQC' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Edificio de cortante uniforme de cinco pisos (Chopra, *Dynamics of Structures*, §12.8 y Ejemplo 13.2): peso por nivel 100 kip, rigidez de entrepiso 31.54 kip/in y altura de entrepiso 12 ft. Se somete a El Centro 1940 N-S con amortiguamiento modal ζn = 5 %.
@@ -119,12 +159,12 @@ El análisis tiempo-historia se hace por **superposición modal**: cada coordena
 
 **Validación:** Chopra reporta T1 = 2.0 s, desplazamiento máximo del techo ≈ 6.85 in y cortante basal ≈ 73.3 kip; la implementación de referencia (algoritmos.md §4) da 6.840 in y 73.20 kip.`),
       calc(`# Datos del edificio
-n = 5 // Número de pisos
+n = 5 // Número de pisos [1..50]
 W_i = [100, 100, 100, 100, 100] kip // Peso sísmico por nivel (1 → n)
 k_i = [31.54, 31.54, 31.54, 31.54, 31.54] kip/in // Rigidez lateral de entrepiso
 h_i = [12, 12, 12, 12, 12] ft // Altura de entrepiso
-zeta = 0.05 // Amortiguamiento modal (Chopra Ej. 13.2)
-dlim = 0.020 // Deriva límite de entrepiso Δa/hsx (ASCE 7-22 Tabla 12.12-1, categoría de riesgo II)
+zeta = 0.05 // Amortiguamiento modal (Chopra Ej. 13.2) [0.01..0.20]
+dlim = 0.020 // Deriva límite de entrepiso Δa/hsx (ASCE 7-22 Tabla 12.12-1, categoría de riesgo II) [0.007..0.025]
 ## Valores publicados (Chopra / referencia)
 T1_ch = 2.0007 s // Periodo fundamental (Chopra §12.8)
 u5_ch = 6.840 in // Desplazamiento máximo del techo (THA modal, referencia)
@@ -156,6 +196,17 @@ rho12 = rhoCQC(T1, T2, zeta) // Correlación CQC entre los modos 1 y 2`),
     name: 'Tiempo-historia no lineal con P-Δ (edificio de 5 pisos)', normas: 'Chopra §16.3 (Tabla 16.3.3), §18.7 — ASCE 7-22 §16.4.1.2 — FEMA P-58 (deriva residual); contrastado con OpenSees',
     desc: 'Edificio de cortante de 5 pisos (Chopra) con resortes de entrepiso bilineales, ante El Centro × 1.5: Newmark + Newton-Raphson, con y sin P-Δ, frente a la respuesta elástica; ductilidad, deriva máxima y residual.',
     titulo: 'Análisis tiempo-historia no lineal de un edificio de cortante con efecto P-Δ',
+    validacion: {
+      fuente: 'OpenSeesPy 3.7 (zeroLength + Steel01, columna ficticia P-Δ, Rayleigh con K inicial) sobre el edificio de 5 pisos de Chopra §12.8 ante El Centro × 1.5 (docs/referencias/revision-dynamics.md)',
+      nota: 'No hay un ejemplo publicado con estos datos: la respuesta elástica (u_lin) coincide con el modelo de OpenSees (0.26193 m); los demás son valores de control de la implementación, contrastada con OpenSees a < 0.1 % con otras resistencias. θ1 se comprueba a mano: 500/(31.54·144) = 0.1101.',
+      valores: [
+        { var: 'u_lin_0', unidad: 'm', esperado: 0.26193, tol: 0.0005, desc: 'OpenSees: techo elástico, Rayleigh modos 1 y 3' },
+        { var: 'theta1', esperado: 0.1101, tol: 0.001, desc: 'Control: coeficiente de estabilidad P/(k·h)' },
+        { var: 'u_techo_0', unidad: 'in', esperado: 10.728, tol: 0.005, desc: 'Control: techo no lineal sin P-Δ' },
+        { var: 'u_techo_PD', unidad: 'in', esperado: 10.912, tol: 0.005, desc: 'Control: techo no lineal con P-Δ' },
+        { var: 'derivamax_PD', esperado: 0.02712, tol: 0.01, desc: 'Control: deriva máxima con P-Δ' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 El edificio de cortante de cinco pisos de Chopra (peso 100 kip por nivel, rigidez 31.54 kip/in, h = 12 ft, T1 = 2.0 s) se dota de **resortes de entrepiso bilineales** con endurecimiento cinemático (el material *Steel01* de OpenSees sin transición). La resistencia de cada entrepiso proviene de un coeficiente de fluencia $C_y = V_{y,1}/W$ distribuido según el patrón triangular de fuerzas: $V_{y,i} = C_y W \\sum_{j\\ge i} j/\\sum j$.
@@ -167,15 +218,15 @@ Excitación: El Centro 1940 N-S × 1.5 (sismo severo). Los resultados se contras
 W_i = [100, 100, 100, 100, 100] kip // Peso sísmico por nivel (1 → n)
 k_i = [31.54, 31.54, 31.54, 31.54, 31.54] kip/in // Rigidez lateral inicial de entrepiso
 h_i = [12, 12, 12, 12, 12] ft // Altura de entrepiso
-Wt = 500 kip // Peso total
-Cy = 0.20 // Coeficiente de fluencia del primer entrepiso V_y1/W
+Wt = 500 kip // Peso total [50..10000]
+Cy = 0.20 // Coeficiente de fluencia del primer entrepiso V_y1/W [0.05..1]
 Vy_i = Cy*Wt*[15, 14, 12, 9, 5]/15 // Resistencia de entrepiso con distribución triangular
-alpha = 0.03 // Rigidez post-fluencia α = k2/k
-zeta = 0.05 // Amortiguamiento de Rayleigh (modos 1 y 3)
-fsc = 1.5 // Factor de escala del registro
+alpha = 0.03 // Rigidez post-fluencia α = k2/k [0..0.20]
+zeta = 0.05 // Amortiguamiento de Rayleigh (modos 1 y 3) [0.01..0.10]
+fsc = 1.5 // Factor de escala del registro [0.25..4]
 ## Criterios de aceptación
-dlim = 0.040 // Deriva máxima: 2 × 0.020 (ASCE 7-22 §16.4.1.2 y Tabla 12.12-1, categoría II)
-dres_lim = 0.010 // Deriva residual: estado de daño DS3 de FEMA P-58 (reparación mayor)
+dlim = 0.040 // Deriva máxima: 2 × 0.020 (ASCE 7-22 §16.4.1.2 y Tabla 12.12-1, categoría II) [0.02..0.05]
+dres_lim = 0.010 // Deriva residual: estado de daño DS3 de FEMA P-58 (reparación mayor) [0.002..0.02]
 theta1 = Wt/(k_i[1]*h_i[1]) // Coeficiente de estabilidad elástica del primer entrepiso`),
       calc(`# Respuesta sin P-Δ`),
       { type: 'thnl', masas: 'W_i', rigideces: 'k_i', Vy: 'Vy_i', alturas: 'h_i', alpha: 'alpha', registro: 'elcentro', escala: 'fsc', zeta: 'zeta', modosR: '1, 3', pdelta: false, dlim: 'dlim', dreslim: 'dres_lim', sufijo: '0', titulo: 'Edificio de 5 pisos no lineal SIN P-Δ ante El Centro × 1.5' },
@@ -198,6 +249,19 @@ check mumax_PD <= 4 // Demanda de ductilidad de entrepiso moderada
     name: 'Pushover y desplazamiento objetivo (N2 / ATC-40 / ASCE 41)', normas: 'EC8-1 Anexo B (N2), ATC-40 §8.2.2, FEMA 440 §6, ASCE 41-17 §7.4.3; espectro NTE E.030-2026',
     desc: 'Edificio de concreto de 4 pisos con resortes de entrepiso trilineales: curva de capacidad, espectro de capacidad ADRS, punto de desempeño por N2, ATC-40, FEMA 440 y coeficientes, y verificación de niveles de desempeño.',
     titulo: 'Análisis estático no lineal (pushover) y evaluación del desempeño sísmico',
+    validacion: {
+      fuente: 'Valores de control de la implementación (los bloques pushover/N2/ATC-40 están validados en tests/dynamics.test.mjs con algoritmos.md §11 y SOFiSTiK BE36 = ATC-40 §8.3.3.3)',
+      nota: 'Los datos por defecto (edificio de 4 pisos, E.030-2026 zona 4, Vs30 = 400 m/s) NO son de un ejemplo publicado; los valores son de control para detectar cambios. El método N2 se valida contra el ejemplo de 3 pisos de algoritmos.md §11 (Γ = 1.2619, T* = 0.4960 s, dt = 70.04 mm) y ATC-40 contra SOFiSTiK BE36 (Sd,p = 83.36 mm).',
+      valores: [
+        { var: 'Tpo1', unidad: 's', esperado: 0.4101, tol: 0.002, desc: 'Control: periodo elástico fundamental' },
+        { var: 'Gam', esperado: 1.2928, tol: 0.002, desc: 'Control: factor de participación Γ' },
+        { var: 'dN2', unidad: 'mm', esperado: 119.45, tol: 0.005, desc: 'Control: desplazamiento objetivo N2' },
+        { var: 'dATC', unidad: 'mm', esperado: 99.01, tol: 0.01, desc: 'Control: punto de desempeño ATC-40' },
+        { var: 'dFEMA', unidad: 'mm', esperado: 102.52, tol: 0.01, desc: 'Control: punto de desempeño FEMA 440' },
+        { var: 'dC', unidad: 'mm', esperado: 88.47, tol: 0.01, desc: 'Control: método de coeficientes ASCE 41' },
+        { var: 'derivamax', esperado: 0.01470, tol: 0.01, desc: 'Control: deriva máxima en el objetivo' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Evaluación por desempeño de un edificio aporticado de concreto armado de 4 pisos modelado como **edificio de cortante** con resortes de entrepiso **trilineales** (fisuración, fluencia y endurecimiento). La resistencia de cada entrepiso proviene del mecanismo de columnas/vigas (análisis límite) y la rigidez inicial del modelo elástico con secciones fisuradas.
@@ -213,15 +277,15 @@ W_i = [2400, 2200, 2200, 1800] kN // Peso sísmico por nivel (CM + 25 % CV, E.03
 k_i = [450000, 400000, 360000, 300000] kN/m // Rigidez lateral inicial de entrepiso
 Vy_i = [3200, 2800, 2400, 1700] kN // Cortante de fluencia de entrepiso (mecanismo plástico)
 h_i = [4.0, 3.2, 3.2, 3.2] m // Altura de entrepiso
-alpha = 0.05 // Rigidez post-fluencia α = k2/k1
-fcr = 0.40 // Fisuración en Vcr = 0.40 Vy (trilineal)
-r2 = 0.50 // Rigidez fisurada / inicial
+alpha = 0.05 // Rigidez post-fluencia α = k2/k1 [0..0.20]
+fcr = 0.40 // Fisuración en Vcr = 0.40 Vy (trilineal) [0.2..0.8]
+r2 = 0.50 // Rigidez fisurada / inicial [0.2..1]
 ## Coeficientes del ATC-40 y ASCE 41
-Cm = 0.9 // Factor de masa efectiva (ASCE 41-17 Tabla 7-4, pórtico de concreto de 3 o más pisos)
+Cm = 0.9 // Factor de masa efectiva (ASCE 41-17 Tabla 7-4, pórtico de concreto de 3 o más pisos) [0.8..1]
 ## No linealidad geométrica y degradación
-drc = 0.03 // Deriva de inicio de la degradación de resistencia (columnas de C°A° dúctiles, ASCE 41-17 Tabla 10-8: a + θy ≈ 0.03)
-ac = 0.10 // Pendiente de la rama descendente −ac·k
-resid = 0.20 // Resistencia residual / Vy (ASCE 41-17 Tabla 10-8, c = 0.2)`),
+drc = 0.03 // Deriva de inicio de la degradación de resistencia (columnas de C°A° dúctiles, ASCE 41-17 Tabla 10-8: a + θy ≈ 0.03) [0.01..0.06]
+ac = 0.10 // Pendiente de la rama descendente −ac·k [0..0.5]
+resid = 0.20 // Resistencia residual / Vy (ASCE 41-17 Tabla 10-8, c = 0.2) [0..0.5]`),
       { type: 'pushover', masas: 'W_i', rigideces: 'k_i', Vy: 'Vy_i', alturas: 'h_i', alpha: 'alpha', fcr: 'fcr', r2: 'r2', patron: 'modal', druEnd: '0.05', pdelta: true, fP: '1.0', drcap: 'drc', acap: 'ac', rescap: 'resid', Sa: 'Z*U*CE030d(T, Tp, Tl)*S', Tc: 'Tp', metodo: 'N2', tipo: 'B', asitio: '130', Cm: 'Cm', niveles: 'OP 0.005 // Operacional\nIO 0.010 // Ocupación inmediata\nLS 0.020 // Seguridad de vida\nCP 0.040 // Prevención del colapso', nivel: 'LS', titulo: 'Curva de capacidad y espectro de capacidad del edificio de 4 pisos con la demanda E.030-2026' },
       calc(`# Resultados del desempeño
 Te = Tpo1 // Periodo elástico fundamental
@@ -243,6 +307,19 @@ rN2C = dN2/dC // Razón N2 / método de coeficientes
     name: 'Momento–curvatura de columna confinada (Mander)', normas: 'Mander, Priestley y Park (1988); Paulay y Priestley (1992); Priestley, Calvi y Kowalsky (2007); E.060 Cap. 21 / ACI 318-19 §18.7.5',
     desc: 'Diagrama M–φ por fibras de una columna de 40 × 60 cm con núcleo confinado de Mander y acero Park-Paulay: fluencia, nominal, última, ductilidad de curvatura, rótula plástica y ductilidad de desplazamiento.',
     titulo: 'Diagrama momento–curvatura de una columna de concreto armado confinada',
+    validacion: {
+      fuente: "Mander, Priestley y Park (1988), Fig. 4 y Ec. de f'cc; Paulay y Priestley (1992) Ec. 4.30 / Priestley et al. (2007) para Lp",
+      nota: "La columna por defecto NO es un ejemplo publicado. Se validan las funciones de Mander del editor (f'cc/f'co = 1.565 para f'l/f'co = 0.10 y 1.260 para f'l1 = 0, f'l2 = 0.2, ábaco de Mander Fig. 4) y valores de control de la columna: ν = 1200/(0.24·28000) y Lp = 0.044·420·25.4 mm (rige el mínimo 2Lsp), calculados a mano; f'cc, Mn y μφ son de la implementación (contrastada con OpenSees, revision-dynamics.md).",
+      valores: [
+        { var: 'fccMander(30 MPa, 3 MPa)', unidad: 'MPa', esperado: 46.95, tol: 0.002, desc: "Mander 1988: f'cc(30; f'l = 3 MPa)" },
+        { var: 'fccMander2(30 MPa, 0 MPa, 6 MPa)', unidad: 'MPa', esperado: 37.80, tol: 0.005, desc: 'Mander 1988 Fig. 4: confinamiento desigual (0; 0.2)' },
+        { var: 'nu', esperado: 0.1786, tol: 0.001, desc: 'Control: carga axial normalizada' },
+        { var: 'Lp', unidad: 'cm', esperado: 46.94, tol: 0.001, desc: 'Control: Lp = 0.044·db·fy' },
+        { var: 'fcc', unidad: 'MPa', esperado: 33.80, tol: 0.005, desc: "Control: f'cc del núcleo (triaxial)" },
+        { var: 'Mn', unidad: 'kN*m', esperado: 755.7, tol: 0.005, desc: 'Control: momento nominal' },
+        { var: 'muphi', esperado: 11.17, tol: 0.01, desc: 'Control: ductilidad de curvatura' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 El diagrama **momento–curvatura** (M–φ) de una sección se obtiene con un **modelo de fibras**: la sección se divide en franjas de concreto (núcleo confinado y recubrimiento) y barras de acero, se impone una curvatura φ, se busca la deformación de referencia que equilibra la carga axial y se integra el momento. Es la base de los modelos de rótula plástica usados en pushover y tiempo-historia no lineal (OpenSees *fiber section*).
@@ -251,24 +328,24 @@ El diagrama **momento–curvatura** (M–φ) de una sección se obtiene con un *
 - Estribos: perímetro Ø 3/8" + un gancho suplementario que restringe las barras intermedias de las caras de 60 cm (3 ramas paralelas a b, 2 ramas paralelas a h; las barras intermedias de las caras de 40 cm quedan a menos de 15 cm de una barra restringida, E.060 21.6.4.3 / ACI 318-19 §18.7.5.2).
 - Recubrimiento no confinado: curva de Mander con descascaramiento en $\\varepsilon_{sp} = 0.005$.
 - Acero: curva de **Park y Paulay** con meseta de fluencia y endurecimiento.
-- Rótula plástica: **Paulay y Priestley (1992)**, $L_p = 0.08L + 0.022d_bf_y$.`),
+- Rótula plástica: **Paulay y Priestley (1992)**, $L_p = 0.08L + 0.022d_bf_y \\ge 0.044d_bf_y$ (mínimo de Priestley, Calvi y Kowalsky 2007).`),
       calc(`# Materiales
-fc = 28 MPa // Resistencia del concreto f'c
-fy = 420 MPa // Fluencia del acero longitudinal (ASTM A615 Gr. 60)
-fyh = 420 MPa // Fluencia del acero transversal
-Es = 200000 MPa // Módulo del acero
-esu = 0.09 // Deformación última del acero (ε en fsu)
+fc = 28 MPa // Resistencia del concreto f'c [17..55]
+fy = 420 MPa // Fluencia del acero longitudinal (ASTM A615 Gr. 60) [280..550]
+fyh = 420 MPa // Fluencia del acero transversal [280..550]
+Es = 200000 MPa // Módulo del acero [190000..210000]
+esu = 0.09 // Deformación última del acero (ε en fsu) [0.05..0.15]
 # Sección y refuerzo
-b = 40 cm // Ancho (perpendicular a la flexión)
-h = 60 cm // Peralte en la dirección de flexión
-rec = 4 cm // Recubrimiento libre hasta el estribo
-s = 10 cm // Separación de estribos #3 en la zona de rótula (E.060 21.6.4.4: s ≤ 6db, b/4, 10 cm)
-P = 1200 kN // Carga axial de servicio sísmica (CM + 0.25CV)
-L = 1.5 m // Longitud de cortante (columna en doble curvatura, hn = 3.0 m)
+b = 40 cm // Ancho (perpendicular a la flexión) [25..150]
+h = 60 cm // Peralte en la dirección de flexión [25..150]
+rec = 4 cm // Recubrimiento libre hasta el estribo [2.5..7.5]
+s = 10 cm // Separación de estribos #3 en la zona de rótula (E.060 21.6.4.4: s ≤ 6db, b/4, 10 cm) [5..15]
+P = 1200 kN // Carga axial de servicio sísmica (CM + 0.25CV) [0..10000]
+L = 1.5 m // Longitud de cortante (columna en doble curvatura, hn = 3.0 m) [0.5..5]
 Ag = b*h // Área bruta
 nu = P/(Ag*fc) // Carga axial normalizada
 check nu <= 0.35 // Carga axial moderada para comportamiento dúctil (Priestley 2007)
-muD_req = 4 // Ductilidad de desplazamiento requerida (pórtico dúctil, R0 = 8)`),
+muD_req = 4 // Ductilidad de desplazamiento requerida (pórtico dúctil, R0 = 8) [1..8]`),
       { type: 'momcurv', b: 'b', h: 'h', rec: 'rec', fc: 'fc', fy: 'fy', Es: 'Es', capas: '4 8 6.7 cm\n2 8 30 cm\n4 8 53.3 cm', estribo: '3', s: 's', nlb: '3', nlh: '2', fyh: 'fyh', confin: 'triaxial', P: 'P', concreto: 'mander', k3: '0.85', acero: 'park', bsh: '0.01', esh: '0.008', esu: 'esu', rsu: '1.35', traccion: true, L: 'L', mureq: '10', titulo: 'Diagrama M–φ de la columna 40 × 60 cm (10 Ø 1", estribos Ø 3/8" @ 10 cm), núcleo confinado de Mander' },
       calc(`# Resultados
 Mn -> kN*m // Momento nominal (εc = 0.004 o εs = 0.015)
@@ -292,6 +369,17 @@ check thetap >= 0.02 // Capacidad de rotación plástica ≥ 0.02 rad (ASCE 41-1
     name: 'Aislamiento: base fija vs aislada (tiempo-historia)', normas: 'NTE E.031 Aislamiento Sísmico (SaM, Art. 14); E.030-2026; Gasparini-Vanmarcke (SIMQKE)',
     desc: 'Acelerograma sintético compatible con el sismo máximo (E.031) y comparación tiempo-historia de la estructura con base fija (Tn = 0.4 s) y aislada con un sistema bilineal (LRB).',
     titulo: 'Comparación de la respuesta sísmica con base fija y con aislamiento en la base',
+    validacion: {
+      fuente: 'Valores de control de la implementación (acelerograma sintético SIMQKE con semilla fija; NTE E.031 Art. 14)',
+      nota: 'Los datos por defecto NO son de un ejemplo publicado. PGAm = 1.5·0.45·1.075 y T1A = 3.0·√0.10 se comprueban a mano; los demás son valores de control de la respuesta al registro sintético (semilla 20260), que cambian si se modifica el generador.',
+      valores: [
+        { var: 'PGAm', esperado: 0.725625, tol: 0.001, desc: 'Control: PGA del sismo máximo 1.5·Z·S (g)' },
+        { var: 'T1A', unidad: 's', esperado: 0.94868, tol: 0.001, desc: 'Control: T1 = T2·√α' },
+        { var: 'umax_F', unidad: 'cm', esperado: 7.053, tol: 0.01, desc: 'Control: desplazamiento con base fija' },
+        { var: 'umax_A', unidad: 'cm', esperado: 28.22, tol: 0.01, desc: 'Control: desplazamiento del aislador' },
+        { var: 'rV', esperado: 0.1117, tol: 0.02, desc: 'Control: cortante basal aislado / fijo' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Se compara la respuesta de una edificación rígida de baja altura **con base fija** y **con aislamiento sísmico** (aisladores elastoméricos con núcleo de plomo, LRB), representadas como sistemas de 1 GDL. La excitación es un **acelerograma sintético** compatible con el espectro del **sismo máximo considerado** de la NTE E.031 ($S_{aM} = 1.5\\,Z\\,C\\,S$), generado con el método SIMQKE (Gasparini y Vanmarcke 1976). El sistema aislado se modela con un lazo **bilineal** (rigidez elástica $k_1$, post-fluencia $k_2 = \\alpha k_1$ y fuerza característica $Q_d$).`),
@@ -300,17 +388,17 @@ Se compara la respuesta de una edificación rígida de baja altura **con base fi
 PGAm = 1.5*Z*S // PGA de referencia del sismo máximo (g)`),
       { type: 'simqke', Sa: 'SaME031(T, Z, S, Tp, Tl)', dur: '25 s', dt: '0.01 s', t1: '2 s', t2: '14 s', cdec: '0.25', seed: '20260', nf: '300', iters: '12', Tmin: '0.03 s', Tmax: '4 s', pgaref: 'PGAm', rmin: '0.90', nombre: 'mce', titulo: 'Acelerograma sintético compatible con SaM (E.031 Art. 14.4)' },
       calc(`# Estructura con base fija
-Tf = 0.40 s // Periodo de la superestructura con base fija
-zf = 0.05 // Amortiguamiento de la superestructura
-Wt = 1500 tonf // Peso sísmico total`),
+Tf = 0.40 s // Periodo de la superestructura con base fija [0.05..1.5]
+zf = 0.05 // Amortiguamiento de la superestructura [0.02..0.10]
+Wt = 1500 tonf // Peso sísmico total [100..100000]`),
       { type: 'thsdof', registro: 'simqke', nombre: 'mce', T: 'Tf', zeta: 'zf', masa: 'Wt', modelo: 'lineal', metodo: 'nj', sufijo: 'F', escala: '1', titulo: 'Base fija (Tn = 0.40 s, ζ = 5 %) ante el sismo máximo sintético' },
       calc(`# Estructura aislada (sistema bilineal)
-T2 = 3.0 s // Periodo post-fluencia del sistema de aislamiento (k2)
-alphaA = 0.10 // Razón k2/k1 de los aisladores LRB
+T2 = 3.0 s // Periodo post-fluencia del sistema de aislamiento (k2) [2..5]
+alphaA = 0.10 // Razón k2/k1 de los aisladores LRB [0.03..0.20]
 T1A = T2*sqrt(alphaA) // Periodo elástico inicial (k1)
-CyA = 0.08 // Resistencia de fluencia del sistema fy/W
-za = 0.02 // Amortiguamiento viscoso inherente (el resto es histerético)
-Dcap = 45 cm // Capacidad de desplazamiento del aislador (ensayo de prototipo, E.031 Art. 29)`),
+CyA = 0.08 // Resistencia de fluencia del sistema fy/W [0.03..0.15]
+za = 0.02 // Amortiguamiento viscoso inherente (el resto es histerético) [0..0.05]
+Dcap = 45 cm // Capacidad de desplazamiento del aislador (ensayo de prototipo, E.031 Art. 29) [20..100]`),
       { type: 'thsdof', registro: 'simqke', nombre: 'mce', T: 'T1A', zeta: 'za', masa: 'Wt', modelo: 'bilineal', metodo: 'avg', Cy: 'CyA', alpha: 'alphaA', sufijo: 'A', escala: '1', titulo: 'Base aislada bilineal (T2 = 3.0 s, Qd ≈ 0.072 W) ante el sismo máximo sintético' },
       calc(`# Comparación
 check umax_A <= Dcap // Desplazamiento máximo del aislador ≤ capacidad

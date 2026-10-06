@@ -103,7 +103,7 @@ function inspect() {
     if (/\bNaN\b/.test(s)) once('valor', 'E', '«NaN» en el texto: ' + s, el);
     if (/Infinity|∞/.test(s)) once('valor', 'E', '«Infinity» en el texto: ' + s, el);
     if (/\bundefined\b|\bnull\b|\[object /.test(s)) once('valor', 'E', 'undefined/null en el texto: ' + s, el);
-    if (/\d(\.\d+)?e[-+]?\d{2}\b/i.test(s)) once('valor', 'W', 'Número en notación e (posible resto numérico): ' + s, el);
+    if (/\d(\.\d+)?e[-+]?\d{1,3}\b/i.test(s)) once('valor', 'W', 'Número en notación e (posible resto numérico): ' + s, el);
     if (/(^|[^\d.])[-−]0[.,]0+(?![\d]*[1-9])\b/.test(s)) once('valor', 'W', 'Cero negativo: ' + s, el);
     if (!svg && /\$|\\[a-zA-Z]{2,}|\^\{|_\{/.test(s)) once('latex', 'E', 'LaTeX crudo en el texto: ' + s, el);
     if (svg && /\\[a-zA-Z]{2,}|\^\{|_\{/.test(s)) once('latex', 'E', 'LaTeX crudo en la figura: ' + s, el);

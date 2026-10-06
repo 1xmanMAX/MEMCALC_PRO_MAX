@@ -263,7 +263,7 @@ export function valText(v, dec) {
   return String(v);
 }
 
-const GREEK = ['varepsilon', 'vartheta', 'epsilon', 'upsilon', 'Upsilon', 'lambda', 'Lambda', 'varphi', 'alpha', 'gamma', 'Gamma', 'delta', 'Delta', 'theta', 'Theta', 'kappa', 'sigma', 'Sigma', 'omega', 'Omega', 'beta', 'zeta', 'iota', 'Phi', 'phi', 'chi', 'psi', 'Psi', 'rho', 'tau', 'eta', 'mu', 'nu', 'xi', 'Xi', 'pi', 'Pi'];
+const GREEK = ['varepsilon', 'vartheta', 'epsilon', 'upsilon', 'Upsilon', 'lambda', 'Lambda', 'varphi', 'alpha', 'gamma', 'Gamma', 'delta', 'Delta', 'theta', 'Theta', 'kappa', 'sigma', 'Sigma', 'omega', 'Omega', 'beta', 'zeta', 'iota', 'Phi', 'phi', 'chi', 'psi', 'Psi', 'rho', 'tau', 'eta', 'mu', 'nu', 'xi', 'Xi', 'pi'];
 const GSUF = new Set(['max', 'min', 'req', 'adm', 'tot', 'eff', 'lim', 'est', 'sis', 'col', 'vig', 'mur', 'red']);
 const SPECIAL = { fm: "f'_{m}", vm: "v'_{m}", fc: "f'_{c}", fpc: "f'_{c}", fcm: "f'_{cm}", fpy: "f'_{y}", Ec: 'E_{c}', inf: '\\infty' };
 
