@@ -5,6 +5,8 @@
 import { calc, text, summary } from './_h.js';
 
 const CAT = 'Puentes';
+// Secciones de la franja de losa en las caras de las almas de las vigas (diseño del momento negativo, 4.6.2.1.6)
+const SEC_CARAS = 'vol + bw/2, vol + S - bw/2, vol + S + bw/2, vol + 2*S - bw/2, vol + 2*S + bw/2, vol + 3*S - bw/2';
 const NORMAS_PE = 'AASHTO LRFD Bridge Design Specifications 9.ª ed. (2020) · Manual de Puentes MTC (2018) · RNE E.030/E.060 (complementarias)';
 
 // =====================================================================
@@ -31,6 +33,8 @@ Puente de un tramo simplemente apoyado de **20.00 m** de luz entre ejes de apoyo
 2. Losa del tablero por el **método aproximado de franjas** (4.6.2.1): franja continua sobre vigas analizada con ruedas móviles y anchos equivalentes; voladizo para Resistencia I y para **colisión de vehículos** (Evento Extremo II, A13.4).
 3. Vigas: factores de distribución de carga viva (4.6.2.2), envolventes HL-93 con IM = 33 % (3.6.2), combinaciones Resistencia I, Servicio I y Fatiga I (Tabla 3.4.1-1), diseño a flexión, fisuración, fatiga del refuerzo, cortante por el método simplificado (5.7.3.4.1) y deflexión por carga viva (2.5.2.6.2).
 
+**Versión de las fórmulas de distribución.** La 9.ª/10.ª ed. de AASHTO solo se publica en unidades de EE. UU. (S, L en ft; ts en in; Kg en in⁴); el Manual de Puentes MTC 2018 reproduce la versión SI de ediciones anteriores, con constantes redondeadas al convertir: $0.06 + (S/4300)^{0.4}(S/L)^{0.3}(K_g/Lt_s^3)^{0.1}$, $0.36 + S/7600$, $0.2 + S/3600 - (S/10700)^2$, $e = 0.77 + d_e/2800$, $e = 0.6 + d_e/3000$ y regla de la palanca con ruedas a 1.80 m y 0.60 m de la barrera. El dato **verDF** permite elegir: 1 = AASHTO 9.ª ed. (conversión exacta), 2 = MTC 2018 (SI). Las diferencias son del orden de 0.5–1.5 %; para expedientes que se revisan en el MTC se recomienda la opción 2.
+
 Modificador de cargas $\\eta = \\eta_D\\,\\eta_R\\,\\eta_I = 1.00$ (puente típico, componentes dúctiles y redundantes, 1.3.2).`),
     calc(`# Datos de diseño
 ## Geometría
@@ -55,6 +59,7 @@ nmod = Es/Ec // Relación modular
 NL = NLLRFD(wc) // Número de carriles de diseño INT(w/3.60 m) (3.6.1.1.1)
 IM = IMLRFD(1) // Incremento por carga dinámica, estados distintos de fatiga (Tabla 3.6.2.1-1)
 IMf = IMLRFD(2) // Incremento por carga dinámica para fatiga
+verDF = 2 // Fórmulas de distribución [1 : AASHTO 9.ª ed. (US, conversión exacta)|2 : Manual MTC 2018 (SI)]
 # Predimensionamiento
 hmin = 0.070*L // Peralte mínimo de vigas T simplemente apoyadas (Tabla 2.5.2.6.3-1)
 h = roundup(hmin, 0.05 m) + 0.10 m // Peralte total adoptado (incluye la losa)
@@ -76,17 +81,22 @@ Pbar = wbar*1 m // Barrera concentrada a 0.17 m del borde (DC)
 Epos = EposLRFD(S) // Momento positivo: 660 + 0.55 S (mm)
 Eneg = EnegLRFD(S) // Momento negativo: 1220 + 0.25 S (mm)
 "La franja se analiza como viga continua sobre las vigas, con ruedas de 7.26 t (eje de 14.52 t del camión de diseño) a 1.80 m, a no menos de 0.30 m de la cara de la barrera (3.6.1.3.1). Para luces transversales ≤ 4.60 m solo se consideran los ejes del camión, sin carga de carril (3.6.1.3.3). Se evalúan uno ($m$ = 1.20) y dos camiones ($m$ = 1.00, ruedas adyacentes a 1.20 m).`),
-    { type: 'hl93env', tramos: 'vol, S, S, S, vol', apoyos: 'L A A A A L', vehiculo: 'Ejes', ejes: '7.26 0; 7.26 1.8', IM: 'IM', g: 'mpLRFD(1)', carril: '0', Epos: 'Epos', Eneg: 'Eneg', xmin: 'bbar + 0.30 m', xmax: 'B - bbar - 0.30 m', DC: 'U * wlosa\nP 0.17 Pbar\nP B-0.17m Pbar', DW: 'UP bbar B-bbar wasf', gLL: '1.75', sufijo: '1', titulo: 'Franja transversal de losa de 1 m: un camión (m = 1.20), cargas DC y DW, Resistencia I' },
-    { type: 'hl93env', tramos: 'vol, S, S, S, vol', apoyos: 'L A A A A L', vehiculo: 'Ejes', ejes: '7.26 0; 7.26 1.8; 7.26 3.0; 7.26 4.8', IM: 'IM', g: 'mpLRFD(2)', carril: '0', Epos: 'Epos', Eneg: 'Eneg', xmin: 'bbar + 0.30 m', xmax: 'B - bbar - 0.30 m', sufijo: '2', titulo: 'Franja transversal de losa: dos camiones adyacentes (m = 1.00)' },
+    { type: 'hl93env', tramos: 'vol, S, S, S, vol', apoyos: 'L A A A A L', vehiculo: 'Ejes', ejes: '7.26 0; 7.26 1.8', IM: 'IM', g: 'mpLRFD(1)', carril: '0', Epos: 'Epos', Eneg: 'Eneg', xmin: 'bbar + 0.30 m', xmax: 'B - bbar - 0.30 m', DC: 'U * wlosa\nP 0.17 Pbar\nP B-0.17m Pbar', DW: 'UP bbar B-bbar wasf', gLL: '1.75', secciones: SEC_CARAS, sufijo: 'L1', titulo: 'Franja transversal de losa de 1 m: un camión (m = 1.20), cargas DC y DW, Resistencia I' },
+    { type: 'hl93env', tramos: 'vol, S, S, S, vol', apoyos: 'L A A A A L', vehiculo: 'Ejes', ejes: '7.26 0; 7.26 1.8; 7.26 3.0; 7.26 4.8', IM: 'IM', g: 'mpLRFD(2)', carril: '0', Epos: 'Epos', Eneg: 'Eneg', xmin: 'bbar + 0.30 m', xmax: 'B - bbar - 0.30 m', secciones: SEC_CARAS, sufijo: 'L2', titulo: 'Franja transversal de losa: dos camiones adyacentes (m = 1.00)' },
     calc(`## Momentos de diseño de la losa (por metro de ancho)
-MLLpos = max(MLLp1, MLLp2)/(1 m) -> tonf*m/m // M⁺ por carga viva + IM (ya dividido entre E⁺ en el análisis)
-MLLneg = min(MLLn1, MLLn2)/(1 m) -> tonf*m/m // M⁻ por carga viva + IM (dividido entre E⁻)
-MDCpos = MDCp1/(1 m) -> tonf*m/m // M⁺ máximo por DC
-MDWpos = MDWp1/(1 m) -> tonf*m/m // M⁺ máximo por DW
-MDCneg = MDCn1/(1 m) -> tonf*m/m // M⁻ máximo por DC
-MDWneg = MDWn1/(1 m) -> tonf*m/m // M⁻ máximo por DW
-Mupos = 1.25*MDCpos + 1.50*MDWpos + 1.75*MLLpos // Resistencia I (Tabla 3.4.1-1), M⁺
-Muneg = 1.25*abs(MDCneg) + 1.50*abs(MDWneg) + 1.75*abs(MLLneg) // Resistencia I, M⁻ (máximos simultáneos, conservador)
+MLLpos = max(MLLpL1, MLLpL2)/(1 m) -> tonf*m/m // M⁺ por carga viva + IM (ya dividido entre E⁺ en el análisis)
+MLLneg = min(MLLnL1, MLLnL2)/(1 m) -> tonf*m/m // M⁻ por carga viva + IM en el eje de las vigas (dividido entre E⁻), solo referencial
+MDCpos = MDCpL1/(1 m) -> tonf*m/m // M⁺ máximo por DC
+MDWpos = MDWpL1/(1 m) -> tonf*m/m // M⁺ máximo por DW
+Mupos = 1.25*MDCpos + 1.50*MDWpos + 1.75*MLLpos // Resistencia I (Tabla 3.4.1-1), M⁺ (máximos de cada carga, conservador)
+"Momento negativo en la **sección de diseño**: para vigas T monolíticas se toma en la cara del alma (4.6.2.1.6); se evalúan las seis caras interiores (las caras exteriores de las vigas de borde se diseñan con el voladizo).
+Mneg1 = 1.25*abs(MDCx1L1) + 1.50*abs(MDWx1L1) + 1.75*max(abs(MLLnx1L1), abs(MLLnx1L2)) // Resistencia I en la cara 1 (efectos concomitantes en la sección)
+Mneg2 = 1.25*abs(MDCx2L1) + 1.50*abs(MDWx2L1) + 1.75*max(abs(MLLnx2L1), abs(MLLnx2L2)) // Resistencia I en la cara 2 (efectos concomitantes en la sección)
+Mneg3 = 1.25*abs(MDCx3L1) + 1.50*abs(MDWx3L1) + 1.75*max(abs(MLLnx3L1), abs(MLLnx3L2)) // Resistencia I en la cara 3 (efectos concomitantes en la sección)
+Mneg4 = 1.25*abs(MDCx4L1) + 1.50*abs(MDWx4L1) + 1.75*max(abs(MLLnx4L1), abs(MLLnx4L2)) // Resistencia I en la cara 4 (efectos concomitantes en la sección)
+Mneg5 = 1.25*abs(MDCx5L1) + 1.50*abs(MDWx5L1) + 1.75*max(abs(MLLnx5L1), abs(MLLnx5L2)) // Resistencia I en la cara 5 (efectos concomitantes en la sección)
+Mneg6 = 1.25*abs(MDCx6L1) + 1.50*abs(MDWx6L1) + 1.75*max(abs(MLLnx6L1), abs(MLLnx6L2)) // Resistencia I en la cara 6 (efectos concomitantes en la sección)
+Muneg = max(Mneg1, Mneg2, Mneg3, Mneg4, Mneg5, Mneg6)/(1 m) -> tonf*m/m // Resistencia I, M⁻ de diseño en la cara de las vigas
 ## Refuerzo de la losa
 barL = 5 // Varilla principal de la losa [4 : 1/2"|5 : 5/8"|6 : 3/4"]
 rinf = 2.5 cm // Recubrimiento inferior (Tabla 5.10.1-1)
@@ -94,10 +104,10 @@ rsup = 5.0 cm // Recubrimiento superior, superficie expuesta (Tabla 5.10.1-1)
 dpos = ts - rinf - db(barL)/2 // Peralte efectivo para M⁺
 dneg = ts - rsup - db(barL)/2 // Peralte efectivo para M⁻
 phif = 0.90 // Flexión, sección controlada por tracción (5.5.4.2)
-Asp = 0.85*fc*100 cm/fy*(dpos - sqrt(dpos^2 - 2*Mupos*1 m/(0.85*phif*fc*100 cm))) // Acero requerido M⁺ por metro
-spos = rounddown(min(Ab(barL)*100 cm/Asp, 1.5*ts, 45 cm), 2.5 cm) // Espaciamiento (máx. 1.5 ts ≤ 450 mm, 5.10.3.2)
-Asn = 0.85*fc*100 cm/fy*(dneg - sqrt(dneg^2 - 2*Muneg*1 m/(0.85*phif*fc*100 cm))) // Acero requerido M⁻ por metro
-sneg = rounddown(min(Ab(barL)*100 cm/Asn, 1.5*ts, 45 cm), 2.5 cm) // Espaciamiento del acero superior
+Asp = 0.85*fc*100 cm/fy*(dpos - sqrt(max(dpos^2 - 2*Mupos*1 m/(0.85*phif*fc*100 cm), 0 cm^2))) // Acero requerido M⁺ por metro
+spos = max(rounddown(min(Ab(barL)*100 cm/Asp, 1.5*ts, 45 cm), 2.5 cm), 5 cm) // Espaciamiento (máx. 1.5 ts ≤ 450 mm, 5.10.3.2)
+Asn = 0.85*fc*100 cm/fy*(dneg - sqrt(max(dneg^2 - 2*Muneg*1 m/(0.85*phif*fc*100 cm), 0 cm^2))) // Acero requerido M⁻ por metro
+sneg = max(rounddown(min(Ab(barL)*100 cm/Asn, 1.5*ts, 45 cm), 2.5 cm), 5 cm) // Espaciamiento del acero superior
 phiMpos = phif*Ab(barL)*100 cm/spos*fy*(dpos - Ab(barL)*100 cm/spos*fy/(2*0.85*fc*100 cm))/(1 m) -> tonf*m/m
 check Mupos <= phiMpos // Flexión positiva de la losa
 phiMneg = phif*Ab(barL)*100 cm/sneg*fy*(dneg - Ab(barL)*100 cm/sneg*fy/(2*0.85*fc*100 cm))/(1 m) -> tonf*m/m
@@ -108,9 +118,9 @@ check phiMpos >= min(McrL, 1.33*Mupos) // Refuerzo mínimo M⁺ (5.6.3.3)
 check phiMneg >= min(McrL, 1.33*Muneg) // Refuerzo mínimo M⁻ (5.6.3.3)
 pdist = min(3840/sqrt((S - bw)/(1 mm)), 67)/100 // Refuerzo de distribución: 3840/√S ≤ 67 % (9.7.3.2)
 Asdist = pdist*Ab(barL)*100 cm/spos // Acero de distribución inferior, longitudinal
-sdist = rounddown(min(Ab(4)*100 cm/Asdist, 45 cm), 2.5 cm) // Espaciamiento de varillas #4
+sdist = max(rounddown(min(Ab(4)*100 cm/Asdist, 45 cm), 2.5 cm), 5 cm) // Espaciamiento de varillas #4
 Astem = max(0.75*(B/(1 mm))*(ts/(1 mm))/(2*((B + ts)/(1 mm))*fy/(1 MPa))*1 mm^2/mm, 0.233 mm^2/mm) -> cm^2/m // Temperatura 0.75bh/[2(b+h)fy] ≥ 0.233 mm²/mm (5.10.6)
-stem = rounddown(min(Ab(3)/Astem, 3*ts, 45 cm), 2.5 cm) // Varillas #3 de temperatura (superior, longitudinal)
+stem = max(rounddown(min(Ab(3)/Astem, 3*ts, 45 cm), 2.5 cm), 5 cm) // Varillas #3 de temperatura (superior, longitudinal)
 "Losa: #{barL} @ {spos} inferior transversal, #{barL} @ {sneg} superior transversal, #4 @ {sdist} de distribución y #3 @ {stem} de temperatura.
 ## Voladizo — Resistencia I (cara del alma de la viga exterior)
 Xv = vol - bw/2 // Longitud del voladizo hasta la cara del alma
@@ -120,17 +130,31 @@ xLL = max(Xv - bbar - 0.30 m, 0 m) // Brazo de la carga lineal de 1.49 t/m a 0.3
 MLLv = 1.2*1.49 tonf/m*1 m*xLL*(1 + IM) -> tonf*m // Carga lineal 14.6 N/mm × m × (1 + IM)
 Muv = (1.25*MDCv + 1.50*MDWv + 1.75*MLLv)/(1 m) -> tonf*m/m // Resistencia I en el voladizo
 ## Voladizo — Evento Extremo II: colisión sobre la barrera (A13.4.1, caso 1)
-Ft = 24.5 tonf // Fuerza transversal TL-4 (240 kN) [24.5 tonf : TL-4 (240 kN)|12.2 tonf : TL-2 (120 kN)|53.4 tonf : TL-5 (550 kN)]
-Lt = 1.07 m // Longitud de distribución de Ft (Tabla A13.2-1)
+TL = 4 // Nivel de contención (Tabla A13.2-1, base NCHRP 350) [2 : TL-2|3 : TL-3|4 : TL-4|5 : TL-5]
+Ft = FtLRFD(TL) // Fuerza transversal de diseño (Tabla A13.2-1)
+Lt = LtLRFD(TL) // Longitud de distribución de Ft (Tabla A13.2-1)
 Hb = 0.85 m // Altura de la barrera
-Mc = 6.00 tonf*m/m // Resistencia a flexión de la barrera alrededor del eje horizontal (diseño de la barrera)
-Mw = 3.00 tonf*m/m // Resistencia a flexión de la barrera alrededor del eje vertical, por metro de altura
+check Hb >= HbminLRFD(TL) // Altura mínima de la barrera para el nivel de contención (Tabla A13.2-1)
+### Resistencias de la barrera (sección rectangular equivalente de espesor medio)
+tbt = 0.15 m // Espesor de la barrera en la corona
+tbm = (bbar + tbt)/2 // Espesor medio equivalente de la barrera New Jersey
+barv = 4 // Varilla vertical de la barrera [4 : 1/2"|5 : 5/8"]
+svb = 0.20 m // Espaciamiento del acero vertical
+barh = 4 // Varilla horizontal de la barrera [3 : 3/8"|4 : 1/2"]
+nhb = 4 // Barras horizontales por cara
+rbar = 5.0 cm // Recubrimiento de la barrera
+Asvb = Ab(barv)*1 m/svb // Acero vertical por metro (cara del tráfico)
+dvb = tbm - rbar - db(barv)/2 // Peralte medio del acero vertical
+Mc = Asvb*fy*(dvb - Asvb*fy/(2*0.85*fc*1 m))/(1 m) -> tonf*m/m // Resistencia a flexión alrededor del eje horizontal (por metro)
+Ashb = nhb*Ab(barh) // Acero horizontal de una cara
+dhb = tbm - rbar - db(barv) - db(barh)/2 // Peralte del acero horizontal
+MwH = Ashb*fy*(dhb - Ashb*fy/(2*0.85*fc*Hb)) -> tonf*m // Resistencia total alrededor del eje vertical Mw·H (A13.3.1)
 Mb = 0 tonf*m // Resistencia de la viga superior (no hay)
-Lc = Lt/2 + sqrt((Lt/2)^2 + 8*Hb*(Mb + Mw*Hb)/Mc) // Longitud crítica del mecanismo de líneas de fluencia (A13.3.1-2)
-Rw = 2/(2*Lc - Lt)*(8*Mb + 8*Mw*Hb + Mc*Lc^2/Hb) -> tonf // Resistencia transversal de la barrera (A13.3.1-1)
+Lc = Lt/2 + sqrt((Lt/2)^2 + 8*Hb*(Mb + MwH)/Mc) // Longitud crítica del mecanismo de líneas de fluencia (A13.3.1-2)
+Rw = 2/(2*Lc - Lt)*(8*Mb + 8*MwH + Mc*Lc^2/Hb) -> tonf // Resistencia transversal de la barrera (A13.3.1-1)
 check Ft <= Rw // La barrera resiste la colisión (A13.3.1)
 Tcol = Rw/(Lc + 2*Hb) -> tonf/m // Tracción en el voladizo (A13.4.2-1)
-Mcol = Mc + MDCv/(1 m) -> tonf*m/m // Momento en la base de la barrera + peso propio (γ = 1.0)
+Mcol = Mc + 1.25*MDCv/(1 m) -> tonf*m/m // Momento en la base de la barrera + DC con γp = 1.25 (Evento Extremo II, Tabla 3.4.1-1)
 sv = 12.5 cm // Espaciamiento del acero superior en el voladizo (se reduce respecto al tramo)
 Asv = Ab(barL)*100 cm/sv // Acero superior colocado en el voladizo por metro
 Cv = Asv*fy - Tcol*1 m // Compresión en el concreto tras descontar la tracción
@@ -163,17 +187,17 @@ check ts >= 110 mm and ts <= 300 mm // 110 ≤ ts ≤ 300 mm
 check Kg >= 4e9 mm^4 and Kg <= 3e12 mm^4 // 4×10⁹ ≤ Kg ≤ 3×10¹² mm⁴
 check Nb > 3 // Nb ≥ 4
 ## Viga interior
-gM1 = gMi1LRFD(S, L, ts, Kg) // Momento, un carril cargado (incluye m)
-gM2 = gMi2LRFD(S, L, ts, Kg) // Momento, dos o más carriles
+gM1 = gMi1LRFD(S, L, ts, Kg, verDF) // Momento, un carril cargado (incluye m)
+gM2 = gMi2LRFD(S, L, ts, Kg, verDF) // Momento, dos o más carriles
 gMi = max(gM1, gM2) // Factor de momento, viga interior
-gV1 = gVi1LRFD(S) // Cortante, un carril (Tabla 4.6.2.2.3a-1)
-gV2 = gVi2LRFD(S) // Cortante, dos o más carriles
+gV1 = gVi1LRFD(S, verDF) // Cortante, un carril (Tabla 4.6.2.2.3a-1)
+gV2 = gVi2LRFD(S, verDF) // Cortante, dos o más carriles
 gVi = max(gV1, gV2) // Factor de cortante, viga interior
 ## Viga exterior
-Rlev = leverLRFD(S, de) // Regla de la palanca, un carril (rueda a 0.61 m de la barrera, ruedas a 1.83 m)
+Rlev = leverLRFD(S, de, si(verDF == 2, 0.60 m, 0.61 m), verDF) // Regla de la palanca, un carril (rueda a 0.60/0.61 m de la barrera, ruedas a 1.80/1.83 m)
 gMe1 = mpLRFD(1)*Rlev // Un carril, con m = 1.20 (Tabla 4.6.2.2.2d-1)
-gMe2 = eMLRFD(de)*gM2 // Dos carriles: e = 0.77 + de/2800
-gVe2 = eVLRFD(de)*gV2 // Cortante dos carriles: e = 0.6 + de/3000 (Tabla 4.6.2.2.3b-1)
+gMe2 = eMLRFD(de, verDF)*gM2 // Dos carriles: e = 0.77 + de/2800 mm (de/9.1 ft)
+gVe2 = eVLRFD(de, verDF)*gV2 // Cortante dos carriles: e = 0.6 + de/3000 mm (de/10 ft) (Tabla 4.6.2.2.3b-1)
 xext = (Nb - 1)*S/2 // Distancia del eje del puente a la viga exterior
 sumx2 = 2*((S/2)^2 + (3*S/2)^2) // Σx² de las vigas (Nb = 4)
 e1 = B/2 - bbar - 0.60 m - 0.90 m // Excentricidad del primer camión (ruedas a 0.60 m de la barrera)
@@ -288,10 +312,10 @@ Ie = min((Mcr/Ma)^3*Ig + (1 - (Mcr/Ma)^3)*Icr, Ig) -> m^4 // Inercia efectiva (5
 EIv = Ec*Ie -> tonf*m^2
 a1 = L/2 - 4.30 m // Posición del eje delantero (3.63 t) con el eje central en L/2
 d1 = 14.52 tonf*L^3/(48*EIv) + (14.52 tonf + 3.63 tonf)*a1*(3*L^2 - 4*a1^2)/(48*EIv) -> mm // Camión: ejes a L/2 y L/2 ± 4.30 m
-d2 = 0.25*d1 + 5*0.952 tonf/m*L^4/(384*EIv) -> mm // 25 % del camión + carril (3.6.1.3.2)
-DeltaLL = DFd*(1 + IM)*max(d1, d2/(1 + IM)) -> mm // Deflexión por viga (IM no se aplica al carril)
+dln = 5*0.952 tonf/m*L^4/(384*EIv) -> mm // Carril de diseño
+DeltaLL = DFd*max((1 + IM)*d1, 0.25*(1 + IM)*d1 + dln) -> mm // Camión + IM, o 25 % (camión + IM) + carril (3.6.1.3.2); IM no se aplica al carril
 check DeltaLL <= L/800 // Límite L/800 para carga vehicular (2.5.2.6.2)`),
-    text(`> **Notas.** (1) El momento negativo de la losa se toma en el eje de las vigas (conservador respecto a la sección de diseño de 4.6.2.1.6). (2) El diseño de la barrera (Mc, Mw) debe justificarse con su propio cálculo de líneas de fluencia; los valores adoptados corresponden a una barrera New Jersey de 0.85 m con varillas #4 @ 0.20 m. (3) Verificar adicionalmente los dispositivos de apoyo, la longitud de apoyo $N$ (4.7.4.4) y el diseño de los estribos.`),
+    text(`> **Notas.** (1) El momento negativo de la losa se diseña en la cara de las almas (4.6.2.1.6) con efectos concomitantes; el voladizo se diseña aparte. (2) Mc y Mw se estiman con una sección rectangular equivalente de espesor medio; para barreras de geometría variable conviene el cálculo por segmentos de A13.3.1 y, si el proyecto exige MASH (10.ª ed.), Ft = 80 kip (356 kN) para TL-4. (3) Verificar adicionalmente los dispositivos de apoyo, la longitud de apoyo $N$ (4.7.4.4) y el diseño de los estribos.`),
     summary(),
   ],
 };
@@ -460,17 +484,19 @@ de = dp // Peralte efectivo (solo torones)
 dv = max(de - a/2, 0.9*de, 0.72*hc) // Peralte efectivo de corte (5.7.2.8)
 Vux = 1.25*(wg + ws + wb)*(L/2 - xv) + 1.50*ww*(L/2 - xv) + 1.75*gV/gM*VLLx1 -> kip // VLL distribuido con gV
 Mux = max(1.25*(wg + ws + wb)*xv*(L - xv)/2 + 1.50*ww*xv*(L - xv)/2 + 1.75*MLLx1, Vux*dv) -> kip*ft // |Mu| ≥ |Vu|dv
+xh = 0.40*L // Punto de desvío (harping point) de los torones desviados
+Vp = Pe*(ybse - ybsm)/xh -> kip // Componente vertical del presfuerzo efectivo: Pe·tanψ del centroide (x ≤ xh) (5.7.3.3)
 fpo = 0.7*fpu // Parámetro fpo (5.7.3.4.2)
-epsx = max((Mux/dv + Vux - Aps*fpo)/(Ep*Aps), 0) // εs; si resulta negativo se toma 0 (conservador)
+epsx = max((Mux/dv + abs(Vux - Vp) - Aps*fpo)/(Ep*Aps), 0) // εs; si resulta negativo se toma 0 (conservador)
 beta = betaMCFT(epsx) // β = 4.8/(1 + 750 εs)
 theta = thetaMCFT(epsx) // θ = 29 + 3500 εs
 Vc = 0.0316*beta*sqrt(fc/(1 ksi))*1 ksi*bw*dv -> kip // Vc = 0.0316 β λ √f'c bv dv (5.7.3.3-3)
 Avs = 2*0.20 in^2 // Estribos #4 de dos ramas
 sv = 12 in // Espaciamiento de estribos en la zona de apoyo
 Vs = Avs*fy*dv*cot(theta)/sv -> kip // (5.7.3.3-4)
-Vn = min(Vc + Vs, 0.25*fc*bw*dv) -> kip // Vp = 0 (conservador)
+Vn = min(Vc + Vs + Vp, 0.25*fc*bw*dv + Vp) -> kip // (5.7.3.3-1, -2)
 check Vux <= 0.90*Vn // Resistencia a cortante, φ = 0.90
-vu = Vux/(0.90*bw*dv) -> ksi
+vu = abs(Vux - 0.90*Vp)/(0.90*bw*dv) -> ksi // (5.7.2.8-1)
 check sv <= si(vu < 0.125*fc, min(0.8*dv, 24 in), min(0.4*dv, 12 in)) // Espaciamiento máximo (5.7.2.6)
 check Avs >= 0.0316*sqrt(fc/(1 ksi))*1 ksi*bw*sv/fy // Refuerzo transversal mínimo (5.7.2.5-1)
 # Deflexión por carga viva (2.5.2.6.2)
@@ -734,7 +760,7 @@ thq = atan(kh) -> deg // Ángulo sísmico θ = atan[kh/(1 − kv)], kv = 0
 KAE = cos(phis - thq)^2/(cos(thq)^2*(1 + sqrt(sin(phis)*sin(phis - thq)/cos(thq)))^2) // KAE con δ = 0, β = 0, i = 0 (paramento virtual)
 EAE = 0.5*KAE*gammas*H^2*1 m // Empuje activo sísmico total
 DEAE = EAE - EH // Incremento dinámico, aplicado a 0.6H (Seed y Whitman)
-EQw = kh*(W1*hz/2 + W2*(hz + (hp - hb)/2) + W3*(H - hb/2) + W4*(hz + hp/2))/(W1 + W2 + W3 + W4) // Altura de la resultante de inercias
+EQw = (W1*hz/2 + W2*(hz + (hp - hb)/2) + W3*(H - hb/2) + W4*(hz + hp/2))/(W1 + W2 + W3 + W4) // Altura de la resultante de las fuerzas de inercia
 Fi = kh*(W1 + W2 + W3 + W4) // Fuerza de inercia del estribo y del relleno sobre el talón
 EQs = kh*RDC*1 m // Fuerza sísmica longitudinal de la superestructura en la cajuela
 ys = H - hb // Altura de la cajuela sobre el fondo de la zapata
@@ -752,9 +778,10 @@ MEH = EH*H/3 // Momentos de vuelco
 MLS = LS*H/2
 MBR = PBR*(H + 1.80 m)
 ## Resistencia Ia (cargas verticales mínimas)
-Va = 0.90*(WDC + PDC) + 0.65*PDW + 1.00*WEV + 1.75*PLL // Fuerza vertical
+"La reacción de carga viva es transitoria y estabilizadora: para excentricidad y deslizamiento se omite (caso más desfavorable, C11.5.6), aunque el frenado BR se mantiene.
+Va = 0.90*(WDC + PDC) + 0.65*PDW + 1.00*WEV // Fuerza vertical (sin LL estabilizadora)
 Ha = 1.50*EH + 1.75*LS + 1.75*PBR // Fuerza horizontal
-Mra = 0.90*(MDCr + PDC*xR) + 0.65*PDW*xR + 1.00*MEVr + 1.75*PLL*xR // Momento estabilizador
+Mra = 0.90*(MDCr + PDC*xR) + 0.65*PDW*xR + 1.00*MEVr // Momento estabilizador
 Mva = 1.50*MEH + 1.75*MLS + 1.75*MBR // Momento de vuelco
 ea = B/2 - (Mra - Mva)/Va // Excentricidad
 check abs(ea) <= B/3 // Excentricidad (10.6.3.3, 11.6.3.3)
@@ -768,16 +795,20 @@ check abs(eb) <= B/3 // Excentricidad
 qb = Vb/((B - 2*eb)*1 m) -> tonf/m^2 // Presión uniforme sobre B' (10.6.3.1.5)
 check qb <= 0.45*qn // Capacidad portante, φb = 0.45 (Tabla 10.5.5.2.2-1)
 ## Evento Extremo I
-Vee = 1.00*(WDC + PDC + PDW + WEV) + gEQ*PLL
+"Cargas permanentes con $\\gamma_p$ (Tabla 3.4.1-1): mínimos (DC 0.90, DW 0.65, EV 1.00) para excentricidad y deslizamiento y máximos (1.25, 1.50, 1.35) para la presión de contacto. El empuje total sísmico $E_{AE}$ (estático + incremento de Mononobe–Okabe) se toma con factor 1.0, como acción EQ (11.6.5).
 Hc = EH + DEAE + Fi + EQs + gEQ*(LS + PBR) // EH + incremento M-O + inercias + superestructura
-Mrc = MDCr + (PDC + PDW)*xR + MEVr + gEQ*PLL*xR
-Mvc = MEH + DEAE*0.6*H + Fi*EQw + EQs*ys + gEQ*(MLS + MBR)
+Mvc = MEH + DEAE*0.6*H + Fi*EQw + EQs*ys + gEQ*(MLS + MBR) -> tonf*m // Momento de vuelco
+Vee = 0.90*(WDC + PDC) + 0.65*PDW + 1.00*WEV // Cargas verticales mínimas (sin LL estabilizadora)
+Mrc = 0.90*(MDCr + PDC*xR) + 0.65*PDW*xR + 1.00*MEVr
 ec = B/2 - (Mrc - Mvc)/Vee
-emaxc = (2/3 + (0.8 - 2/3)*gEQ)*B/2 // Interpolación B/3 – 0.40B (11.6.5.1)
+emaxc = (2/3 + (0.8 - 2/3)*gEQ)*B/2 // Interpolación entre B/3 (γEQ = 0) y 0.40B (γEQ = 1) (11.6.5.1)
 check abs(ec) <= emaxc // Excentricidad en sismo
 check Hc <= 1.00*Vee*tan(phif) // Deslizamiento, φ = 1.0 (11.5.8)
-qc = Vee/((B - 2*ec)*1 m) -> tonf/m^2
-check qc <= 1.00*qn // Capacidad portante en sismo, φ = 1.0`),
+Vec = 1.25*(WDC + PDC) + 1.50*PDW + 1.35*WEV + gEQ*PLL // Cargas verticales máximas
+Mrcx = 1.25*(MDCr + PDC*xR) + 1.50*PDW*xR + 1.35*MEVr + gEQ*PLL*xR
+ecx = B/2 - (Mrcx - Mvc)/Vec
+qc = Vec/((B - 2*ecx)*1 m) -> tonf/m^2 // Presión uniforme sobre B' = B − 2e
+check qc <= 1.00*qn // Capacidad portante en sismo, φ = 1.0 (10.5.5.3.3)`),
     { type: 'estribo', H: 'H', B: 'B', hz: 'hz', punta: 'Lp', t2: 't2', t1: 't1', hb: 'hb', Df: 'Df', Ka: 'Ka', gs: 'gammas', heq: 'heq', titulo: 'Geometría del estribo, empujes EH y LS y reacciones de la superestructura' },
     calc(`# Diseño estructural
 phif1 = 0.90 // Flexión (5.5.4.2)
@@ -790,8 +821,8 @@ Mus = max(1.50*EHs*hs/3 + 1.75*LSs*hs/2 + 1.75*PBR*(hs + 1.80 m), EHs*hs/3 + 0.5
 Vus = max(1.50*EHs + 1.75*LSs + 1.75*PBR, EHs + 0.5*Ka*gammas*hs^2*(KAE/Ka - 1)*1 m + kh*(W2 + W3) + EQs + gEQ*(LSs + PBR)) -> tonf
 barP = 8 // Varilla vertical de la pantalla (cara del relleno) [6 : 3/4"|8 : 1"|9 : 1 1/8"]
 dps = t2 - 7.5 cm - db(barP)/2 // Peralte efectivo (recubrimiento 75 mm, Tabla 5.10.1-1)
-Asps = 0.85*fc*100 cm/fy*(dps - sqrt(dps^2 - 2*Mus/(0.85*phif1*fc*100 cm))) // Acero requerido por metro
-sps = rounddown(min(Ab(barP)*100 cm/Asps, 45 cm), 2.5 cm) // Espaciamiento
+Asps = 0.85*fc*100 cm/fy*(dps - sqrt(max(dps^2 - 2*Mus/(0.85*phif1*fc*100 cm), 0 cm^2))) // Acero requerido por metro
+sps = max(rounddown(min(Ab(barP)*100 cm/Asps, 45 cm), 2.5 cm), 5 cm) // Espaciamiento
 Asp = Ab(barP)*100 cm/sps
 phiMp = phif1*Asp*fy*(dps - Asp*fy/(2*0.85*fc*100 cm)) -> tonf*m
 check Mus <= phiMp // Flexión en la base de la pantalla
@@ -800,19 +831,19 @@ check phiMp >= min(Mcrp, 1.33*Mus) // Acero mínimo
 Vcp = 0.083*2*sqrtMPa(fc)*100 cm*0.9*dps -> tonf // Vc con β = 2 (5.7.3.3), dv = 0.9d
 check Vus <= phiv*Vcp // Cortante sin estribos
 ## Punta (Resistencia Ib)
-qmaxb = Vb/(B*1 m)*(1 + 6*abs(eb)/B) // Presión máxima, distribución lineal (diseño estructural)
+qmaxb = si(abs(eb) <= B/6, Vb/(B*1 m)*(1 + 6*abs(eb)/B), 2*Vb/(3*(B/2 - abs(eb))*1 m)) // Presión máxima: trapecial si e ≤ B/6, triangular si no (diseño estructural)
 Mut = (qmaxb*Lp^2/2*1 m - 0.90*gammac*hz*Lp^2/2*1 m) -> tonf*m // Momento en la cara de la pantalla
 dz = hz - 7.5 cm - db(barP)/2 // Peralte efectivo de la zapata
-Aspt = 0.85*fc*100 cm/fy*(dz - sqrt(dz^2 - 2*Mut/(0.85*phif1*fc*100 cm)))
-spt = rounddown(min(Ab(barP)*100 cm/Aspt, 45 cm), 2.5 cm)
+Aspt = 0.85*fc*100 cm/fy*(dz - sqrt(max(dz^2 - 2*Mut/(0.85*phif1*fc*100 cm), 0 cm^2)))
+spt = max(rounddown(min(Ab(barP)*100 cm/Aspt, 45 cm), 2.5 cm), 5 cm)
 phiMt = phif1*Ab(barP)*100 cm/spt*fy*(dz - Ab(barP)*100 cm/spt*fy/(2*0.85*fc*100 cm)) -> tonf*m
 check Mut <= phiMt // Flexión en la punta
 Vut = (qmaxb - 0.90*gammac*hz)*(Lp - dz)*1 m -> tonf // Cortante a dv de la cara
 check Vut <= phiv*0.083*2*sqrtMPa(fc)*100 cm*0.9*dz // Cortante en la punta
 ## Talón (Resistencia Ib, sin reacción del suelo: conservador)
 Muh = (1.35*gammas*hp + 1.25*gammac*hz + 1.75*gammas*heq)*Lt^2/2*1 m -> tonf*m // Momento en la cara posterior de la pantalla
-Asph = 0.85*fc*100 cm/fy*(dz - sqrt(dz^2 - 2*Muh/(0.85*phif1*fc*100 cm)))
-sph = rounddown(min(Ab(barP)*100 cm/Asph, 45 cm), 2.5 cm)
+Asph = 0.85*fc*100 cm/fy*(dz - sqrt(max(dz^2 - 2*Muh/(0.85*phif1*fc*100 cm), 0 cm^2)))
+sph = max(rounddown(min(Ab(barP)*100 cm/Asph, 45 cm), 2.5 cm), 5 cm)
 phiMh = phif1*Ab(barP)*100 cm/sph*fy*(dz - Ab(barP)*100 cm/sph*fy/(2*0.85*fc*100 cm)) -> tonf*m
 check Muh <= phiMh // Flexión en el talón
 Vuh = (1.35*gammas*hp + 1.25*gammac*hz + 1.75*gammas*heq)*(Lt - dz)*1 m -> tonf
@@ -903,14 +934,14 @@ PEQe = MTc*2/(7.0 m - bcol)*1.0 // Variación axial por volteo transversal del p
 ## Combinaciones
 Pu1 = 1.25*PD + 1.50*PW + 1.75*PLL // Resistencia I
 Mu1 = 1.75*BRLRFD(2*L1, NL)/ncol*(Hc + 2.5 m) -> tonf*m // Resistencia I: frenado a 1.80 m sobre la rasante
-Pu2 = PD + PW + 0.5*PLL + PEQe // Evento Extremo I (máx. compresión), γEQ = 0.5
-Pu3 = 0.9*PD - PEQe // Evento Extremo I (mín. compresión)
-"Se verifican las columnas con el diagrama de interacción; los factores $\\phi$ de la NTE E.060 (0.70 en compresión) son conservadores frente a AASHTO (0.75 en Resistencia, 1.00 en Evento Extremo, 1.3.2.1).`),
-    { type: 'pm', b: 'bcol', h: 'bcol', fc: 'fc', fy: 'fy', dp: '7.5', nx: '8', ny: '6', barra: '10', demandas: 'Pu1, Mu1 // Resistencia I\nPu2, MEQ // Evento Extremo I (Pmáx)\nPu3, MEQ // Evento Extremo I (Pmín)', titulo: 'Diagrama de interacción de la columna 1.20 × 1.20 m (28 #10)' },
+Pu2 = 1.25*PD + 1.50*PW + 0.5*PLL + PEQe // Evento Extremo I (máx. compresión): γp máximos, γEQ = 0.5 (Tabla 3.4.1-1)
+Pu3 = 0.90*PD + 0.65*PW - PEQe // Evento Extremo I (mín. compresión): γp mínimos, sin carga viva
+"Se verifican las columnas con el diagrama de interacción de AASHTO LRFD 5.6.4 con los factores $\\phi$ de 5.5.4.2 (0.75 en secciones controladas por compresión → 0.90 controladas por tracción) para Resistencia I y, para Evento Extremo I, $\\phi = 0.90$ (5.10.11.4.1b, zonas sísmicas 3 y 4). La resistencia axial máxima es $0.80\\,\\phi P_0$ (5.6.4.4-3).`),
+    { type: 'pmLRFD', b: 'bcol', h: 'bcol', fc: 'fc', fy: 'fy', dp: '7.5', nx: '8', ny: '6', barra: '10', phiEE: 'si(zona >= 3, 0.90, 1.00)', demandas: 'Pu1, Mu1 // Resistencia I\nPu2, MEQ // Evento Extremo I (Pmáx)\nPu3, MEQ // Evento Extremo I (Pmín)', titulo: 'Diagrama de interacción de la columna 1.20 × 1.20 m (28 #10)' },
     calc(`# Detallado sísmico de las columnas (5.10.11.4)
 check rhog >= 0.01 and rhog <= 0.04 // Cuantía longitudinal 1 % – 4 % (5.10.11.4.1a)
 ## Cortante (3.10.9.4.3 y 5.10.11.4.1c)
-VuL = FeL/ncol // Cortante con la fuerza elástica no reducida (R = 1), cota superior de la rótula plástica
+VuL = max(FeL, FeT)/ncol // Cortante con la fuerza elástica no reducida (R = 1) en la dirección más desfavorable, cota superior de la rótula plástica (3.10.9.4.3)
 Ag = bcol^2
 Vc = si(Pu3 > 0.10*fc*Ag, 0.083*2*sqrtMPa(fc)*bcol*0.9*(bcol - 7.5 cm), 0 tonf) -> tonf // Vc en zona de rótula (Vc = 0 si Pu < 0.10 f'c Ag)
 est = 5 // Estribo / gancho [4 : 1/2"|5 : 5/8"]
@@ -925,7 +956,7 @@ Acn = hcn^2 // Área del núcleo
 Ash1 = 0.30*se*hcn*fc/fy*(Ag/Acn - 1) // (5.10.11.4.1d-3)
 Ash2 = 0.12*se*hcn*fc/fy // (5.10.11.4.1d-4)
 check nr*Ab(est) >= max(Ash1, Ash2) // Refuerzo transversal de confinamiento
-check se <= min(0.25*bcol, 6*db(10), 15 cm) // Espaciamiento máximo en la rótula (5.10.11.4.1e)
+check se <= min(0.25*bcol, 10 cm) // Espaciamiento máximo en la rótula: ≤ b/4 y 100 mm (5.10.11.4.1e)
 Lrot = max(bcol, Hc/6, 45 cm) // Longitud de la zona de rótula plástica (5.10.11.4.1e)
 "Estribos #{est} con {nr} ramas por dirección @ {se} en {Lrot} desde la base y bajo el cabezal; en el resto, el espaciamiento puede duplicarse sin exceder 30 cm.
 # Longitud de apoyo en los estribos (4.7.4.4)
@@ -1188,7 +1219,7 @@ pLLt = mpLRFD(1)*(1 + IMb)*14.52 tonf/(ww*lwt)*1 m // Presión por eje del cami�
 pLLd = mpLRFD(1)*(1 + IMb)*22.68 tonf/(ww*lwd)*1 m // Presión por el tándem
 pLL = max(pLLt, pLLd) -> tonf/m // Presión viva de diseño (por metro de franja)
 cL = min(si(pLLt >= pLLd, lwt, lwd), Lc) // Longitud cargada sobre la luz
-"No se aplica la carga de carril a alcantarillas con relleno ≥ 0.60 m en este modelo (la presión del eje gobierna).
+"Luz de la losa superior ≤ 4.60 m: solo se aplican los ejes del camión o del tándem, sin carga de carril (3.6.1.3.3).
 # Análisis del marco (pendiente-deflexión, simetría)
 It = 1 m*tt^3/12 -> m^4
 Ib = 1 m*tb^3/12 -> m^4
@@ -1210,38 +1241,43 @@ rec = 5.0 cm // Recubrimiento (Tabla 5.10.1-1, contacto con suelo)
 ## Losa superior — centro de la luz (acero inferior)
 Mu1 = max(Mt1, Mt2) -> tonf*m
 dts = tt - rec - db(bar)/2
-As1 = 0.85*fc*100 cm/fy*(dts - sqrt(dts^2 - 2*Mu1/(0.85*phif*fc*100 cm)))
-s1 = rounddown(min(Ab(bar)*100 cm/As1, 45 cm), 2.5 cm)
+As1 = 0.85*fc*100 cm/fy*(dts - sqrt(max(dts^2 - 2*Mu1/(0.85*phif*fc*100 cm), 0 cm^2)))
+s1 = max(rounddown(min(Ab(bar)*100 cm/As1, 45 cm), 2.5 cm), 5 cm)
 phiM1 = phif*Ab(bar)*100 cm/s1*fy*(dts - Ab(bar)*100 cm/s1*fy/(2*0.85*fc*100 cm)) -> tonf*m
 check Mu1 <= phiM1 // Flexión positiva losa superior
 ## Esquinas (acero exterior)
 Mu2 = max(abs(MA1), abs(MA2), abs(MB1), abs(MB2)) -> tonf*m
-As2 = 0.85*fc*100 cm/fy*(dts - sqrt(dts^2 - 2*Mu2/(0.85*phif*fc*100 cm)))
-s2 = rounddown(min(Ab(bar)*100 cm/As2, 45 cm), 2.5 cm)
+As2 = 0.85*fc*100 cm/fy*(dts - sqrt(max(dts^2 - 2*Mu2/(0.85*phif*fc*100 cm), 0 cm^2)))
+s2 = max(rounddown(min(Ab(bar)*100 cm/As2, 45 cm), 2.5 cm), 5 cm)
 phiM2 = phif*Ab(bar)*100 cm/s2*fy*(dts - Ab(bar)*100 cm/s2*fy/(2*0.85*fc*100 cm)) -> tonf*m
 check Mu2 <= phiM2 // Flexión negativa en las esquinas
 ## Losa inferior — centro (acero superior)
 Mu3 = max(Mb1, Mb2) -> tonf*m
 dbs = tb - rec - db(bar)/2
-As3 = 0.85*fc*100 cm/fy*(dbs - sqrt(dbs^2 - 2*Mu3/(0.85*phif*fc*100 cm)))
-s3 = rounddown(min(Ab(bar)*100 cm/As3, 45 cm), 2.5 cm)
+As3 = 0.85*fc*100 cm/fy*(dbs - sqrt(max(dbs^2 - 2*Mu3/(0.85*phif*fc*100 cm), 0 cm^2)))
+s3 = max(rounddown(min(Ab(bar)*100 cm/As3, 45 cm), 2.5 cm), 5 cm)
 phiM3 = phif*Ab(bar)*100 cm/s3*fy*(dbs - Ab(bar)*100 cm/s3*fy/(2*0.85*fc*100 cm)) -> tonf*m
 check Mu3 <= phiM3 // Flexión en la losa inferior
 ## Muros — media altura (acero interior)
 Mu4 = max(Mw1, Mw2, 0.1 tonf*m) -> tonf*m
 dws = tw - rec - db(bar)/2
-As4 = max(0.85*fc*100 cm/fy*(dws - sqrt(dws^2 - 2*Mu4/(0.85*phif*fc*100 cm))), 0.0015*100 cm*tw)
-s4 = rounddown(min(Ab(bar)*100 cm/As4, 45 cm), 2.5 cm)
+As4 = max(0.85*fc*100 cm/fy*(dws - sqrt(max(dws^2 - 2*Mu4/(0.85*phif*fc*100 cm), 0 cm^2))), 0.0015*100 cm*tw)
+s4 = max(rounddown(min(Ab(bar)*100 cm/As4, 45 cm), 2.5 cm), 5 cm)
+phiM4 = phif*Ab(bar)*100 cm/s4*fy*(dws - Ab(bar)*100 cm/s4*fy/(2*0.85*fc*100 cm)) -> tonf*m
+check Mu4 <= phiM4 // Flexión en los muros (se desprecia la compresión axial, conservador)
+check max(-Mw1, -Mw2, 0 tonf*m) <= phiM2 // Muros, cara exterior a media altura (acero exterior de las esquinas prolongado)
 ## Acero mínimo (5.6.3.3)
 Mcr = 1.6*0.67*frLRFD(fc)*100 cm*tt^2/6 -> tonf*m
 check phiM1 >= min(Mcr, 1.33*Mu1) // Mínimo, losa superior
 check phiM2 >= min(Mcr, 1.33*Mu2) // Mínimo, esquinas
+check phiM3 >= min(1.6*0.67*frLRFD(fc)*100 cm*tb^2/6, 1.33*Mu3) // Mínimo, losa inferior
 ## Cortante en la losa superior a dv de la cara del muro (5.12.7.3)
 dv = max(0.9*dts, 0.72*tt)
 Vu = (1.25*wtop + 1.30*pEV)*(Bi/2 - dv) + 1.75*pLL*min(cL/2, Bi/2 - dv) -> tonf // Resistencia I
 Mux = max(abs(MA2), Vu*dts) // Momento concomitante
 Vc = min((0.178*sqrtMPa(fc) + 32*Ab(bar)/(s1*dts)*min(Vu*dts/Mux, 1)*1 MPa)*100 cm*dts, 0.332*sqrtMPa(fc)*100 cm*dts) -> tonf // Losas de alcantarillas monolíticas (5.12.7.3-1, SI)
-check Vu <= 0.90*Vc // Cortante sin estribos
+phiv = 0.85 // Cortante en alcantarillas cajón vaciadas in situ (Tabla 12.5.5-1)
+check Vu <= phiv*Vc // Cortante sin estribos
 ## Servicio I — fisuración en el centro de la losa superior (5.6.7)
 Ms = Mt3 -> tonf*m
 nmod = 200000 MPa/Ec

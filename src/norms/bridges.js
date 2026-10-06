@@ -16,6 +16,8 @@ const ksi = (x) => (isU(x) ? x.toNumber('ksi') : toNum(x));        // número si
 const ft = (x) => (isU(x) ? x.toNumber('ft') : toNum(x) / 304.8);   // número sin unidad = mm
 const inch = (x) => (isU(x) ? x.toNumber('in') : toNum(x) / 25.4);
 const in4 = (x) => (isU(x) ? x.toNumber('in^4') : toNum(x) / 25.4 ** 4);
+const mm4 = (x) => (isU(x) ? x.toNumber('mm^4') : toNum(x));          // número sin unidad = mm⁴
+const isMTC = (v) => v !== undefined && v !== null && Math.round(toNum(v)) === 2;   // versión de las fórmulas de distribución
 const deg = (x) => (isU(x) ? x.toNumber('deg') : toNum(x));        // número sin unidad = grados
 const n0 = (x) => toNum(x);
 const chk = (c, msg) => { if (!c) throw new Error(msg); };
@@ -100,6 +102,8 @@ function csm(T, As, SDS, SD1) {
 }
 
 // Tabla 3.11.6.4-1: altura equivalente de suelo por sobrecarga vehicular (estribos)
+const BARR = { 1: { Ft: 60, Lt: 1220, H: 685 }, 2: { Ft: 120, Lt: 1220, H: 685 }, 3: { Ft: 240, Lt: 1220, H: 685 }, 4: { Ft: 240, Lt: 1070, H: 810 }, 5: { Ft: 550, Lt: 2440, H: 1070 }, 6: { Ft: 780, Lt: 2440, H: 2290 } };
+const BAR = (TL) => { const k = Math.round(n0(TL)); chk(BARR[k], 'Nivel de contención TL entre 1 y 6'); return BARR[k]; };
 const HEQ = { x: [1.5, 3.0, 6.0], y: [1.2, 0.9, 0.6] };
 
 const ap = (f, tex, desc, args) => ({ fn: f, tex, desc, args });
@@ -107,37 +111,43 @@ const FN = {
   // ---------------- factores de distribución (4.6.2.2) ----------------
   // Expresiones de la 9.ª/10.ª ed. (unidades de EE. UU.: S, L, de en ft; ts en in; Kg en in⁴), evaluadas con conversión exacta.
   // El Manual MTC 2018 usa la versión SI de ediciones anteriores (constantes redondeadas: 4300, 2900, 3600 mm…; diferencias < 1.5 %).
-  gMi1LRFD: ap((S, L, ts, Kg) => {
+  // Argumento opcional «ver»: 1 (o vacío) = 9.ª/10.ª ed. AASHTO (unidades EE. UU., conversión exacta);
+  //                            2 = forma SI del Manual de Puentes MTC 2018 (AASHTO 4.ª ed. SI: S/4300, S/2900, de/2800…).
+  gMi1LRFD: ap((S, L, ts, Kg, ver) => {
+    chk(mm(S) > 0 && mm(L) > 0 && mm(ts) > 0 && mm4(Kg) > 0, 'Parámetros del factor de distribución deben ser positivos');
+    if (isMTC(ver)) { const s = mm(S), l = mm(L), t = mm(ts), k = mm4(Kg); return 0.06 + (s / 4300) ** 0.4 * (s / l) ** 0.3 * (k / (l * t ** 3)) ** 0.1; }
     const s = ft(S), l = ft(L), t = inch(ts), k = in4(Kg);
-    chk(s > 0 && l > 0 && t > 0 && k > 0, 'Parámetros del factor de distribución deben ser positivos');
     return 0.06 + (s / 14) ** 0.4 * (s / l) ** 0.3 * (k / (12 * l * t ** 3)) ** 0.1;
-  }, 'g_{M,1}', 'Factor de distribución de momento, viga interior, un carril: 0.06 + (S/14)^0.4(S/L)^0.3(Kg/12Lts³)^0.1 (Tabla 4.6.2.2.2b-1, tipos a, e, k)', 'S, L, ts, Kg'),
-  gMi2LRFD: ap((S, L, ts, Kg) => {
+  }, 'g_{M,1}', 'Factor de distribución de momento, viga interior, un carril: 0.06 + (S/14)^0.4(S/L)^0.3(Kg/12Lts³)^0.1 [ft, in] (Tabla 4.6.2.2.2b-1, tipos a, e, k); ver = 2: forma SI MTC 0.06 + (S/4300)^0.4(S/L)^0.3(Kg/Lts³)^0.1 [mm]', 'S, L, ts, Kg [, ver]'),
+  gMi2LRFD: ap((S, L, ts, Kg, ver) => {
+    chk(mm(S) > 0 && mm(L) > 0 && mm(ts) > 0 && mm4(Kg) > 0, 'Parámetros del factor de distribución deben ser positivos');
+    if (isMTC(ver)) { const s = mm(S), l = mm(L), t = mm(ts), k = mm4(Kg); return 0.075 + (s / 2900) ** 0.6 * (s / l) ** 0.2 * (k / (l * t ** 3)) ** 0.1; }
     const s = ft(S), l = ft(L), t = inch(ts), k = in4(Kg);
-    chk(s > 0 && l > 0 && t > 0 && k > 0, 'Parámetros del factor de distribución deben ser positivos');
     return 0.075 + (s / 9.5) ** 0.6 * (s / l) ** 0.2 * (k / (12 * l * t ** 3)) ** 0.1;
-  }, 'g_{M,2}', 'Factor de distribución de momento, viga interior, dos o más carriles: 0.075 + (S/9.5)^0.6(S/L)^0.2(Kg/12Lts³)^0.1 (Tabla 4.6.2.2.2b-1)', 'S, L, ts, Kg'),
-  gVi1LRFD: ap((S) => 0.36 + ft(S) / 25, 'g_{V,1}', 'Factor de distribución de cortante, viga interior, un carril: 0.36 + S/25 (ft) (Tabla 4.6.2.2.3a-1)', 'S'),
-  gVi2LRFD: ap((S) => { const s = ft(S); return 0.2 + s / 12 - (s / 35) ** 2; }, 'g_{V,2}', 'Factor de distribución de cortante, viga interior, dos o más carriles: 0.2 + S/12 − (S/35)² (ft) (Tabla 4.6.2.2.3a-1)', 'S'),
-  eMLRFD: ap((de) => 0.77 + ft(de) / 9.1, 'e_{M}', 'Factor de corrección momento viga exterior e = 0.77 + de/9.1 (ft) (Tabla 4.6.2.2.2d-1)', 'de'),
-  eVLRFD: ap((de) => 0.6 + ft(de) / 10, 'e_{V}', 'Factor de corrección cortante viga exterior e = 0.6 + de/10 (ft) (Tabla 4.6.2.2.3b-1)', 'de'),
-  leverLRFD: ap((S, de, dw) => {
-    // Regla de la palanca: un carril, ruedas a 6 ft (1.83 m), la primera a dw = 2 ft (0.61 m) de la cara de la barrera
-    const s = ft(S), d = ft(de), w = dw === undefined ? 2 : ft(dw);
+  }, 'g_{M,2}', 'Factor de distribución de momento, viga interior, dos o más carriles: 0.075 + (S/9.5)^0.6(S/L)^0.2(Kg/12Lts³)^0.1 (Tabla 4.6.2.2.2b-1); ver = 2: 0.075 + (S/2900)^0.6(S/L)^0.2(Kg/Lts³)^0.1 (MTC)', 'S, L, ts, Kg [, ver]'),
+  gVi1LRFD: ap((S, ver) => (isMTC(ver) ? 0.36 + mm(S) / 7600 : 0.36 + ft(S) / 25), 'g_{V,1}', 'Factor de distribución de cortante, viga interior, un carril: 0.36 + S/25 (ft); ver = 2: 0.36 + S/7600 (mm) (Tabla 4.6.2.2.3a-1)', 'S [, ver]'),
+  gVi2LRFD: ap((S, ver) => { if (isMTC(ver)) { const s = mm(S); return 0.2 + s / 3600 - (s / 10700) ** 2; } const s = ft(S); return 0.2 + s / 12 - (s / 35) ** 2; }, 'g_{V,2}', 'Factor de distribución de cortante, viga interior, dos o más carriles: 0.2 + S/12 − (S/35)² (ft); ver = 2: 0.2 + S/3600 − (S/10700)² (mm) (Tabla 4.6.2.2.3a-1)', 'S [, ver]'),
+  eMLRFD: ap((de, ver) => (isMTC(ver) ? 0.77 + mm(de) / 2800 : 0.77 + ft(de) / 9.1), 'e_{M}', 'Factor de corrección momento viga exterior e = 0.77 + de/9.1 (ft); ver = 2: 0.77 + de/2800 (mm) (Tabla 4.6.2.2.2d-1)', 'de [, ver]'),
+  eVLRFD: ap((de, ver) => (isMTC(ver) ? 0.6 + mm(de) / 3000 : 0.6 + ft(de) / 10), 'e_{V}', 'Factor de corrección cortante viga exterior e = 0.6 + de/10 (ft); ver = 2: 0.6 + de/3000 (mm) (Tabla 4.6.2.2.3b-1)', 'de [, ver]'),
+  leverLRFD: ap((S, de, dw, ver) => {
+    // Regla de la palanca: un carril, ruedas a 6 ft (1.83 m), la primera a dw = 2 ft (0.61 m) de la cara de la barrera.
+    // ver = 2 (MTC/SI): ruedas a 1.80 m y la primera a 0.60 m de la barrera.
+    const mtc = isMTC(ver), s = mt(S), d = mt(de), w = dw === undefined || dw === null ? (mtc ? 0.6 : 0.6096) : mt(dw), sw = mtc ? 1.8 : 1.8288;
     chk(s > 0, 'S debe ser positivo');
-    const x1 = s + d - w, x2 = x1 - 6;
+    const x1 = s + d - w, x2 = x1 - sw;
     return 0.5 * (Math.max(0, x1) + Math.max(0, x2)) / s;
-  }, 'R_{palanca}', 'Regla de la palanca (viga exterior, un carril, sin m): R = Σ(0.5·xi)/S, ruedas a 1.83 m, a 0.61 m de la barrera (C4.6.2.2.1)', 'S, de [, dw = 0.61 m]'),
-  skewMLRFD: ap((th, S, L, ts, Kg) => {
+  }, 'R_{palanca}', 'Regla de la palanca (viga exterior, un carril, sin m): R = Σ(0.5·xi)/S, ruedas a 1.83 m, a 0.61 m de la barrera (C4.6.2.2.1); ver = 2: 1.80 m y 0.60 m (MTC)', 'S, de [, dw = 0.61 m, ver]'),
+  skewMLRFD: ap((th, S, L, ts, Kg, ver) => {
     const t = Math.min(deg(th), 60); if (t < 30) return 1;
-    const s = ft(S), l = ft(L), h = inch(ts), k = in4(Kg);
-    const c1 = 0.25 * (k / (12 * l * h ** 3)) ** 0.25 * (s / l) ** 0.5;
+    const r = isMTC(ver) ? mm4(Kg) / (mm(L) * mm(ts) ** 3) : in4(Kg) / (12 * ft(L) * inch(ts) ** 3);
+    const c1 = 0.25 * r ** 0.25 * ratio(S, L) ** 0.5;
     return 1 - c1 * Math.tan(t * Math.PI / 180) ** 1.5;
-  }, 'r_{skew,M}', 'Reducción por esviaje del factor de momento (Tabla 4.6.2.2.2e-1)', 'θ, S, L, ts, Kg'),
-  skewVLRFD: ap((th, L, ts, Kg) => {
-    const t = Math.min(deg(th), 60); const l = ft(L), h = inch(ts), k = in4(Kg);
-    return 1 + 0.2 * (12 * l * h ** 3 / k) ** 0.3 * Math.tan(t * Math.PI / 180);
-  }, 'c_{skew,V}', 'Corrección por esviaje del cortante en apoyo obtuso (Tabla 4.6.2.2.3c-1)', 'θ, L, ts, Kg'),
+  }, 'r_{skew,M}', 'Reducción por esviaje del factor de momento 1 − c1(tanθ)^1.5 (Tabla 4.6.2.2.2e-1)', 'θ, S, L, ts, Kg [, ver]'),
+  skewVLRFD: ap((th, L, ts, Kg, ver) => {
+    const t = Math.min(deg(th), 60);
+    const r = isMTC(ver) ? mm(L) * mm(ts) ** 3 / mm4(Kg) : 12 * ft(L) * inch(ts) ** 3 / in4(Kg);
+    return 1 + 0.2 * r ** 0.3 * Math.tan(t * Math.PI / 180);
+  }, 'c_{skew,V}', 'Corrección por esviaje del cortante en apoyo obtuso 1 + 0.20(12Lts³/Kg)^0.3 tanθ (Tabla 4.6.2.2.3c-1)', 'θ, L, ts, Kg [, ver]'),
   mpLRFD: ap((n) => { n = Math.round(n0(n)); chk(n >= 1, 'Número de carriles ≥ 1'); return n === 1 ? 1.2 : n === 2 ? 1.0 : n === 3 ? 0.85 : 0.65; }, 'm', 'Factor de presencia múltiple (Tabla 3.6.1.1.2-1)', 'n'),
   NLLRFD: ap((w) => Math.max(1, Math.floor(mm(w) / 3600 + 1e-9)), 'N_L', 'Número de carriles de diseño = INT(w/3600) (3.6.1.1.1)', 'w (ancho libre de calzada)'),
   // ---------------- anchos de franja (4.6.2.1.3 y 4.6.2.3) ----------------
@@ -182,7 +192,7 @@ const FN = {
     const l = mm(L), h = mm(H), s = skew === undefined ? 0 : deg(skew);
     return mkUnit((200 + 0.0017 * l + 0.0067 * h) * (1 + 0.000125 * s * s), 'mm').to('cm');
   }, 'N', 'Longitud mínima de apoyo N = (200 + 0.0017L + 0.0067H)(1 + 0.000125S²) mm (4.7.4.4-1)', 'L, H, S(esviaje)'),
-  NpctLRFD: ap((zona, As) => { const z = Math.round(n0(zona)); return z === 1 ? (n0(As) < 0.05 ? 0.75 : 1.0) : z === 2 ? 1.0 : 1.5; }, '\\%N', 'Porcentaje de N por zona sísmica (Tabla 4.7.4.4-1)', 'zona, As'),
+  NpctLRFD: ap((zona, As) => { const z = Math.round(n0(zona)); return z === 1 ? (n0(As) < 0.05 ? 0.75 : 1.0) : 1.5; }, '\\%N', 'Porcentaje de N por zona sísmica: zona 1 75 % (As < 0.05) o 100 %; zonas 2, 3 y 4: 150 % (Tabla 4.7.4.4-1)', 'zona, As'),
   // ---------------- concreto y presfuerzo (Sección 5) ----------------
   beta1LRFD: ap((fc) => { const f = ksi(fc); return Math.min(0.85, Math.max(0.65, 0.85 - 0.05 * (f - 4))); }, '\\beta_1', 'Factor del bloque de compresión β1 (5.6.2.2)', "f'c"),
   EcLRFD: ap((fc, wc) => {
@@ -213,6 +223,10 @@ const FN = {
   fpsLRFD: ap((fpu, fpy, c, dp) => { const k = 2 * (1.04 - ratio(fpy, fpu)); return math.multiply(fpu, 1 - k * ratio(c, dp)); }, 'f_{ps}', 'Esfuerzo medio en el acero de presfuerzo fps = fpu(1 − k·c/dp) (5.6.3.1.1-1)', 'fpu, fpy, c, dp'),
   betaMCFT: ap((ex) => 4.8 / (1 + 750 * Math.max(n0(ex), -0.0004)), '\\beta', 'β = 4.8/(1 + 750εs), método general con refuerzo mínimo (5.7.3.4.2-1)', 'εs'),
   thetaMCFT: ap((ex) => mkUnit(29 + 3500 * Math.max(n0(ex), -0.0004), 'deg'), '\\theta', 'θ = 29 + 3500εs (5.7.3.4.2-3)', 'εs'),
+  // ---------------- barreras (Apéndice A13, Tabla A13.2-1, base NCHRP 350) ----------------
+  FtLRFD: ap((TL) => mkUnit(BAR(TL).Ft, 'kN').to('tonf'), 'F_t', 'Fuerza transversal de diseño de la barrera: TL-1 60, TL-2 120, TL-3 240, TL-4 240, TL-5 550, TL-6 780 kN (Tabla A13.2-1)', 'TL'),
+  LtLRFD: ap((TL) => mkUnit(BAR(TL).Lt, 'mm').to('m'), 'L_t', 'Longitud de distribución de Ft: 1220 mm (TL-1 a TL-3), 1070 mm (TL-4), 2440 mm (TL-5, TL-6) (Tabla A13.2-1)', 'TL'),
+  HbminLRFD: ap((TL) => mkUnit(BAR(TL).H, 'mm').to('m'), 'H_{min}', 'Altura mínima de la barrera: 685 mm (TL-1 a TL-3), 810 mm (TL-4), 1070 mm (TL-5), 2290 mm (TL-6) (Tabla A13.2-1)', 'TL'),
   // ---------------- apoyos elastoméricos (14.7.5 / 14.7.6) ----------------
   SbearLRFD: ap((L, W, hri) => { const l = mm(L), w = mm(W), h = mm(hri); chk(l > 0 && w > 0 && h > 0, 'Dimensiones del apoyo deben ser positivas'); return l * w / (2 * h * (l + w)); }, 'S_i', 'Factor de forma de la capa, apoyo rectangular S = LW/[2hri(L + W)] (14.7.5.1-1)', 'L, W, hri'),
   DaBearLRFD: ap((tipo) => (Math.round(n0(tipo)) === 2 ? 1.0 : 1.4), 'D_a', 'Coeficiente Da: 1 = rectangular (1.4), 2 = circular (1.0) (14.7.5.3.3)', 'tipo'),

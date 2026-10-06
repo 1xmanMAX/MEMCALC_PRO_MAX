@@ -31,7 +31,8 @@ fy = 4200 kgf/cm^2 // Fluencia del acero ASTM A615 Gr. 60 (E.060 21.3.3)
 lm = 350 cm // Longitud de la placa en planta
 tw = 25 cm // Espesor del alma [20 cm|25 cm|30 cm]
 lbe = 60 cm // Longitud de cada núcleo de borde
-hm = 21 m // Altura total de la placa (7 pisos)
+hm = 21 m // Altura total de la placa
+npis = 7 // Número de pisos
 hlib = 2.70 m // Altura libre entre losas (apoyo lateral)
 recl = 2.5 cm // Recubrimiento libre en los elementos de borde (E.060 21.9.7.3: ≥ 25 mm)
 ## Refuerzo
@@ -72,9 +73,9 @@ check phiMn_X(Pu2) >= Mcr // Resistencia a flexión ≥ momento de agrietamiento
     calc(`# Diseño por cortante (E.060 21.9.5 y 11.10)
 ## Cortante de diseño por capacidad (E.060 21.9.5.3)
 Mn1 = Mn_X(Pu1) // Momento nominal asociado a Pu (aceros realmente colocados)
-fa = min(Mn1/Mua1, R) // Factor de amplificación Mn/Mua ≤ R (E.060 21.9.5.3)
+fa = min(max(Mn1/max(Mua1, 0.001 tonf*m), 1), R) // Factor de amplificación Mn/Mua ≤ R (E.060 21.9.5.3)
 Vu = fa*Vua // Cortante de diseño (ec. 21-5)
-hcrit = max(lm, Mua1/(4*Vua), 2*3 m) // Altura en la que se aplica la amplificación (E.060 21.9.5.3)
+hcrit = max(lm, Mua1/(4*max(Vua, 0.001 tonf)), 2*hm/npis) -> m // Altura desde la base en la que rige la amplificación: lm, Mu/4Vu o dos primeros pisos (E.060 21.9.5.3)
 ## Resistencia nominal
 rm = hm/lm // Relación de aspecto del muro
 alphac = si(rm <= 1.5, 0.80, si(rm >= 2.0, 0.53, 0.80 - 0.54*(rm - 1.5))) // Coeficiente αc (E.060 11.10.5, Anexo II)
@@ -90,8 +91,8 @@ check Vu <= phiVn // Resistencia a cortante en el plano del muro (E.060 11.10)
 rhoh_req = max((Vu/phiv - Vc)/(Acw*fy), 0.0025) // Cuantía horizontal requerida (E.060 11.10.10.2)
 check rhoh >= rhoh_req // Cuantía horizontal
 rhov = 2*Ab(barw)/(tw*sv) // Cuantía vertical del alma colocada
-rhov_min = min(max(0.0025 + 0.5*(2.5 - rm)*(rhoh - 0.0025), 0.0025), rhoh) // ec. 11-32
-check rhov >= rhov_min // Cuantía vertical mínima (E.060 11.10.10.3)
+rhov_min = max(min(max(0.0025 + 0.5*(2.5 - rm)*(rhoh - 0.0025), 0.0025), rhoh), si(rm <= 2, rhoh, 0)) // ec. 11-32; si hm/lm ≤ 2, ρv ≥ ρh (E.060 21.9.5.2)
+check rhov >= rhov_min // Cuantía vertical mínima (E.060 11.10.10.3 y 21.9.5.2)
 check max(sv, sh) <= min(3*tw, 40 cm) // Espaciamiento máximo 3t y 400 mm (E.060 11.10.10.2 y 11.10.10.4)
 dos_capas = si(tw >= 20 cm or Vu > 0.53*sqrtfc(fc)*Acw, 1, 0) // ¿Se requieren dos capas? (E.060 21.9.4.3)
 "Se requieren dos capas de refuerzo (1 = sí): **{dos_capas}** — se colocan dos capas de #{barw} @ {sv} (vertical) y #{barw} @ {sh} (horizontal).`),
@@ -106,18 +107,22 @@ Ig = tw*lm^3/12 // Inercia bruta
 sigma = Pu1/Ag + Mua1*(lm/2)/Ig -> kgf/cm^2 // Esfuerzo máximo en la fibra extrema (modelo elástico)
 "Esfuerzo de compresión máximo: {sigma} frente a 0.2 f'c = {0.2*fc}. Para muros continuos rige el método de desplazamientos (21.9.7.4); se confinan los bordes cuando c ≥ c_lím: **requiere = {req_be}**.
 ## Dimensiones del elemento de borde (E.060 21.9.7.6)
-lbe_req = max(cmax - 0.1*lm, cmax/2) -> cm // Extensión horizontal mínima (21.9.7.6 a)
-check lbe >= lbe_req // Longitud de núcleo suficiente
+lbe_req = si(req_be == 1, max(cmax - 0.1*lm, cmax/2), 0 cm) -> cm // Extensión horizontal mínima (21.9.7.6 a), solo si se requiere confinar
+check lbe >= lbe_req // Longitud de núcleo suficiente (21.9.7.6 a)
 check tw >= 15 cm // Espesor mínimo del elemento de borde (E.060 21.9.7.2)
-hbe = max(lm, Mua1/(4*Vua)) -> m // Altura mínima del confinamiento desde la base (21.9.7.4 b)
-## Refuerzo transversal de confinamiento
+hbe = max(lm, Mua1/(4*max(Vua, 0.001 tonf))) -> m // Altura mínima del confinamiento desde la base (21.9.7.4 b)
+## Refuerzo transversal de confinamiento (E.060 21.9.7.6 c–e)
+"La E.060 (21.9.7.6 c) exige que los estribos de borde cumplan 21.6.4.1 c y 21.6.4.3 (estribos cerrados y grapas, hx ≤ 350 mm), los diámetros de (d) y el espaciamiento de (e); no exige las ecuaciones de cuantía (21-3)/(21-4). Como buena práctica se verifica además el área mínima $A_{sh} \ge 0.09\,s\,b_c f'_c/f_{yt}$ en las dos direcciones del núcleo, con $b_c$ medido centro a centro de estribos (definición de E.060 21.6.4.1 b).
 check db(este) >= si(barb <= 5, 0.8 cm, si(barb <= 8, db(3), db(4))) - 0.01 cm // Diámetro mínimo del estribo (21.9.7.6 d)
 smax_be = min(10*db(barb), min(lbe, tw), 25 cm) // Espaciamiento máximo (21.9.7.6 e)
-bc = tw - 2*recl - db(este) // Núcleo confinado normal a las ramas (c. a c. de estribos)
-Ash = 2*Ab(este) // Dos ramas
-sbe = rounddown(min(smax_be, Ash/(0.09*bc*fc/fy)), 2.5 cm) // Espaciamiento adoptado (incluye el criterio de Ash)
-Ash_req = 0.09*sbe*bc*fc/fy // Ash mínimo (ACI 318-19 Tabla 18.10.6.4(f), referencial)
-check Ash >= Ash_req // Área de estribos de confinamiento
+bc = tw - 2*recl - db(este) // Núcleo en el espesor (c. a c. de estribos, normal a las ramas largas)
+bc2 = lbe - 2*recl - db(este) // Núcleo a lo largo del muro (c. a c. de las ramas extremas)
+Ash = 2*Ab(este) // Dirección del espesor: dos ramas largas del estribo
+Ash2 = 3*Ab(este) // Dirección longitudinal: dos ramas cortas + una grapa central
+sbe = rounddown(max(min(smax_be, Ash/(0.09*bc*fc/fy), Ash2/(0.09*bc2*fc/fy)), 2.5 cm), 2.5 cm) // Espaciamiento adoptado
+Ash_req = 0.09*sbe*bc*fc/fy // Ash mínimo en el espesor (ec. 21-4; ACI 318-19 Tabla 18.10.6.4 f, referencial)
+check Ash >= Ash_req // Área de estribos de confinamiento — dirección del espesor (referencial)
+check Ash2 >= 0.09*sbe*bc2*fc/fy // Área de estribos de confinamiento — dirección longitudinal (referencial)
 hx = (lbe - 2*rb)/2 // Separación entre ramas o grapas (una grapa central)
 check hx <= 35 cm // Distancia entre ramas ≤ 350 mm (E.060 21.6.4.3)
 "Núcleos de borde: {nbe} #{barb} con estribos #{este} @ {sbe} en una altura de {hbe} desde la base (incluye una grapa central). Fuera de esa altura: estribos @ 25 cm (21.9.7.7).
@@ -165,7 +170,8 @@ sgn = 1 // Signo de M1/M2: +1 curvatura simple, −1 curvatura doble [1|-1]
 M2nsy = 6 tonf*m // Momento mayor en Y por cargas que no producen desplazamiento lateral
 M2sy = 16 tonf*m // Momento mayor en Y por cargas que producen desplazamiento lateral (sismo)
 ## Datos del entrepiso (para Q)
-SPu = 2600 tonf // Suma de cargas verticales amplificadas del entrepiso
+SPu = 2600 tonf // Suma de cargas verticales amplificadas del entrepiso, combinación con sismo (E.060 10.11.4.2)
+SPug = 2900 tonf // Suma de cargas verticales del entrepiso con 1.4CM + 1.7CV (E.060 10.13.6 b)
 Vus = 210 tonf // Cortante sísmico amplificado del entrepiso
 R = 8 // Coeficiente de reducción sísmica (dirección Y)
 D0e = 0.45 cm // Deriva elástica del entrepiso por el sismo reducido
@@ -176,23 +182,24 @@ Ag = b*h // Área bruta
 Ig = b*h^3/12 // Inercia bruta
 r = 0.3*h // Radio de giro (E.060 10.11.2)`),
     calc(`# Dirección X — entrepiso sin desplazamiento lateral (E.060 10.12)
-check Q_x <= 0.06 // Entrepiso arriostrado (E.060 10.11.4.2)
+check Q_x <= 0.06 // Entrepiso arriostrado: se aplica 10.12 (E.060 10.11.4.2)
 kx = 1.0 // Factor de longitud efectiva (E.060 10.12.1, conservador)
 esb_x = kx*lu/r // Esbeltez
-lim_x = min(34 - 12*sgn*M1x/M2x, 40) // Límite para despreciar la esbeltez (ec. 10-7)
-check esb_x > lim_x // La esbeltez excede el límite: deben considerarse sus efectos (E.060 10.12.2)
+lim_x = min(34 - 12*sgn*M1x/max(M2x, 0.001 tonf*m), 40) // Límite para despreciar la esbeltez (ec. 10-7)
+esbelta_x = si(esb_x > lim_x, 1, 0) // 1 = deben considerarse los efectos de esbeltez (E.060 10.12.2)
 EI = 0.4*Ec*Ig/(1 + betad) -> tonf*m^2 // Rigidez efectiva (ec. 10-12)
 Pc_x = pi^2*EI/(kx*lu)^2 -> tonf // Carga crítica de pandeo (ec. 10-10)
-Cm = max(0.6 + 0.4*sgn*M1x/M2x, 0.4) // Factor de corrección (ec. 10-13)
-dns = max(Cm/(1 - Pu/(0.75*Pc_x)), 1.0) // Magnificador sin desplazamiento (ec. 10-9)
-check Pu < 0.75*Pc_x // Estabilidad del elemento
+check Pu < 0.75*Pc_x // Estabilidad del elemento (denominador de la ec. 10-9 positivo)
 M2min = Pu*(1.5 cm + 0.03*h) -> tonf*m // Momento mínimo (ec. 10-14, 15 mm + 0.03h)
-Mcx = dns*max(M2x, M2min) -> tonf*m // Momento magnificado de diseño (ec. 10-8)`),
+Cm = si(M2min > M2x, 1.0, max(0.6 + 0.4*sgn*M1x/max(M2x, 0.001 tonf*m), 0.4)) // Factor de corrección (ec. 10-13; Cm = 1 si rige M2,min, 10.12.3.2)
+dns = si(esbelta_x == 1, max(Cm/(1 - Pu/(0.75*Pc_x)), 1.0), 1.0) // Magnificador sin desplazamiento (ec. 10-9)
+Mcx = dns*max(M2x, M2min) -> tonf*m // Momento magnificado de diseño (ec. 10-8)
+"Esbeltez k·lu/r = {esb_x} frente al límite {lim_x} de la ec. 10-7 → efectos de esbeltez considerados (1 = sí): **{esbelta_x}**; δns = {dns}.`),
     calc(`# Dirección Y — entrepiso con desplazamiento lateral (E.060 10.13)
 ## Índice de estabilidad del entrepiso (E.060 10.11.4.2)
 D0 = 0.75*R*D0e // Desplazamiento relativo de primer orden (Δo × 0.75R)
-Q = SPu*D0/(Vus*hp) // Índice de estabilidad (ec. 10-6)
-check Q > 0.06 // Entrepiso con desplazamiento lateral (no arriostrado, E.060 10.11.4.2)
+Q = SPu*D0/(max(Vus, 0.001 tonf)*hp) // Índice de estabilidad (ec. 10-6)
+"Q = {Q} > 0.06: el entrepiso se considera **con desplazamiento lateral** y se aplica 10.13 (si Q ≤ 0.06 el procedimiento de 10.13 resulta conservador: δs ≈ 1).
 ## Factor de longitud efectiva (E.060 10.13.1)
 Icol = 0.70*Ig // Inercia de columnas (E.060 10.11.1)
 Iv = 0.35*bv*hv^3/12 // Inercia de vigas (E.060 10.11.1)
@@ -200,16 +207,21 @@ psiA = 2*(Icol/hp)/(2*Iv/Lv) // Nudo superior: dos columnas y dos vigas
 psiB = 1.0 // Nudo inferior: base semiempotrada (valor práctico)
 ky = kSway(psiA, psiB) // k para pórtico no arriostrado (nomograma, ≥ 1.0)
 esb_y = ky*lu/r // Esbeltez en Y
-check esb_y >= 22 // Deben considerarse los efectos de esbeltez (E.060 10.13.2)
+esbelta_y = si(esb_y >= 22, 1, 0) // 1 = deben considerarse los efectos de esbeltez (E.060 10.13.2)
 check esb_y <= 100 // Esbeltez máxima (E.060 10.11.5)
 ## Magnificación por desplazamiento lateral (E.060 10.13.4.2)
-ds = 1/(1 - Q) // Magnificador δs
-check ds <= 1.5 // Límite para usar 10.13.4.2
-M2y = M2nsy + ds*M2sy -> tonf*m // Momento mayor magnificado (ec. 10-16)
-lim_y = 35/sqrt(Pu/(fc*Ag)) // Límite de ec. (10-19)
-"Esbeltez lu/r = {lu/r} frente a {lim_y}: si lu/r < 35/√(Pu/f'cAg) no se requiere magnificar M2 por curvatura del elemento (E.060 10.13.5).
-check lu/r < lim_y // No se requiere magnificación adicional por curvatura
-Qg = 1.25*SPu*D0/(Vus*hp) // Q con 1.4CM+1.7CV (≈ 1.25 veces la carga con sismo)
+ds = si(esbelta_y == 1, si(Q < 0.99, 1/(1 - Q), 100), 1.0) // Magnificador δs (ec. 10-17)
+check ds <= 1.5 // Límite para usar 10.13.4.2 (si δs > 1.5 se requiere análisis de segundo orden)
+M2y0 = M2nsy + ds*M2sy -> tonf*m // Momento mayor magnificado (ec. 10-16)
+## Magnificación adicional por curvatura del elemento (E.060 10.13.5)
+lim_y = 35/sqrt(max(Pu, 0.001 tonf)/(fc*Ag)) // Límite de la ec. (10-19)
+curv_y = si(lu/r > lim_y, 1, 0) // 1 = el elemento se diseña además con 10.12.3 (k = 1)
+Pc_y1 = pi^2*EI/lu^2 -> tonf // Carga crítica con k = 1 (10.13.5)
+dns_y = si(curv_y == 1, max(1/(1 - Pu/(0.75*Pc_y1)), 1.0), 1.0) // δns con Cm = 1.0 (conservador)
+M2y = dns_y*max(M2y0, M2min) -> tonf*m // Momento de diseño en Y
+"Esbeltez lu/r = {lu/r} frente a 35/√(Pu/f'cAg) = {lim_y} → magnificación por curvatura (1 = sí): **{curv_y}**, δns = {dns_y}.
+## Estabilidad ante cargas de gravedad (E.060 10.13.6 b)
+Qg = SPug*D0*(1 + betad)/(max(Vus, 0.001 tonf)*hp) // Q con ΣPu de 1.4CM + 1.7CV y rigideces divididas entre (1 + βd) (10.11.1)
 check Qg <= 0.60 // Estabilidad ante cargas de gravedad (E.060 10.13.6 b)`),
     text(`# Verificación de la sección
 Se verifica la sección con los momentos magnificados en cada dirección, por separado (E.060 10.11.6). El refuerzo es de 12 barras distribuidas en el perímetro.`),
@@ -248,21 +260,22 @@ Pu = 300 tonf // Carga axial amplificada
 Mux = 30 tonf*m // Momento que comprime el extremo +X (excentricidad ex)
 Muy = 27 tonf*m // Momento que comprime el extremo +Y (excentricidad ey)
 Ag = b*h // Área bruta
-ex = Mux/Pu -> cm // Excentricidad en X
-ey = Muy/Pu -> cm // Excentricidad en Y`),
+ex = Mux/max(Pu, 0.001 tonf) -> cm // Excentricidad en X
+ey = Muy/max(Pu, 0.001 tonf) -> cm // Excentricidad en Y`),
     { type: 'pmgen', geom: '0 0 b h', barras: 'R rec rec b-rec h-rec 4 4 bar', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'XY', demandas: 'Pu, Mux, Muy // Combinación crítica', titulo: 'Diagramas uniaxiales y contorno de carga biaxial (compatibilidad de deformaciones)' },
     calc(`# Método de la carga recíproca de Bresler (E.060 10.18)
 Pnx = Pn_X(ex) // Resistencia nominal con ex (ey = 0), del diagrama en X
 Pny = Pn_Y(ey) // Resistencia nominal con ey (ex = 0), del diagrama en Y
 Pon = Pn0 // Resistencia nominal a carga axial pura: 0.85 f'c (Ag − Ast) + fy Ast
 phi = 0.70 // Elementos con estribos en compresión (E.060 9.3.2.2)
-check Pu >= 0.1*phi*Pon // Rango de validez de la ec. 10-22
+bres = si(Pu >= 0.1*phi*Pon, 1, 0) // 1 = rige la ec. 10-22 (Pu ≥ 0.1 φ Pon); 0 = carga axial baja, ec. 10-23
 Pn = 1/(1/Pnx + 1/Pny - 1/Pon) // Resistencia nominal biaxial (ec. 10-22)
 phiPn = min(phi*Pn, phiPnmax) // Resistencia de diseño, limitada por 10.3.6.2
-check Pu <= phiPn // Resistencia biaxial — Bresler
+DC1023 = abs(Mux)/max(phiMn_X(Pu), 0.001 tonf*m) + abs(Muy)/max(phiMn_Y(Pu), 0.001 tonf*m) // Ec. 10-23 (carga axial baja): Mux/φMnx + Muy/φMny ≤ 1
+DCb = si(bres == 1, Pu/phiPn, DC1023) // Relación demanda/capacidad por la ecuación aproximada aplicable
+check DCb <= 1 // Resistencia biaxial — Bresler (10-22) o ec. 10-23 según Pu
 ## Contraste con el cálculo exacto
-DCb = Pu/phiPn // Relación demanda/capacidad por Bresler
-"Relación D/C por Bresler: **{DCb}**; por compatibilidad de deformaciones (contorno de carga): **{DCpmg}**. Ambos métodos concuerdan razonablemente; el método exacto es el de referencia (E.060 10.18, primer párrafo).
+"Relación D/C por la ecuación aproximada (10-22 si bres = 1, 10-23 si bres = 0; bres = {bres}): **{DCb}**; por compatibilidad de deformaciones (contorno de carga): **{DCpmg}**. Ambos métodos concuerdan razonablemente; el método exacto es el de referencia (E.060 10.18, primer párrafo).
 check DCpmg <= 1 // Resistencia biaxial — compatibilidad de deformaciones
 ## Cuantía (E.060 10.9.1)
 check rhog >= 0.01 // Cuantía mínima
@@ -332,10 +345,10 @@ Vs = max(Vu/phiv - Vc, 0 tonf) // Resistencia requerida del acero
 check Vs <= 2.1*sqrtfc(fc)*b*d // Límite de Vs (E.060 11.5.7.9)
 Av = 2*Ab(est) // Estribo de dos ramas
 s_v = si(Vs > 0 tonf, Av*fy*d/Vs, 60 cm) // Espaciamiento por resistencia
-so = rounddown(min(d/4, 8*db(bar), 24*db(est), 30 cm, s_v), 2.5 cm) // Espaciamiento en la zona de confinamiento (21.5.3.2)
+so = rounddown(max(min(d/4, 8*db(bar), 24*db(est), 30 cm, s_v), 2.5 cm), 2.5 cm) // Espaciamiento en la zona de confinamiento (21.5.3.2)
 check db(est) >= db(3) - 0.01 cm // Estribo ≥ 3/8" para barras hasta 1" (21.5.3.2)
 Lo = 2*h // Longitud de confinamiento en cada extremo (21.5.3.1)
-s2 = rounddown(min(d/2, s_v), 2.5 cm) // Espaciamiento fuera de la zona confinada (21.5.3.4)
+s2 = rounddown(max(min(d/2, s_v), 2.5 cm), 2.5 cm) // Espaciamiento fuera de la zona confinada (21.5.3.4)
 phiVn = phiv*(Vc + Av*fy*d/so) -> tonf // Resistencia con el espaciamiento adoptado
 check Vu <= phiVn // Resistencia a cortante en la zona confinada
 "**Estribos #{est}: 1 @ 5 cm, {ceil((Lo - 5 cm)/so)} @ {so} en cada extremo ({Lo}), resto @ {s2}**.`),
@@ -375,7 +388,7 @@ Mnv1 = 23.64 tonf*m // Momento nominal negativo de la viga en la cara
 Mnv2 = 18.13 tonf*m // Momento nominal positivo de la viga en la otra cara
 Ag = b*hc // Área bruta
 ## Requisitos geométricos (E.060 21.6.1)
-check Pumax > 0.1*fc*Ag // Pu > 0.1 f'c Ag: se aplica 21.6 (21.6.1.1)
+"Pu,máx = {Pumax} frente a 0.1 f'c Ag = {0.1*fc*Ag}: si Pu > 0.1 f'c Ag el elemento se diseña como columna según 21.6 (21.6.1.1); en caso contrario como viga (21.5).
 check min(b, hc) >= 25 cm // Dimensión menor ≥ 250 mm (21.6.1.2)
 check min(b, hc)/max(b, hc) >= 0.25 // Relación de lados ≥ 0.25 (21.6.1.3)`),
     { type: 'pmgen', geom: '0 0 b hc', barras: 'R 6 6 b-6 hc-6 4 4 bar', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'X', demandas: 'Pumax, Mu // Pu máx\nPumin, Mu // Pu mín\nPumax, -Mu // Pu máx (−)\nPumin, -Mu // Pu mín (−)', titulo: 'Columna {b} × {hc}: diagrama de interacción' },
@@ -400,7 +413,7 @@ Av = nramas*Ab(est) // Área de estribos
 Vs = max(Vu/phiv - Vc, 0 tonf) // Resistencia requerida del acero
 s_v = si(Vs > 0 tonf, Av*fy*d/Vs, 30 cm) // Espaciamiento por cortante
 # Refuerzo de confinamiento (E.060 21.6.4)
-so = rounddown(min(min(b, hc)/3, 6*db(bar), 10 cm, s_v), 2.5 cm) // Espaciamiento en Lo (21.6.4.2)
+so = rounddown(max(min(min(b, hc)/3, 6*db(bar), 10 cm, s_v), 2.5 cm), 2.5 cm) // Espaciamiento en Lo (21.6.4.2)
 Lo = max(max(b, hc), hn/6, 50 cm) -> cm // Longitud de confinamiento (21.6.4.4)
 bc = hc - 2*recl - db(est) // Dimensión del núcleo c. a c. de estribos
 Ach = (b - 2*recl)*(hc - 2*recl) // Área del núcleo al exterior del estribo
@@ -411,7 +424,7 @@ hx = (hc - 2*recl)/(nramas - 1) // Separación entre ramas
 check hx <= 35 cm // hx ≤ 350 mm (21.6.4.3)
 phiVn = phiv*(Vc + Av*fy*d/so) -> tonf // Resistencia de diseño con so
 check Vu <= phiVn // Resistencia a cortante
-s_fuera = rounddown(min(10*db(bar), 25 cm, s_v), 2.5 cm) // Fuera de Lo (21.6.4.5)
+s_fuera = rounddown(max(min(10*db(bar), 25 cm, s_v), 2.5 cm), 2.5 cm) // Fuera de Lo (21.6.4.5)
 "**Estribos #{est} (doble estribo, {nramas} ramas): 1 @ 5 cm, resto @ {so} en Lo = {roundup(Lo, 5 cm)} en cada extremo y dentro del nudo; fuera de Lo @ {s_fuera}.** Empalmes por traslape solo en la mitad central de la altura (21.6.3.2), de longitud clase B = {lsE060(bar, fc, fy, 2)}.`),
     summary(),
   ],
@@ -544,13 +557,13 @@ rhob = rhobE060(fc, fy) // Cuantía balanceada
 As_max1 = 0.75*rhob*b*d // Máximo con acero simple (E.060 10.3.4)
 a_m = As_max1*fy/(0.85*fc*b) // Bloque asociado
 phiMn_max = 0.9*As_max1*fy*(d - a_m/2) -> tonf*m // Momento máximo con acero simple
-check Mu > phiMn_max // Se requiere acero en compresión
+req_comp = si(Mu > phiMn_max, 1, 0) // 1 = Mu excede φMn con acero simple máximo: se requiere acero en compresión (E.060 10.3.4)
 ## Viga 1 (ρ1 = 0.5 ρb)
 As1 = 0.5*rhob*b*d // Acero en tracción de la viga 1
 a1 = As1*fy/(0.85*fc*b) // Bloque de compresión
 Mn1 = As1*fy*(d - a1/2) -> tonf*m // Momento nominal de la viga 1
 ## Viga 2 (acero en compresión)
-Mn2 = Mu/0.9 - Mn1 // Momento remanente
+Mn2 = max(Mu/0.9 - Mn1, 0 tonf*m) // Momento remanente
 c1 = a1/beta1 // Eje neutro
 eps_s2 = 0.003*(c1 - dp)/c1 // Deformación en A's
 fs2 = min(Es*eps_s2, fy) -> kgf/cm^2 // Esfuerzo en A's (compatibilidad)
@@ -605,7 +618,7 @@ Ph = 2*(x1 + y1) // Perímetro del eje del estribo
 Ao = 0.85*Aoh // Área del flujo de cortante (11.6.3.6)
 ## Umbral de torsión (E.060 11.6.1 a)
 Tth = phi*0.27*sqrtfc(fc)*Acp^2/Pcp -> tonf*m // Torsión despreciable
-check Tu > Tth // Debe diseñarse por torsión
+tors = si(Tu > Tth, 1, 0) // 1 = Tu > φTth: debe diseñarse por torsión (si 0, puede despreciarse; el diseño siguiente resulta conservador)
 ## Dimensiones de la sección (ec. 11-18, Anexo II)
 Vc = 0.53*sqrtfc(fc)*b*d -> tonf // Aporte del concreto al cortante
 tau = sqrt((Vu/(b*d))^2 + (Tu*Ph/(1.7*Aoh^2))^2) -> kgf/cm^2 // Esfuerzo combinado
@@ -614,8 +627,9 @@ check tau <= phi*(Vc/(b*d) + 2.1*sqrtfc(fc)) // Sección adecuada (11-18)
 At_s = Tu/(phi*2*Ao*fyt*cot(45 deg)) -> cm^2/m // Una rama, por torsión (11-21)
 Av_s = max(Vu/phi - Vc, 0 tonf)/(fyt*d) -> cm^2/m // Dos ramas, por cortante
 Avt_s = Av_s + 2*At_s // Requerido total (11.6.3.8)
-s_req = 2*Ab(est)/Avt_s -> cm // Espaciamiento por resistencia
-s = rounddown(min(s_req, Ph/8, 30 cm), 2.5 cm) // Espaciamiento adoptado (11.6.6.1)
+s_req = 2*Ab(est)/max(Avt_s, 0.001 cm^2/m) -> cm // Espaciamiento por resistencia
+s = rounddown(max(min(s_req, Ph/8, 30 cm, d/2), 2.5 cm), 2.5 cm) // Espaciamiento adoptado: torsión Ph/8 y 300 mm (11.6.6.1), cortante d/2 (11.5.5.1)
+check 2*Ab(est)/s >= Avt_s // Estribos colocados ≥ (Av + 2At)/s requerido (11.6.3.8)
 check 2*Ab(est) >= max(0.2*sqrtfc(fc)*b*s/fyt, 3.5 kgf/cm^2*b*s/fyt) // Mínimo (Av + 2At) (11.6.5.2, Anexo II)
 ## Refuerzo longitudinal por torsión
 Al = At_s*Ph*fyt/fy*cot(45 deg)^2 -> cm^2 // ec. 11-22
@@ -743,10 +757,11 @@ check h >= Lv/8 // No se requiere calcular deflexiones (se calculan como verific
 Mu = abs(Mneg) // Momento último en el empotramiento
 As_req = asFlex(Mu, b, d, fc, fy) // Acero superior requerido
 As_min = 0.7*sqrtfc(fc)/fy*b*d // Acero mínimo (10.5.2)
-n = max(2, ceil(max(As_req, As_min)/Ab(bar))) // Número de barras
+n = min(max(2, ceil(max(As_req, As_min)/Ab(bar))), 10) // Número de barras (máximo 10 en dos capas)
 As = n*Ab(bar) // Acero colocado
 a = As*fy/(0.85*fc*b) // Bloque de compresión
 phiMn = 0.9*As*fy*(d - a/2) -> tonf*m // Resistencia de diseño
+check As >= max(As_req, As_min) // Acero colocado ≥ requerido y mínimo (10.5.2)
 check Mu <= phiMn // Resistencia a flexión
 epsilont = 0.003*(d - a/beta1E060(fc))/(a/beta1E060(fc)) // Deformación neta del acero
 check epsilont >= 0.004 // Ductilidad (E.060 10.3.5)
@@ -758,7 +773,7 @@ Vud = Vmax - (1.4*wD + 1.7*wL)*d // Cortante a "d" de la cara (11.1.3.1)
 phiVc = 0.85*0.53*sqrtfc(fc)*b*d -> tonf // Resistencia del concreto
 Av = 2*Ab(est) // Estribo de dos ramas
 Vs = max(Vud/0.85 - phiVc/0.85, 0 tonf) // Resistencia requerida del acero
-s = rounddown(min(d/2, 60 cm, si(Vs > 0 tonf, Av*fy*d/Vs, 60 cm), Av*fy/(3.5 kgf/cm^2*b)), 2.5 cm) // Espaciamiento (11.5.5 y 11.5.6)
+s = rounddown(max(min(d/2, 60 cm, si(Vs > 0 tonf, Av*fy*d/Vs, 60 cm), Av*fy/(3.5 kgf/cm^2*b)), 2.5 cm), 2.5 cm) // Espaciamiento (11.5.5 y 11.5.6)
 phiVn = phiVc + 0.85*Av*fy*d/s // Resistencia de diseño
 check Vud <= phiVn // Resistencia a cortante
 # Deflexión (E.060 9.6)
@@ -826,21 +841,21 @@ smax = min(2*h, 40 cm) // Espaciamiento máximo en losas en dos direcciones (E.0
 ## Dirección corta A
 As_an = max(asFlex(Ma_neg*1 m, bm, d, fc, fy), Asmin) // Negativo en borde continuo
 As_ap = max(asFlex(Ma_pos*1 m, bm, d, fc, fy), Asmin) // Positivo
-s_an = rounddown(min(Ab(bar)/As_an*bm, smax), 2.5 cm) // Espaciamiento negativo
-s_ap = rounddown(min(Ab(bar)/As_ap*bm, smax), 2.5 cm) // Espaciamiento positivo
+s_an = rounddown(max(min(Ab(bar)/As_an*bm, smax), 2.5 cm), 2.5 cm) // Espaciamiento negativo
+s_ap = rounddown(max(min(Ab(bar)/As_ap*bm, smax), 2.5 cm), 2.5 cm) // Espaciamiento positivo
 ## Dirección larga B (segunda capa: d − db)
 db2 = d - db(bar) // Peralte efectivo de la segunda capa
 As_bn = max(asFlex(Mb_neg*1 m, bm, db2, fc, fy), Asmin) // Negativo en borde continuo
 As_bp = max(asFlex(Mb_pos*1 m, bm, db2, fc, fy), Asmin) // Positivo
-s_bn = rounddown(min(Ab(bar)/As_bn*bm, smax), 2.5 cm) // Espaciamiento negativo
-s_bp = rounddown(min(Ab(bar)/As_bp*bm, smax), 2.5 cm) // Espaciamiento positivo
+s_bn = rounddown(max(min(Ab(bar)/As_bn*bm, smax), 2.5 cm), 2.5 cm) // Espaciamiento negativo
+s_bp = rounddown(max(min(Ab(bar)/As_bp*bm, smax), 2.5 cm), 2.5 cm) // Espaciamiento positivo
 ## Bordes discontinuos (M⁻ = M⁺/3)
 As_disc = max(asFlex(max(Ma_disc, Mb_disc)*1 m, bm, db2, fc, fy), Asmin) // Acero en bordes discontinuos
 check Ab(bar)/s_an*bm >= As_an // Verificación del acero negativo A
 check Ab(bar)/s_ap*bm >= As_ap // Verificación del acero positivo A
 check Ab(bar)/s_bn*bm >= As_bn // Verificación del acero negativo B
 check Ab(bar)/s_bp*bm >= As_bp // Verificación del acero positivo B
-"**Refuerzo:** dirección corta: inferior #{bar} @ {s_ap}, superior en borde continuo #{bar} @ {s_an}; dirección larga: inferior #{bar} @ {s_bp}, superior en borde continuo #{bar} @ {s_bn}; bordes discontinuos #{bar} @ {rounddown(min(Ab(bar)/As_disc*bm, smax), 2.5 cm)}.
+"**Refuerzo:** dirección corta: inferior #{bar} @ {s_ap}, superior en borde continuo #{bar} @ {s_an}; dirección larga: inferior #{bar} @ {s_bp}, superior en borde continuo #{bar} @ {s_bn}; bordes discontinuos #{bar} @ {rounddown(max(min(Ab(bar)/As_disc*bm, smax), 2.5 cm), 2.5 cm)}.
 # Cortante (E.060 13.7.4, ec. 13-10)
 phiVc = 0.85*0.53*sqrtfc(fc)*bm*d -> tonf // Resistencia por metro
 check Vua*1 m <= phiVc // Cortante en la dirección corta (incluye +15 % si corresponde)
@@ -896,16 +911,17 @@ Asp = max(asFlex(Mup, bm, d, fc, fy), Asmin) // Acero positivo
 Asn = max(asFlex(Mun, bm, d, fc, fy), Asmin) // Acero negativo interior
 Ase = max(asFlex(Mext, bm, d, fc, fy), Asmin) // Acero negativo exterior
 smax = min(3*h, 40 cm) // Espaciamiento máximo (E.060 9.8.1)
-sp = rounddown(min(Ab(bar)/Asp*bm, smax), 2.5 cm) // Espaciamiento positivo
-sn = rounddown(min(Ab(bar)/Asn*bm, smax), 2.5 cm) // Espaciamiento negativo
-se = rounddown(min(Ab(bar)/Ase*bm, smax), 2.5 cm) // Espaciamiento negativo exterior
+sp = rounddown(max(min(Ab(bar)/Asp*bm, smax), 2.5 cm), 2.5 cm) // Espaciamiento positivo
+sn = rounddown(max(min(Ab(bar)/Asn*bm, smax), 2.5 cm), 2.5 cm) // Espaciamiento negativo
+se = rounddown(max(min(Ab(bar)/Ase*bm, smax), 2.5 cm), 2.5 cm) // Espaciamiento negativo exterior
 check Ab(bar)/sp*bm >= Asp // Acero positivo colocado
 check Ab(bar)/sn*bm >= Asn // Acero negativo colocado
+check Ab(bar)/se*bm >= Ase // Acero negativo exterior colocado
 a = Asn*fy/(0.85*fc*bm) // Bloque de compresión
 check 0.003*(d - a/0.85)/(a/0.85) >= 0.004 // Ductilidad εt ≥ 0.004 (E.060 10.3.5)
 ## Acero de temperatura (E.060 9.7)
 Ast = 0.0018*bm*h // Cuantía 0.0018 (fy = 4200)
-st = rounddown(min(Ab(3)/Ast*bm, 5*h, 40 cm), 2.5 cm) // Espaciamiento (9.7.3)
+st = rounddown(max(min(Ab(3)/Ast*bm, 3*h, 40 cm), 2.5 cm), 2.5 cm) // Espaciamiento ≤ 3h y 400 mm (9.7.3; 5h solo en aligerados)
 "**Refuerzo:** inferior #{bar} @ {sp}; superior en apoyos interiores #{bar} @ {sn}; en apoyos exteriores #{bar} @ {se}; temperatura #3 @ {st} (perpendicular).
 # Cortante (E.060 11.3)
 phiVc = 0.85*0.53*sqrtfc(fc)*bm*d -> tonf // Resistencia del concreto
@@ -1078,6 +1094,8 @@ check Vu <= phi*Vnmax // Sección suficiente
 Avf = Vu/(phi*fy*mu) // Cortante por fricción (11-25)
 Mu = Vu*av + Nuc*(h - d) -> tonf*m // Momento en la cara (11.9.3)
 Af = asFlex(Mu, bw, d, fc, fy, phi) // Acero por flexión (11.9.3.3)
+phiMnf = phi*Af*fy*(d - Af*fy/(2*0.85*fc*bw)) -> tonf*m // Resistencia a flexión con Af
+check Mu <= phiMnf // La sección de la ménsula resiste Mu con Af (bloque de compresión dentro de d)
 An = Nuc/(phi*fy) // Acero por tracción directa (11.9.3.4)
 Asc = max(Af + An, 2/3*Avf + An, 0.04*fc/fy*bw*d) // Acero principal (11.9.3.5 y 11.9.5)
 nsc = ceil(Asc/Ab(5)) // Barras #5
@@ -1117,6 +1135,8 @@ lb = 400 mm // Longitud de la placa de apoyo
 lp = 400 mm // Longitud de la placa de carga
 Pu = 900 kN // Cada carga amplificada
 wt = 200 mm // Altura efectiva del tensor (dos capas, centroide a 100 mm)
+lext = 400 mm // Prolongación de la viga más allá del eje del apoyo
+rext = 50 mm // Recubrimiento en el extremo de la viga
 phi = 0.75 // ACI 318-19 Tabla 21.2.1
 ## Clasificación (ACI 318-19 9.9.1.1)
 ln = L - lb // Luz libre
@@ -1126,7 +1146,8 @@ check Vu <= phi*0.83*sqrtMPa(fc)*b*(h - wt/2) // Límite de cortante (9.9.2.1)
 ## Puntal superior y geometría (nudo CCC, βn = 1.0)
 kc = phi*0.85*1.0*fc*b // Resistencia por unidad de ancho del puntal horizontal
 hp = h - wt/2 // Distancia del tensor a la cara superior
-ws = roundup(hp - sqrt(hp^2 - 2*Pu*a/kc), 5 mm) // Ancho del puntal horizontal por equilibrio (redondeado)
+check 2*Pu*a/kc <= hp^2 // El puntal superior puede equilibrar el momento Pu·a (existe solución para ws)
+ws = roundup(hp - sqrt(max(hp^2 - 2*Pu*a/kc, 0 mm^2)), 5 mm) // Ancho del puntal horizontal por equilibrio (redondeado)
 jd = hp - ws/2 // Brazo del par interno
 theta = atan(jd/a) -> deg // Ángulo del puntal diagonal
 check theta >= 25 deg // Ángulo mínimo puntal–tensor (23.2.7)
@@ -1150,15 +1171,15 @@ dbt = 25 mm // Diámetro de las barras del tensor [22 mm|25 mm|28 mm]
 Ast = nt*pi*dbt^2/4 // Acero colocado
 check Ast >= Ast_req // Resistencia del tensor
 ldh = ldhACI(dbt, fc, fy) // Anclaje con gancho (25.4.3)
-lanc = lb/2 + 300 mm + wt/2*cot(theta) // Longitud disponible más allá del eje del apoyo (prolongación de 300 mm)
+lanc = lb/2 + wt/2*cot(theta) + lext - rext // Longitud disponible desde el punto en que el eje del tensor sale de la zona nodal extendida hasta el extremo de la barra (23.8.3)
 check ldh <= lanc // Anclaje del tensor en la zona nodal extendida (23.8.3)
 ## Refuerzo distribuido mínimo (ACI 318-19 9.9.3 y 23.5)
 dbw = 12 mm // Barras del refuerzo distribuido
 sw = 200 mm // Espaciamiento en cada cara
 rhow = 2*pi*dbw^2/4/(b*sw) // Cuantía vertical y horizontal
 check rhow >= 0.0025 // Cuantía mínima en cada dirección
-check sw <= min((h - wt)/5, 300 mm) // Espaciamiento máximo d/5 y 300 mm (9.9.3.1)`),
-    { type: 'stmbeam', L: 'L', h: 'h', a: 'a', lb: 'lb', lp: 'lp', ws: 'ws', wt: 'wt', Fd: 'Fd', Ft: 'Ft', Pu: 'Pu', titulo: '' },
+check sw <= min((h - wt/2)/5, 300 mm) // Espaciamiento máximo d/5 y 300 mm (9.9.3.1), d = h − wt/2`),
+    { type: 'stmbeam', L: 'L', h: 'h', a: 'a', lb: 'lb', lp: 'lp', ws: 'ws', wt: 'wt', lext: 'lext', Fd: 'Fd', Ft: 'Ft', Pu: 'Pu', titulo: '' },
     summary(),
   ],
 };

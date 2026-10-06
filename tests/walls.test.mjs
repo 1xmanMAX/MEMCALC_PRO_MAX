@@ -86,7 +86,7 @@ PL = PLine(2 tonf/m, 1 m, 5 m)
 D0 = D0Blum(5 m, 1.8 tonf/m^3, 1/3, 3)
 Dq = D0Blum(5 m, 1.8 tonf/m^3, 1/3, 3, 1 tonf/m^2)
 Df = DFreeEarth(6 m, 1 m, 1.8 tonf/m^3, 1/3, 2)`);
-{ // Jarquio (1981), Das ec. 7.?: P = q/90·H(θ2−θ1); z̄ desde la base
+{ // Jarquio (1981), Das cap. 7: P = q/90·H(θ2−θ1); z̄ desde la base
   const q = 5, a = 2, b = 1, H = 6, t1 = Math.atan(b / H) * 180 / Math.PI, t2 = Math.atan((a + b) / H) * 180 / Math.PI;
   const Pj = q / 90 * H * (t2 - t1), R = (a + b) ** 2 * (90 - t2), Q = b * b * (90 - t1);
   const zj = H - (H * H * (t2 - t1) + (R - Q) - 57.3 * a * H) / (2 * H * (t2 - t1));
@@ -128,6 +128,91 @@ truthy('Das 8.1: sin errores y todas las verificaciones cumplen', das.ctx.errors
   near('Kae (Rankine-virtual, δ = β) = KaeMO directo', s('Kae'), calc('K = KaeMO(30 deg, 10 deg, 0.1, 0, 10 deg)')('K'), 1e-9);
 }
 
+
+section('Revisión — ejemplos publicados y comprobaciones adicionales');
+{ // Das, Principles of Foundation Engineering (7.ª ed.), Ejemplo 7.6: φ = 30°, δ = 15°, θ = α = 0, kv = 0, kh = 0.2,
+  // γ = 15.5 kN/m³, H = 4 m → Kae = 0.452, Pae = ½γH²Kae = 56.05 kN/m; Ka (Coulomb) = 0.3014
+  const d = calc(`Kae = KaeMO(30 deg, 15 deg, 0.2)
+Pae = 0.5*15.5 kN/m^3*(4 m)^2*Kae
+Ka = KaCoulomb(30 deg, 15 deg)`);
+  near('Das Ej. 7.6: Kae = 0.452', d('Kae'), 0.452, 0.002);
+  near('Das Ej. 7.6: Pae = 56.05 kN/m', d('Pae', 'kN/m'), 56.05, 0.003);
+  near('Das Ej. 7.6: Ka Coulomb = 0.3014', d('Ka'), 0.3014, 0.002);
+}
+{ // Adnan Menderes Univ. (S. Sağlam), «Retaining wall problems», P1 — muro en voladizo, sin pasivo:
+  // H = 8 m, B = 5 m, base 1 m, punta 1 m, pantalla 0.5→1.0 m (trasdós inclinado), γ = 18, γc = 24 kN/m³,
+  // φ = 30°, q = 30 kPa (no estabiliza), tan δb = 0.5 → ΣV = 655.5 kN/m, ΣMr = 1855.75, ΣMo = 832, FSv = 2.23, FSd = 1.20
+  const p1 = block('retwall', { H: '8 m', B: '5 m', hz: '1 m', punta: '1 m', t1: '0.5 m', t2: '1.0 m', ie: '0 m', q: '30 kPa', gs: '18 kN/m^3', gc: '24 kN/m^3', phi: '30 deg', Ka: '0.333', mu: '0.5', qa: '0', fsv: '2', fsd: '1.5' });
+  near('Sağlam P1: ΣV = 655.5 kN/m', p1('SV', 'kN/m'), 655.5, 0.001);
+  near('Sağlam P1: ΣMr = 1855.75 kN·m/m', p1('SMr', 'kN*m/m'), 1855.75, 0.001);
+  near('Sağlam P1: ΣMo = 832 kN·m/m', p1('SMo', 'kN*m/m'), 832, 0.002);
+  near('Sağlam P1: FS volteo = 2.23', p1('FSv'), 2.23, 0.003);
+  near('Sağlam P1: FS deslizamiento = 1.20 (< 1.5: NO CUMPLE)', p1('FSd'), 1.205, 0.003);
+  truthy('Sağlam P1: el bloque marca NO CUMPLE el deslizamiento', p1.ctx.checks.some(c => !c.ok && /Deslizamiento/.test(c.label)));
+  // P2 — muro de gravedad, Coulomb: φ = 32°, δ = 21.3°, trasdós a 75° de la horizontal (θ = 15°) → Ka = 0.4023,
+  // Pa = ½·18.5·6.5²·Ka = 157.22 kN/m, Ph = Pa cos 36.3° = 126.65 kN/m
+  const p2 = calc(`Ka = KaCoulomb(32 deg, 21.3 deg, 0 deg, 15 deg)
+Pa = 0.5*18.5 kN/m^3*(6.5 m)^2*Ka
+Ph = Pa*cos(36.3 deg)`);
+  near('Sağlam P2: Ka Coulomb (θ = 15°) = 0.4023', p2('Ka'), 0.4023, 0.002);
+  near('Sağlam P2: Pa = 157.22 kN/m', p2('Pa', 'kN/m'), 157.22, 0.003);
+  near('Sağlam P2: Ph = 126.65 kN/m', p2('Ph', 'kN/m'), 126.65, 0.003);
+}
+{ // NAVFAC DM-7.2 (Terzaghi): la integral de σh de la carga lineal en la altura H debe dar PL (0.55 QL si m ≤ 0.4; 0.64 QL/(m²+1) si m > 0.4)
+  for (const x of [1, 4]) {
+    let P = 0; const N = 2000, H = 5; for (let i = 0; i < N; i++) { const z = (i + 0.5) * H / N; P += calc(`s = sigmaHline(2 tonf/m, ${x} m, ${z} m, ${H} m)`)('s', 'tonf/m^2') * H / N; }
+    near(`Carga lineal m = ${x / 5}: ∫σh dz = PL (NAVFAC)`, P, calc(`P = PLine(2 tonf/m, ${x} m, 5 m)`)('P', 'tonf/m'), 0.03);
+  }
+}
+{ // Kpe: identidad de Arango con ejes rotados −ψ (pasivo): Kpe(φ,δ,β,θ) = Kp(φ,δ,β−ψ,θ−ψ)·cos²(θ−ψ)/(cosψ cos²θ)
+  const psi = Math.atan(0.15), th = r(5), ps = psi * 180 / Math.PI;
+  const k = calc(`A = KpeMO(32 deg, 10 deg, 0.15, 0, 5 deg, 5 deg)
+B = KpCoulomb(32 deg, 10 deg, ${5 - ps} deg, ${5 - ps} deg)`);
+  near('Kpe = Kp de Coulomb con ejes rotados −ψ (Arango)', k('A'), k('B') * Math.cos(th - psi) ** 2 / (Math.cos(psi) * Math.cos(th) ** 2), 1e-6);
+}
+{ // M-O sin equilibrio (φ − β − ψ < 0): valor acotado (EN 1998-5 E.4) y el bloque marca NO CUMPLE, sin errores
+  const k = calc(`K = KaeMO(20 deg, 10 deg, 0.45)
+m = MOequil(20 deg, 0.45)`);
+  truthy('KaeMO con φ − ψ < 0 devuelve un valor finito', Number.isFinite(k('K')) && k('K') > 0.5, `K = ${k('K').toFixed(3)}`);
+  truthy('MOequil < 0 cuando no hay equilibrio', k('m', 'deg') < 0);
+  const w = block('retwall', { H: '5 m', B: '3.5 m', hz: '0.5 m', punta: '0.8 m', t1: '0.25 m', t2: '0.45 m', phi: '20 deg', gs: '1.8 tonf/m^3', q: '0', kh: '0.45', qa: '2 kgf/cm^2' });
+  truthy('retwall con sismo excesivo: NO CUMPLE sin errores ni NaN', w.ctx.errors.length === 0 && w.ctx.checks.some(c => !c.ok) && w.ctx.checks.every(c => c.ratio === null || Number.isFinite(c.ratio)));
+}
+{ // Coulomb con sobrecarga: Eq = Ka·q·H·cosθ·cosβ/cos(θ − β) — cuña de prueba con q por unidad de área horizontal
+  const p = 32, d = 21.33, b = 10, t = 15; const [P, D, Bt, Tt] = [p, d, b, t].map(r);
+  let best = 0; const H = 1, xt = -H * Math.tan(Tt), L = Math.hypot(xt, H), ang = Math.atan2(-xt / L, H / L) + D;
+  for (let a = 0.02; a < Math.PI / 2; a += 0.0002) {
+    const den = Math.tan(a) - Math.tan(Bt); if (den <= 0) continue; const x = (H - xt * Math.tan(Bt)) / den; if (x <= xt) continue;
+    const Wq = x - xt, ra = Math.atan2(Math.cos(a), -Math.sin(a)) - P; // sobrecarga q = 1 sobre el ancho horizontal de la cuña
+    const Px = Math.cos(ang), Py = Math.sin(ang), Rx = Math.cos(ra), Ry = Math.sin(ra), det = Px * Ry - Rx * Py;
+    const Pq = (-Rx * Wq) / det; if (Pq > best) best = Pq;
+  }
+  const Ka = calc(`K = KaCoulomb(${p} deg, ${d} deg, ${b} deg, ${t} deg)`)('K');
+  near('Coulomb: empuje de la sobrecarga = Ka·q·H·cosθcosβ/cos(θ−β) (cuña)', Ka * Math.cos(Tt) * Math.cos(Bt) / Math.cos(Tt - Bt), best, 0.003);
+}
+{ // Nivel freático en retwall — cálculo manual independiente (Rankine, β = 0)
+  // H = 6, B = 4, hz = 0.6, punta = 1, t = 0.4, γ = 1.8, γsat = 2.0, γw = 1, hw = 2 m, φ = 30°, μ = 0.5
+  const w = block('retwall', { H: '6 m', B: '4 m', hz: '0.6 m', punta: '1 m', t1: '0.4 m', t2: '0.4 m', ie: '0 m', q: '0', gs: '1.8 tonf/m^3', gsat: '2 tonf/m^3', gc: '2.4 tonf/m^3', phi: '30 deg', mu: '0.5', hw: '2 m', qa: '0', fsv: '1.5', fsd: '1.2' });
+  const Ka = 1 / 3, P1 = 0.5 * Ka * 1.8 * 16, y1 = 2 + 4 / 3, a = Ka * 7.2, c = Ka * 9.2, P2 = (a + c), y2 = 2 * (c + 2 * a) / (3 * (a + c));
+  const Pa = P1 + P2, Pw = 2, U = 4, W = 0.4 * 5.4 * 2.4 + 4 * 0.6 * 2.4 + 2.6 * 1.4 * 2.0 + 2.6 * 4 * 1.8;
+  const Mr = 0.4 * 5.4 * 2.4 * 1.2 + 4 * 0.6 * 2.4 * 2 + (2.6 * 1.4 * 2.0 + 2.6 * 4 * 1.8) * 2.7, Mo = P1 * y1 + P2 * y2 + Pw * 2 / 3 + U * 8 / 3;
+  near('N.F.: empuje efectivo Ka[½γd² + γd·hw + ½γ\'hw²] = 10.27 t/m', w('Pa', 'tonf/m'), Pa, 1e-6);
+  near('N.F.: empuje hidrostático ½γw·hw² = 2.00 t/m', w('Pw', 'tonf/m'), Pw, 1e-9);
+  near('N.F.: subpresión ½γw·hw·B = 4.00 t/m', w('Uw', 'tonf/m'), U, 1e-9);
+  near('N.F.: ΣV = W − U', w('SV', 'tonf/m'), W - U, 1e-6);
+  near('N.F.: FS volteo = ΣMr/(ΣMo + U·2B/3)', w('FSv'), Mr / Mo, 1e-6);
+  near('N.F.: FS deslizamiento = μ(W − U)/(Ea + Ew)', w('FSd'), 0.5 * (W - U) / (Pa + Pw), 1e-6);
+  const w0 = block('retwall', { H: '6 m', B: '4 m', hz: '0.6 m', punta: '1 m', t1: '0.4 m', t2: '0.4 m', ie: '0 m', q: '0', gs: '1.8 tonf/m^3', gc: '2.4 tonf/m^3', phi: '30 deg', mu: '0.5', qa: '0' });
+  truthy('El nivel freático reduce FS de volteo y deslizamiento', w('FSv') < w0('FSv') && w('FSd') < w0('FSd'), `FSd ${w0('FSd').toFixed(2)} → ${w('FSd').toFixed(2)}`);
+  const ws = block('retwall', { H: '6 m', B: '4 m', hz: '0.6 m', punta: '1 m', t1: '0.4 m', t2: '0.4 m', ie: '0 m', q: '0', gs: '1.8 tonf/m^3', gsat: '2 tonf/m^3', gc: '2.4 tonf/m^3', phi: '30 deg', mu: '0.5', hw: '2 m', kh: '0.1', qa: '0' });
+  truthy('N.F. con sismo: sin errores y FS sísmico menor', ws.ctx.errors.length === 0 && ws('FSds') < ws('FSd'));
+}
+{ // Combinación sísmica del refuerzo de la pantalla: por defecto U2 = 1.7 CE + 1.0 CS
+  const pr = { hp: '4 m', t1: '0.25 m', t2: '0.40 m', Ka: '0.3', gs: '1.8 tonf/m^3', q: '0', DKae: '0.15', kh: '0', fc: '210 kgf/cm^2', fy: '4200 kgf/cm^2', barra: '6', s: '15 cm', corte: '0' };
+  const wr = block('wallrebar', pr);
+  near('wallrebar: Mu base = 1.7·Ka·γ·h³/6 + 1.0·ΔKae·γ·h²/2·0.6h', wr('Mub', 'tonf*m/m'), 1.7 * 0.3 * 1.8 * 64 / 6 + 0.15 * 1.8 * 16 / 2 * 2.4, 1e-6);
+}
+
 section('Plantillas del módulo');
 for (const t of TEMPLATES.filter(x => x.id.startsWith('wa-'))) {
   const rr = runTemplate(t.id).res;
@@ -138,11 +223,20 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('wa-'))) {
   const v = runTemplate('wa-voladizo');
   near('Voladizo: kh = 0.5·Z·S = 0.5·0.45·1.05', v('kh'), 0.23625);
   truthy('Voladizo: FS volteo estático ≥ 2 y sísmico ≥ 1.5', v('FSv') >= 2 && v('FSvs') >= 1.5);
-  const bad = runTemplate('wa-voladizo', d => { d.blocks[1].src = d.blocks[1].src.replace('B = 4.00 m', 'B = 2.20 m'); });
+  const bad = runTemplate('wa-voladizo', d => { d.blocks[1].src = d.blocks[1].src.replace('B = 4.50 m', 'B = 2.20 m'); });
   truthy('Voladizo con base insuficiente (B = 2.2 m) no cumple', bad.res.ctx.checks.some(c => !c.ok));
   const gr = runTemplate('wa-gravedad');
   truthy('Gravedad: sin tracción excesiva en la base del cuerpo', gr('ft1', 'kgf/cm^2') <= gr('ftadm', 'kgf/cm^2'));
   const ts = runTemplate('wa-tablestaca');
   near('Tablestaca: D = 1.2·D0 redondeado', ts('D', 'm'), Math.ceil(1.2 * ts('D0', 'm') / 0.25 - 1e-9) * 0.25, 1e-6);
+}
+
+section('Plantillas con datos extremos: NO CUMPLE sin errores ni NaN');
+for (const [id, a, b] of [['wa-voladizo', 'B = 4.50 m', 'B = 2.00 m'], ['wa-voladizo', 'phis = 32 deg', 'phis = 15 deg'], ['wa-gravedad', 'phis = 32 deg', 'phis = 12 deg'],
+  ['wa-contrafuertes', 'B = 6.50 m', 'B = 3.00 m'], ['wa-sotano', 'tw = 0.30 m', 'tw = 0.12 m'], ['wa-sotano', 'hs = 3.20 m', 'hs = 6.00 m'], ['wa-gaviones', 'b1 = 3.00 m', 'b1 = 1.50 m'],
+  ['wa-mse', 'L = 4.50 m', 'L = 2.00 m'], ['wa-tablestaca', 'Sx = 1300', 'Sx = 300'], ['wa-tablestaca-anclada', 'phis = 32 deg', 'phis = 20 deg'], ['wa-coeficientes', 'kh = 0.20', 'kh = 0.70']]) {
+  const rr = runTemplate(id, d => d.blocks.forEach(bl => { if (bl.src) bl.src = bl.src.replace(a, b); })).res;
+  const okNum = rr.ctx.checks.every(c => c.ratio === null || c.ratio === undefined || Number.isFinite(c.ratio));
+  truthy(`${id} con ${b}: NO CUMPLE, sin errores ni D/C no numérico`, rr.ctx.errors.length === 0 && okNum && rr.ctx.checks.some(c => !c.ok), rr.ctx.errors.map(e => e.msg).join('; '));
 }
 done();

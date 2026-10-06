@@ -10,7 +10,7 @@ const VERSION = '1.0.0';
 const $ = (s, r = document) => r.querySelector(s);
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const uid = () => Math.random().toString(36).slice(2, 10);
-const debounce = (fn, ms) => { let t, last; const d = (...a) => { last = a; clearTimeout(t); t = setTimeout(() => { t = null; fn(...a); }, ms); }; d.flush = () => { if (t) { clearTimeout(t); t = null; fn(...(last || [])); } }; return d; };
+const debounce = (fn, ms) => { let t, last; const d = (...a) => { last = a; clearTimeout(t); t = setTimeout(() => { t = null; fn(...a); }, typeof ms === 'function' ? ms() : ms); }; d.flush = () => { if (t) { clearTimeout(t); t = null; fn(...(last || [])); } }; return d; };
 
 // ---------------- Iconos ----------------
 const I = {
@@ -69,6 +69,7 @@ const I = {
   star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>',
   clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   layers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
+  left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>',
   word: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6M8 13l1.5 5 2.5-4 2.5 4 1.5-5"/></svg>',
 };
 
@@ -251,6 +252,7 @@ function saveState(s) {
 function compute() {
   const t0 = performance.now();
   lastRes = runDoc(doc);
+  const t1 = performance.now();
   const m = doc.meta;
   const head = `<div class="runhead">${m.logo ? `<img src="${m.logo}" alt="">` : ''}<span><b>${esc(m.empresa || m.proyecto || 'Memoria de cálculo')}</b></span><span>${esc(m.titulo || '')}</span><span>${esc(m.fecha || '')} · Rev. ${esc(m.rev || '0')}</span></div>`;
   const paper = $('#paper');
@@ -271,7 +273,9 @@ function compute() {
   updateBlockErrors();
   if (tab === 'vars') renderVars();
   if (ied) iedSync();
-  $('#perf').textContent = Math.round(performance.now() - t0) + ' ms';
+  const t2 = performance.now();
+  lastMs = t2 - t0;
+  const pf = $('#perf'); pf.textContent = Math.round(lastMs) + ' ms'; pf.title = `Tiempo de cálculo: ${Math.round(t1 - t0)} ms · actualización de la vista: ${Math.round(t2 - t1)} ms`;
   if (follow && !isMobile()) {
     const f = follow; follow = null;
     const el = (f.l !== undefined && document.querySelector(`#paper .ln[data-b="${f.b}"][data-l="${f.l}"]`)) || document.querySelector(`#paper .blk[data-b="${f.b}"]`);
@@ -282,7 +286,10 @@ function compute() {
     }
   }
 }
-const recompute = debounce(compute, 140);
+// Debounce adaptativo: en memorias pesadas (cálculo > 150 ms) se espera algo más
+// a que el usuario deje de escribir, para no bloquear la escritura con cada tecla.
+let lastMs = 0;
+const recompute = debounce(compute, () => (lastMs > 160 ? Math.min(450, 160 + lastMs * 0.6) : 140));
 const hist = { stack: [], i: -1, lock: false };
 const snapshot = debounce(() => {
   if (hist.lock) return;
@@ -326,48 +333,114 @@ function updateBlockErrors() {
 
 // ---------------- Panel de datos (entradas automáticas) ----------------
 let inputsKey = '';
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* cuota o modo privado */ } };
+const dcol = new Set(JSON.parse(lsGet('mc_dcol', '[]') || '[]'));
+function datosShell() {
+  const pane = $('#p-datos');
+  if (!pane.querySelector(':scope > .dlay')) pane.innerHTML = '<div class="cstrip" hidden></div><div class="dlay"><div class="dins"></div><aside class="dfig" hidden aria-label="Esquema de la memoria"></aside></div>';
+  return pane;
+}
 function updateInputs() {
   const ins = lastRes.ctx.inputs;
   const key = ins.map(i => i.block + ':' + i.line + ':' + i.name + ':' + (i.options ? i.options.join('|') : '')).join(',');
-  const pane = $('#p-datos');
-  if (key === inputsKey && pane.childElementCount) {
+  const pane = datosShell(), box = pane.querySelector('.dins');
+  renderSketch();
+  if (key === inputsKey && box.childElementCount) {
     // solo refrescar valores no enfocados
-    ins.forEach(i => { const el = pane.querySelector(`[data-k="${i.block}:${i.line}"]`); if (el && el !== document.activeElement) { if (el.tagName === 'SELECT') el.value = norm(i.num + ' ' + i.unit); else el.value = i.num; } });
+    ins.forEach(i => { const el = box.querySelector(`[data-k="${i.block}:${i.line}"]`); if (el && el !== document.activeElement) { if (el.tagName === 'SELECT') el.value = norm(i.num + ' ' + i.unit); else el.value = i.num; } });
     renderCheckStrip();
     return;
   }
   inputsKey = key;
-  if (!ins.length) { setTimeout(renderCheckStrip); pane.innerHTML = '<div class="empty">No hay datos de entrada.<br>Escriba en un bloque de cálculo líneas como <code>b = 30 cm // Ancho</code> y aparecerán aquí para editarlas rápidamente.</div>'; return; }
+  if (!ins.length) { renderCheckStrip(); box.innerHTML = `<div class="empty big">${I.data}<b>Sin datos de entrada</b><span>Escriba en un bloque de cálculo líneas como <code>b = 30 cm // Ancho</code> y aparecerán aquí como un formulario para editarlas rápidamente.</span><div class="erow2"><button class="btn" data-do="go-editor">${I.edit}Ir al editor</button><button class="btn" data-do="tpl">${I.grid}Plantillas</button></div></div>`; return; }
   const groups = [];
   for (const i of ins) {
     let g = groups.find(x => x.block === i.block);
-    if (!g) { const t = lastRes.ctx.toc.find(x => x.id.startsWith('h' + i.block + '_')); const b = doc.blocks.find(x => x.id === i.block); g = { block: i.block, title: t ? t.text : (TYPES[b?.type]?.name || 'Datos'), items: [] }; groups.push(g); }
+    if (!g) { const t = lastRes.ctx.toc.find(x => x.id.startsWith('h' + i.block + '_')); const b = doc.blocks.find(x => x.id === i.block); g = { block: i.block, title: t ? t.text.replace(/\$[^$]*\$/g, '').replace(/[*_`]/g, '') : (TYPES[b?.type]?.name || 'Datos'), items: [] }; groups.push(g); }
     g.items.push(i);
   }
-  pane.innerHTML = groups.map(g => `<div class="ig"><div class="igh"><span>${esc(g.title)}</span><span>${g.items.length}</span></div>${g.items.map(i => {
-    const lab = i.label ? esc(i.label.replace(/\$[^$]*\$/g, '').replace(/[*_`]/g, '')) : esc(i.name);
+  box.innerHTML = groups.map(g => { const c = dcol.has(g.title); return `<section class="ig${c ? ' col' : ''}" data-g="${esc(g.title)}"><button class="igh" aria-expanded="${!c}"><span>${I.chev}${esc(g.title)}</span><span>${g.items.length}</span></button><div class="igb">${g.items.map(i => {
+    const lab = i.label ? esc(i.label.replace(/\$[^$]*\$/g, '').replace(/[*_`]/g, '').replace(/\s*\[[^\]]*\|[^\]]*\]\s*/, ' ').trim()) : esc(i.name);
+    const al = (lab || esc(i.name)) + ' (' + esc(i.name) + ')';
     if (i.options) {
       const cur = norm(i.num + ' ' + i.unit);
-      return `<label class="inp" data-name="${esc(i.name)}"><span class="il">${lab}</span><span class="is">${K(i.tex)}</span><select data-k="${i.block}:${i.line}">${i.options.map((o, oi) => `<option value="${esc(norm(o))}"${norm(o) === cur ? ' selected' : ''}>${esc(prettyU(o))}${i.optLabels && i.optLabels[oi] ? ' — ' + esc(i.optLabels[oi]) : ''}</option>`).join('')}${i.options.map(norm).includes(cur) ? '' : `<option value="${esc(cur)}" selected>${esc(cur)}</option>`}</select></label>`;
+      return `<label class="inp" data-name="${esc(i.name)}"><span class="il">${lab}</span><span class="is" aria-hidden="true">${Kc(i.tex)}</span><select data-k="${i.block}:${i.line}" aria-label="${al}">${i.options.map((o, oi) => `<option value="${esc(norm(o))}"${norm(o) === cur ? ' selected' : ''}>${esc(prettyU(o))}${i.optLabels && i.optLabels[oi] ? ' — ' + esc(i.optLabels[oi]) : ''}</option>`).join('')}${i.options.map(norm).includes(cur) ? '' : `<option value="${esc(cur)}" selected>${esc(cur)}</option>`}</select></label>`;
     }
-    return `<label class="inp" data-name="${esc(i.name)}"><span class="il">${lab}</span><span class="is">${K(i.tex)}</span><input data-k="${i.block}:${i.line}" value="${esc(i.num)}" inputmode="decimal" autocomplete="off"><span class="iu" title="${esc(i.unit)}">${esc(prettyU(i.unit))}</span></label>`;
-  }).join('')}</div>`).join('');
+    return `<label class="inp" data-name="${esc(i.name)}"><span class="il">${lab}</span><span class="is" aria-hidden="true">${Kc(i.tex)}</span><input data-k="${i.block}:${i.line}" value="${esc(i.num)}" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="${al}"><span class="iu" title="${esc(i.unit)}">${esc(prettyU(i.unit))}</span></label>`;
+  }).join('')}</div></section>`; }).join('');
   renderCheckStrip();
 }
 const prettyVal = (t) => { const m = /^(-?[\d.,]+(?:e[-+]?\d+)?)\s+([A-Za-z].*)$/i.exec(String(t)); return m ? m[1] + ' ' + prettyU(m[2].replace(/\s*\/\s*/g, '/').replace(/\s+/g, '·')) : String(t); };
 const prettyU = (u) => String(u || '').replace(/\^2/g, '²').replace(/\^3/g, '³').replace(/\^4/g, '⁴').replace(/\*/g, '·');
+// Estado de una verificación según su D/C (verde < 0.9 · ámbar 0.9–1.0 · rojo si no cumple)
+const dcRatio = (c) => (c.ratio != null && isFinite(c.ratio) ? c.ratio : null);
+const dcCls = (c) => { const r = dcRatio(c); return !c.ok ? 'bad' : r !== null && r >= 0.9 ? 'warn' : 'ok'; };
+function governing(ch) {
+  if (!ch.length) return null;
+  const bad = ch.filter(c => !c.ok);
+  const pool = bad.length ? bad : ch;
+  return pool.reduce((a, c) => ((dcRatio(c) ?? -1) > (dcRatio(a) ?? -1) ? c : a), pool[0]);
+}
+let csOpen = lsGet('mc_csopen', '0') === '1';
 function renderCheckStrip() {
-  const pane = $('#p-datos');
-  let strip = pane.querySelector('.cstrip');
+  const pane = datosShell();
+  const strip = pane.querySelector('.cstrip');
   const ch = lastRes.ctx.checks;
-  if (!ch.length && !lastRes.ctx.errors.length) { strip?.remove(); return; }
-  if (!strip) { strip = h('<div class="cstrip"></div>'); pane.prepend(strip); }
-  const bad = ch.filter(c => !c.ok).length;
   const errs = lastRes.ctx.errors;
-  const sorted = [...ch].sort((a, b) => (a.ok - b.ok));
+  if (!ch.length && !errs.length) { strip.hidden = true; strip.innerHTML = ''; return; }
+  strip.hidden = false;
+  const bad = ch.filter(c => !c.ok).length;
+  const sorted = [...ch].sort((a, b) => (a.ok - b.ok) || ((dcRatio(b) ?? -1) - (dcRatio(a) ?? -1)));
   const suspects = () => { const out = lastRes.ctx.inputs.filter(i => { const r = RANGES[i.name]; const x = parseFloat(i.num); return (r && (!r.u || r.u === i.unit.replace(/\s/g, '')) && (x < r.min || x > r.max)) || (x <= 0 && /^(b|h|d|L|B|t|fc|fy)/.test(i.name)); }); return out.length ? '<br><b>Posible causa:</b> ' + out.map(i => esc((i.label || i.name) + ' = ' + i.num + ' ' + prettyU(i.unit))).join(', ') : ''; };
   const where = (er) => { const inp = lastRes.ctx.inputs.find(i => i.block === er.block && i.line === er.line - 1); if (inp) return (inp.label || inp.name) + ': '; const bi = doc.blocks.findIndex(b => b.id === er.block); const b = doc.blocks[bi]; const ln = b && b.src ? (b.src.split('\n')[er.line - 1] || '').trim() : ''; return ln ? '«' + ln.slice(0, 40) + (ln.length > 40 ? '…' : '') + '» → ' : 'Bloque ' + (bi + 1) + ': '; };
-  strip.innerHTML = (errs.length ? `<div class="csh err">⚠ Hay un error de cálculo${errs.length > 1 ? ' (y ' + (errs.length - 1) + ' consecuencia(s))' : ''}: toque para ir al código</div><div class="csl"><div class="cs no erow" data-gob="${errs[0].block}" data-gol="${Math.max(0, errs[0].line - 1)}"><span class="cl" style="white-space:normal">${esc(where(errs[0]))}${esc(errs[0].msg)}${suspects()}</span></div></div>` : '') + `<div class="csh ${bad ? 'bad' : 'ok'}">${bad ? '✘ ' + bad + ' de ' + ch.length + ' verificaciones no cumplen' : '✔ Cumplen las ' + ch.length + ' verificaciones'}</div><div class="csl">${sorted.map(c => { const r = c.ratio != null && isFinite(c.ratio) ? c.ratio : null; const col = !c.ok ? 'var(--bad)' : r !== null && r > 0.85 ? '#bf8700' : 'var(--ok)'; return `<div class="cs${c.ok ? '' : ' no'}" title="${esc(c.label)}" data-gob="${c.block}" data-gol="${c.line ?? ''}"><span class="cl">${esc(c.label.replace(/\$[^$]*\$/g, ''))}</span><span class="cb"><i style="width:${r === null ? 100 : Math.min(100, r * 100)}%;background:${col}"></i></span><b style="color:${col}">${r === null ? (c.ok ? '✔' : '✘') : r.toFixed(2)}</b></div>`; }).join('')}</div>`;
+  const lbl = (c) => esc(String(c.label || '').replace(/\$[^$]*\$/g, '').replace(/\s+/g, ' ').trim() || 'Verificación');
+  const bar = (c) => { const r = dcRatio(c); return `<span class="cb" aria-hidden="true"><i class="dc-${dcCls(c)}" style="width:${r === null ? 100 : Math.max(2, Math.min(100, r * 100))}%"></i></span><b class="dc-${dcCls(c)}">${r === null ? (c.ok ? '✔' : '✘') : r.toFixed(2)}</b>`; };
+  const gov = governing(ch);
+  const maxr = Math.max(0, ...ch.map(c => dcRatio(c) ?? 0));
+  const errHtml = errs.length ? `<div class="csh err" role="alert">⚠ Hay un error de cálculo${errs.length > 1 ? ' (y ' + (errs.length - 1) + ' consecuencia(s))' : ''}</div><div class="csl"><button class="cs no erow" data-gob="${errs[0].block}" data-gol="${Math.max(0, errs[0].line - 1)}" title="Ir a la línea con error"><span class="cl" style="white-space:normal">${esc(where(errs[0]))}${esc(errs[0].msg)}${suspects()}</span></button></div>` : '';
+  const sumHtml = ch.length ? `<div class="csum ${bad ? 'bad' : 'ok'}">
+      <div class="csum-h"><span class="csum-ic" aria-hidden="true">${bad ? I.x : I.check}</span><span class="csum-t"><b>${bad ? bad + ' de ' + ch.length + ' verificaciones no cumplen' : 'Cumplen las ' + ch.length + ' verificaciones'}</b><small>Aprovechamiento máximo D/C = ${maxr.toFixed(2)}</small></span>
+      <button class="btn ghost sm csum-x" data-csopen aria-expanded="${csOpen}" aria-controls="cslist">${csOpen ? 'Ocultar' : 'Ver todas'}${I.chev}</button></div>
+      ${gov ? `<button class="cs gov" data-gob="${gov.block}" data-gol="${gov.line ?? ''}" title="${esc(gov.label)} — ir a la verificación en la memoria"><span class="cl"><em>${bad ? 'No cumple' : 'Gobierna'}</em>${lbl(gov)}</span>${bar(gov)}</button>` : ''}
+    </div>
+    <div class="csl" id="cslist"${csOpen ? '' : ' hidden'}>${sorted.map(c => `<button class="cs${c.ok ? '' : ' no'}" title="${esc(c.label)}" data-gob="${c.block}" data-gol="${c.line ?? ''}"><span class="cl">${lbl(c)}</span>${bar(c)}</button>`).join('')}</div>` : '';
+  const html = errHtml + sumHtml;
+  if (strip._h !== html) { strip.innerHTML = html; strip._h = html; }
+}
+// ---------- Esquema de referencia junto a los datos (clon de la primera figura de la memoria) ----------
+const SKETCH_SKIP = new Set(['plot', 'table', 'spectrum', 'summary']);
+let figOpen = lsGet('mc_figopen', window.matchMedia('(max-width:900px)').matches ? '0' : '1') === '1';
+function pickFigure() {
+  for (const f of document.querySelectorAll('#paper .figure')) {
+    const svg = f.querySelector('svg'); if (!svg) continue;
+    const bid = f.closest('.blk')?.dataset.b; const b = doc.blocks.find(x => x.id === bid);
+    if (b && SKETCH_SKIP.has(b.type)) continue;
+    return { f, svg, bid };
+  }
+  return null;
+}
+function renderSketch() {
+  const box = $('#p-datos .dfig'); if (!box) return;
+  const pf = pickFigure();
+  if (!pf) { if (!box.hidden) { box.hidden = true; box.innerHTML = ''; box._src = ''; } return; }
+  const src = pf.svg.outerHTML;
+  if (box._src === src && !box.hidden) return;
+  box._src = src; box.hidden = false;
+  const cap = (pf.f.querySelector('.cap')?.textContent || '').replace(/^Figura \d+:?\s*/, '');
+  box.innerHTML = `<div class="dfh"><button class="dft" data-figtoggle aria-expanded="${figOpen}">${I.chev}<span>Esquema</span><small>${esc(cap)}</small></button><button class="btn ghost ic sm" data-figgo="${pf.bid}" title="Ver la figura en la memoria" aria-label="Ver la figura en la memoria">${I.eye}</button></div><div class="dfb"${figOpen ? '' : ' hidden'}>${src}</div>`;
+  box.classList.toggle('col', !figOpen);
+  hlSketch();
+}
+// Resalta en el esquema las cotas del dato enfocado (p. ej. «B = 2.05 m» al editar B)
+function hlSketch(name) {
+  const box = $('#p-datos .dfig'); if (!box || box.hidden) return;
+  if (name === undefined) name = document.activeElement?.closest?.('#p-datos .inp')?.dataset.name || '';
+  box.querySelectorAll('.hlt').forEach(t => t.classList.remove('hlt'));
+  if (!name) return;
+  const base = name.replace(/_/g, '');
+  const re = new RegExp('^\\s*(' + [name, base].map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\s*(=|$)', 'i');
+  box.querySelectorAll('svg text').forEach(t => { if (re.test(t.textContent)) t.classList.add('hlt'); });
 }
 const RANGES = {
   fc: { u: 'kgf/cm^2', min: 140, max: 700, txt: "f'c usual entre 175 y 420 kgf/cm²" },
@@ -405,14 +478,23 @@ function hlLine(line) {
     .replace(/\b(tonf|tf|kgf|kN|MPa|kPa|Pa|N|kip|ksi|psi|lbf|cm|mm|m|in|ft|deg|rad|s)\b(?![^<]*>)(?=(\^\d)?(\s|\/|\*|\)|,|$|\^))/g, '<span class="h-un">$1</span>');
   return out + (cm ? `<span class="h-cm">${esc(cm)}</span>` : '');
 }
-function paintHL(ta) {
+function paintHL(ta, noSize) {
   const pre = ta.previousElementSibling; if (!pre) return;
   const id = ta.closest('.bk')?.dataset.id;
   const errL = new Set((lastRes?.ctx.errors || []).filter(e => e.block === id).map(e => e.line - 1));
-  pre.innerHTML = ta.value.split('\n').map((l, i) => errL.has(i) ? `<span class="h-err">${hlLine(l) || ' '}</span>` : hlLine(l)).join('\n') + '\n';
-  autosize(ta);
+  // caché: solo se vuelve a resaltar si cambió el texto o las líneas con error
+  const key = ta.value + '\u0000' + [...errL].join(',');
+  if (ta._hk !== key) { ta._hk = key; pre.innerHTML = ta.value.split('\n').map((l, i) => errL.has(i) ? `<span class="h-err">${hlLine(l) || ' '}</span>` : hlLine(l)).join('\n') + '\n'; ta._sz = 0; }
+  if (!noSize && ta.offsetParent && ta._sz !== ta.clientWidth) autosize(ta);
 }
-function autosize(ta) { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; }
+function autosize(ta) { if (!ta.offsetParent) return; ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; ta._sz = ta.clientWidth; }
+// Ajusta la altura de muchas áreas de texto con dos pasadas (lectura / escritura) para evitar reflujos en cadena
+function autosizeAll(list) {
+  const tas = [...list].filter(t => t.offsetParent); if (!tas.length) return;
+  tas.forEach(t => { t.style.height = 'auto'; });
+  const hs = tas.map(t => t.scrollHeight);
+  tas.forEach((t, i) => { t.style.height = (hs[i] + 2) + 'px'; t._sz = t.clientWidth; });
+}
 
 const SNIPS = [
   ['x = 0 cm', 'nombre = 0 cm // descripción'], ['= expr', 'r = a*b'], ['→ unidad', ' -> tonf*m'], ['check', 'check Mu <= phiMn // Verificación'],
@@ -428,14 +510,25 @@ function renderBlocks() {
   doc.blocks.forEach((b, i) => { pane.appendChild(blockEl(b, i)); pane.appendChild(h(`<div class="ins"><button data-ins="${i + 1}">+ insertar aquí</button></div>`)); });
   if (!doc.blocks.length) pane.appendChild(h(`<div class="empty big">${I.blank}<b>La memoria está vacía</b><span>Agregue un bloque de cálculo o de texto, o empiece desde una plantilla.</span><div class="erow2"><button class="btn pri" data-add="calc">${I.calc}Cálculo</button><button class="btn" data-add="text">${I.text}Texto</button><button class="btn" data-do="tpl">${I.grid}Plantillas</button></div></div>`));
   pane.appendChild(h(`<div class="add"><button class="btn" data-add="calc" title="Agregar bloque de cálculo">${I.calc}Cálculo</button><button class="btn" data-add="text" title="Agregar bloque de texto">${I.text}Texto</button><button class="btn pri" data-addpick>${I.plus}Agregar bloque…</button></div>`));
-  pane.querySelectorAll('textarea.code').forEach(paintHL);
-  pane.querySelectorAll('textarea.auto').forEach(autosize);
+  pane.querySelectorAll('textarea.code').forEach(ta => paintHL(ta, true));
+  autosizeAll(pane.querySelectorAll('textarea'));
 }
+// Separa una etiqueta larga en título + aclaración: «Perfil (W12X26, HSS…) o variable» → «Perfil» / «W12X26, HSS…»
+function splitLabel(l) {
+  l = String(l || '');
+  if (l.length <= 30) return [l, ''];
+  let m = /^([^(—:]{3,40}?)\s*\((.+)\)\s*(.*)$/.exec(l);
+  if (m) return [m[1].trim() + (m[3] && !/^o\b/.test(m[3]) ? ' ' + m[3] : ''), m[2] + (m[3] && /^o\b/.test(m[3]) ? ' · ' + m[3] : '')];
+  m = /^(.{3,40}?)\s*(?:—|:)\s*(.+)$/.exec(l);
+  if (m) return [m[1], m[2]];
+  return [l, ''];
+}
+let hintOpen = lsGet('mc_hint', '0') === '1';
 function blockEl(b, i) {
   const T = TYPES[b.type] || { name: b.type, icon: 'calc' };
   const col = collapsed.has(b.id);
-  const el = h(`<div class="bk${b.id === selId ? ' sel' : ''}${col ? ' col' : ''}" data-id="${b.id}">
-    <div class="bkh"><div class="bt" data-act="toggle">${icon(T)}<span>${T.name}</span><em>${esc(blockSummary(b))}</em></div>
+  const el = h(`<div class="bk${b.id === selId ? ' sel' : ''}${col ? ' col' : ''}" data-id="${b.id}" data-type="${esc(b.type)}">
+    <div class="bkh"><div class="bt" data-act="toggle" role="button" tabindex="0" aria-expanded="${!col}" title="${col ? 'Expandir' : 'Contraer'} bloque">${icon(T)}<span>${T.name}</span><em>${esc(blockSummary(b))}</em></div>
     <div class="bb"><button data-act="up" title="Subir">${I.up}</button><button data-act="down" title="Bajar">${I.down}</button><button data-act="dup" title="Duplicar">${I.dup}</button><button data-act="del" title="Eliminar">${I.del}</button></div></div>
     <div class="bkb"></div></div>`);
   const body = el.querySelector('.bkb');
@@ -448,13 +541,19 @@ function blockEl(b, i) {
       <label class="w">Leyenda<input data-f="caption" value="${esc(b.caption || '')}" placeholder="Descripción de la figura"></label>
       <label>Ancho (%)<input data-f="width" type="number" min="10" max="100" value="${b.width || 70}"></label></div><input type="file" accept="image/*" hidden>`;
   } else if (T.fields) {
-    body.innerHTML = `<div class="fg">${T.fields.map(f => {
+    const TXT = ['titulo', 'xlabel', 'ylabel', 'nombres', 'acero', 'sest', 'caption', 'nota'];
+    const fid = (f) => 'f' + b.id + '_' + f.k;
+    const lab = (f) => { const p = splitLabel(f.l); return `<span class="fl">${p[0]}</span>${p[1] ? `<small class="fh">${p[1]}</small>` : ''}`; };
+    const main = [], areas = [], checks = [], tail = [];
+    for (const f of T.fields) {
       const v = b[f.k];
-      if (f.t === 'check') return `<label class="ck w"><input type="checkbox" data-f="${f.k}"${v || (f.k === 'deflexion' && v === undefined) ? ' checked' : ''}> ${f.l}</label>`;
-      if (f.t === 'select') return `<label>${f.l}<select data-f="${f.k}">${f.opt.map(o => `<option value="${o[0]}"${(v || f.opt[0][0]) === o[0] ? ' selected' : ''}>${o[1]}</option>`).join('')}</select></label>`;
-      if (f.t === 'area') return `<label class="w">${f.l}<textarea data-f="${f.k}" class="auto" spellcheck="false" placeholder="${esc(f.ph)}">${esc(v || '')}</textarea></label>`;
-      return `<label${f.k === 'titulo' || f.k === 'expr' || f.k === 'acero' ? ' class="w"' : ''}>${f.l}<input data-f="${f.k}"${['titulo', 'xlabel', 'ylabel', 'nombres', 'acero', 'sest'].includes(f.k) ? ' class="tx"' : ''} value="${esc(v ?? '')}" placeholder="${esc(f.ph)}" spellcheck="false" autocapitalize="off"></label>`;
-    }).join('')}${T.hint ? `<div class="hint">${T.hint}</div>` : ''}</div><div class="errs"></div>`;
+      if (f.t === 'check') checks.push(`<label class="ck"><input type="checkbox" data-f="${f.k}"${v || (f.k === 'deflexion' && v === undefined) ? ' checked' : ''}><span>${f.l}</span></label>`);
+      else if (f.t === 'select') main.push(`<label class="fld">${lab(f)}<select data-f="${f.k}">${(f.opt || []).map(o => `<option value="${esc(o[0])}"${(v || f.opt[0][0]) === o[0] ? ' selected' : ''}>${o[1]}</option>`).join('')}</select></label>`);
+      else if (f.t === 'area') areas.push(`<label class="fld w">${lab(f)}<textarea data-f="${f.k}" class="auto" spellcheck="false" autocapitalize="off" wrap="off" placeholder="${esc(f.ph)}">${esc(v || '')}</textarea></label>`);
+      else { const txt = TXT.includes(f.k); const el = `<label class="fld${txt || f.k === 'expr' ? ' w' : ''}">${lab(f)}<input data-f="${f.k}"${txt ? ' class="tx"' : ''} value="${esc(v ?? '')}" placeholder="${esc(f.ph)}" spellcheck="false" autocapitalize="off" autocomplete="off"></label>`; (f.k === 'titulo' ? tail : main).push(el); }
+    }
+    void fid;
+    body.innerHTML = `<div class="fg">${main.join('')}${areas.join('')}${checks.length ? `<div class="fck">${checks.join('')}</div>` : ''}${tail.join('')}${T.hint ? `<details class="hint"${hintOpen ? ' open' : ''}><summary>${I.help}Ayuda: formato y resultados exportados</summary><div class="hb">${T.hint}</div></details>` : ''}</div><div class="errs"></div>`;
   } else {
     body.innerHTML = `<div class="hint" style="font-size:12px;color:var(--mut);padding:4px">${b.type === 'summary' ? 'Tabla automática con todas las verificaciones del documento, su relación demanda/capacidad y estado.' : 'Fuerza el inicio de una nueva página al imprimir.'}</div>`;
   }
@@ -519,10 +618,22 @@ function toast(msg, action, fn) {
   document.body.appendChild(t); setTimeout(() => t.remove(), action ? 6000 : (isMobile() ? 1700 : 2600));
 }
 function modal(title, content, wide = true) {
-  const ov = h(`<div class="ov"><div class="md-box${typeof wide === 'string' ? ' md-' + wide : ''}" style="${wide ? '' : 'width:min(560px,100%)'}"><div class="md-h"><h3>${title}</h3><button class="btn ghost ic" data-x>${I.x}</button></div><div class="md-c"></div></div></div>`);
+  const mid = 'md' + uid();
+  const ov = h(`<div class="ov"><div class="md-box${typeof wide === 'string' ? ' md-' + wide : ''}" role="dialog" aria-modal="true" aria-labelledby="${mid}" style="${wide ? '' : 'width:min(560px,100%)'}"><div class="md-h"><h3 id="${mid}">${title}</h3><button class="btn ghost ic" data-x title="Cerrar (Esc)" aria-label="Cerrar">${I.x}</button></div><div class="md-c"></div></div></div>`);
   const c = ov.querySelector('.md-c'); if (typeof content === 'string') c.innerHTML = content; else c.appendChild(content);
-  const close = () => { ov.remove(); document.removeEventListener('keydown', esc_); };
-  const esc_ = (e) => { if (e.key === 'Escape') close(); };
+  const prevFocus = document.activeElement;
+  const close = () => { ov.remove(); document.removeEventListener('keydown', esc_); if (prevFocus && document.body.contains(prevFocus) && !document.querySelector('.ov')) prevFocus.focus?.({ preventScroll: true }); };
+  const esc_ = (e) => {
+    if (e.key === 'Escape' && !document.querySelector('.tour')) close();
+    // mantener el foco dentro del diálogo
+    if (e.key === 'Tab' && document.body.contains(ov)) {
+      const f = [...ov.querySelectorAll('button,input,select,textarea,a[href],[tabindex="0"]')].filter(x => x.offsetParent && !x.disabled);
+      if (!f.length) return; const first = f[0], last = f[f.length - 1];
+      if (!ov.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
   ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-x]')) close(); });
   document.addEventListener('keydown', esc_);
   document.body.appendChild(ov); return { ov, c, close };
@@ -533,12 +644,156 @@ function loadTemplate(t) {
   try { const r = JSON.parse(localStorage.getItem('mc_rtpl') || '[]').filter(x => x !== t.id); r.unshift(t.id); localStorage.setItem('mc_rtpl', JSON.stringify(r.slice(0, 6))); } catch (e) { /* */ }
   toast('Plantilla «' + esc(t.name) + '» cargada');
 }
+// Insignias de norma y versión para las tarjetas de plantilla (a partir del campo `normas`)
+const NORM_RE = /\b(?:NTE\s+)?(E\.0\d\d)(?:[-‑](\d{4}))?(?:\s+[A-ZÁÉÍÓÚa-záéíóúñ ]{2,40}?\((\d{4})\))?|\b(NCh\s?\d+)(?:(?:\.Of|:)(\d{4}))?|\bD\.?\s?S\.?\s?N?°?\s?(\d{2,3})\b(?:\s*\(V\. y U\.\))?(?:\s*(\d{4}))?|\b(ACI\s?\d{3}(?:\.\d)?)(?:-(\d{2}))?|\b(ASCE(?:\/SEI)?\s?7)-(\d{2})|\b(?:ANSI\/)?(AISC\s?360)-(\d{2}(?:\/\d{2})?)|\b(AISC Design Guide\s?\d+)|\b(AISI\s?S\d{3})-(\d{2})|\b(AASHTO LRFD)(?:[^·;,]*?(\d+\.ª ed\.))?|\b(EN\s?199\d(?:-\d-\d)?)|\b(Building Standard Law)|\b(AIJ)\b|\b(JRA)\b|\b(Manual de Puentes MTC)(?:\s*\(?(\d{4}))?/g;
+function normTags(s) {
+  s = String(s || ''); const out = []; const seen = new Set(); let m;
+  NORM_RE.lastIndex = 0;
+  while ((m = NORM_RE.exec(s))) {
+    let tag = '';
+    if (m[1]) { let y = m[2] || m[3] || ''; if (!y && m[1] === 'E.030' && /183-2026|E\.030-2026/.test(s)) y = '2026'; tag = m[1] + (y ? '-' + y : ''); }
+    else if (m[4]) tag = m[4].replace(/\s/, '') + (m[5] ? ':' + m[5] : '');
+    else if (m[6]) tag = 'DS ' + m[6] + (m[7] ? '/' + m[7] : '');
+    else if (m[8]) tag = m[8].replace(/\s+/, ' ') + (m[9] ? '-' + m[9] : '');
+    else if (m[10]) tag = 'ASCE 7-' + m[11];
+    else if (m[12]) tag = 'AISC 360-' + m[13];
+    else if (m[14]) tag = m[14].replace('Design Guide', 'DG');
+    else if (m[15]) tag = m[15].replace(/\s/, ' ') + '-' + m[16];
+    else if (m[17]) tag = 'AASHTO LRFD' + (m[18] ? ' ' + m[18].replace(' ed.', '') : '');
+    else if (m[19]) tag = m[19].replace(/\s+/, ' ');
+    else if (m[20]) tag = 'BSL';
+    else if (m[21]) tag = 'AIJ';
+    else if (m[22]) tag = 'JRA';
+    else if (m[23]) tag = 'MTC' + (m[24] ? ' ' + m[24] : '');
+    const base = tag.replace(/[-:/ ].*$/, '');
+    if (tag && !seen.has(tag) && !seen.has(base)) { seen.add(tag); seen.add(base); out.push(tag); }
+  }
+  return out;
+}
+const tagsHtml = (t, max = 3) => { const tg = normTags(t.normas); if (!tg.length) return ''; return `<span class="ntags">${tg.slice(0, max).map(x => `<span class="ntag">${esc(x)}</span>`).join('')}${tg.length > max ? `<span class="ntag more">+${tg.length - max}</span>` : ''}</span>`; };
+const tplCard = (t, ts) => `<button class="tc" data-t="${t.id}" title="${esc(t.normas || '')}"><div class="ti">${I[t.icon] || I.calc}</div><div class="tb2"><b>${hl(t.name, ts)}</b>${tagsHtml(t) || (t.normas && t.normas !== '—' ? `<span class="tn">${hl(t.normas, ts)}</span>` : '')}<span class="td">${hl(t.desc || '', ts)}</span></div><span class="flag f-${paisOf(t)}" title="${PAISES[paisOf(t)]}">${paisOf(t)}</span></button>`;
+
+// ---------------- Pantalla de inicio ----------------
+const FEATURED = {
+  PE: ['viga', 'zapata', 'sismo', 'pe-e030-dinamico', 'wa-voladizo', 'ma-edificio', 'columna', 'br-vigalosa'],
+  CL: ['cl-nch433-estatico', 'cl-nch433-modal', 'cl-muro-ds60', 'cl-nch2369', 'cl-viento-galpon', 'cl-nch3171'],
+  JP: ['jp-bsl-ruta12', 'japon', 'jp-aij-viga', 'jp-aij-columna', 'jp-bsl-viento-nieve', 'jp-madera-kaberyo'],
+  US: ['aci', 'asce7', 'acero', 'st-columna', 'puente', 'br-presforzada'],
+  EU: ['ec2', 'espectros'],
+  INT: ['guia', 'espectros', 'an-armadura', 'an-matricial', 'an-voladizo', 'an-influencia'],
+};
+function featured(p) {
+  const ids = (FEATURED[p] || []).filter(id => TEMPLATES.some(t => t.id === id));
+  const out = ids.map(id => TEMPLATES.find(t => t.id === id));
+  for (const t of TEMPLATES) { if (out.length >= 6) break; if (paisOf(t) === p && !out.includes(t)) out.push(t); }
+  return out.slice(0, p === 'PE' ? 8 : 6);
+}
+async function showHome(first) {
+  document.querySelectorAll('.ov').forEach(o => o.remove());
+  const paises = Object.keys(PAISES).filter(p => TEMPLATES.some(t => paisOf(t) === p));
+  let cur = lsGet('mc_hpais', 'PE'); if (!paises.includes(cur)) cur = paises[0];
+  const nCat = new Set(TEMPLATES.map(t => t.cat)).size;
+  const m = modal(`${I.logo}<span>Inicio</span>`, `<div class="home">
+    <section class="hero">
+      <div class="hero-l">
+        <h2>Memorias de cálculo estructural, listas para firmar</h2>
+        <p>Plantillas completas según la norma de cada país, con fórmulas simbólicas, sustitución numérica, unidades, verificaciones D/C, figuras acotadas, portada e índice.</p>
+        <div class="hero-a"><button class="btn pri lg" data-h="tpl">${I.grid}Explorar ${TEMPLATES.length} plantillas</button><button class="btn lg" data-h="blank">${I.blank}Documento en blanco</button><button class="btn lg" data-h="open">${I.open}Abrir archivo</button></div>
+      </div>
+      <ol class="steps" aria-label="Cómo funciona">
+        <li><span class="sn">1</span><span><b>Elija una plantilla</b><small>${TEMPLATES.length} memorias en ${nCat} temas: concreto, sismo, cimentaciones, acero, puentes…</small></span></li>
+        <li><span class="sn">2</span><span><b>Cambie los datos</b><small>En la pestaña Datos o con un clic sobre la memoria. Todo se recalcula al instante.</small></span></li>
+        <li><span class="sn">3</span><span><b>Revise y exporte</b><small>Vea qué verificación gobierna y exporte a PDF, Word (ecuaciones editables) o HTML.</small></span></li>
+      </ol>
+    </section>
+    <section class="hsec">
+      <div class="hsh"><h4>Plantillas destacadas</h4><div class="pchips" role="tablist" aria-label="País o norma">${paises.map(p => `<button class="pchip${p === cur ? ' on' : ''}" role="tab" aria-selected="${p === cur}" data-hp="${p}"><span class="flag f-${p}">${p}</span>${PAISES[p]}</button>`).join('')}</div></div>
+      <div class="tg hfeat"></div>
+      <div class="hmore"><button class="btn ghost sm" data-h="tpl">Ver todas las plantillas${I.chev}</button></div>
+    </section>
+    <section class="hsec hrec" hidden><div class="hsh"><h4>Continuar donde lo dejó</h4><button class="btn ghost sm" data-h="lib">${I.folder}Mis memorias</button></div><div class="hrl"></div></section>
+    <footer class="hfoot"><label class="ck"><input type="checkbox" data-hshow${lsGet('mc_home', '0') === '1' ? ' checked' : ''}> Mostrar esta pantalla al iniciar</label><span class="hlinks"><button class="lnk" data-h="tour">${I.help}Recorrido guiado (1 min)</button><button class="lnk" data-h="guia">${I.book}Guía rápida de sintaxis</button><button class="lnk" data-h="keys">${I.key}Atajos</button></span></footer>
+  </div>`, 'home');
+  const feat = m.c.querySelector('.hfeat');
+  const draw = () => { feat.innerHTML = featured(cur).map(t => tplCard(t, [])).join(''); };
+  draw();
+  m.c.addEventListener('click', e => {
+    const hp = e.target.closest('[data-hp]');
+    if (hp) { cur = hp.dataset.hp; lsSet('mc_hpais', cur); m.c.querySelectorAll('[data-hp]').forEach(b => { b.classList.toggle('on', b === hp); b.setAttribute('aria-selected', String(b === hp)); }); draw(); return; }
+    const tc = e.target.closest('[data-t]'); if (tc) { m.close(); loadTemplate(TEMPLATES.find(x => x.id === tc.dataset.t)); if (first) maybeTour(); return; }
+    const rc = e.target.closest('[data-rec]'); if (rc) { dbGet(rc.dataset.rec).then(d => { if (d) { doc = migrate(d); inputsKey = ''; m.close(); loadUI(); compute(); } }); return; }
+    const a = e.target.closest('[data-h]')?.dataset.h; if (!a) return;
+    if (a === 'tpl') { m.close(); showTemplates(); }
+    else if (a === 'blank') { m.close(); doc = newDoc(); inputsKey = ''; loadUI(); compute(); autosave(); setTab('bloques'); }
+    else if (a === 'open') { m.close(); openFile(); }
+    else if (a === 'lib') { m.close(); showLibrary(); }
+    else if (a === 'tour') { m.close(); startTour(); }
+    else if (a === 'guia') { const t = TEMPLATES.find(x => x.id === 'guia'); m.close(); if (t) loadTemplate(t); }
+    else if (a === 'keys') { m.close(); showKeys(); }
+  });
+  m.c.querySelector('[data-hshow]').addEventListener('change', e => lsSet('mc_home', e.target.checked ? '1' : '0'));
+  if (!isMobile()) setTimeout(() => m.c.querySelector('[data-h="tpl"]')?.focus(), 30);
+  // memorias recientes guardadas en este dispositivo
+  const all = (await dbAll()).sort((a, b) => b.updated - a.updated).slice(0, 4);
+  if (all.length && document.body.contains(m.ov)) {
+    const sec = m.c.querySelector('.hrec'); sec.hidden = false;
+    sec.querySelector('.hrl').innerHTML = all.map(d => `<button class="hr" data-rec="${d.id}"><span class="hri">${I.blank}</span><span class="hrt"><b>${esc(d.meta?.titulo || 'Sin título')}</b><small>${esc(d.meta?.proyecto || '')}${d.meta?.proyecto ? ' · ' : ''}${new Date(d.updated).toLocaleString('es-PE', { dateStyle: 'medium', timeStyle: 'short' })}</small></span>${d.id === doc.id ? '<span class="vb">abierta</span>' : ''}</button>`).join('');
+  }
+}
+
+// ---------------- Recorrido guiado ----------------
+function tourSteps() {
+  const mob = isMobile();
+  return [
+    { sel: '#p-datos .dins', pre: () => { setView('edit'); setTab('datos'); }, t: 'Datos de entrada', d: 'Todos los datos de la memoria aparecen aquí como un formulario. Cambie un valor (o use ↑ ↓) y la memoria completa se recalcula al instante.' },
+    { sel: '#p-datos .cstrip', pre: () => { setView('edit'); setTab('datos'); }, t: 'Verificaciones y D/C', d: 'Resumen de todas las verificaciones: la que <b>gobierna</b> (mayor demanda/capacidad) queda siempre a la vista. Clic para ir a ella en la memoria.' },
+    { sel: '#p-datos .dfig', pre: () => { setView('edit'); setTab('datos'); }, t: 'Esquema de referencia', d: 'Si la memoria tiene figuras, la primera se muestra junto a los datos. Al enfocar un dato se resalta su cota.' },
+    { sel: mob ? '.bnav [data-v="prev"]' : '#right', t: 'La memoria', d: 'Es lo que se imprime. Haga <b>clic en un dato</b> (resaltado en azul) para editarlo en el lugar, o en una fórmula para ver su código.' },
+    { sel: mob ? '.bnav [data-v="bloques"]' : '.tab[data-tab="bloques"]', t: 'Editor', d: 'Cada bloque es texto: <code>b = 30 cm // Ancho</code> crea un dato, <code>check Mu &lt;= phiMn</code> una verificación. También hay bloques gráficos (vigas, secciones, pórticos…).' },
+    { sel: mob ? '[data-do="menu"]' : '.cmdbtn', t: 'Buscar o ejecutar', d: 'Con <kbd>Ctrl</kbd> <kbd>K</kbd> encuentra cualquier plantilla, función normativa, sección o variable.' },
+    { sel: '.split-btn', t: 'Exportar', d: 'PDF listo para imprimir, Word con ecuaciones editables o HTML. Todo se guarda automáticamente en este dispositivo.' },
+  ];
+}
+function maybeTour() { if (lsGet('mc_tour', '') !== 'done') setTimeout(startTour, 700); }
+function startTour(i = 0) {
+  document.querySelector('.tour')?.remove();
+  const steps = tourSteps().filter(s => s.sel !== '#p-datos .dfig' || !document.querySelector('#p-datos .dfig')?.hidden);
+  const ov = h('<div class="tour" role="dialog" aria-modal="true" aria-live="polite" aria-label="Recorrido guiado"><div class="tour-hole"></div><div class="tour-pop" tabindex="-1"></div></div>');
+  document.body.appendChild(ov);
+  const hole = ov.querySelector('.tour-hole'), pop = ov.querySelector('.tour-pop');
+  const end = () => { lsSet('mc_tour', 'done'); ov.remove(); document.removeEventListener('keydown', key, true); window.removeEventListener('resize', place); };
+  const place = () => {
+    const st = steps[i]; const el = document.querySelector(st.sel);
+    const r = el && el.offsetParent !== null ? el.getBoundingClientRect() : null;
+    if (r && r.width) { const pad = 6; const top = Math.max(4, r.top - pad), bottom = Math.min(window.innerHeight - 4, r.bottom + pad); Object.assign(hole.style, { left: (r.left - pad) + 'px', top: top + 'px', width: (r.width + pad * 2) + 'px', height: Math.max(20, bottom - top) + 'px', opacity: 1 }); }
+    else Object.assign(hole.style, { left: '50%', top: '40%', width: '0px', height: '0px' });
+    const W = Math.min(340, window.innerWidth - 24); pop.style.width = W + 'px';
+    const ph = pop.offsetHeight;
+    let left, top;
+    if (!r) { left = (window.innerWidth - W) / 2; top = window.innerHeight * 0.35; }
+    else if (r.right + 16 + W < window.innerWidth && r.width < window.innerWidth * 0.55) { left = r.right + 16; top = Math.min(Math.max(12, r.top), window.innerHeight - ph - 12); }
+    else if (r.left - 16 - W > 0 && r.width < window.innerWidth * 0.55) { left = r.left - 16 - W; top = Math.min(Math.max(12, r.top), window.innerHeight - ph - 12); }
+    else { left = Math.min(Math.max(12, r.left + r.width / 2 - W / 2), window.innerWidth - W - 12); top = r.bottom + 14 + ph < window.innerHeight ? r.bottom + 14 : Math.max(12, r.top - ph - 14); if (top < 12 || top + ph > window.innerHeight - 12) top = (window.innerHeight - ph) / 2; }
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  };
+  const show = () => {
+    const st = steps[i]; st.pre?.();
+    pop.innerHTML = `<div class="tp-h"><span class="tp-n">${i + 1} / ${steps.length}</span><button class="btn ghost ic sm" data-tx title="Cerrar recorrido" aria-label="Cerrar recorrido">${I.x}</button></div><b>${st.t}</b><p>${st.d}</p><div class="tp-f"><span class="tp-dots">${steps.map((_, k) => `<i${k === i ? ' class="on"' : ''}></i>`).join('')}</span><span>${i ? '<button class="btn sm" data-tp="-1">Atrás</button>' : '<button class="btn ghost sm" data-tx>Omitir</button>'}<button class="btn pri sm" data-tp="1">${i === steps.length - 1 ? 'Terminar' : 'Siguiente'}</button></span></div>`;
+    requestAnimationFrame(() => { place(); pop.querySelector('[data-tp="1"]').focus(); });
+  };
+  const go = (d) => { i += d; if (i >= steps.length) return end(); i = Math.max(0, i); show(); };
+  const key = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); end(); } else if (e.key === 'ArrowRight') { e.preventDefault(); go(1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); } };
+  ov.addEventListener('click', e => { if (e.target.closest('[data-tx]')) end(); const b = e.target.closest('[data-tp]'); if (b) go(+b.dataset.tp); });
+  document.addEventListener('keydown', key, true); window.addEventListener('resize', place);
+  show();
+}
+
 function showTemplates(first) {
   const cats = [...CATEGORIES.filter(c => TEMPLATES.some(t => t.cat === c)), ...new Set(TEMPLATES.map(t => t.cat).filter(c => !CATEGORIES.includes(c)))];
   let recent = []; try { recent = JSON.parse(localStorage.getItem('mc_rtpl') || '[]').filter(id => TEMPLATES.some(t => t.id === id)); } catch (e) { /* */ }
   const st = { cat: '', pais: '', q: '' };
   const paises = Object.keys(PAISES).filter(p => TEMPLATES.some(t => paisOf(t) === p));
-  const m = modal(first ? 'Bienvenido a MemoriaCalc' : 'Nueva memoria desde plantilla',
+  const m = modal(`${I.grid}Nueva memoria desde plantilla`,
     `<div class="gal">
       <div class="gal-top">
         <div class="sbox">${I.search}<input id="tplq" placeholder="Buscar entre ${TEMPLATES.length} plantillas: zapata, sismo, NCh433, puente…" autocomplete="off" spellcheck="false"><kbd>Esc</kbd></div>
@@ -551,7 +806,7 @@ function showTemplates(first) {
       ${first ? '<div class="gal-foot">Cada plantilla es una memoria completa y editable: cambie los datos en la pestaña <b>Datos</b> o haga clic en un dato de la vista previa, y todo se recalcula al instante.</div>' : ''}
     </div>`, 'gallery');
   const q = m.c.querySelector('#tplq'), side = m.c.querySelector('.gal-side'), main = m.c.querySelector('.gal-main');
-  const card = (t, ts) => `<button class="tc" data-t="${t.id}"><div class="ti">${I[t.icon] || I.calc}</div><div class="tb2"><b>${hl(t.name, ts)}</b><span class="tn">${hl(t.normas || '', ts)}</span><span class="td">${hl(t.desc || '', ts)}</span></div><span class="flag f-${paisOf(t)}" title="${PAISES[paisOf(t)]}">${paisOf(t)}</span></button>`;
+  const card = tplCard;
   const draw = () => {
     const ts = terms(st.q);
     const base = TEMPLATES.filter(t => (!st.pais || paisOf(t) === st.pais) && (!ts.length || matchAll([t.name, t.desc, t.normas, t.cat, t.id, PAISES[paisOf(t)]].join(' '), ts)));
@@ -912,6 +1167,21 @@ function openIed(ln) {
   });
 }
 
+// Menús desplegables accesibles: foco en el primer elemento, ↑ ↓ para navegar, Esc para cerrar
+function openMenu(m, btn) {
+  m.querySelectorAll('button').forEach(b => b.setAttribute('role', 'menuitem'));
+  document.body.appendChild(m); btn?.setAttribute('aria-expanded', 'true');
+  const items = () => [...m.querySelectorAll('button')].filter(b => !b.hidden);
+  setTimeout(() => items()[0]?.focus({ preventScroll: true }), 0);
+  m.addEventListener('keydown', e => {
+    const it = items(), i = it.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); it[(i + (e.key === 'ArrowDown' ? 1 : -1) + it.length) % it.length]?.focus(); }
+    else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); it[e.key === 'Home' ? 0 : it.length - 1]?.focus(); }
+    else if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); m.remove(); btn?.setAttribute('aria-expanded', 'false'); btn?.focus(); }
+  });
+  new MutationObserver((_, o) => { if (!document.body.contains(m)) { btn?.setAttribute('aria-expanded', 'false'); o.disconnect(); } }).observe(document.body, { childList: true });
+}
+
 // ---------------- Zoom de la vista previa ----------------
 const ZOOMS = [0.6, 0.75, 0.85, 1, 1.15, 1.3, 1.5];
 let zoom = 1;
@@ -926,7 +1196,7 @@ function applyZoom() { const p = $('#paper'); if (p) p.style.zoom = zoom === 1 ?
 const KEYS = [
   ['Ctrl K', 'Buscar plantillas, acciones, funciones, secciones y variables'], ['Ctrl S', 'Guardar archivo .mcalc'], ['Ctrl O', 'Abrir archivo'], ['Ctrl P', 'Imprimir / PDF'],
   ['Ctrl Z · Ctrl Y', 'Deshacer · Rehacer (fuera de un campo de texto)'], ['Ctrl Shift F', 'Biblioteca de funciones'], ['Alt 1 … 4', 'Pestañas Datos · Editor · Variables · Proyecto'],
-  ['F1', 'Ayuda y sintaxis'], ['Tab', 'Completar en el editor · siguiente dato en la edición en el lugar'], ['↑ ↓', 'Incrementar / reducir un dato numérico'], ['Clic en un dato de la vista', 'Editarlo en el lugar (Enter aceptar, Esc cancelar)'], ['Clic en una fórmula', 'Ir a su línea en el editor'],
+  ['F1', 'Ayuda y sintaxis'], ['Ctrl \\', 'Ocultar / mostrar el panel (memoria a todo el ancho)'], ['Tab', 'Completar en el editor · siguiente dato en la edición en el lugar'], ['↑ ↓', 'Incrementar / reducir un dato numérico'], ['Clic en un dato de la vista', 'Editarlo en el lugar (Enter aceptar, Esc cancelar)'], ['Clic en una fórmula', 'Ir a su línea en el editor'],
 ];
 function showKeys() { modal(`${I.key}Atajos de teclado`, `<div class="keys">${KEYS.map(k => `<div><span>${k[0].split(' · ').map(x => x.split(' ').map(y => y === '…' ? '…' : `<kbd>${esc(y)}</kbd>`).join(' ')).join(' · ')}</span><em>${esc(k[1])}</em></div>`).join('')}</div>`, false); }
 function runAction(a) { const b = document.createElement('button'); b.dataset.do = a; b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); }
@@ -935,7 +1205,7 @@ function showCmdK() {
   document.querySelectorAll('.menu').forEach(m => m.remove());
   const A = (t, ic, k, run, sub = '') => ({ g: 'Acciones', t, ic, k, run, sub });
   const acts = [
-    A('Nueva memoria desde plantilla', I.grid, '', () => showTemplates()), A('Documento en blanco', I.blank, '', () => runAction('new')), A('Mis memorias', I.folder, '', () => showLibrary()),
+    A('Nueva memoria desde plantilla', I.grid, '', () => showTemplates()), A('Pantalla de inicio', I.layers, '', () => showHome()), A('Recorrido guiado', I.eye, '', () => startTour()), A('Documento en blanco', I.blank, '', () => runAction('new')), A('Mis memorias', I.folder, '', () => showLibrary()),
     A('Abrir archivo .mcalc', I.open, 'Ctrl O', () => openFile()), A('Guardar archivo .mcalc', I.save, 'Ctrl S', () => saveFile()), A('Duplicar memoria', I.dup, '', () => runAction('dupdoc')),
     ...(EMBED ? [] : [A('Imprimir / Guardar PDF', I.pdf, 'Ctrl P', () => doPrint())]), A('Exportar Word (.docx)', I.word, '', () => exportWord()), A('Exportar HTML', I.html, '', () => exportHTML()),
     A('Deshacer', I.undo, 'Ctrl Z', () => undoRedo(-1)), A('Rehacer', I.redo, 'Ctrl Y', () => undoRedo(1)), A('Biblioteca de funciones', I.fn, 'Ctrl ⇧ F', () => showFunctions()),
@@ -983,14 +1253,21 @@ function showCmdK() {
 }
 
 // ---------------- Navegación ----------------
+// Modo lectura: oculta el panel izquierdo para ver la memoria a todo el ancho
+function toggleFocus(on) {
+  const m = $('.main'); on = on ?? !m.classList.contains('focus');
+  m.classList.toggle('focus', on); lsSet('mc_focus', on ? '1' : '0');
+  if (!on) setTab(tab);
+  if (ied) iedPlace();
+}
 const isMobile = () => window.matchMedia('(max-width:900px)').matches;
 function setTab(t) {
   tab = t; try { localStorage.setItem('mc_tab', t); } catch (e) { /* */ }
-  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.tab').forEach(b => { const on = b.dataset.tab === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + t));
   document.querySelectorAll('.bnav button').forEach(b => b.classList.toggle('on', isMobile() ? (mview === 'prev' ? b.dataset.v === 'prev' : b.dataset.v === t) : false));
   if (t === 'vars' && lastRes) renderVars();
-  if (t === 'bloques') document.querySelectorAll('#p-bloques textarea').forEach(ta => ta.classList.contains('code') ? paintHL(ta) : autosize(ta));
+  if (t === 'bloques') { const tas = document.querySelectorAll('#p-bloques textarea'); tas.forEach(ta => { if (ta.classList.contains('code')) paintHL(ta, true); }); autosizeAll(tas); }
 }
 function setView(v) { mview = v; $('.main').dataset.v = v; setTab(tab); }
 function goToLine(bid, line) {
@@ -1021,7 +1298,7 @@ function loadUI() {
 export function start() {
   document.body.innerHTML = `<div id="app">
   <header class="top">
-    <div class="brand">${I.logo}<div><span>MemoriaCalc</span><small>Memorias de cálculo estructural</small></div></div>
+    <button class="brand" data-do="home" title="Inicio" aria-label="MemoriaCalc — pantalla de inicio">${I.logo}<div><span>MemoriaCalc</span><small>Memorias de cálculo estructural</small></div></button>
     <span class="tsep hide-m"></span>
     <input id="dtitle" class="dtitle" placeholder="Título de la memoria" spellcheck="false" aria-label="Título de la memoria">
     <button class="cmdbtn hide-m" data-do="cmdk" title="Buscar plantillas, acciones, funciones y secciones (Ctrl+K)">${I.search}<span>Buscar o ejecutar…</span><kbd>Ctrl K</kbd></button>
@@ -1039,14 +1316,14 @@ export function start() {
   </header>
   <div class="main" data-v="edit">
     <aside class="left">
-      <nav class="tabs"><button class="tab" data-tab="datos" title="Datos de entrada (Alt+1)">${I.data}Datos</button><button class="tab" data-tab="bloques" title="Editor de bloques (Alt+2)">${I.edit}Editor</button><button class="tab" data-tab="vars" title="Inspector de variables (Alt+3)">${I.vars}Variables</button><button class="tab" data-tab="proyecto" title="Proyecto y presentación (Alt+4)">${I.gear}Proyecto</button></nav>
-      <div class="pane" id="p-datos"></div>
-      <div class="pane" id="p-bloques"></div>
-      <div class="pane" id="p-vars"></div>
-      <div class="pane" id="p-proyecto"></div>
+      <nav class="tabs" role="tablist" aria-label="Paneles"><button class="tab" role="tab" data-tab="datos" aria-controls="p-datos" title="Datos de entrada (Alt+1)">${I.data}Datos</button><button class="tab" role="tab" data-tab="bloques" aria-controls="p-bloques" title="Editor de bloques (Alt+2)">${I.edit}Editor</button><button class="tab" role="tab" data-tab="vars" aria-controls="p-vars" title="Inspector de variables (Alt+3)">${I.vars}Variables</button><button class="tab" role="tab" data-tab="proyecto" aria-controls="p-proyecto" title="Proyecto y presentación (Alt+4)">${I.gear}Proyecto</button><span class="tabs-sp"></span><button class="btn ghost ic sm tabs-x hide-m" data-do="focus" title="Ocultar el panel y ampliar la memoria (Ctrl+\\)">${I.left}</button></nav>
+      <div class="pane" id="p-datos" role="tabpanel" aria-label="Datos"></div>
+      <div class="pane" id="p-bloques" role="tabpanel" aria-label="Editor"></div>
+      <div class="pane" id="p-vars" role="tabpanel" aria-label="Variables"></div>
+      <div class="pane" id="p-proyecto" role="tabpanel" aria-label="Proyecto"></div>
     </aside>
-    <div class="split" id="split" title="Arrastre para redimensionar"></div>
-    <section class="right" id="right"><div class="paper" id="paper"></div></section>
+    <div class="split" id="split" role="separator" aria-orientation="vertical" aria-label="Redimensionar paneles" tabindex="0" title="Arrastre para redimensionar · doble clic: restablecer · ← → con el teclado"></div>
+    <section class="right" id="right" aria-label="Vista previa de la memoria"><button class="btn sm unfocus" data-do="focus" title="Mostrar el panel de datos y editor (Ctrl+\\)">${I.left}Panel</button><div class="paper" id="paper"></div></section>
   </div>
   <footer class="sbar">
     <span class="sb-save" id="sbsave">${I.cloud}<span>Guardado en este dispositivo</span></span>
@@ -1070,11 +1347,13 @@ export function start() {
     const d = e.target.closest('[data-do]');
     if (d) {
       const a = d.dataset.do;
-      if (a === 'tpl') showTemplates(); else if (a === 'lib') showLibrary(); else if (a === 'fns') showFunctions(); else if (a === 'cmdk') { showCmdK(); return; } else if (a === 'keys') showKeys(); else if (a === 'save') saveFile(); else if (a === 'open') openFile();
+      if (a === 'tpl') showTemplates(); else if (a === 'home') showHome(); else if (a === 'tour') startTour(); else if (a === 'lib') showLibrary(); else if (a === 'fns') showFunctions(); else if (a === 'cmdk') { showCmdK(); return; } else if (a === 'keys') showKeys(); else if (a === 'save') saveFile(); else if (a === 'open') openFile();
       else if (a === 'pdf') doPrint(); else if (a === 'html') exportHTML(); else if (a === 'word') exportWord(); else if (a === 'help') showHelp(); else if (a === 'normas') showNormas();
       else if (a === 'menu') { showMenu(d); return; }
       else if (a === 'theme') { const cur = document.documentElement.dataset.theme; const nx = cur === 'dark' ? 'light' : cur === 'light' ? '' : 'dark'; if (nx) document.documentElement.dataset.theme = nx; else delete document.documentElement.dataset.theme; try { localStorage.setItem('mc_theme', nx); } catch (er) { /* */ } toast('Tema: ' + (nx === 'dark' ? 'oscuro' : nx === 'light' ? 'claro' : 'automático')); }
       else if (a === 'undo') undoRedo(-1); else if (a === 'redo') undoRedo(1);
+      else if (a === 'go-editor') { setView('edit'); setTab('bloques'); }
+      else if (a === 'focus') toggleFocus();
       else if (a === 'new') { doc = newDoc(); inputsKey = ''; loadUI(); compute(); autosave(); }
       else if (a === 'dupdoc') { const c = JSON.parse(JSON.stringify(doc)); c.id = uid(); c.meta.titulo += ' (copia)'; doc = c; loadUI(); compute(); autosave(); toast('Copia creada'); }
       document.querySelectorAll('.menu').forEach(m => m.remove());
@@ -1100,26 +1379,26 @@ export function start() {
     document.querySelectorAll('.menu').forEach(m => m.remove());
     if (had) return;
     const r = btn.getBoundingClientRect();
-    const m = h(`<div class="menu main-menu" style="top:${r.bottom + 6}px;right:${Math.max(8, window.innerWidth - r.right)}px">
-      <button data-do="undo">${I.undo}Deshacer<kbd>Ctrl Z</kbd></button><button data-do="redo">${I.redo}Rehacer<kbd>Ctrl Y</kbd></button><hr><button data-do="tpl">${I.grid}Nueva desde plantilla</button><button data-do="new">${I.blank}Documento en blanco</button><button data-do="lib">${I.folder}Mis memorias</button><hr>
+    const m = h(`<div class="menu main-menu" role="menu" aria-label="Menú principal" style="top:${r.bottom + 6}px;right:${Math.max(8, window.innerWidth - r.right)}px">
+      <button data-do="undo">${I.undo}Deshacer<kbd>Ctrl Z</kbd></button><button data-do="redo">${I.redo}Rehacer<kbd>Ctrl Y</kbd></button><hr><button data-do="home">${I.layers}Inicio</button><button data-do="tpl">${I.grid}Nueva desde plantilla</button><button data-do="new">${I.blank}Documento en blanco</button><button data-do="lib">${I.folder}Mis memorias</button><hr>
       <button data-do="open">${I.open}Abrir archivo .mcalc<kbd>Ctrl O</kbd></button><button data-do="save">${I.save}Guardar archivo .mcalc<kbd>Ctrl S</kbd></button><button data-do="dupdoc">${I.dup}Duplicar memoria</button><hr>
       <button data-do="pdf">${I.pdf}Imprimir / Guardar PDF<kbd>Ctrl P</kbd></button><button data-do="html">${I.html}Exportar HTML</button><button data-do="word">${I.word}Exportar Word (.docx)</button><hr>
       <button data-do="cmdk">${I.search}Buscar o ejecutar…<kbd>Ctrl K</kbd></button><button data-do="fns">${I.fn}Biblioteca de funciones</button><hr>
-      <button data-do="theme">${I.moon}Cambiar tema</button><button data-do="normas">${I.book}Normas implementadas</button><button data-do="help">${I.help}Ayuda y sintaxis</button><button data-do="keys">${I.key}Atajos de teclado</button></div>`);
+      <button data-do="theme">${I.moon}Cambiar tema</button><button data-do="normas">${I.book}Normas implementadas</button><button data-do="help">${I.help}Ayuda y sintaxis<kbd>F1</kbd></button><button data-do="tour">${I.eye}Recorrido guiado</button><button data-do="keys">${I.key}Atajos de teclado</button></div>`);
     if (EMBED) m.querySelectorAll('[data-do="pdf"]').forEach(b => b.hidden = true);
-    document.body.appendChild(m);
+    openMenu(m, btn);
   }
   function showExportMenu(btn) {
     const had = document.querySelector('.menu.exp-menu');
     document.querySelectorAll('.menu').forEach(m => m.remove());
     if (had) return;
     const r = btn.getBoundingClientRect();
-    const m = h(`<div class="menu exp-menu" style="top:${r.bottom + 6}px;right:${Math.max(8, window.innerWidth - r.right)}px"><div class="mh">Exportar memoria</div>
+    const m = h(`<div class="menu exp-menu" role="menu" aria-label="Exportar" style="top:${r.bottom + 6}px;right:${Math.max(8, window.innerWidth - r.right)}px"><div class="mh">Exportar memoria</div>
       ${EMBED ? '' : `<button data-do="pdf">${I.pdf}<span>PDF / Imprimir<small>A4 con encabezado y numeración</small></span><kbd>Ctrl P</kbd></button>`}
       <button data-do="word">${I.word}<span>Word (.docx)<small>Ecuaciones editables, figuras e índice</small></span></button>
       <button data-do="html">${I.html}<span>HTML<small>Página autónoma para compartir</small></span></button><hr>
       <button data-do="save">${I.save}<span>Archivo .mcalc<small>Para volver a editar</small></span><kbd>Ctrl S</kbd></button></div>`);
-    document.body.appendChild(m);
+    openMenu(m, btn);
   }
   $('#dtitle').addEventListener('input', e => { doc.meta.titulo = e.target.value; const pi = document.querySelector('[data-m="titulo"]'); if (pi) pi.value = e.target.value; changed(); });
 
@@ -1140,7 +1419,15 @@ export function start() {
     m.textContent = msg; m.hidden = !msg;
     if (ok) setInputLine(bid, +ln, l => l.replace(/^(\s*[^=]+=\s*)(-?\d*\.?\d+(?:[eE][-+]?\d+)?)/, (m, a) => a + v));
   });
+  $('#p-datos').addEventListener('focusin', e => { const r = e.target.closest('.inp'); if (r) hlSketch(r.dataset.name); });
+  $('#p-datos').addEventListener('focusout', () => setTimeout(() => hlSketch(), 0));
   $('#p-datos').addEventListener('click', e => {
+    const gh = e.target.closest('.igh');
+    if (gh) { const sec = gh.closest('.ig'), t = sec.dataset.g, c = sec.classList.toggle('col'); gh.setAttribute('aria-expanded', String(!c)); if (c) dcol.add(t); else dcol.delete(t); lsSet('mc_dcol', JSON.stringify([...dcol].slice(-60))); return; }
+    if (e.target.closest('[data-csopen]')) { csOpen = !csOpen; lsSet('mc_csopen', csOpen ? '1' : '0'); const st = $('#p-datos .cstrip'); st._h = ''; renderCheckStrip(); return; }
+    if (e.target.closest('[data-figtoggle]')) { figOpen = !figOpen; lsSet('mc_figopen', figOpen ? '1' : '0'); const bx = $('#p-datos .dfig'); bx._src = ''; renderSketch(); return; }
+    const fg = e.target.closest('[data-figgo]');
+    if (fg) { if (isMobile()) setView('prev'); const el = document.querySelector(`#paper .blk[data-b="${fg.dataset.figgo}"] .figure`); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } return; }
     const g = e.target.closest('[data-gob]'); if (!g) return;
     if (g.classList.contains('erow')) { goToLine(g.dataset.gob, +g.dataset.gol); return; }
     if (isMobile()) setView('prev');
@@ -1149,7 +1436,7 @@ export function start() {
   });
   $('#p-datos').addEventListener('keydown', e => {
     if (e.target.tagName !== 'INPUT' || !['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) return;
-    if (e.key === 'Enter') { const all = [...document.querySelectorAll('#p-datos input,#p-datos select')]; all[all.indexOf(e.target) + 1]?.focus(); e.preventDefault(); return; }
+    if (e.key === 'Enter') { const all = [...document.querySelectorAll('#p-datos .dins input,#p-datos .dins select')].filter(x => x.offsetParent); all[all.indexOf(e.target) + 1]?.focus(); e.preventDefault(); return; }
     const v = parseFloat(e.target.value); if (isNaN(v)) return;
     const dec = (e.target.value.split('.')[1] || '').length; const step = dec ? 10 ** -dec : 1;
     e.target.value = (v + (e.key === 'ArrowUp' ? step : -step)).toFixed(dec); e.target.dispatchEvent(new Event('input', { bubbles: true })); e.preventDefault();
@@ -1168,7 +1455,8 @@ export function start() {
   pb.addEventListener('change', e => { if (e.target.type === 'checkbox' || e.target.tagName === 'SELECT') e.target.dispatchEvent(new Event('input', { bubbles: true })); });
   pb.addEventListener('focusin', e => { if (e.target.matches('textarea.code') && e.target.closest('.bk')?.querySelector('.snip')) lastTA = e.target; });
   pb.addEventListener('focusin', e => { const el = e.target.closest('.bk'); if (el && selId !== el.dataset.id) { selId = el.dataset.id; document.querySelectorAll('.bk').forEach(x => x.classList.toggle('sel', x === el)); } });
-  pb.addEventListener('scroll', () => { }, { passive: true });
+  pb.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.bt[data-act]')) { e.preventDefault(); e.target.click(); } });
+  pb.addEventListener('toggle', e => { if (e.target.matches?.('details.hint')) { hintOpen = e.target.open; lsSet('mc_hint', hintOpen ? '1' : '0'); } }, true);
   pb.addEventListener('keydown', e => {
     const ta = e.target; if (!ta.classList.contains('code')) return;
     if (ac.el && ac.ta === ta) {
@@ -1193,7 +1481,7 @@ export function start() {
     const act = e.target.closest('[data-act]'); if (!act) { const dz = e.target.closest('.imgdrop'); if (dz) dz.closest('.bkb').querySelector('input[type=file]').click(); return; }
     const el = act.closest('.bk'); const i = doc.blocks.findIndex(x => x.id === el.dataset.id); const b = doc.blocks[i];
     const a = act.dataset.act;
-    if (a === 'toggle') { if (collapsed.has(b.id)) collapsed.delete(b.id); else collapsed.add(b.id); el.classList.toggle('col'); if (!el.classList.contains('col')) el.querySelectorAll('textarea').forEach(t => t.classList.contains('code') ? paintHL(t) : autosize(t)); return; }
+    if (a === 'toggle') { if (collapsed.has(b.id)) collapsed.delete(b.id); else collapsed.add(b.id); el.classList.toggle('col'); act.setAttribute('aria-expanded', String(!el.classList.contains('col'))); if (!el.classList.contains('col')) el.querySelectorAll('textarea').forEach(t => t.classList.contains('code') ? paintHL(t) : autosize(t)); return; }
     if (a === 'up' && i > 0) { [doc.blocks[i - 1], doc.blocks[i]] = [doc.blocks[i], doc.blocks[i - 1]]; }
     else if (a === 'down' && i < doc.blocks.length - 1) { [doc.blocks[i + 1], doc.blocks[i]] = [doc.blocks[i], doc.blocks[i + 1]]; }
     else if (a === 'dup') { const c = JSON.parse(JSON.stringify(b)); c.id = uid(); doc.blocks.splice(i + 1, 0, c); }
@@ -1245,23 +1533,45 @@ export function start() {
     const k = e.key.toLowerCase();
     if (k === 'k' && !e.shiftKey && !e.altKey) { e.preventDefault(); if (document.querySelector('.cmdk-ov')) document.querySelector('.cmdk-ov').remove(); else showCmdK(); return; }
     if (k === 'f' && e.shiftKey) { e.preventDefault(); showFunctions(); return; }
+    if (e.key === '\\' && !isMobile()) { e.preventDefault(); toggleFocus(); return; }
     const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
     if ((k === 'z' || k === 'y') && !inField) { e.preventDefault(); undoRedo(k === 'y' || e.shiftKey ? 1 : -1); return; }
     if (k === 's') { e.preventDefault(); saveFile(); } else if (k === 'o') { e.preventDefault(); openFile(); } else if (k === 'p') { e.preventDefault(); doPrint(); }
   });
   window.addEventListener('beforeprint', () => { if (lastRes) compute(); });
 
-  // divisor redimensionable
-  const sp = $('#split');
+  // divisor redimensionable (ratón, táctil y teclado)
+  const sp = $('#split'), leftEl = $('.left');
+  const setW = (w, save) => {
+    w = Math.round(Math.min(Math.max(320, w), window.innerWidth - 380));
+    leftEl.style.width = w + 'px'; sp.setAttribute('aria-valuenow', String(Math.round(w / window.innerWidth * 100)));
+    if (ied) iedPlace();
+    if (save) { lsSet('mc_w', leftEl.style.width); setTab(tab); }
+  };
+  sp.setAttribute('aria-valuemin', '20'); sp.setAttribute('aria-valuemax', '80');
   sp.addEventListener('pointerdown', e => {
-    sp.setPointerCapture(e.pointerId); const left = $('.left');
-    const mv = (ev) => { const w = Math.min(Math.max(320, ev.clientX), window.innerWidth - 360); left.style.width = w + 'px'; };
-    const up = () => { sp.removeEventListener('pointermove', mv); sp.removeEventListener('pointerup', up); try { localStorage.setItem('mc_w', left.style.width); } catch (er) { /* */ } };
+    e.preventDefault(); sp.setPointerCapture(e.pointerId); document.body.classList.add('resizing');
+    let raf = 0;
+    const mv = (ev) => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; setW(ev.clientX); }); };
+    const up = () => { sp.removeEventListener('pointermove', mv); sp.removeEventListener('pointerup', up); document.body.classList.remove('resizing'); setW(leftEl.offsetWidth, true); };
     sp.addEventListener('pointermove', mv); sp.addEventListener('pointerup', up);
+  });
+  sp.addEventListener('dblclick', () => { leftEl.style.width = ''; lsSet('mc_w', ''); setTab(tab); toast('Ancho del panel restablecido'); });
+  sp.addEventListener('keydown', e => {
+    const d = { ArrowLeft: -32, ArrowRight: 32 }[e.key];
+    if (d) { e.preventDefault(); setW(leftEl.offsetWidth + d * (e.shiftKey ? 3 : 1), true); }
+    else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); setW(e.key === 'Home' ? 320 : window.innerWidth - 380, true); }
   });
   try { const w = localStorage.getItem('mc_w'); if (w) $('.left').style.width = w; const th = localStorage.getItem('mc_theme'); if (th) document.documentElement.dataset.theme = th; const z = parseFloat(localStorage.getItem('mc_zoom')); if (ZOOMS.includes(z)) zoom = z; } catch (e) { /* */ }
   applyZoom();
+  if (lsGet('mc_focus', '0') === '1' && !isMobile()) toggleFocus(true);
   window.addEventListener('resize', debounce(() => setTab(tab), 150));
+
+  // Accesibilidad: los botones solo-icono toman su nombre accesible del título
+  const a11y = (root) => root.querySelectorAll?.('button[title]:not([aria-label])').forEach(b => { if (!b.textContent.trim()) b.setAttribute('aria-label', b.title.replace(/\s*\(.*\)$/, '')); });
+  a11y(document);
+  new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 && !n.closest?.('#paper')) a11y(n); }).observe(document.body, { childList: true, subtree: true });
+  $('#chips').setAttribute('aria-live', 'polite');
 
   if (EMBED) {
     document.querySelectorAll('[data-do="pdf"]').forEach(b => b.hidden = true);
@@ -1349,6 +1659,6 @@ async function boot() {
   } catch (e) { /* */ }
   if (!d) { doc = newDoc(TEMPLATES.find(t => t.id === 'viga')); first = true; } else doc = migrate(d);
   loadUI(); compute();
-  if (first) { setTab('datos'); showTemplates(true); }
+  if (first) { setTab('datos'); showHome(true); } else if (lsGet('mc_home', '0') === '1') showHome();
   void math;
 }

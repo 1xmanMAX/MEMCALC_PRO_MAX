@@ -7,10 +7,14 @@
 //                 camión de fatiga o tren de ejes propio, sobre viga simple
 //                 o continua (líneas de influencia con solveBeam), con
 //                 cargas DC/DW opcionales y combinación Resistencia I.
+//   · estribo   : elevación del estribo con empujes
+//   · pmLRFD    : diagrama P–M de columna rectangular con los factores φ
+//                 de AASHTO LRFD 5.5.4.2 (0.75 → 0.90) y φ de Evento Extremo
+//                 (5.10.11.4.1b: φ = 0.90 en zonas sísmicas 3 y 4)
 //  Referencias: AASHTO LRFD 3.6.1.2–3.6.1.4, 3.6.2, 3.4.1 (docs/referencias/bridges.md)
 // =====================================================================
 import { registerBlock, F } from '../blockreg.js';
-import { evalParam, evalList, esc, math, K, symTex, valTex, settings } from '../engine.js';
+import { evalParam, evalList, esc, math, K, symTex, valTex, settings, BARS } from '../engine.js';
 import { C, T, Lne, svgWrap, arrowDefs, dimH, dimV, niceTicks, caption, setVar, pos, f2, solveBeam } from '../blocks.js';
 import { AX_TRUCK, AX_TANDEM, W_LANE } from '../norms/bridges.js';
 
@@ -157,7 +161,7 @@ function renderHL93(b, ctx) {
     sp.forEach(s => fams.tr.push(AX_TRUCK(s)));
     fams.ta.push(AX_TANDEM);
     if (continuous) {
-      const t1 = AX_TRUCK(4.3), Lmx = Math.max(...Ls), step = Math.max(1, Lmx / 10);
+      const t1 = AX_TRUCK(4.3), Lmx = Math.max(...Ls), step = Math.max(0.5, Lmx / 30);   // separación entre camiones ≥ 15 m (50 ft), barrida cada ≈ L/30
       for (let G = 15; G <= Math.min(Lt, 15 + 2 * Lmx) + 1e-9; G += step) fams.dt.push(t1.concat(t1.map(a => ({ p: a.p, x: a.x + 8.6 + G }))));
     }
   }
@@ -528,4 +532,133 @@ registerBlock('estribo', {
   hint: 'Elevación del estribo en voladizo con cajuela, parapeto, viga apoyada y diagramas de empuje EH y LS.',
   def: { H: '7 m', B: '5 m', hz: '0.8 m', punta: '1.4 m', t2: '0.9 m', t1: '0.3 m', hb: '1.6 m', Df: '1.5 m', Ka: '0.333', gs: '1.9 tonf/m^3', heq: '0.6 m' },
   render: renderAbut,
+});
+
+// =====================================================================
+//  pmLRFD — diagrama de interacción de columna rectangular, φ AASHTO LRFD
+// =====================================================================
+function renderPMLRFD(b, ctx) {
+  const S = ctx.scope;
+  const bw = evalParam(b.b, S, 'cm', 40), h = evalParam(b.h, S, 'cm', 40);
+  const fc = evalParam(b.fc, S, 'kgf/cm^2', 280), fy = evalParam(b.fy, S, 'kgf/cm^2', 4200);
+  const dp = evalParam(b.dp, S, 'cm', 7.5);
+  const nx = Math.round(evalParam(b.nx, S, '', 3)), ny = Math.round(evalParam(b.ny, S, '', 1));
+  pos({ b: bw, h, fc, fy, dp });
+  if (nx < 2 || ny < 0) throw new Error('Se requieren al menos 2 barras por cara');
+  if (2 * dp >= h || 2 * dp >= bw) throw new Error('Recubrimiento mayor que la sección');
+  const bar = Math.round(evalParam(b.barra, S, '', 8));
+  if (!BARS[bar]) throw new Error('Varilla #' + bar + ' no definida');
+  const Ab = BARS[bar].A;
+  const espiral = !!b.espiral;
+  const phiEE = evalParam(b.phiEE, S, '', 0.9);
+  if (!(phiEE > 0 && phiEE <= 1)) throw new Error('φ de Evento Extremo entre 0 y 1');
+  const Es = 2.0e6, ecu = 0.003, ecl = Math.min(fy / Es, 0.002), etl = 0.005;     // 5.6.2.1: εcl = fy/Es ≤ 0.002 (Gr. 60), εtl = 0.005
+  const fcK = fc / 70.307;                                                       // ksi
+  const beta1 = Math.min(0.85, Math.max(0.65, 0.85 - 0.05 * (fcK - 4)));          // 5.6.2.2
+  const alpha1 = fcK <= 10 ? 0.85 : Math.max(0.75, 0.85 - 0.02 * (fcK - 10));
+  const phiC = 0.75, phiT = 0.90;                                                // 5.5.4.2 (concreto armado)
+  const layers = [{ d: dp, A: nx * Ab, n: nx }];
+  for (let i = 1; i <= ny; i++) layers.push({ d: dp + (h - 2 * dp) * i / (ny + 1), A: 2 * Ab, n: 2 });
+  layers.push({ d: h - dp, A: nx * Ab, n: nx });
+  const Ast = layers.reduce((t, l) => t + l.A, 0), Ag = bw * h;
+  const P0 = alpha1 * fc * (Ag - Ast) + fy * Ast;                                // 5.6.4.4-2
+  const kmax = espiral ? 0.85 : 0.80;                                            // 5.6.4.4-2/-3
+  const dt = h - dp;
+  const phiOf = (et) => (espiral ? 0.75 : 0.75) + (phiT - phiC) * Math.min(1, Math.max(0, (et - ecl) / (etl - ecl)));
+  const point = (c) => {
+    const a = Math.min(beta1 * c, h);
+    let P = alpha1 * fc * a * bw, M = P * (h / 2 - a / 2);
+    for (const l of layers) {
+      const es = ecu * (c - l.d) / c;
+      let fs = Math.max(-fy, Math.min(fy, Es * es));
+      if (l.d < a) fs -= alpha1 * fc;
+      P += l.A * fs; M += l.A * fs * (h / 2 - l.d);
+    }
+    const et = ecu * (dt - c) / c;
+    return { P: P / 1000, M: M / 1e5, phi: phiOf(et), c, et };
+  };
+  const pts = [{ P: P0 / 1000, M: 0, phi: phiC, et: -ecu }];
+  for (let k = 0; k <= 200; k++) { const c = h * 4 * Math.pow(0.004 / 4, k / 200); pts.push(point(Math.max(c, 0.2))); }
+  pts.push({ P: -fy * Ast / 1000, M: 0, phi: phiT, et: 1 });
+  pts.sort((p, q) => q.P - p.P);
+  const capS = phiC * kmax * P0 / 1000, capE = phiEE * kmax * P0 / 1000;
+  const nom = pts.map(p => ({ P: p.P, M: p.M }));
+  const desS = pts.map(p => ({ P: Math.min(p.phi * p.P, capS), M: p.phi * p.M }));
+  const desE = pts.map(p => ({ P: Math.min(phiEE * p.P, capE), M: phiEE * p.M }));
+  const capM = (des, P) => {
+    let best = null;
+    for (let i = 0; i < des.length - 1; i++) {
+      const a = des[i], c = des[i + 1];
+      if ((P <= a.P && P >= c.P) || (P >= a.P && P <= c.P)) { const t = (P - a.P) / ((c.P - a.P) || 1e-9); const m = a.M + t * (c.M - a.M); if (best === null || m > best) best = m; }
+    }
+    return best;
+  };
+  const dem = [];
+  for (const ln of String(b.demandas || '').split('\n')) {
+    const s0 = ln.split('//')[0].trim(); if (!s0) continue;
+    const parts = s0.split(/[;,]/).map(t => t.trim());
+    if (parts.length < 2) throw new Error('Demanda sin momento: "' + ln + '" (formato: Pu, Mu // etiqueta)');
+    const lab = (ln.split('//')[1] || '').trim();
+    const ee = /evento|extremo|\bEE\b|sismo/i.test(lab);
+    const d = { P: evalParam(parts[0], S, 'tonf'), M: Math.abs(evalParam(parts[1], S, 'tonf*m')), lab, ee };
+    if (!isFinite(d.P) || !isFinite(d.M)) throw new Error('Demanda no numérica: "' + ln + '"');
+    dem.push(d);
+  }
+  let maxDC = 0;
+  dem.forEach(d => {
+    const des = d.ee ? desE : desS, cap = d.ee ? capE : capS;
+    const cm = capM(des, d.P);
+    d.cap = cm; d.phi = d.ee ? phiEE : null;
+    d.dc = d.P > cap ? d.P / cap : cm === null ? Infinity : d.M === 0 ? Math.max(0, d.P / cap) : d.M / Math.max(cm, 1e-9);
+    maxDC = Math.max(maxDC, d.dc);
+  });
+  const sfx = b.sufijo ? '_' + String(b.sufijo).replace(/\W/g, '') : '';
+  setVar(ctx, 'DCpm' + sfx, maxDC);
+  setVar(ctx, 'phiPnmax' + sfx, math.unit(capS, 'tonf'));
+  setVar(ctx, 'Ast' + sfx, math.unit(Ast, 'cm^2'));
+  setVar(ctx, 'rhog' + sfx, Ast / Ag);
+  dem.forEach((d, i) => ctx.checks.push({ ok: d.dc <= 1, label: 'Flexocompresión ' + (d.lab || 'P' + (i + 1)) + ' (Pu=' + f2(d.P) + ' t, Mu=' + f2(d.M) + ' t·m' + (d.ee ? ', φ = ' + f2(phiEE) : '') + ') (AASHTO 5.6.4.4)', ratio: d.dc, block: ctx.blockId }));
+  // dibujo
+  const W = 640, H = 470, pl = 70, pr = 160, pt = 20, pb = 45;
+  const allM = nom.map(p => p.M).concat(dem.map(d => d.M)), allP = nom.map(p => p.P).concat(dem.map(d => d.P));
+  const mMax = Math.max(...allM) * 1.1, pMax = Math.max(...allP) * 1.05, pMin = Math.min(...allP) * 1.1;
+  const sx = (W - pl - pr) / mMax, sy = (H - pt - pb) / (pMax - pMin);
+  const X = (m) => pl + m * sx, Y = (p) => pt + (pMax - p) * sy;
+  let g = '';
+  niceTicks(0, mMax, 6).forEach(t => { g += Lne(X(t), pt, X(t), H - pb, C.grid, 0.7) + T(X(t), H - pb + 14, f2(t, 0), { fs: 9, c: C.axis }); });
+  niceTicks(pMin, pMax, 8).forEach(t => { g += Lne(pl, Y(t), W - pr, Y(t), C.grid, 0.7) + T(pl - 6, Y(t) + 3, f2(t, 0), { fs: 9, c: C.axis, a: 'end' }); });
+  g += Lne(pl, Y(0), W - pr, Y(0), C.ink, 1) + Lne(pl, pt, pl, H - pb, C.ink, 1);
+  const poly = (arr) => arr.map((p, i) => (i ? 'L' : 'M') + X(p.M).toFixed(1) + ',' + Y(p.P).toFixed(1)).join(' ');
+  g += `<path d="${poly(nom)}" fill="none" stroke="${C.axis}" stroke-width="1.4" stroke-dasharray="6 4"/>`;
+  const useE = dem.some(d => d.ee);
+  if (useE) g += `<path d="${poly(desE)}" fill="none" stroke="${C.orange}" stroke-width="1.8"/>`;
+  g += `<path d="${poly(desS)} L${X(0)},${Y(desS[desS.length - 1].P)} L${X(0)},${Y(desS[0].P)} Z" fill="${C.blueF}" stroke="${C.blue}" stroke-width="2"/>`;
+  dem.forEach((d, i) => { const ok = d.dc <= 1; g += `<circle cx="${X(d.M)}" cy="${Y(d.P)}" r="4.5" fill="${ok ? C.green : C.red}" stroke="#fff"/>` + T(X(d.M) + 7, Y(d.P) - 6, d.lab || 'P' + (i + 1), { fs: 10, a: 'start', c: ok ? C.green : C.red, b: 1 }); });
+  g += T((pl + W - pr) / 2, H - 8, 'Momento M [t·m]', { fs: 11 }) + T(16, (pt + H - pb) / 2, 'Carga axial P [t]', { fs: 11, r: -90 });
+  const lx = W - pr + 12;
+  g += Lne(lx, 40, lx + 26, 40, C.axis, 1.4, '6 4') + T(lx + 30, 44, 'Pn, Mn (nominal)', { a: 'start', fs: 10 });
+  g += Lne(lx, 60, lx + 26, 60, C.blue, 2) + T(lx + 30, 64, 'φ 0.75–0.90 (Resist.)', { a: 'start', fs: 10 });
+  if (useE) g += Lne(lx, 80, lx + 26, 80, C.orange, 1.8) + T(lx + 30, 84, 'φ = ' + f2(phiEE) + ' (Ev. extremo)', { a: 'start', fs: 10 });
+  const ms = Math.min(110 / bw, 110 / h), mx0 = lx + 5, my0 = 120;
+  g += `<rect x="${mx0}" y="${my0}" width="${(bw * ms).toFixed(1)}" height="${(h * ms).toFixed(1)}" fill="${C.conc}" stroke="${C.ink}"/>`;
+  layers.forEach(l => { for (let i = 0; i < l.n; i++) { const cx = l.n === 1 ? bw / 2 : dp + (bw - 2 * dp) * i / (l.n - 1); g += `<circle cx="${(mx0 + cx * ms).toFixed(1)}" cy="${(my0 + l.d * ms).toFixed(1)}" r="2.6" fill="${C.steel}"/>`; } });
+  g += T(mx0 + bw * ms / 2, my0 + h * ms + 14, f2(bw, 0) + '×' + f2(h, 0) + ' cm', { fs: 10 }) + T(mx0 + bw * ms / 2, my0 + h * ms + 28, (2 * nx + 2 * ny) + ' #' + bar + ' · ρ=' + f2(100 * Ast / Ag, 2) + '%', { fs: 10 });
+  let tb = '';
+  if (dem.length) tb = '<table class="tbl"><thead><tr><th>Combinación</th><th>φ</th><th>Pu [t]</th><th>Mu [t·m]</th><th>φMn (Pu) [t·m]</th><th>D/C</th><th>Estado</th></tr></thead><tbody>' +
+    dem.map((d, i) => `<tr><td>${esc(d.lab || 'P' + (i + 1))}</td><td>${d.ee ? f2(phiEE) : '0.75–0.90'}</td><td>${f2(d.P)}</td><td>${f2(d.M)}</td><td>${d.cap === null ? '—' : f2(d.cap)}</td><td>${isFinite(d.dc) ? f2(d.dc) : '∞'}</td><td>${d.dc <= 1 ? '<span class="ok">✔ CUMPLE</span>' : '<span class="bad">✘ NO CUMPLE</span>'}</td></tr>`).join('') + '</tbody></table>';
+  const info = `<div class="kv">${K('A_{st} = ' + f2(Ast) + '\\,\\mathrm{cm^2}')} ${K('\\rho_g = ' + f2(100 * Ast / Ag, 2) + '\\%')} ${K('P_0 = ' + f2(P0 / 1000) + '\\,\\mathrm{t}')} ${K('P_{r,max} = \\phi\\,' + kmax + 'P_0 = ' + f2(capS) + '\\,\\mathrm{t}')} ${K('\\beta_1 = ' + f2(beta1, 3))} ${K('\\varepsilon_{cl} = ' + f2(ecl, 4) + ',\\ \\varepsilon_{tl} = 0.005')}</div>`;
+  const note = `<div class="txt muted" style="font-size:12px">φ según AASHTO LRFD 5.5.4.2: 0.75 para secciones controladas por compresión, 0.90 controladas por tracción, con transición lineal en εt entre εcl y εtl (5.6.2.1). Resistencia axial máxima ${kmax === 0.8 ? '0.80' : '0.85'}·φ·P0 (5.6.4.4). Las demandas cuya etiqueta contiene «Evento», «EE» o «sismo» se verifican con φ = ${f2(phiEE)} (5.10.11.4.1b para zonas 3 y 4; 1.3.2.1).</div>`;
+  return `<div class="figure">${svgWrap(W, H, arrowDefs + g)}${info}${tb}${note}${caption(ctx, b.titulo || 'Diagrama de interacción P–M (AASHTO LRFD 5.6.4)')}</div>`;
+}
+registerBlock('pmLRFD', {
+  name: 'Diagrama P–M (AASHTO LRFD)', icon: 'pm', group: 'Puentes',
+  fields: [
+    F('b', 'Ancho b', '120 cm'), F('h', 'Peralte h (dirección de flexión)', '120 cm'), F('fc', "f'c", '280 kgf/cm^2'), F('fy', 'fy', '4200 kgf/cm^2'),
+    F('dp', 'Recubrimiento al eje de barras', '7.5 cm'), F('nx', 'Barras por cara (b)', '8'), F('ny', 'Barras intermedias por lado', '6'), F('barra', 'Varilla #', '10'),
+    F('espiral', 'Columna zunchada (espiral)', '', 'check'), F('phiEE', 'φ en Evento Extremo (5.10.11.4.1b)', '0.90'),
+    F('demandas', 'Demandas "Pu, Mu // etiqueta" (etiqueta con «Evento» → φ de EE)', '', 'area'), F('sufijo', 'Sufijo', ''), F('titulo', 'Título', ''),
+  ],
+  hint: 'Compatibilidad de deformaciones (εcu = 0.003, α1 y β1 de 5.6.2.2) con φ de AASHTO 5.5.4.2. Exporta <code>DCpm phiPnmax Ast rhog</code> y una verificación por demanda.',
+  def: { b: '120 cm', h: '120 cm', fc: '280 kgf/cm^2', fy: '4200 kgf/cm^2', dp: '7.5 cm', nx: '8', ny: '6', barra: '10', phiEE: '0.90', demandas: '900 tonf, 150 tonf*m // Resistencia I\n700 tonf, 600 tonf*m // Evento Extremo I' },
+  render: renderPMLRFD,
 });

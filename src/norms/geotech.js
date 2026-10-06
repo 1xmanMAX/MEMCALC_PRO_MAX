@@ -83,6 +83,46 @@ export function ncsYoud(N, FC) {
   return a + b * N;
 }
 
+// Cetin et al. (2004): coeficiente de reducción rd(z, amax, Mw, V*s,12) (Settle3 Liquefaction Theory Manual, ec. 6)
+export function rdCetin(z, amax, Mw, Vs) {
+  const A = -23.013 - 2.949 * amax + 0.999 * Mw + 0.0525 * Vs;
+  const den = 1 + A / (16.258 + 0.201 * Math.exp(0.341 * (0.0785 * Vs + 7.586)));
+  const num = (d) => 1 + A / (16.258 + 0.201 * Math.exp(0.341 * (-d + 0.0785 * Vs + 7.586)));
+  return z < 20 ? num(z) / den : num(20) / den - 0.0046 * (z - 20);
+}
+// Bisección para f(x) creciente; devuelve x en [a, b] con f(x) = 0 (o el extremo si no hay cambio de signo)
+function bisect(f, a, b) { let fa = f(a); if (fa >= 0) return a; if (f(b) <= 0) return b; for (let k = 0; k < 100; k++) { const m = (a + b) / 2, fm = f(m); if (fm > 0) b = m; else { a = m; fa = fm; } } return (a + b) / 2; }
+// Broms (1964a): carga lateral última de un pilote en suelo cohesivo (cu), reacción 9cuD bajo 1.5D.
+// cabeza = 1 libre, 2 empotrada. Devuelve { Hu, modo }. Unidades consistentes (kN, m, kPa).
+export function bromsCoh(cu, D, L, e, My, cabeza) {
+  const k = 9 * cu * D, f = (H) => H / k, Lb = L - 1.5 * D;
+  if (!(Lb > 0) || !(k > 0)) return { Hu: 0, modo: 'corto' };
+  if (cabeza === 2) {
+    const H1 = k * Lb;                                                                    // corto: traslación
+    const H2 = bisect((H) => H * (1.5 * D + 0.5 * f(H)) - 2.25 * cu * D * Math.max(0, Lb - f(H)) ** 2 - My, 0, H1); // intermedio
+    const H3 = (-(1.5 * D) + Math.sqrt((1.5 * D) ** 2 + 4 * (2 * My) / (2 * k))) * k;      // largo: H(1.5D + H/(2k)) = 2My
+    const Hu = Math.min(H1, H2, H3);
+    return { Hu, modo: Hu === H1 ? 'corto' : Hu === H3 ? 'largo' : 'intermedio' };
+  }
+  const H1 = bisect((H) => H * (e + 1.5 * D + 0.5 * f(H)) - 2.25 * cu * D * Math.max(0, Lb - f(H)) ** 2, 0, k * Lb);
+  const H2 = (-(e + 1.5 * D) + Math.sqrt((e + 1.5 * D) ** 2 + 4 * My / (2 * k))) * k;       // largo: H(e + 1.5D + H/(2k)) = My
+  return H1 <= H2 ? { Hu: H1, modo: 'corto' } : { Hu: H2, modo: 'largo' };
+}
+// Broms (1964b): pilote en suelo granular, reacción 3·Kp·γ'·z·D.
+export function bromsGran(g, Kp, D, L, e, My, cabeza) {
+  const c = g * D * Kp, mx = (H, ee) => H * (ee + 0.54 * Math.sqrt(H / c));
+  if (!(L > 0) || !(c > 0)) return { Hu: 0, modo: 'corto' };
+  if (cabeza === 2) {
+    const H1 = 1.5 * c * L * L, H2 = (0.5 * c * L ** 3 + My) / L;
+    const H3 = bisect((H) => mx(H, e) - 2 * My, 0, 1e3 * H1 + 1e3 * My);
+    const Hu = Math.min(H1, H2, H3);
+    return { Hu, modo: Hu === H1 ? 'corto' : Hu === H3 ? 'largo' : 'intermedio' };
+  }
+  const H1 = 0.5 * c * L ** 3 / (e + L);
+  const H2 = bisect((H) => mx(H, e) - My, 0, 1e3 * H1 + 1e3 * My);
+  return H1 <= H2 ? { Hu: H1, modo: 'corto' } : { Hu: H2, modo: 'largo' };
+}
+
 // ---------------------------------------------------------------------
 //  2) Pendiente de dovelas, Winkler, etc. se resuelven en src/blocks/geotech.js
 // ---------------------------------------------------------------------
@@ -162,6 +202,10 @@ defineFns({
   qpFHWA: { fn: vec((N60) => mkUnit(Math.min(2900, 57.5 * n0(N60)), 'kPa')), tex: 'q_p', args: 'N60', desc: 'Punta de pilas perforadas en arena: qp = 57.5·N60 ≤ 2.9 MPa (FHWA-IF-99-025)' },
   qpMeyerhofSPT: { fn: vec((N60, L, D) => mkUnit(Math.min(0.4 * PA * n0(N60) * mm(L) / mm(D), 4 * PA * n0(N60)), 'kPa')), tex: 'q_p', args: 'N60, Lb, D', desc: 'Punta de pilotes hincados en arena: 0.4·pa·N60·L/D ≤ 4·pa·N60 (Meyerhof 1976)' },
   fsMeyerhofSPT: { fn: vec((N60, k) => mkUnit(n0(def(k, 0.02)) * PA * n0(N60), 'kPa')), tex: 'f_s', args: 'N60, [0.02|0.01]', desc: 'Fricción unitaria: 0.02·pa·N60 (desplazamiento grande) / 0.01·pa·N60 (H, pequeño) (Meyerhof 1976)' },
+  HuBromsC: { fn: vec((cu, D, L, e, My, cab) => mkUnit(bromsCoh(kPa(cu), mm(D), mm(L), mm(def(e, 0)), toNum(def(My, mkUnit(1e12, 'kN*m')), 'kN*m'), n0(def(cab, 1))).Hu, 'kN')), tex: 'H_u', args: 'cu, D, L, e, My, [1=libre|2=empotrada]', desc: 'Carga lateral última de Broms (1964a) en suelo cohesivo: mín. entre pilote corto, intermedio y largo (reacción 9·cu·D a partir de 1.5D)' },
+  HuBromsS: { fn: vec((g, phi, D, L, e, My, cab) => mkUnit(bromsGran(toNum(g, 'kN/m^3'), kp(ang(phi)), mm(D), mm(L), mm(def(e, 0)), toNum(def(My, mkUnit(1e12, 'kN*m')), 'kN*m'), n0(def(cab, 1))).Hu, 'kN')), tex: 'H_u', args: "γ', φ, D, L, e, My, [1=libre|2=empotrada]", desc: "Carga lateral última de Broms (1964b) en suelo granular (reacción 3·Kp·γ'·z·D): mín. entre pilote corto, intermedio y largo" },
+  modoBromsC: { fn: (cu, D, L, e, My, cab) => bromsCoh(kPa(cu), mm(D), mm(L), mm(def(e, 0)), toNum(My, 'kN*m'), n0(def(cab, 1))).modo, tex: '\\text{modo}', args: 'cu, D, L, e, My, [cabeza]', desc: 'Mecanismo de Broms que gobierna en suelo cohesivo (texto: corto / intermedio / largo)' },
+  modoBromsS: { fn: (g, phi, D, L, e, My, cab) => bromsGran(toNum(g, 'kN/m^3'), kp(ang(phi)), mm(D), mm(L), mm(def(e, 0)), toNum(My, 'kN*m'), n0(def(cab, 1))).modo, tex: '\\text{modo}', args: "γ', φ, D, L, e, My, [cabeza]", desc: 'Mecanismo de Broms que gobierna en suelo granular (texto)' },
   etaConverse: { fn: vec((n1, n2, D, s) => { const a = n0(n1), b = n0(n2), th = Math.atan(mm(D) / mm(s)) / D2R; return 1 - th * ((a - 1) * b + (b - 1) * a) / (90 * a * b); }), tex: '\\eta', args: 'n1, n2, D, s', desc: 'Eficiencia de grupo de Converse–Labarre: 1 − θ[(n1−1)n2 + (n2−1)n1]/(90 n1 n2), θ = atan(D/s)°' },
   // ----- Licuación (E.050 Art. 38; Youd et al. 2001; Idriss y Boulanger 2008) -----
   rdYoud: { fn: vec((z) => rdYoud(Math.max(0, mm(z)))), tex: 'r_d', args: 'z', desc: 'Coeficiente de reducción de esfuerzos rd (Liao y Whitman; Youd et al. 2001, ec. 2)' },
@@ -173,6 +217,8 @@ defineFns({
   CRR75IB: { fn: vec((N) => { const n = Math.min(37.5, Math.max(0, n0(N))); return Math.min(2, Math.exp(n / 14.1 + (n / 126) ** 2 - (n / 23.6) ** 3 + (n / 25.4) ** 4 - 2.8)); }), tex: 'CRR_{7.5}', args: '(N1)60cs', desc: 'CRR(M=7.5, σ\'v=1 atm) de Idriss y Boulanger (2008)' },
   MSFYoud: { fn: vec((M) => 10 ** 2.24 / n0(M) ** 2.56), tex: 'MSF', args: 'Mw', desc: 'Factor de escala de magnitud MSF = 10^2.24/Mw^2.56 (Idriss; Youd et al. 2001)' },
   MSFIB: { fn: vec((M) => Math.min(1.8, 6.9 * Math.exp(-n0(M) / 4) - 0.058)), tex: 'MSF', args: 'Mw', desc: 'MSF = 6.9·e^(−M/4) − 0.058 ≤ 1.8 (Idriss y Boulanger 2008)' },
+  rdCetin: { fn: vec((z, amax, M, Vs) => rdCetin(Math.max(0, mm(z)), n0(amax), n0(M), math.isUnit(Vs) ? Vs.toNumber('m/s') : n0(Vs))), tex: 'r_d', args: 'z, amax/g, Mw, V*s,12', desc: 'rd de Cetin et al. (2004) en función de z, amax, Mw y la velocidad media de corte en los 12 m superiores (E.050 Art. 38.5.3)' },
+  KsigmaYoud: { fn: vec((svp, N) => { const Dr = Math.min(1, Math.sqrt(Math.max(0, n0(N)) / 46)), f = Math.max(0.6, Math.min(0.8, 0.8 - 0.5 * (Dr - 0.4))); return Math.min(1, (kPa(svp) / PA) ** (f - 1)); }), tex: 'K_{\\sigma}', args: "σ'v, (N1)60", desc: "Kσ = (σ'v/pa)^(f−1) ≤ 1 (Hynes y Olsen 1999; Youd et al. 2001): f = 0.8 (Dr ≤ 40 %) … 0.6 (Dr ≥ 80 %), Dr = √((N1)60/46)" },
   KsigmaIB: { fn: vec((svp, N) => { const C = Math.min(0.3, 1 / (18.9 - 2.55 * Math.sqrt(Math.min(37, n0(N))))); return Math.min(1.1, 1 - C * Math.log(kPa(svp) / PA)); }), tex: 'K_{\\sigma}', args: "σ'v, (N1)60cs", desc: 'Factor de sobrecarga Kσ (Idriss y Boulanger 2008)' },
   FSLiq: { fn: vec((CRR, CSR, z, Dw) => (mm(z) < mm(Dw) ? 3 : Math.min(3, n0(CRR) / n0(CSR)))), tex: 'FS_L', args: 'CRR_M, CSR, z, Dw', desc: 'FS_L = CRR_M/CSR (E.050 Art. 38.5.8); sobre el NF o FS > 3 se reporta 3 (no licuable)' },
   PLCetin: { fn: vec((N160, CSR, M, svp, FC) => { const f = Math.min(35, n0(FC)), x = (n0(N160) * (1 + 0.004 * f) - 13.32 * Math.log(n0(CSR)) - 29.53 * Math.log(n0(M)) - 3.70 * Math.log(kPa(svp) / PA) + 0.05 * f + 16.85) / 2.70; return Phi(-x); }), tex: 'P_L', args: "(N1)60, CSR, Mw, σ'v, FC", desc: 'Probabilidad de licuación de Cetin et al. (2004) (E.050 Art. 38.5.6)' },

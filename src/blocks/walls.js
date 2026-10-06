@@ -19,12 +19,12 @@ function KpRk(phi) { return (1 + sin(phi)) / (1 - sin(phi)); }
 function KaCl(phi, delta, beta, theta) { const a = sin(phi + delta) * sin(phi - beta), b = cos(delta + theta) * cos(theta - beta); return cos(phi - theta) ** 2 / (cos(theta) ** 2 * cos(delta + theta) * (1 + sqrt(max(0, a / b))) ** 2); }
 function KaeM(phi, delta, kh, kv, beta, theta) {
   const psi = atan(kh / (1 - kv));
-  if (phi - beta - psi < -1e-12) throw new Error('Mononobe–Okabe: φ − β − ψ < 0, no existe equilibrio del relleno (reduzca kh o β)');
-  const a = sin(phi + delta) * sin(phi - beta - psi), b = cos(delta + theta + psi) * cos(beta - theta);
+  // φ − β − ψ < 0: sin equilibrio; se anula la raíz (EN 1998-5 E.4) y el bloque marca NO CUMPLE
+  const a = sin(phi + delta) * max(0, sin(phi - beta - psi)), b = cos(delta + theta + psi) * cos(beta - theta);
   return cos(phi - theta - psi) ** 2 / (cos(psi) * cos(theta) ** 2 * cos(delta + theta + psi) * (1 + sqrt(max(0, a / b))) ** 2);
 }
 function KpeM(phi, kh, kv) { // δ = 0, β = 0, θ = 0
-  const psi = atan(kh / (1 - kv)), r = sqrt(sin(phi) * sin(phi - psi) / cos(psi));
+  const psi = atan(kh / (1 - kv)), r = sqrt(sin(phi) * max(0, sin(phi - psi)) / cos(psi));
   return cos(phi - psi) ** 2 / (cos(psi) * cos(psi) * (1 - r) ** 2);
 }
 // polígono: recorte por la recta horizontal y = yc (below = parte inferior) y propiedades (área, centroide)
@@ -137,7 +137,7 @@ function renderRetwall(b, ctx) {
   const Pw = 0.5 * gw * yw * yw, Uw = 0.5 * gw * yw * B; // agua: hidrostático en el plano y subpresión triangular (talón → punta)
   const Pqe = seis ? Kae * qsis * q * Hv * Kth : 0;
   const Dp = Df + (bk > 0 ? hk : 0), ybot = bk > 0 ? -hk : 0;
-  const pass = (Kx) => { const P1 = 0.5 * Kx * gf * Dp * Dp, P2 = 2 * cf * sqrt(Kx) * Dp; const Pt = fp * (P1 + P2); return { P: Pt, y: Pt > 0 ? ybot + fp * (P1 * Dp / 3 + P2 * Dp / 2) / Pt : 0 }; };
+  const pass = (Kx) => { const P1 = 0.5 * Kx * gf * Dp * Dp, P2 = 2 * cf * sqrt(Kx) * Dp; const Pt = fp * (P1 + P2); const yy = Pt > 0 ? ybot + fp * (P1 * Dp / 3 + P2 * Dp / 2) / Pt : 0; return { P: Pt, y: abs(yy) < 1e-9 ? 0 : yy }; };
   const Pp = pass(Kp), Ppe = pass(Kpe);
   const xa = (y) => xplane(y);
   const ch = cos(tb), sv = sin(tb);
@@ -170,7 +170,7 @@ function renderRetwall(b, ctx) {
     let qmax, qmin, Lc = B;
     if (ea <= B / 6 + 1e-12) { qmax = Vq / B * (1 + 6 * ea / B); qmin = Vq / B * (1 - 6 * ea / B); }
     else if (ea < B / 2) { Lc = 3 * (B / 2 - ea); qmax = 2 * Vq / Lc; qmin = 0; }
-    else { qmax = Infinity; qmin = 0; Lc = 0; }
+    else { Lc = 0.03 * B; qmax = 2 * Vq / Lc; qmin = 0; } // resultante fuera de la base (vuelca): valor acotado, el bloque marca NO CUMPLE
     return { Fh, Fv, Mo, Mrv, Fi, Mi, V, Mr, MoT, FhT, FSv, Rs, FSd, Vq, Mq, xr, e, qmax, qmin, Lc, toeMax: e >= 0 };
   }
   const st = stab(thr, 1, Pp, false, 1);
@@ -195,6 +195,7 @@ function renderRetwall(b, ctx) {
   if (qa > 0) rows.push({ l: 'Presión máxima en el suelo q<sub>max</sub> ≤ q<sub>a</sub>', a: st.qmax, s: ss && ss.qmax, la: qa, ls: qas, ge: false, u: si ? 'kPa' : 't/m²', k: si ? 9.80665 : 1 });
   const lbl = ['Volteo', 'Deslizamiento', 'Excentricidad en la base (resultante en el núcleo)', 'Presión máxima sobre el suelo'];
   const art = [' (E.050 39.13.6)', ' (E.050 39.13.6)', ' (estático: núcleo central B/6, Das 8.4; sismo: 2/3 centrales, AASHTO 11.6.5.1)', ' (E.050 Art. 21–22)'];
+  if (verif && seis) { const mg = phi - beta - atan(khw / (1 - kv)); ctx.checks.push({ ok: mg >= -1e-12, label: 'Equilibrio sísmico del relleno φ − β − ψ = ' + f2(mg / D2R, 1) + '° ≥ 0 (Mononobe–Okabe)', ratio: mg >= 0 ? (beta + atan(khw / (1 - kv))) / phi : 1 + (-mg) / phi, block: ctx.blockId }); }
   if (verif) rows.forEach((r, i) => {
     const okA = r.ge ? r.a >= r.la : r.a <= r.la + 1e-12;
     ctx.checks.push({ ok: okA && isFinite(r.a), label: lbl[i] + ' — estático' + art[i], ratio: r.ge ? r.la / r.a : r.a / r.la, block: ctx.blockId });
@@ -435,7 +436,7 @@ registerBlock('wallrebar', {
     F('fc', "f'c", '210 kgf/cm^2'), F('fy', 'fy', '4200 kgf/cm^2'), F('rec', 'Recubrimiento libre', '5 cm'),
     F('barra', 'Varilla #', '5'), F('s', 'Espaciamiento', '20 cm'), F('corte', 'Fracción de barras cortadas', '0.5'), F('sufijo', 'Sufijo', ''), F('titulo', 'Título', ''),
   ],
-  hint: 'Momento último a lo largo de la pantalla (empuje + sobrecarga, y con sismo M-O + inercia), capacidad φMn del refuerzo colocado y altura de corte de las barras alternas (E.060 12.10.3: prolongar max(d, 12db)). Exporta <code>Mub, Vub, phiMnb, Asv, hcorte</code>.',
+  hint: 'Momento último a lo largo de la pantalla: U1 = 1.7(CE + sobrecarga) (E.060 9.2.5) y, con sismo, U2 = 1.7 CE + 1.0 CS (incremento M-O a 0.6z + inercia; 50 % de la sobrecarga), capacidad φMn del refuerzo colocado y altura de corte de las barras alternas (E.060 12.10.3: prolongar max(d, 12db)). Exporta <code>Mub, Vub, phiMnb, Asv, hcorte</code>.',
   def: { hp: '4.5 m', t1: '0.25 m', t2: '0.45 m', Ka: '0.33', gs: '1.8 tonf/m^3', q: '1 tonf/m^2', barra: '5', s: '20 cm', corte: '0.5' },
   render: renderWallRebar,
 });

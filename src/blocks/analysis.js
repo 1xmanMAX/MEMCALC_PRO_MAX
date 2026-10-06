@@ -74,25 +74,6 @@ function parseTargets(tok, ids, where) {
   }
   return out;
 }
-// Resolución de sistemas densos (Gauss con pivoteo parcial)
-function solveDense(A, Bs) {
-  const n = A.length; const M = A.map(r => Float64Array.from(r)); const R = Bs.map(b => Float64Array.from(b));
-  let dmax = 0; for (let i = 0; i < n; i++) dmax = Math.max(dmax, Math.abs(M[i][i]));
-  for (let k = 0; k < n; k++) {
-    let p = k, pv = Math.abs(M[k][k]);
-    for (let i = k + 1; i < n; i++) if (Math.abs(M[i][k]) > pv) { pv = Math.abs(M[i][k]); p = i; }
-    if (pv < 1e-10 * (dmax || 1)) { const e = new Error('singular'); e.dof = k; throw e; }
-    if (p !== k) { [M[k], M[p]] = [M[p], M[k]]; for (const b of R) { const t = b[k]; b[k] = b[p]; b[p] = t; } }
-    for (let i = k + 1; i < n; i++) {
-      const f = M[i][k] / M[k][k]; if (!f) continue;
-      const Mi = M[i], Mk = M[k];
-      for (let j = k; j < n; j++) Mi[j] -= f * Mk[j];
-      for (const b of R) b[i] -= f * b[k];
-    }
-  }
-  return R.map(b => { const x = new Float64Array(n); for (let i = n - 1; i >= 0; i--) { let s = b[i]; for (let j = i + 1; j < n; j++) s -= M[i][j] * x[j]; x[i] = s / M[i][i]; } return x; });
-}
-
 // ---------------------------------------------------------------------
 //  Lectura del modelo
 // ---------------------------------------------------------------------
@@ -116,36 +97,42 @@ export function parseFrame(b, S) {
   for (const l of cleanLines(b.secciones)) {
     const where = 'Secciones, línea ' + l.n + ' «' + l.s + '»';
     let tk = tokenize(l.s); const opt = {};
-    tk = tk.filter(t => { const m = /^(w|peso)=(.+)$/i.exec(t); if (m) { opt.w = m[2]; return false; } return true; });
-    const id = tk[0]; let rest = tk.slice(1), E, A, I, desc = '';
+    tk = tk.filter(t => { const m = /^(w|peso|as|g|h)=(.+)$/i.exec(t); if (m) { const k = m[1].toLowerCase(); opt[k === 'peso' ? 'w' : k] = m[2]; return false; } return true; });
+    const id = tk[0]; let rest = tk.slice(1), E, A, I, desc = '', hs = null, As = null;
     const kind = (rest[0] || '').toLowerCase();
     if (kind === 'rect') {
       const v = mergeU(rest.slice(1), S); if (v.length !== 3) throw new Error(where + ': use «id rect b h E»');
       const bb = evNum(v[0], S, 'm', where), hh = evNum(v[1], S, 'm', where); E = evNum(v[2], S, U.E, where);
-      A = bb * hh; I = bb * hh ** 3 / 12; desc = f2(bb * 100, 0) + '×' + f2(hh * 100, 0) + ' cm';
+      A = bb * hh; I = bb * hh ** 3 / 12; desc = f2(bb * 100, 0) + '×' + f2(hh * 100, 0) + ' cm'; hs = hh; As = A * 5 / 6;
     } else if (kind === 'circ') {
       const v = mergeU(rest.slice(1), S); if (v.length !== 2) throw new Error(where + ': use «id circ D E»');
       const D = evNum(v[0], S, 'm', where); E = evNum(v[1], S, U.E, where);
-      A = Math.PI * D * D / 4; I = Math.PI * D ** 4 / 64; desc = 'Ø ' + f2(D * 100, 1) + ' cm';
+      A = Math.PI * D * D / 4; I = Math.PI * D ** 4 / 64; desc = 'Ø ' + f2(D * 100, 1) + ' cm'; hs = D; As = 0.9 * A;
     } else {
       const v = mergeU(rest, S); if (v.length < 2 || v.length > 3) throw new Error(where + ': use «id E A I» (I se puede omitir en armaduras)');
       E = evNum(v[0], S, U.E, where); A = evNum(v[1], S, 'm^2', where); I = v[2] !== undefined ? evNum(v[2], S, 'm^4', where) : 0;
     }
     if (!(E > 0) || !(A > 0) || I < 0) throw new Error(where + ': E y A deben ser mayores que cero');
     if (sids.includes(id)) throw new Error(where + ': sección repetida');
-    sids.push(id); secs.push({ id, E, A, I, desc, w: opt.w !== undefined ? evNum(opt.w, S, U.w, where) : null });
+    if (opt.h !== undefined) hs = evNum(opt.h, S, 'm', where);
+    if (opt.as !== undefined) As = evNum(opt.as, S, 'm^2', where); else if (As === null) As = A * 5 / 6;
+    const G = opt.g !== undefined ? evNum(opt.g, S, U.E, where) : null;
+    if (!(As > 0) || (G !== null && !(G > 0))) throw new Error(where + ': As y G deben ser mayores que cero');
+    sids.push(id); secs.push({ id, E, A, I, desc, h: hs, As, G, w: opt.w !== undefined ? evNum(opt.w, S, U.w, where) : null });
   }
   if (!secs.length) throw new Error('Defina al menos una sección: «id E A I» o «id rect b h E»');
   // barras
   const mems = [], mids = [];
   for (const l of cleanLines(b.barras)) {
     const where = 'Barras, línea ' + l.n + ' «' + l.s + '»';
-    const tk = tokenize(l.s); if (tk.length < 3) throw new Error(where + ': use «id ni nj [sección] [ri|rj|rij]»');
+    const tk = tokenize(l.s); if (tk.length < 3) throw new Error(where + ': use «id ni nj [sección] [ri|rj|rij] [zi=… zj=…]»');
     const ni = nids.indexOf(tk[1]), nj = nids.indexOf(tk[2]);
-    if (ni < 0 || nj < 0) throw new Error(where + ': nudo inexistente');
+    if (ni < 0 || nj < 0) throw new Error(where + ': el nudo «' + (ni < 0 ? tk[1] : tk[2]) + '» no existe (nudos definidos: ' + (nids.length > 12 ? nids.slice(0, 12).join(', ') + '…' : nids.join(', ')) + ')');
     if (ni === nj) throw new Error(where + ': la barra une un nudo consigo mismo');
-    let sec = 0, rel = [truss, truss];
+    let sec = 0, rel = [truss, truss], zi = null, zj = null;
     for (const t of tk.slice(3)) {
+      const z = /^z(i|j)=(.+)$/i.exec(t);
+      if (z) { const v = evNum(z[2], S, 'm', where); if (!(v >= 0)) throw new Error(where + ': la zona rígida debe ser ≥ 0'); if (z[1].toLowerCase() === 'i') zi = v; else zj = v; continue; }
       const r = /^r(i|j|ij|ji)$/i.exec(t);
       if (r) { const k = r[1].toLowerCase(); if (k.includes('i')) rel[0] = true; if (k.includes('j')) rel[1] = true; continue; }
       const si = sids.indexOf(t); if (si < 0) throw new Error(where + ': sección «' + t + '» no definida'); sec = si;
@@ -155,28 +142,54 @@ export function parseFrame(b, S) {
     if (!(L > 1e-6)) throw new Error(where + ': longitud nula (nudos coincidentes)');
     const s = secs[sec];
     if (!(s.I > 0) && !(rel[0] && rel[1])) throw new Error(where + ': la sección «' + s.id + '» no tiene inercia I; solo es válida en barras biarticuladas');
-    mids.push(tk[0]); mems.push({ id: tk[0], i: ni, j: nj, sec, rel, L, c: (n2.x - n1.x) / L, s: (n2.y - n1.y) / L });
+    mids.push(tk[0]); mems.push({ id: tk[0], i: ni, j: nj, sec, rel, L, c: (n2.x - n1.x) / L, s: (n2.y - n1.y) / L, zi, zj, where });
+  }
+  // zonas rígidas (brazos rígidos): explícitas zi=/zj= o automáticas = factor·(peralte de las barras transversales)/2
+  const fz = String(b.brazos || '').trim() ? evNum(String(b.brazos), S, '', 'Zonas rígidas') : 0;
+  if (fz < 0 || fz > 1) throw new Error('Zonas rígidas: el factor debe estar entre 0 y 1');
+  for (const m of mems) {
+    for (const end of ['i', 'j']) {
+      const key = 'z' + end; if (m[key] !== null) continue;
+      let z = 0;
+      if (fz > 0 && !truss) {
+        const n = m[end];
+        for (const o of mems) { if (o === m || (o.i !== n && o.j !== n)) continue; const h = secs[o.sec].h; if (h > 0 && Math.abs(m.c * o.c + m.s * o.s) < 0.5) z = Math.max(z, h / 2); }
+      }
+      m[key] = fz * z;
+    }
+    if (m.zi + m.zj > 0.8 * m.L) throw new Error(m.where + ': las zonas rígidas (zi + zj = ' + f2(m.zi + m.zj) + ' m) superan el 80 % de la longitud');
+    if ((m.zi > 0 || m.zj > 0) && truss) throw new Error(m.where + ': las zonas rígidas no se usan en armaduras');
   }
   if (!mems.length) throw new Error('Defina al menos una barra («id ni nj [sección]»)');
   // apoyos
-  const sup = nodes.map(() => ({ r: [0, 0, 0], k: [0, 0, 0], any: false }));
+  const sup = nodes.map(() => ({ r: [0, 0, 0], k: [0, 0, 0], any: false, ang: null }));
   for (const l of cleanLines(b.apoyos)) {
     const where = 'Apoyos, línea ' + l.n + ' «' + l.s + '»';
-    const tk = tokenize(l.s); if (tk.length < 2) throw new Error(where + ': use «nudo tipo» (E, A, Rx, Ry, 101…, K kx ky kr)');
+    const tk = tokenize(l.s); if (tk.length < 2) throw new Error(where + ': use «nudo tipo» (E, A, Rx, Ry, G, 101, RI ángulo, K kx ky kθ)');
     const tg = parseTargets(tk[0], nids, where); const t = tk[1].toUpperCase();
-    let r = null, k = null;
+    let r = null, k = null, ang = null;
     if (/^(E|EMP|EMPOTRADO|FIJO)$/.test(t)) r = [1, 1, 1];
     else if (/^(A|ART|ARTICULADO|P|PIN)$/.test(t)) r = [1, 1, 0];
     else if (/^(RY|R|RODILLO|RODILLOY)$/.test(t)) r = [0, 1, 0];
     else if (/^(RX|RODILLOX)$/.test(t)) r = [1, 0, 0];
     else if (/^(G|GUIA|DESLIZANTE)$/.test(t)) r = [0, 1, 1];
     else if (/^[01]{3}$/.test(t)) r = t.split('').map(Number);
+    else if (/^(RI|RODILLOI|INCLINADO)$/.test(t)) {
+      const v = mergeU(tk.slice(2), S); if (v.length !== 1) throw new Error(where + ': use «nudo RI α» (α = inclinación de la superficie de rodadura, en grados, antihorario desde x)');
+      ang = evNum(v[0], S, 'deg', where); r = [0, 1, 0];
+    }
     else if (/^(K|RESORTE)$/.test(t)) {
       const v = mergeU(tk.slice(2), S); if (!v.length) throw new Error(where + ': indique kx ky [kθ]');
       k = [evNum(v[0], S, U.k, where), v[1] !== undefined ? evNum(v[1], S, U.k, where) : 0, v[2] !== undefined ? evNum(v[2], S, U.M, where) : 0];
       if (k.some(x => x < 0)) throw new Error(where + ': rigidez de resorte negativa');
-    } else throw new Error(where + ': tipo de apoyo «' + tk[1] + '» no reconocido (E, A, Rx, Ry, G, 101, K)');
-    for (const n of tg) { const s = sup[n]; s.any = true; if (r) r.forEach((v, i) => { if (v) s.r[i] = 1; }); if (k) k.forEach((v, i) => { s.k[i] += v; }); }
+    } else throw new Error(where + ': tipo de apoyo «' + tk[1] + '» no reconocido (E, A, Rx, Ry, G, 101, RI α, K kx ky kθ)');
+    for (const n of tg) {
+      const s = sup[n]; s.any = true;
+      if (ang !== null) { if (s.r[0] || s.r[1] || s.ang !== null) throw new Error(where + ': el nudo ' + nids[n] + ' ya tiene otro apoyo; el rodillo inclinado debe ser su único apoyo de traslación'); s.ang = ang; }
+      else if (s.ang !== null && r && (r[0] || r[1])) throw new Error(where + ': el nudo ' + nids[n] + ' tiene un rodillo inclinado; no combine apoyos de traslación');
+      if (r) r.forEach((v, i) => { if (v) s.r[i] = 1; }); if (k) k.forEach((v, i) => { s.k[i] += v; });
+      if (s.ang !== null && (s.k[0] || s.k[1])) throw new Error(where + ': no se admiten resortes de traslación en un nudo con rodillo inclinado');
+    }
   }
   // cargas
   const cases = []; const caseOf = (name) => { let c = cases.find(q => q.name === name); if (!c) { c = { name, loads: [] }; cases.push(c); } return c; };
@@ -230,7 +243,13 @@ export function parseFrame(b, S) {
   // nombres de casos
   const cdesc = {};
   for (const l of cleanLines(b.casos)) { const m = /^([A-Za-z]\w*)\s*[:=]?\s*(.*)$/.exec(l.s); if (m) cdesc[m[1]] = m[2]; }
-  return { U, truss, nodes, nids, secs, mems, mids, sup, cases, combos, cdesc };
+  // deformación por cortante (ν) y P-Δ
+  const shTxt = String(b.cortante ?? '').trim();
+  let shear = null;
+  if (shTxt && !/^(no|0|false)$/i.test(shTxt)) { shear = /^(si|sí|true)$/i.test(shTxt) ? 0.2 : evNum(shTxt, S, '', 'Deformación por cortante (ν)'); if (!(shear >= 0 && shear < 0.5)) throw new Error('Deformación por cortante: ν debe estar entre 0 y 0.5'); }
+  const pdelta = b.pdelta === true || /^(si|sí|true|1|x)$/i.test(String(b.pdelta ?? '').trim());
+  const span = Math.max(1e-6, Math.max(...nodes.map(n => n.x)) - Math.min(...nodes.map(n => n.x)), Math.max(...nodes.map(n => n.y)) - Math.min(...nodes.map(n => n.y)));
+  return { U, truss, nodes, nids, secs, mems, mids, sup, cases, combos, cdesc, shear, pdelta, span };
 }
 
 export function parseCombos(text, names, S) {
@@ -238,7 +257,10 @@ export function parseCombos(text, names, S) {
   for (const l of cleanLines(text)) {
     const where = 'Combinaciones, línea ' + l.n + ' «' + l.s + '»';
     const m = /^([A-Za-z]\w*)\s*[:=]\s*(.+)$/.exec(l.s); if (!m) throw new Error(where + ': use «U1 = 1.4 CM + 1.7 CV»');
-    const variants = m[2].includes('±') ? [[m[1] + 'a', m[2].replace(/±/g, '+')], [m[1] + 'b', m[2].replace(/±/g, '-')]] : [[m[1], m[2]]];
+    // cada «±» duplica la combinación: 1 → a, b ; 2 → a, b, c, d (+ +, + −, − +, − −) …
+    const parts = m[2].replace(/\+-|\+\/-/g, '±').split('±'), nPM = parts.length - 1;
+    if (nPM > 4) throw new Error(where + ': máximo 4 signos ± por combinación');
+    const variants = !nPM ? [[m[1], m[2]]] : Array.from({ length: 2 ** nPM }, (_, k) => [m[1] + String.fromCharCode(97 + k), parts.reduce((acc, q, i) => acc + (i ? ((k >> (nPM - i)) & 1 ? '-' : '+') : '') + q, '')]);
     for (const [nm, ex] of variants) {
       let node; try { node = math.parse(ex.replace(/·/g, '*')); } catch (e) { throw new Error(where + ': expresión no válida'); }
       const used = new Set(); node.traverse(n => { if (n.type === 'SymbolNode' && names.includes(n.name)) used.add(n.name); });
@@ -259,15 +281,32 @@ const comboText = (f) => Object.entries(f).filter(([, v]) => Math.abs(v) > 1e-12
 
 // ---------------------------------------------------------------------
 //  Solución por el método de rigidez directa
+//   · elemento de 6 GDL (Euler-Bernoulli o Timoshenko), rótulas por condensación estática,
+//   · brazos rígidos en los extremos (zonas rígidas de nudo), apoyos inclinados,
+//   · matriz geométrica (P-Δ) iterativa, solución con LDLᵀ en banda (reordenamiento RCM).
 // ---------------------------------------------------------------------
 const G3 = [[-Math.sqrt(0.6), 5 / 9], [0, 8 / 9], [Math.sqrt(0.6), 5 / 9]];
-function hermite(x, L) { const z = x / L; return [1 - 3 * z * z + 2 * z ** 3, L * (z - 2 * z * z + z ** 3), 3 * z * z - 2 * z ** 3, L * (-z * z + z ** 3)]; }
-function hermiteD(x, L) { const z = x / L; return [(-6 * z + 6 * z * z) / L, 1 - 4 * z + 3 * z * z, (6 * z - 6 * z * z) / L, -2 * z + 3 * z * z]; }
-function kLocal(E, A, I, L) {
-  const a = E * A / L, b = 12 * E * I / L ** 3, c = 6 * E * I / L ** 2, d = 4 * E * I / L, e = 2 * E * I / L;
+// funciones de forma exactas de la viga de Timoshenko (ph = Φ = 12EI/(G·As·L²); ph = 0 → Hermite)
+//   v(x) = Σ Nv·{vi, θi, vj, θj} ; giro de la sección ψ(x) = Σ Nψ·{…}  (Przemieniecki 1968; Reddy 1997)
+function shapeV(x, L, ph = 0) {
+  const z = x / L, c = 1 / (1 + ph);
+  return [c * (1 - 3 * z * z + 2 * z ** 3 + ph * (1 - z)), c * L * (z - 2 * z * z + z ** 3 + ph / 2 * (z - z * z)), c * (3 * z * z - 2 * z ** 3 + ph * z), c * L * (-z * z + z ** 3 + ph / 2 * (z * z - z))];
+}
+function shapeR(x, L, ph = 0) {
+  const z = x / L, c = 1 / (1 + ph);
+  return [c * 6 / L * (z * z - z), c * (3 * z * z - 4 * z + 1 + ph * (1 - z)), -c * 6 / L * (z * z - z), c * (3 * z * z - 2 * z + ph * z)];
+}
+// rigidez local (Kassimali Ec. 6.6; con cortante: McGuire Ec. 4.34 / Przemieniecki)
+function kLocal(E, A, I, L, ph = 0) {
+  const q = 1 / (1 + ph), a = E * A / L, b = 12 * E * I / L ** 3 * q, c = 6 * E * I / L ** 2 * q, d = (4 + ph) * E * I / L * q, e = (2 - ph) * E * I / L * q;
   return [[a, 0, 0, -a, 0, 0], [0, b, c, 0, -b, c], [0, c, d, 0, -c, e], [-a, 0, 0, a, 0, 0], [0, -b, -c, 0, b, -c], [0, c, e, 0, -c, d]];
 }
-// condensación estática de los giros liberados (k y vector de fuerzas de empotramiento q)
+// matriz geométrica consistente (N + tracción) — McGuire Ec. 9.18 / Kassimali Ec. 10.x
+function kGeo(N, L) {
+  const t = N / L, a = 1.2 * t, b = t * L / 10, c = 2 * t * L * L / 15, d = t * L * L / 30;
+  return [[0, 0, 0, 0, 0, 0], [0, a, b, 0, -a, b], [0, b, c, 0, -b, -d], [0, 0, 0, 0, 0, 0], [0, -a, -b, 0, a, -b], [0, b, -d, 0, -b, c]];
+}
+// condensación estática de los giros liberados (k y vectores de fuerzas de empotramiento q)
 function condense(k, qs, rel) {
   const r = []; if (rel[0]) r.push(2); if (rel[1]) r.push(5);
   if (!r.length) return { k, qs };
@@ -283,54 +322,93 @@ function condense(k, qs, rel) {
 const Tm = (c, s) => [[c, s, 0, 0, 0, 0], [-s, c, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0], [0, 0, 0, c, s, 0], [0, 0, 0, -s, c, 0], [0, 0, 0, 0, 0, 1]];
 const mulMV = (A, v) => A.map(r => r.reduce((t, x, j) => t + x * v[j], 0));
 const mulTtV = (A, v) => A[0].map((_, j) => A.reduce((t, r, i) => t + r[j] * v[i], 0));
+const TtKT = (T, k) => T[0].map((_, i) => T[0].map((__, j) => { let s = 0; for (let p = 0; p < 6; p++) { const tp = T[p][i]; if (!tp) continue; for (let q = 0; q < 6; q++) s += tp * k[p][q] * T[q][j]; } return s; }));
+// brazos rígidos: u_cara = H·u_nudo  (v_i' = v_i + zi·θi ; v_j' = v_j − zj·θj)
+const Hv = (u, zi, zj) => [u[0], u[1] + zi * u[2], u[2], u[3], u[4] - zj * u[5], u[5]];
+const HtV = (f, zi, zj) => [f[0], f[1], f[2] + zi * f[1], f[3], f[4], f[5] - zj * f[4]];
+function HtKH(k, zi, zj) {
+  if (!zi && !zj) return k;
+  const H = [[1, 0, 0, 0, 0, 0], [0, 1, zi, 0, 0, 0], [0, 0, 1, 0, 0, 0], [0, 0, 0, 1, 0, 0], [0, 0, 0, 0, 1, -zj], [0, 0, 0, 0, 0, 1]];
+  return TtKT(H, k);
+}
 
 // cargas de una barra en coordenadas locales: {k:'d',a,b,px1,px2,py1,py2} | {k:'p',a,px,py} | {k:'c',a,c}
 function localLoads(m, ld) {
   const L = m.L, c = m.c, s = m.s;
   const at = (p) => (p.pct !== undefined ? p.pct * L : p.v);
   const g2l = (gx, gy) => [c * gx + s * gy, -s * gx + c * gy];
+  const point = ld.t !== 'D';
   const dirv = (w) => {
     switch (ld.dir) {
-      case 'proy': return g2l(0, -w * Math.abs(c));
+      case 'proy': return point ? g2l(0, -w) : g2l(0, -w * Math.abs(c));
       case 'horiz': return g2l(w, 0);
-      case 'hproy': return g2l(w * Math.abs(s), 0);
+      case 'hproy': return point ? g2l(w, 0) : g2l(w * Math.abs(s), 0);
       case 'perp': return [0, w];
       case 'axial': return [w, 0];
       default: return g2l(0, -w);
     }
   };
+  const tolL = Math.max(1e-7, 2e-3 * L); // tolerancia para posiciones redondeadas por el usuario
   if (ld.t === 'D') {
     const a = at(ld.a), b = at(ld.b);
-    if (!(a >= -EPS && b <= L + 1e-7 && b > a + EPS)) throw new Error('Carga en la barra ' + m.id + ': el tramo cargado [' + f2(a) + ', ' + f2(b) + '] m debe estar dentro de 0…' + f2(L) + ' m');
-    const p1 = dirv(ld.w1), p2 = dirv(ld.w2);
-    return { k: 'd', a: Math.max(0, a), b: Math.min(L, b), px1: p1[0], px2: p2[0], py1: p1[1], py2: p2[1] };
+    if (!(a >= -tolL && b <= L + tolL && b > a + EPS)) throw new Error('Carga en la barra ' + m.id + ': el tramo cargado [' + f2(a) + ', ' + f2(b) + '] m debe estar dentro de 0…' + f2(L) + ' m (con a < b)');
+    const a1 = Math.max(0, a), b1 = Math.min(L, b);
+    // si se recorta por redondeo, se interpola la intensidad en el extremo recortado
+    const wl = (x) => ld.w1 + (ld.w2 - ld.w1) * (x - a) / (b - a);
+    const p1 = dirv(wl(a1)), p2 = dirv(wl(b1));
+    return { k: 'd', a: a1, b: b1, px1: p1[0], px2: p2[0], py1: p1[1], py2: p2[1] };
   }
   const a = at(ld.a);
-  if (!(a >= -EPS && a <= L + 1e-7)) throw new Error('Carga en la barra ' + m.id + ': la posición a = ' + f2(a) + ' m está fuera de la barra (L = ' + f2(L) + ' m)');
+  if (!(a >= -tolL && a <= L + tolL)) throw new Error('Carga en la barra ' + m.id + ': la posición a = ' + f2(a) + ' m está fuera de la barra (L = ' + f2(L) + ' m)');
   if (ld.t === 'P') { const p = dirv(ld.P); return { k: 'p', a: Math.min(L, Math.max(0, a)), px: p[0], py: p[1] }; }
   return { k: 'c', a: Math.min(L, Math.max(0, a)), c: ld.C };
 }
-function equivLoads(L, lds) {
+// cargas nodales equivalentes  ∫Nᵀp dx  (Gauss 3 puntos: exacta para carga lineal × forma cúbica)
+function equivLoads(L, lds, ph = 0) {
   const e = [0, 0, 0, 0, 0, 0];
   for (const l of lds) {
     if (l.k === 'd') {
-      const h = (l.b - l.a) / 2, mid = (l.a + l.b) / 2;
+      const h = (l.b - l.a) / 2, mid = (l.a + l.b) / 2; if (!(h > 0)) continue;
       for (const [g, wg] of G3) {
         const x = mid + g * h, t = (x - l.a) / (l.b - l.a);
-        const px = l.px1 + (l.px2 - l.px1) * t, py = l.py1 + (l.py2 - l.py1) * t, N = hermite(x, L), W = wg * h;
+        const px = l.px1 + (l.px2 - l.px1) * t, py = l.py1 + (l.py2 - l.py1) * t, N = shapeV(x, L, ph), W = wg * h;
         e[0] += W * px * (1 - x / L); e[3] += W * px * x / L;
         e[1] += W * py * N[0]; e[2] += W * py * N[1]; e[4] += W * py * N[2]; e[5] += W * py * N[3];
       }
     } else if (l.k === 'p') {
-      const N = hermite(l.a, L);
+      const N = shapeV(l.a, L, ph);
       e[0] += l.px * (1 - l.a / L); e[3] += l.px * l.a / L;
       e[1] += l.py * N[0]; e[2] += l.py * N[1]; e[4] += l.py * N[2]; e[5] += l.py * N[3];
     } else {
-      const D = hermiteD(l.a, L);
+      const D = shapeR(l.a, L, ph);
       e[1] += l.c * D[0]; e[2] += l.c * D[1]; e[4] += l.c * D[2]; e[5] += l.c * D[3];
     }
   }
   return e;
+}
+// reparte las cargas entre el tramo flexible y los brazos rígidos (estos las llevan por estática al nudo)
+function splitLoads(lds, L, zi, zj) {
+  if (!(zi > 0) && !(zj > 0)) return { flex: lds, rig: [0, 0, 0, 0, 0, 0] };
+  const Lf = L - zi - zj, flex = [], e = [0, 0, 0, 0, 0, 0];
+  const armI = (x, px, py, c) => { e[0] += px; e[1] += py; e[2] += py * x + c; };
+  const armJ = (x, px, py, c) => { e[3] += px; e[4] += py; e[5] += py * (x - L) + c; };
+  for (const l of lds) {
+    if (l.k === 'd') {
+      const at = (x) => { const t = (x - l.a) / (l.b - l.a); return [l.px1 + (l.px2 - l.px1) * t, l.py1 + (l.py2 - l.py1) * t]; };
+      for (const [s0, s1, arm] of [[l.a, Math.min(l.b, zi), armI], [Math.max(l.a, zi), Math.min(l.b, L - zj), null], [Math.max(l.a, L - zj), l.b, armJ]]) {
+        if (!(s1 > s0 + 1e-12)) continue;
+        const p0 = at(s0), p1 = at(s1);
+        if (!arm) { flex.push({ k: 'd', a: s0 - zi, b: s1 - zi, px1: p0[0], px2: p1[0], py1: p0[1], py2: p1[1] }); continue; }
+        const h = (s1 - s0) / 2, mid = (s0 + s1) / 2;
+        for (const [g, wg] of G3) { const x = mid + g * h, p = at(x); arm(x, wg * h * p[0], wg * h * p[1], 0); }
+      }
+    } else {
+      const arm = l.a < zi - 1e-12 ? armI : l.a > L - zj + 1e-12 ? armJ : null;
+      if (!arm) { flex.push({ ...l, a: Math.min(Lf, Math.max(0, l.a - zi)) }); continue; }
+      if (l.k === 'p') arm(l.a, l.px, l.py, 0); else arm(l.a, 0, 0, l.c);
+    }
+  }
+  return { flex, rig: e };
 }
 // fuerzas internas (N tracción +, V = dM/dx, M + tracción en la cara −y local) en x
 function intForces(fi, lds, x, side) {
@@ -352,16 +430,77 @@ function intForces(fi, lds, x, side) {
   return [N, V, M];
 }
 
-export function solveFrame(md, nseg = 40) {
-  const { nodes, mems, secs, sup, cases } = md;
-  const nN = nodes.length, nD = 3 * nN;
-  const Kg = Array.from({ length: nD }, () => new Float64Array(nD));
-  // cargas locales por caso y barra
-  const LL = cases.map(c => mems.map(() => []));
-  cases.forEach((c, ci) => c.loads.forEach(ld => { if (ld.m !== undefined) LL[ci][ld.m].push(localLoads(mems[ld.m], ld)); }));
-  // estaciones (comunes a todos los casos)
-  mems.forEach((m, mi) => {
+// ---------- álgebra: reordenamiento RCM + LDLᵀ en banda ----------
+function rcmNodes(nN, mems) {
+  const adj = Array.from({ length: nN }, () => new Set());
+  for (const m of mems) { adj[m.i].add(m.j); adj[m.j].add(m.i); }
+  const deg = adj.map(s => s.size), seen = new Uint8Array(nN), order = [];
+  while (order.length < nN) {
+    let st = -1; for (let i = 0; i < nN; i++) if (!seen[i] && (st < 0 || deg[i] < deg[st])) st = i;
+    const q = [st]; seen[st] = 1;
+    for (let h = 0; h < q.length; h++) { const nb = [...adj[q[h]]].filter(k => !seen[k]).sort((a, b) => deg[a] - deg[b]); for (const k of nb) { seen[k] = 1; q.push(k); } }
+    order.push(...q);
+  }
+  return order.reverse();
+}
+function bandFactor(K, dofs, b) {
+  const n = dofs.length, w = b + 1, Lb = new Float64Array(n * w), D = new Float64Array(n);
+  for (let i = 0; i < n; i++) { const r = K[dofs[i]]; for (let k = Math.max(0, i - b); k <= i; k++) Lb[i * w + (i - k)] = r[dofs[k]]; }
+  for (let j = 0; j < n; j++) {
+    const jw = j * w, j0 = Math.max(0, j - b);
+    let s = Lb[jw], sa = Math.abs(s);
+    for (let k = j0; k < j; k++) { const l = Lb[jw + (j - k)], t = l * l * D[k]; s -= t; sa += Math.abs(t); }
+    if (!(s > 1e-12 * sa)) {
+      const e = new Error('singular'); e.dof = dofs[j]; e.neg = s < -1e-7 * sa;
+      // modo del mecanismo: x_j = 1, A₁₁·x₁ = −A₁ⱼ  →  x₁ = −L₁₁⁻ᵀ·lⱼ
+      const x = new Float64Array(j + 1); x[j] = 1;
+      for (let i = j - 1; i >= 0; i--) { let t = 0; for (let k = i + 1; k <= Math.min(j, i + b); k++) t += Lb[k * w + (k - i)] * x[k]; x[i] = -t; }
+      e.mode = new Map(); for (let i = 0; i <= j; i++) if (x[i]) e.mode.set(dofs[i], x[i]);
+      throw e;
+    }
+    D[j] = s; Lb[jw] = 1;
+    const iMax = Math.min(n - 1, j + b);
+    for (let i = j + 1; i <= iMax; i++) {
+      const iw = i * w; let t = Lb[iw + (i - j)];
+      for (let k = Math.max(0, i - b); k < j; k++) t -= Lb[iw + (i - k)] * Lb[jw + (j - k)] * D[k];
+      Lb[iw + (i - j)] = t / s;
+    }
+  }
+  return {
+    n, b, D,
+    solve(rhs) {
+      const x = Float64Array.from(rhs);
+      for (let i = 0; i < n; i++) { const iw = i * w; let s = x[i]; for (let k = Math.max(0, i - b); k < i; k++) s -= Lb[iw + (i - k)] * x[k]; x[i] = s; }
+      for (let i = 0; i < n; i++) x[i] /= D[i];
+      for (let i = n - 1; i >= 0; i--) { let s = x[i]; const kMax = Math.min(n - 1, i + b); for (let k = i + 1; k <= kMax; k++) s -= Lb[k * w + (k - i)] * x[k]; x[i] = s; }
+      return x;
+    },
+  };
+}
+// valores y vectores propios de una matriz simétrica (Jacobi cíclico)
+function jacobiEig(A0) {
+  const n = A0.length, A = A0.map(r => Float64Array.from(r)), V = Array.from({ length: n }, (_, i) => { const r = new Float64Array(n); r[i] = 1; return r; });
+  let nrm = 0; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) nrm += A[i][j] ** 2;
+  for (let sw = 0; sw < 60; sw++) {
+    let off = 0; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) off += A[i][j] ** 2;
+    if (off <= 1e-26 * nrm) break;
+    for (let p = 0; p < n - 1; p++) for (let q = p + 1; q < n; q++) {
+      const apq = A[p][q]; if (Math.abs(apq) < 1e-300) continue;
+      const th = (A[q][q] - A[p][p]) / (2 * apq), t = Math.sign(th || 1) / (Math.abs(th) + Math.sqrt(th * th + 1)), c = 1 / Math.sqrt(t * t + 1), s = t * c;
+      for (let k = 0; k < n; k++) { const akp = A[k][p], akq = A[k][q]; A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq; }
+      for (let k = 0; k < n; k++) { const apk = A[p][k], aqk = A[q][k]; A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk; }
+      for (let k = 0; k < n; k++) { const vkp = V[k][p], vkq = V[k][q]; V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq; }
+    }
+  }
+  return { val: A.map((r, i) => r[i]), vec: V };
+}
+
+// ---------- preparación de la estructura ----------
+const DOFN = ['ux', 'uy', 'θz'];
+function prepStations(md, LL, nseg) {
+  md.mems.forEach((m, mi) => {
     const set = []; for (let k = 0; k <= nseg; k++) set.push([m.L * k / nseg, 0]);
+    if (m.zi > 0) set.push([m.zi, 0]); if (m.zj > 0) set.push([m.L - m.zj, 0]);
     for (const lc of LL) for (const l of lc[mi]) {
       if (l.k === 'd') { set.push([l.a, 0], [l.b, 0]); for (let k = 1; k < 8; k++) set.push([l.a + (l.b - l.a) * k / 8, 0]); }
       else if (l.a > 1e-9 && l.a < m.L - 1e-9) set.push([l.a, 1]);
@@ -376,86 +515,209 @@ export function solveFrame(md, nseg = 40) {
     st[0][1] = 1; st[st.length - 1][1] = -1;
     m.st = st;
   });
-  // rigidez
-  mems.forEach((m, mi) => {
-    const sc = secs[m.sec];
-    const both = m.rel[0] && m.rel[1];
-    const k0 = kLocal(sc.E, sc.A, sc.I > 0 ? sc.I : (both ? 1 : 0), m.L);
-    m.k0 = k0; m.T = Tm(m.c, m.s);
-    m.qs = LL.map(lc => equivLoads(m.L, lc[mi]).map(v => -v));
-    const cd = condense(k0, m.qs, m.rel); m.kc = cd.k; m.qc = cd.qs;
-    m.kg = m.T[0].map((_, i) => m.T[0].map((__, j) => { let s = 0; for (let p = 0; p < 6; p++) for (let q = 0; q < 6; q++) s += m.T[p][i] * m.kc[p][q] * m.T[q][j]; return s; }));
+}
+// datos de barra independientes de los casos
+function prepMembers(md) {
+  const { mems, secs } = md, nu = md.shear;
+  mems.forEach((m) => {
+    const sc = secs[m.sec], both = m.rel[0] && m.rel[1];
+    m.Lf = m.L - (m.zi || 0) - (m.zj || 0);
+    const I = sc.I > 0 ? sc.I : (both ? 1 : 0);
+    let ph = 0;
+    if (nu !== null && nu !== undefined && sc.I > 0 && !md.truss) { const G = sc.G || sc.E / (2 * (1 + nu)); m.GAs = G * sc.As; ph = 12 * sc.E * sc.I / (m.GAs * m.Lf ** 2); } else m.GAs = 0;
+    m.ph = ph; m.k0 = kLocal(sc.E, sc.A, I, m.Lf, ph); m.T = Tm(m.c, m.s);
     m.dofs = [3 * m.i, 3 * m.i + 1, 3 * m.i + 2, 3 * m.j, 3 * m.j + 1, 3 * m.j + 2];
-    for (let p = 0; p < 6; p++) for (let q = 0; q < 6; q++) Kg[m.dofs[p]][m.dofs[q]] += m.kg[p][q];
   });
-  sup.forEach((s, n) => s.k.forEach((k, d) => { if (k) Kg[3 * n + d][3 * n + d] += k; }));
-  // restricciones y giros sin rigidez (nudos articulados)
-  const restr = new Uint8Array(nD); const auto = [];
+}
+// rotación de los GDL de traslación de un nudo con apoyo inclinado: u_global = R·u'  (u' = [u_t, u_n])
+function rotK(K, n, c, s) {
+  const x = 3 * n, y = x + 1, N = K.length;
+  for (let i = 0; i < N; i++) { const a = K[i][x], b = K[i][y]; K[i][x] = c * a + s * b; K[i][y] = -s * a + c * b; }
+  const rx = K[x], ry = K[y];
+  for (let j = 0; j < N; j++) { const a = rx[j], b = ry[j]; rx[j] = c * a + s * b; ry[j] = -s * a + c * b; }
+}
+const rotV = (v, n, c, s, inv) => { const x = 3 * n, a = v[x], b = v[x + 1]; if (inv) { v[x] = c * a - s * b; v[x + 1] = s * a + c * b; } else { v[x] = c * a + s * b; v[x + 1] = -s * a + c * b; } };
+
+// describe el modo de mecanismo (vector nulo de K) con los nudos que se mueven
+function mechanismText(md, mode, incl) {
+  const { nodes } = md, xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+  const span = Math.max(1e-6, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+  const tr = new Map(), rot = new Map();
+  for (const [d, v] of mode) { const n = Math.floor(d / 3), k = d % 3; if (k < 2) { const q = tr.get(n) || [0, 0]; q[k] = v; tr.set(n, q); } else rot.set(n, v); }
+  for (const [n, c, s] of incl) { const q = tr.get(n); if (q) tr.set(n, [c * q[0] - s * q[1], s * q[0] + c * q[1]]); }
+  let tmax = 0; for (const q of tr.values()) tmax = Math.max(tmax, Math.hypot(q[0], q[1]));
+  let rmax = 0; for (const v of rot.values()) rmax = Math.max(rmax, Math.abs(v) * span);
+  const lst = (a) => (a.length > 6 ? a.slice(0, 6).join(', ') + '…' : a.join(', '));
+  if (tmax >= 0.05 * rmax && tmax > 0) {
+    const mv = [...tr.entries()].filter(([, q]) => Math.hypot(q[0], q[1]) > 0.3 * tmax);
+    const dirs = new Set(mv.map(([, q]) => (Math.abs(q[0]) > 2 * Math.abs(q[1]) ? 'x' : Math.abs(q[1]) > 2 * Math.abs(q[0]) ? 'y' : 'xy')));
+    const all = mv.length > 1 && tr.size === nodes.length && [...tr.values()].every(q => Math.abs(q[0] - mv[0][1][0]) + Math.abs(q[1] - mv[0][1][1]) < 1e-6 * tmax);
+    const why = md.truss ? 'armadura no triangulada o apoyos que no impiden el movimiento de cuerpo rígido' : 'apoyos insuficientes o rótulas (ri/rj) que forman un mecanismo';
+    return 'Estructura inestable (mecanismo): ' + (all ? 'toda la estructura se traslada' : 'los nudos ' + lst(mv.map(([n]) => nodes[n].id)) + ' se desplazan') + ' en ' + [...dirs].join('/') + ' sin oponer rigidez — ' + why + '.';
+  }
+  const rv = [...rot.entries()].filter(([, v]) => Math.abs(v) * span > 0.3 * rmax).map(([n]) => nodes[n].id);
+  return 'Estructura inestable (mecanismo): el giro θz de los nudos ' + lst(rv) + ' no tiene rigidez — revise rótulas concurrentes (todas las barras liberadas en el nudo y además un apoyo/ carga que exige giro) o barras biarticuladas sin apoyo de giro.';
+}
+// ensambla K (con matriz geométrica si Ns) y prepara restricciones + factorización
+function buildSystem(md, cases, LL, Ns) {
+  const { nodes, mems, sup } = md, nN = nodes.length, nD = 3 * nN;
+  const K = Array.from({ length: nD }, () => new Float64Array(nD));
+  mems.forEach((m, mi) => {
+    const sp = LL.map(lc => splitLoads(lc[mi], m.L, m.zi || 0, m.zj || 0));
+    m.flex = sp.map(s => s.flex); m.qrig = sp.map(s => s.rig.map(v => -v));
+    m.qf = m.flex.map(f => equivLoads(m.Lf, f, m.ph).map(v => -v));
+    let k = m.k0;
+    if (Ns && Ns[mi]) { const g = kGeo(Ns[mi], m.Lf); k = k.map((r, i) => r.map((v, j) => v + g[i][j])); }
+    const cd = condense(k, m.qf, m.rel); m.kc = cd.k; m.qc = cd.qs;
+    m.qn = cd.qs.map((q, ci) => HtV(q, m.zi || 0, m.zj || 0).map((v, p) => v + m.qrig[ci][p]));
+    m.kg = TtKT(m.T, HtKH(cd.k, m.zi || 0, m.zj || 0));
+    for (let p = 0; p < 6; p++) { const row = K[m.dofs[p]], kp = m.kg[p]; for (let q = 0; q < 6; q++) row[m.dofs[q]] += kp[q]; }
+  });
+  sup.forEach((s, n) => s.k.forEach((k, d) => { if (k) K[3 * n + d][3 * n + d] += k; }));
+  const incl = []; sup.forEach((s, n) => { if (s.ang !== null && s.ang !== undefined) { const a = s.ang * Math.PI / 180; incl.push([n, Math.cos(a), Math.sin(a)]); } });
+  for (const [n, c, s] of incl) rotK(K, n, c, s);
+  // restricciones y giros sin rigidez (nudos con todas sus barras articuladas)
+  const restr = new Uint8Array(nD), auto = [];
   sup.forEach((s, n) => s.r.forEach((r, d) => { if (r) restr[3 * n + d] = 1; }));
-  let kmax = 0; for (let i = 0; i < nD; i++) kmax = Math.max(kmax, Math.abs(Kg[i][i]));
   for (let n = 0; n < nN; n++) {
-    const d = 3 * n + 2;
-    if (!restr[d] && Math.abs(Kg[d][d]) <= 1e-12 * kmax) {
+    const d = 3 * n + 2; let kn = 0; for (let j = 0; j < nD; j++) kn = Math.max(kn, Math.abs(K[d][j]));
+    const kr = Math.max(Math.abs(K[3 * n][3 * n]), Math.abs(K[3 * n + 1][3 * n + 1]));
+    if (!restr[d] && kn <= 1e-12 * (kr || 1)) {
       const loaded = cases.some(c => c.loads.some(l => l.t === 'N' && l.n === n && Math.abs(l.vals[2]) > 0));
-      if (loaded) throw new Error('El nudo ' + nodes[n].id + ' recibe un momento pero todas sus barras están articuladas');
+      if (loaded) throw new Error('El nudo ' + nodes[n].id + ' recibe un momento pero todas sus barras están articuladas en él (no puede tomar momento)');
       restr[d] = 1; auto.push(d);
     }
   }
-  for (let n = 0; n < nN; n++) if (!mems.some(m => m.i === n || m.j === n)) throw new Error('El nudo ' + nodes[n].id + ' no está conectado a ninguna barra');
-  const free = [], fixd = []; for (let i = 0; i < nD; i++) (restr[i] ? fixd : free).push(i);
-  // vectores de carga
-  const Fs = cases.map((c, ci) => {
+  // orden de los GDL libres (RCM) y ancho de banda
+  const ord = md._ord || (md._ord = rcmNodes(nN, mems));
+  const free = [], fixd = [];
+  for (const n of ord) for (let d = 0; d < 3; d++) (restr[3 * n + d] ? fixd : free).push(3 * n + d);
+  const pos = new Int32Array(nD).fill(-1); free.forEach((d, i) => { pos[d] = i; });
+  let bw = 0;
+  for (const m of mems) { let lo = Infinity, hi = -1; for (const d of m.dofs) if (pos[d] >= 0) { lo = Math.min(lo, pos[d]); hi = Math.max(hi, pos[d]); } if (hi >= 0) bw = Math.max(bw, hi - lo); }
+  for (let n = 0; n < nN; n++) { const ps = [0, 1, 2].map(d => pos[3 * n + d]).filter(p => p >= 0); if (ps.length) bw = Math.max(bw, Math.max(...ps) - Math.min(...ps)); }
+  let fac = null;
+  if (free.length) {
+    try { fac = bandFactor(K, free, bw); } catch (e) {
+      if (e.message !== 'singular') throw e;
+      const n = Math.floor(e.dof / 3);
+      if (Ns && e.neg) { const err = new Error('pandeo'); err.node = nodes[n].id; throw err; }
+      throw new Error(mechanismText(md, e.mode, incl));
+    }
+  }
+  return { K, restr, auto, free, fixd, fac, incl, bw };
+}
+// resuelve los casos con un sistema ya ensamblado
+function solveCases(md, sys, cases, LL, pd) {
+  const { nodes, mems, sup } = md, nN = nodes.length, nD = 3 * nN;
+  const { K, restr, auto, free, fixd, fac, incl } = sys;
+  const res = cases.map((c, ci) => {
     const Fv = new Float64Array(nD), Ur = new Float64Array(nD);
-    for (const m of mems) { const g = mulTtV(m.T, m.qc[ci]); for (let p = 0; p < 6; p++) Fv[m.dofs[p]] -= g[p]; }
+    for (const m of mems) { const g = mulTtV(m.T, m.qn[ci]); for (let p = 0; p < 6; p++) Fv[m.dofs[p]] -= g[p]; }
     for (const l of c.loads) {
       if (l.t === 'N') l.vals.forEach((v, d) => { Fv[3 * l.n + d] += v; });
-      if (l.t === 'S') l.vals.forEach((v, d) => { if (v) { if (!restr[3 * l.n + d] || auto.includes(3 * l.n + d)) throw new Error('Desplazamiento impuesto en el nudo ' + nodes[l.n].id + ': la dirección ' + ['x', 'y', 'θ'][d] + ' no está restringida'); Ur[3 * l.n + d] = v; } });
+      if (l.t === 'S') l.vals.forEach((v, d) => {
+        if (!v) return;
+        if (sup[l.n].ang !== null && sup[l.n].ang !== undefined && d < 2) throw new Error('Desplazamiento impuesto en el nudo ' + nodes[l.n].id + ': no se admite en apoyos inclinados');
+        if (!restr[3 * l.n + d] || auto.includes(3 * l.n + d)) throw new Error('Desplazamiento impuesto en el nudo ' + nodes[l.n].id + ': la dirección ' + ['x', 'y', 'θ'][d] + ' no está restringida por un apoyo');
+        Ur[3 * l.n + d] = v;
+      });
     }
-    return { Fv, Ur };
-  });
-  const Kff = free.map(i => free.map(j => Kg[i][j]));
-  const rhs = Fs.map(({ Fv, Ur }) => free.map(i => { let s = Fv[i]; for (const j of fixd) if (Ur[j]) s -= Kg[i][j] * Ur[j]; return s; }));
-  let sol;
-  try { sol = free.length ? solveDense(Kff, rhs) : rhs.map(() => new Float64Array(0)); } catch (e) {
-    if (e.message !== 'singular') throw e;
-    throw new Error('Estructura inestable (mecanismo o apoyos insuficientes): revise apoyos y liberaciones. Grado de libertad sin rigidez cerca del nudo ' + nodes[Math.floor(free[Math.min(e.dof, free.length - 1)] / 3)].id + ' (' + ['ux', 'uy', 'θz'][free[Math.min(e.dof, free.length - 1)] % 3] + ')');
-  }
-  const umax = Math.max(0, ...sol.flatMap(x => [...x].map(Math.abs)));
-  if (!isFinite(umax)) throw new Error('Estructura inestable: desplazamientos no acotados');
-  // resultados por caso
-  const res = cases.map((c, ci) => {
-    const u = new Float64Array(nD); free.forEach((d, k) => { u[d] = sol[ci][k]; }); fixd.forEach(d => { u[d] = Fs[ci].Ur[d]; });
+    const F0 = Float64Array.from(Fv);
+    for (const [n, cs, sn] of incl) rotV(Fv, n, cs, sn);
+    const rhs = free.map(i => { let s = Fv[i]; const r = K[i]; for (const j of fixd) if (Ur[j]) s -= r[j] * Ur[j]; return s; });
+    const x = fac ? fac.solve(rhs) : [];
+    const u = new Float64Array(nD); free.forEach((d, k) => { u[d] = x[k]; }); fixd.forEach(d => { u[d] = Ur[d]; });
+    if (!u.every(Number.isFinite) || Math.max(...md.nodes.map((n, i) => Math.hypot(u[3 * i], u[3 * i + 1]))) > 1e3 * md.span) throw new Error('Estructura inestable o casi inestable (' + c.name + '): los desplazamientos superan 1000 veces la dimensión del modelo; revise apoyos, rótulas y rigideces');
     const R = new Float64Array(nD);
-    for (const d of fixd) { let s = 0; for (let j = 0; j < nD; j++) s += Kg[d][j] * u[j]; R[d] = s - Fs[ci].Fv[d]; }
-    sup.forEach((s, n) => s.k.forEach((k, d) => { if (k && !restr[3 * n + d]) R[3 * n + d] = -k * u[3 * n + d]; else if (k && restr[3 * n + d]) R[3 * n + d] -= 0; }));
+    for (const d of fixd) { let s = 0; const r = K[d]; for (let j = 0; j < nD; j++) s += r[j] * u[j]; R[d] = s - Fv[d]; }
+    for (const [n, cs, sn] of incl) { rotV(u, n, cs, sn, true); rotV(R, n, cs, sn, true); }
+    sup.forEach((s, n) => s.k.forEach((k, d) => { if (k && !restr[3 * n + d]) R[3 * n + d] = -k * u[3 * n + d]; }));
     auto.forEach(d => { R[d] = 0; });
-    const mf = mems.map((m, k) => {
-      const ug = m.dofs.map(d => u[d]), ul = mulMV(m.T, ug);
-      const f = mulMV(m.kc, ul).map((v, p) => v + m.qc[ci][p]);
-      const lds = LL[ci][k], sc = secs[m.sec], EI = sc.E * sc.I;
-      const N = [], V = [], M = [];
-      for (const [x, sd] of m.st) { const r = intForces(f, lds, x, sd); N.push(r[0]); V.push(r[1]); M.push(r[2]); }
-      // deformada local: v'' = M/EI con v(0)=vi, v(L)=vj ; axial lineal
-      const vv = [], ua = [];
-      if (EI > 0 && !(m.rel[0] && m.rel[1] && md.truss)) {
-        const th = [0], w = [0];
-        for (let p = 1; p < m.st.length; p++) { const h = m.st[p][0] - m.st[p - 1][0]; th.push(th[p - 1] + h * (M[p] + M[p - 1]) / (2 * EI)); }
-        for (let p = 1; p < m.st.length; p++) { const h = m.st[p][0] - m.st[p - 1][0]; w.push(w[p - 1] + h * (th[p] + th[p - 1]) / 2); }
-        const th0 = (ul[4] - ul[1] - w[w.length - 1]) / m.L;
-        m.st.forEach(([x], p) => { vv.push(ul[1] + th0 * x + w[p]); });
-      } else m.st.forEach(([x]) => vv.push(ul[1] + (ul[4] - ul[1]) * x / m.L));
-      m.st.forEach(([x]) => ua.push(ul[0] + (ul[3] - ul[0]) * x / m.L));
-      return { f, N, V, M, v: vv, ua, ul };
-    });
-    // equilibrio global
-    let sx = 0, sy = 0;
-    for (let n = 0; n < nN; n++) { sx += R[3 * n]; sy += R[3 * n + 1]; }
+    const mf = mems.map((m, k) => recoverMember(md, m, k, u, ci, LL[ci][k], pd));
+    // equilibrio global: Σ cargas + Σ reacciones (x, y, momento respecto del origen)
+    let sx = 0, sy = 0, sm = 0;
+    for (let n = 0; n < nN; n++) { const X = nodes[n].x, Y = nodes[n].y; sx += R[3 * n] + F0[3 * n]; sy += R[3 * n + 1] + F0[3 * n + 1]; sm += R[3 * n + 2] + F0[3 * n + 2] + X * (R[3 * n + 1] + F0[3 * n + 1]) - Y * (R[3 * n] + F0[3 * n]); }
     let lx = 0, ly = 0;
-    for (const l of c.loads) if (l.t === 'N') { lx += l.vals[0]; ly += l.vals[1]; }
-    mems.forEach((m, k) => { const e = equivLoads(m.L, LL[ci][k]); const g = mulTtV(m.T, e); lx += g[0] + g[3]; ly += g[1] + g[4]; });
-    return { name: c.name, u, R, mf, eq: [sx + lx, sy + ly], load: [lx, ly] };
+    for (let n = 0; n < nN; n++) { lx += F0[3 * n]; ly += F0[3 * n + 1]; }
+    return { name: c.name, u, R, mf, eq: [sx, sy, pd ? NaN : sm], load: [lx, ly] };
   });
-  return { res, restr, auto, free, Kg, LL };
+  return res;
+}
+// fuerzas en extremos, diagramas y deformada de una barra
+function recoverMember(md, m, k, u, ci, lds, pd) {
+  const sc = md.secs[m.sec], zi = m.zi || 0, zj = m.zj || 0;
+  const ug = m.dofs.map(d => u[d]), ul = mulMV(m.T, ug);
+  const ff = mulMV(m.kc, Hv(ul, zi, zj)).map((v, p) => v + m.qc[ci][p]);
+  const f = HtV(ff, zi, zj).map((v, p) => v + m.qrig[ci][p]);
+  const N = [], V = [], M = [];
+  for (const [x, sd] of m.st) { const r = intForces(f, lds, x, sd); N.push(r[0]); V.push(r[1]); M.push(r[2]); }
+  const EI = sc.E * sc.I, nst = m.st.length;
+  const flexInt = m.st.map((s, p) => { if (!p) return false; const xm = (m.st[p - 1][0] + s[0]) / 2; return xm >= zi - 1e-9 && xm <= m.L - zj + 1e-9; });
+  // deformada local: v = ∫∫M/EI − ∫V/GAs (V = dM/dx) con v(0) = vi, v(L) = vj ; axial lineal
+  const shape = (Mv) => {
+    // integración exacta para M lineal entre estaciones
+    const th = [0], w = [0];
+    for (let p = 1; p < nst; p++) {
+      const h = m.st[p][0] - m.st[p - 1][0], fl = flexInt[p];
+      th.push(th[p - 1] + (fl ? h * (Mv[p] + Mv[p - 1]) / (2 * EI) : 0));
+      w.push(w[p - 1] + h * th[p - 1] + (fl ? h * h * (2 * Mv[p - 1] + Mv[p]) / (6 * EI) : 0) + (fl && m.GAs ? -h * (V[p] + V[p - 1]) / (2 * m.GAs) : 0));
+    }
+    const th0 = (ul[4] - ul[1] - w[nst - 1]) / m.L;
+    return m.st.map(([x], p) => ul[1] + th0 * x + w[p]);
+  };
+  let vv;
+  const bend = EI > 0 && !(m.rel[0] && m.rel[1] && md.truss);
+  if (bend) {
+    if (pd) {
+      // P-δ dentro de la barra: M(x) = M₀(x) + N·(v(x) − vᵢ)  (equilibrio en la configuración deformada)
+      const Nm = (-f[0] + f[3]) / 2, M0 = M.slice();
+      vv = m.st.map(([x]) => ul[1] + (ul[4] - ul[1]) * x / m.L);
+      for (let it = 0; it < 4; it++) { for (let p = 0; p < nst; p++) M[p] = M0[p] + Nm * (vv[p] - ul[1]); vv = shape(M); }
+      for (let p = 0; p < nst; p++) M[p] = M0[p] + Nm * (vv[p] - ul[1]);
+    } else vv = shape(M);
+  } else vv = m.st.map(([x]) => ul[1] + (ul[4] - ul[1]) * x / m.L);
+  const ua = m.st.map(([x]) => ul[0] + (ul[3] - ul[0]) * x / m.L);
+  return { f, N, V, M, v: vv, ua, ul };
+}
+
+export function solveFrame(md, nseg = 40, opts = {}) {
+  const cases = opts.cases || md.cases;
+  if (!md._prep) {
+    const LL0 = md.cases.map(c => md.mems.map(() => []));
+    md.cases.forEach((c, ci) => c.loads.forEach(ld => { if (ld.m !== undefined) LL0[ci][ld.m].push(localLoads(md.mems[ld.m], ld)); }));
+    prepStations(md, LL0, nseg); prepMembers(md); md._prep = true;
+  }
+  const LL = cases.map(c => md.mems.map(() => []));
+  cases.forEach((c, ci) => c.loads.forEach(ld => { if (ld.m !== undefined) LL[ci][ld.m].push(localLoads(md.mems[ld.m], ld)); }));
+  if (!opts.pdelta) {
+    const sys = buildSystem(md, cases, LL, null);
+    const res = solveCases(md, sys, cases, LL, false);
+    return { res, restr: sys.restr, auto: sys.auto, free: sys.free, LL, bw: sys.bw };
+  }
+  // ---- 2.º orden (P-Δ): un sistema por caso, iteración sobre las fuerzas axiales ----
+  let last = null;
+  const res = cases.map((c, ci) => {
+    const L1 = [LL[ci]]; let Ns = null, prev = null, r = null, it = 0, r1 = null;
+    for (it = 1; it <= 40; it++) {
+      let sys;
+      try { sys = buildSystem(md, [c], L1, Ns); } catch (e) {
+        if (e.message === 'pandeo') throw new Error('Análisis P-Δ (' + c.name + '): la rigidez lateral se anula (carga axial ≥ carga crítica de pandeo) cerca del nudo ' + e.node + '. Aumente secciones o reduzca cargas.');
+        throw e;
+      }
+      r = solveCases(md, sys, [c], L1, true)[0]; last = sys;
+      if (it === 1) r1 = r;
+      const umax = Math.max(1e-12, ...r.u.map(Math.abs));
+      if (prev && Math.max(...r.u.map((v, i) => Math.abs(v - prev[i]))) <= 1e-7 * umax) break;
+      if (it > 2 && prev && Math.max(...r.u.map(Math.abs)) > 1e3 * Math.max(1e-12, ...prev.map(Math.abs))) it = 41;
+      prev = r.u; Ns = r.mf.map(q => (-q.f[0] + q.f[3]) / 2);
+    }
+    if (it > 40) throw new Error('Análisis P-Δ (' + c.name + '): la iteración no converge (la carga axial se aproxima a la carga crítica de pandeo)');
+    const ux1 = Math.max(...md.nodes.map((n, i) => Math.abs(r1.u[3 * i]))), ux2 = Math.max(...md.nodes.map((n, i) => Math.abs(r.u[3 * i])));
+    r.pd = { it, ux1, ux2, amp: ux1 > 1e-12 ? ux2 / ux1 : 1 };
+    return r;
+  });
+  return { res, restr: last.restr, auto: last.auto, free: last.free, LL, bw: last.bw };
 }
 
 // combinación lineal de resultados
@@ -469,6 +731,70 @@ function combine(sol, f, name, md) {
     r.mf.forEach((q, mi) => { const o = mf[mi]; for (const key of ['f', 'N', 'V', 'M', 'v', 'ua', 'ul']) q[key].forEach((v, p) => { o[key][p] += k * v; }); });
   });
   return { name, u, R, mf };
+}
+// cargas de una combinación como un caso nuevo (para el análisis no lineal P-Δ)
+function comboCase(md, f, name) {
+  const loads = [];
+  for (const c of md.cases) {
+    const k = f[c.name] || 0; if (!k) continue;
+    for (const l of c.loads) {
+      const o = { ...l };
+      if (l.t === 'N' || l.t === 'S') o.vals = l.vals.map(v => v * k);
+      else if (l.t === 'D') { o.w1 = l.w1 * k; o.w2 = l.w2 * k; } else if (l.t === 'P') o.P = l.P * k; else if (l.t === 'C') o.C = l.C * k;
+      loads.push(o);
+    }
+  }
+  return { name, loads };
+}
+
+// ---------------------------------------------------------------------
+//  Análisis modal (masas concentradas en los nudos)
+//   K φ = ω² M φ  → condensación exacta a los GDL con masa mediante la flexibilidad F = (K⁻¹)ₘₘ :
+//   (M^½ F M^½) ψ = (1/ω²) ψ   (Chopra, «Dynamics of Structures», cap. 9-10)
+// ---------------------------------------------------------------------
+export function modalFrame(md, masses, nmodes = 6) {
+  const { nodes, sup } = md, nD = 3 * nodes.length;
+  const sys = buildSystem(md, [], [], null);
+  if (!sys.fac) throw new Error('Análisis modal: no hay grados de libertad libres');
+  const pos = new Int32Array(nD).fill(-1); sys.free.forEach((d, i) => { pos[d] = i; });
+  const mdofs = [];
+  masses.forEach((ms, n) => {
+    if (!ms) return;
+    const inc = sup[n].ang !== null && sup[n].ang !== undefined;
+    const c = inc ? Math.cos(sup[n].ang * Math.PI / 180) : 1, s = inc ? Math.sin(sup[n].ang * Math.PI / 180) : 0;
+    if (inc) { const mt = ms[0] * c * c + ms[1] * s * s; if (mt > 0 && pos[3 * n] >= 0) mdofs.push({ d: 3 * n, m: mt }); return; }
+    for (let d = 0; d < 2; d++) if (ms[d] > 0 && pos[3 * n + d] >= 0) mdofs.push({ d: 3 * n + d, m: ms[d] });
+  });
+  if (!mdofs.length) throw new Error('Análisis modal: ninguna masa está en un grado de libertad libre');
+  if (mdofs.length > 400) throw new Error('Análisis modal: máximo 400 grados de libertad con masa');
+  const X = mdofs.map(q => { const e = new Float64Array(sys.free.length); e[pos[q.d]] = 1; return sys.fac.solve(e); });
+  const nm = mdofs.length, sq = mdofs.map(q => Math.sqrt(q.m));
+  const A = mdofs.map((p, i) => mdofs.map((q, j) => sq[i] * X[j][pos[p.d]] * sq[j]));
+  for (let i = 0; i < nm; i++) for (let j = i + 1; j < nm; j++) { const a = (A[i][j] + A[j][i]) / 2; A[i][j] = a; A[j][i] = a; }
+  const { val, vec } = jacobiEig(A);
+  const idx = val.map((v, i) => i).filter(i => val[i] > 1e-300).sort((a, b) => val[b] - val[a]);
+  // masas totales por dirección (traslación global de los nudos libres)
+  const Mtot = [0, 0];
+  masses.forEach((ms, n) => { if (!ms) return; const inc = sup[n].ang !== null && sup[n].ang !== undefined; for (let d = 0; d < 2; d++) if (inc ? pos[3 * n] >= 0 : pos[3 * n + d] >= 0) Mtot[d] += ms[d]; });
+  const modes = [];
+  for (const i of idx.slice(0, Math.min(nmodes, idx.length))) {
+    const w2 = 1 / val[i], phi = mdofs.map((q, k) => vec[k][i] / sq[k]);
+    // forma completa: u = K⁻¹ M φ ω²
+    const uf = new Float64Array(sys.free.length);
+    mdofs.forEach((q, k) => { const a = q.m * phi[k] * w2; const x = X[k]; for (let t = 0; t < uf.length; t++) uf[t] += x[t] * a; });
+    const u = new Float64Array(nD); sys.free.forEach((d, t) => { u[d] = uf[t]; });
+    for (const [n, c, s] of sys.incl) rotV(u, n, c, s, true);
+    let umax = 0; for (let n = 0; n < nodes.length; n++) umax = Math.max(umax, Math.hypot(u[3 * n], u[3 * n + 1]));
+    // normalización: máxima traslación = 1 con signo positivo en la mayor componente
+    let big = 0; for (let n = 0; n < nodes.length; n++) for (let d = 0; d < 2; d++) if (Math.abs(u[3 * n + d]) > Math.abs(big)) big = u[3 * n + d];
+    const sc = (big < 0 ? -1 : 1) / (umax || 1); for (let t = 0; t < nD; t++) u[t] *= sc;
+    // participación en coordenadas globales
+    let Mn = 0; const Ln = [0, 0];
+    masses.forEach((ms, n) => { if (!ms) return; for (let d = 0; d < 2; d++) { const q = u[3 * n + d]; Mn += ms[d] * q * q; Ln[d] += ms[d] * q; } });
+    const w = Math.sqrt(w2);
+    modes.push({ w, T: 2 * Math.PI / w, f: w / (2 * Math.PI), u, gam: Ln.map(L => L / Mn), mef: Ln.map((L, d) => (Mtot[d] > 0 ? L * L / Mn / Mtot[d] : 0)) });
+  }
+  return { modes, Mtot, ndof: nm };
 }
 
 // ---------------------------------------------------------------------
@@ -508,6 +834,14 @@ function supportGlyph(md, n, v, col = C.ink) {
   const [x, y] = P(v, md.nodes[n]);
   const r = s.r.join('');
   let rot = supDir(md, n, v), g = '';
+  if (s.ang !== null) {
+    // rodillo inclinado: superficie de rodadura a α (antihorario desde x)
+    const a = s.ang, nx0 = -Math.sin(a * Math.PI / 180), ny0 = Math.cos(a * Math.PI / 180);
+    const below = supDir(md, n, v) === 0 ? 1 : -1;
+    rot = -a + (below > 0 ? 0 : 180); void nx0; void ny0;
+    g = `<path d="M0,0 L-8,11 L8,11 Z" fill="#fff" stroke="${col}" stroke-width="1.3"/><circle cx="-4.5" cy="14" r="2.8" fill="#fff" stroke="${col}"/><circle cx="4.5" cy="14" r="2.8" fill="#fff" stroke="${col}"/><rect x="-15" y="17" width="30" height="5" fill="url(#anH)"/><line x1="-15" y1="17" x2="15" y2="17" stroke="${col}" stroke-width="1.2"/>`;
+    return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(1)})">${g}</g>` + TH(x + 16, y + 26, 'α = ' + f2(a, 1) + '°', { fs: 8.5, c: '#5b6b7b', a: 'start' });
+  }
   if (r === '111') g = `<rect x="-15" y="0" width="30" height="7" fill="url(#anH)" stroke="none"/><line x1="-15" y1="0" x2="15" y2="0" stroke="${col}" stroke-width="2.2"/>`;
   else if (r === '110') g = `<path d="M0,0 L-8,13 L8,13 Z" fill="#fff" stroke="${col}" stroke-width="1.3"/><rect x="-13" y="13" width="26" height="5" fill="url(#anH)"/><line x1="-13" y1="13" x2="13" y2="13" stroke="${col}" stroke-width="1.2"/>`;
   else if (r === '010' || r === '100') {
@@ -530,9 +864,9 @@ function hingeGlyphs(md, v) {
   if (md.truss) return md.nodes.map(n => `<circle cx="${v.X(n.x).toFixed(1)}" cy="${v.Y(n.y).toFixed(1)}" r="3.4" fill="#fff" stroke="${C.ink}" stroke-width="1.2"/>`).join('');
   for (const m of md.mems) {
     const a = P(v, md.nodes[m.i]), b = P(v, md.nodes[m.j]), L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-    const ex = (b[0] - a[0]) / L, ey = (b[1] - a[1]) / L, off = Math.min(7, L / 4);
-    if (m.rel[0]) g += `<circle cx="${(a[0] + ex * off).toFixed(1)}" cy="${(a[1] + ey * off).toFixed(1)}" r="3.2" fill="#fff" stroke="${C.ink}" stroke-width="1.2"/>`;
-    if (m.rel[1]) g += `<circle cx="${(b[0] - ex * off).toFixed(1)}" cy="${(b[1] - ey * off).toFixed(1)}" r="3.2" fill="#fff" stroke="${C.ink}" stroke-width="1.2"/>`;
+    const ex = (b[0] - a[0]) / L, ey = (b[1] - a[1]) / L, oi = Math.max(Math.min(7, L / 4), (m.zi || 0) * v.sc + 3.5), oj = Math.max(Math.min(7, L / 4), (m.zj || 0) * v.sc + 3.5);
+    if (m.rel[0]) g += `<circle cx="${(a[0] + ex * oi).toFixed(1)}" cy="${(a[1] + ey * oi).toFixed(1)}" r="3.2" fill="#fff" stroke="${C.ink}" stroke-width="1.2"/>`;
+    if (m.rel[1]) g += `<circle cx="${(b[0] - ex * oj).toFixed(1)}" cy="${(b[1] - ey * oj).toFixed(1)}" r="3.2" fill="#fff" stroke="${C.ink}" stroke-width="1.2"/>`;
   }
   return g;
 }
@@ -572,6 +906,12 @@ function drawModel(md, W) {
   for (const m of md.mems) {
     const a = P(v, md.nodes[m.i]), b = P(v, md.nodes[m.j]);
     g += Lne(a[0], a[1], b[0], b[1], multi ? PAL[m.sec % PAL.length] : C.ink, md.truss ? 2 : 2.6);
+  }
+  // zonas rígidas: tramo grueso en los extremos
+  for (const m of md.mems) {
+    const a = P(v, md.nodes[m.i]), b = P(v, md.nodes[m.j]), ux = (b[0] - a[0]) / m.L, uy = (b[1] - a[1]) / m.L;
+    if (m.zi > 0) g += Lne(a[0], a[1], a[0] + ux * m.zi, a[1] + uy * m.zi, C.ink, 5.5);
+    if (m.zj > 0) g += Lne(b[0], b[1], b[0] - ux * m.zj, b[1] - uy * m.zj, C.ink, 5.5);
   }
   g += hingeGlyphs(md, v);
   md.nodes.forEach((n, k) => { g += supportGlyph(md, k, v); });
@@ -801,14 +1141,47 @@ function drawDeformed(md, set, W) {
   return svgWrap(W, v.H, g);
 }
 
+// formas modales (hasta 6 paneles, 3 por fila)
+function drawModes(md, modal, W) {
+  const ms = modal.modes.slice(0, 6), cols = Math.min(3, ms.length), pw = W / cols;
+  let g = '', H = 0;
+  for (let r = 0; r < Math.ceil(ms.length / cols); r++) {
+    let rh = 0; const row = [];
+    ms.slice(r * cols, r * cols + cols).forEach((q, k) => {
+      const v = makeView(md.nodes, pw, { pl: 26, pr: 26, pt: 40, pb: 22, maxH: 300, minH: 120 });
+      const amp = 0.12 * v.span;
+      let p = membersLine(md, v, '#c3ccd5', 1.1).replace(/\/>/g, ' stroke-dasharray="3 3"/>');
+      md.nodes.forEach((n, i) => { p += supportGlyph(md, i, v, '#9aa5b1'); });
+      for (const m of md.mems) {
+        const n1 = md.nodes[m.i], u = q.u, d = [];
+        const ul = mulMV(m.T, m.dofs.map(dd => u[dd])), herm = !m.rel[0] && !m.rel[1] && !md.truss && !(m.zi > 0) && !(m.zj > 0);
+        for (let t = 0; t <= 16; t++) {
+          const x = m.L * t / 16, Nh = shapeV(x, m.L);
+          const vl = herm ? Nh[0] * ul[1] + Nh[1] * ul[2] + Nh[2] * ul[4] + Nh[3] * ul[5] : ul[1] + (ul[4] - ul[1]) * t / 16, al = ul[0] + (ul[3] - ul[0]) * t / 16;
+          d.push([v.X(n1.x + m.c * x + amp * (m.c * al - m.s * vl)), v.Y(n1.y + m.s * x + amp * (m.s * al + m.c * vl))]);
+        }
+        p += `<path d="${d.map((pt, i) => (i ? 'L' : 'M') + pt[0].toFixed(1) + ',' + pt[1].toFixed(1)).join(' ')}" fill="none" stroke="${C.orange}" stroke-width="1.8" stroke-linejoin="round"/>`;
+      }
+      p += T(10, 16, 'Modo ' + (r * cols + k + 1), { fs: 11, b: 1, a: 'start' }) + T(10, 30, 'T = ' + f2(q.T, 3) + ' s · Mx ' + f2(100 * q.mef[0], 1) + ' % · My ' + f2(100 * q.mef[1], 1) + ' %', { fs: 9.5, c: '#5b6b7b', a: 'start' });
+      row.push([k, p]); rh = Math.max(rh, v.H);
+    });
+    row.forEach(([k, p]) => { g += `<g transform="translate(${k * pw} ${H})">${p}</g>`; if (k) g += Lne(k * pw, H + 6, k * pw, H + rh - 6, C.grid, 1); });
+    H += rh; if (r < Math.ceil(ms.length / cols) - 1) g += Lne(10, H, W - 10, H, C.grid, 1);
+  }
+  return svgWrap(W, H, DEFS + g);
+}
+
 // ---------------------------------------------------------------------
 //  BLOQUE frame2d
 // ---------------------------------------------------------------------
-const HINT_FRAME = `<b>Unidades por defecto:</b> m, t (o kN), t/m, t·m; se aceptan variables y unidades del cálculo (<code>Ec</code>, <code>30 cm</code>, <code>2 tonf/m</code>). Escriba expresiones sin espacios o entre paréntesis.<br>
-<b>Nudos:</b> <code>id x y</code>. <b>Secciones:</b> <code>id E A I</code> · <code>id rect b h E</code> · <code>id circ D E</code> (opcional <code>w=0.5</code> peso por metro). <b>Barras:</b> <code>id ni nj [sección] [ri|rj|rij]</code> (rótula en el extremo i, j o ambos).<br>
-<b>Apoyos:</b> <code>nudo(s) tipo</code> — <code>E</code> empotrado · <code>A</code> articulado · <code>Ry</code> rodillo (restringe y) · <code>Rx</code> · <code>G</code> guiado · <code>101</code> (ux uy θ) · <code>K kx ky [kθ]</code> resortes. Se aceptan listas <code>1,4,7</code>.<br>
-<b>Cargas</b> (prefijo de caso <code>CM:</code>, <code>CV:</code>, <code>CS:</code>…): <code>N nudo Fx Fy [M]</code> nodal global (Fy + arriba, M + antihorario) · <code>U barras w [a b] [dir]</code> uniforme · <code>T barras w1 w2 [a b] [dir]</code> trapezoidal · <code>P barras P [a] [dir]</code> puntual · <code>M barras M [a]</code> momento · <code>D nudo dx dy</code> asentamiento. Barras: <code>3</code>, <code>1,2</code>, <code>1-4</code>, <code>*</code>; a, b desde el nudo i en m o <code>%</code>. <b>dir:</b> <code>grav</code> (defecto, + hacia abajo) · <code>proy</code> (proyectada en horizontal) · <code>horiz</code> (+x) · <code>hproy</code> · <code>perp</code> (eje local y) · <code>axial</code>.<br>
-<b>Combinaciones:</b> <code>U1 = 1.4 CM + 1.7 CV</code>, <code>U2 = 1.25(CM + CV) ± CS</code> (± genera U2a y U2b). Exporta <code>Mmax_k Mpos_k Mneg_k Vmax_k Nmax_k Nt_k Nc_k</code> por barra, <code>Mmax Vmax Nmax deltamax</code>, <code>deltax_n deltay_n theta_n</code>, reacciones <code>R1x R1y R1m</code> (y <code>R1y_U1</code> por combinación), grupos <code>Mmax_G Nc_G Lmax_G</code>…`;
+const HINT_FRAME = `<b>Unidades por defecto:</b> m, t (o kN), t/m, t·m; se aceptan variables y unidades del cálculo (<code>Ec</code>, <code>30 cm</code>, <code>2 tonf/m</code>). Escriba expresiones sin espacios o entre paréntesis: <code>(L1+L2)/2</code>.<br>
+<b>Nudos:</b> <code>id x y</code>. <b>Secciones:</b> <code>id E A I</code> · <code>id rect b h E</code> · <code>id circ D E</code>; opciones <code>w=</code> peso por metro, <code>As=</code> área de corte, <code>G=</code>, <code>h=</code> peralte (para zonas rígidas automáticas).<br>
+<b>Barras:</b> <code>id ni nj [sección] [ri|rj|rij] [zi=0.3 zj=0.25]</code> — rótula en el extremo i, j o ambos; <code>zi/zj</code> longitud del brazo rígido medida desde el nudo (la rótula queda en la cara).<br>
+<b>Apoyos:</b> <code>nudo(s) tipo</code> — <code>E</code> empotrado · <code>A</code> articulado · <code>Ry</code> rodillo (restringe y) · <code>Rx</code> · <code>G</code> guiado · <code>101</code> (ux uy θ) · <code>RI 30</code> rodillo sobre superficie inclinada 30° · <code>K kx ky [kθ]</code> resortes. Listas <code>1,4,7</code> o <code>1-5</code>.<br>
+<b>Cargas</b> (prefijo de caso <code>CM:</code>, <code>CV:</code>, <code>CS:</code>…): <code>N nudo Fx Fy [M]</code> nodal global (Fy + arriba, M + antihorario) · <code>U barras w [a b] [dir]</code> uniforme · <code>T barras w1 w2 [a b] [dir]</code> trapezoidal · <code>P barras P [a] [dir]</code> puntual · <code>M barras M [a]</code> momento (+ antihorario) · <code>D nudo dx dy [θ]</code> asentamiento. Barras: <code>3</code>, <code>1,2</code>, <code>1-4</code>, <code>*</code>; a, b desde el nudo i en m o <code>%</code>. <b>dir:</b> <code>grav</code> (defecto, + hacia abajo, por metro de barra) · <code>proy</code> (por metro de proyección horizontal) · <code>horiz</code> (+x por metro de barra) · <code>hproy</code> (+x por metro de proyección vertical) · <code>perp</code> (eje local y) · <code>axial</code>.<br>
+<b>Combinaciones:</b> <code>U1 = 1.4 CM + 1.7 CV</code>, <code>U2 = 1.25(CM + CV) ± CS</code> (cada ± genera variantes a, b, c, d…). <b>P-Δ:</b> las combinaciones se resuelven en 2.º orden con la matriz geométrica (iterativo); exporta <code>ampPD</code>. <b>Cortante:</b> ν (p. ej. <code>0.2</code>) activa vigas de Timoshenko (G = E/2(1+ν)). <b>Zonas rígidas:</b> factor 0–1 × medio peralte de las barras que llegan al nudo.<br>
+<b>Masas (modal):</b> <code>nudos peso [x|y]</code> (m = W/g) o <code>= CM + 0.25 CV [x]</code> (masa de las cargas verticales). Exporta <code>T1 T2…</code>, <code>MPx1 MPy1…</code> (fracción de masa efectiva), <code>SMPx SMPy</code>.<br>
+<b>Exporta</b> <code>Mmax_k Mpos_k Mneg_k Vmax_k Nmax_k Nt_k Nc_k L_k</code> por barra, <code>Mmax Vmax Nmax deltamax</code>, <code>deltax_n deltay_n theta_n</code>, reacciones <code>R1x R1y R1m</code> (y <code>R1y_U1</code> por caso/combinación), grupos <code>Mmax_G Nc_G Lmax_G Lc_G NcL_G</code>, <code>delta_k</code>, <code>deriva_i derivamax</code>.`;
 
 registerBlock('frame2d', {
   name: 'Pórtico / armadura 2D (rigidez)', icon: 'grid', group: 'Análisis',
@@ -832,6 +1205,11 @@ registerBlock('frame2d', {
     F('deriva_caso', 'Caso/combinación para derivas (vacío = no verificar)', 'CS'),
     F('deriva_f', 'Factor de amplificación de desplazamientos (p. ej. 0.75 R)', '0.75*8'),
     F('deriva_lim', 'Deriva límite Δ/h', '0.007'),
+    F('pdelta', 'Efecto P-Δ en las combinaciones (análisis de 2.º orden)', '', 'check'),
+    F('cortante', 'Deformación por cortante: ν (vacío = no; p. ej. 0.2)', ''),
+    F('brazos', 'Zonas rígidas en nudos: factor 0–1 (vacío = no)', ''),
+    F('masas', 'Masas (modal): nudos peso [x|y]  ·  = CM + 0.25 CV', '', 'area'),
+    F('modos', 'N.º de modos a reportar', '3'),
     F('sufijo', 'Sufijo de variables exportadas (opcional)', ''),
     F('titulo', 'Título', ''),
   ],
@@ -846,30 +1224,69 @@ registerBlock('frame2d', {
 export function analyzeFrame(b, S) {
   const md = parseFrame(b, S);
   const sol = solveFrame(md);
-  // conjuntos de resultados: casos + combinaciones
+  // conjuntos de resultados: casos (1.er orden) + combinaciones (1.er orden o P-Δ)
   const sets = new Map();
-  sol.res.forEach(r => sets.set(r.name, { name: r.name, u: r.u, R: r.R, mf: r.mf, kind: 'caso' }));
+  sol.res.forEach(r => sets.set(r.name, { name: r.name, u: r.u, R: r.R, mf: r.mf, eq: r.eq, kind: 'caso' }));
+  const mk = (f, name, txt) => {
+    let r;
+    if (md.pdelta) { r = solveFrame(md, 40, { cases: [comboCase(md, f, name)], pdelta: true }).res[0]; }
+    else { r = combine(sol, f, name, md); r.eq = [0, 1, 2].map(d => sol.res.reduce((t, q) => t + (f[q.name] || 0) * q.eq[d], 0)); }
+    r.kind = 'comb'; r.txt = txt; return r;
+  };
   let combos = md.combos;
   if (!combos.length) combos = [{ name: md.cases.length > 1 ? 'TOTAL' : md.cases[0].name + '_', f: Object.fromEntries(md.cases.map(c => [c.name, 1])), txt: md.cases.map(c => c.name).join(' + '), auto: true }];
-  for (const c of combos) { if (sets.has(c.name)) throw new Error('La combinación «' + c.name + '» tiene el mismo nombre que un caso'); const r = combine(sol, c.f, c.name, md); r.kind = 'comb'; r.txt = c.txt; sets.set(c.name, r); }
-  return { md, sol, sets, combos };
+  for (const c of combos) { if (sets.has(c.name)) throw new Error('La combinación «' + c.name + '» tiene el mismo nombre que un caso'); sets.set(c.name, mk(c.f, c.name, c.txt)); }
+  // análisis modal
+  let modal = null;
+  const ml = cleanLines(b.masas);
+  if (ml.length) {
+    const g0 = 9.80665, mass = md.nodes.map(() => null);
+    const addM = (n, W, dir, where) => { if (!(W >= 0)) throw new Error(where + ': el peso debe ser ≥ 0'); const q = mass[n] || (mass[n] = [0, 0]); if (dir.includes('x')) q[0] += W / g0; if (dir.includes('y')) q[1] += W / g0; };
+    for (const l of ml) {
+      const where = 'Masas, línea ' + l.n + ' «' + l.s + '»';
+      let str = l.s, dir = 'xy';
+      const dm = /\s+(x|y|xy|yx)$/i.exec(str); if (dm) { dir = dm[1].toLowerCase(); str = str.slice(0, dm.index); }
+      if (/^=/.test(str)) {
+        // masas a partir de las cargas verticales (fuente de masa: p. ej. CM + 0.25 CV)
+        const cb = parseCombos('X = ' + str.slice(1), md.cases.map(c => c.name), S)[0];
+        const Wn = md.nodes.map(() => 0);
+        md.cases.forEach((c, ci) => {
+          const k = cb.f[c.name] || 0; if (!k) return;
+          for (const ld of c.loads) {
+            if (ld.t === 'N') { Wn[ld.n] -= k * ld.vals[1]; continue; }
+            if (ld.m === undefined) continue;
+            const m = md.mems[ld.m], e = equivLoads(m.L, [localLoads(m, ld)]), gl = mulTtV(m.T, e);
+            Wn[m.i] -= k * gl[1]; Wn[m.j] -= k * gl[4];
+          }
+        });
+        Wn.forEach((W, n) => { if (W > 1e-9) addM(n, W, dir, where); });
+        continue;
+      }
+      const tk = tokenize(str); if (tk.length < 2) throw new Error(where + ': use «nudos peso [x|y]» o «= CM + 0.25 CV»');
+      const tg = parseTargets(tk[0], md.nids, where); const W = evNum(mergeU(tk.slice(1), S).join(' '), S, md.U.F, where);
+      for (const n of tg) addM(n, W, dir, where);
+    }
+    const nmod = Math.max(1, Math.min(12, Math.round(evalParam(b.modos, S, '', 3))));
+    modal = modalFrame(md, mass, nmod); modal.mass = mass;
+  }
+  return { md, sol, sets, combos, mk, modal };
 }
 
 function renderFrame(b, ctx) {
   const S = ctx.scope;
-  const { md, sol, sets, combos } = analyzeFrame(b, S);
+  const { md, sol, sets, combos, mk, modal } = analyzeFrame(b, S);
   const sfx = b.sufijo ? '_' + safeId(b.sufijo) : '';
   const lu = md.U.lab, FU = md.U.F;
   const pick = (name, what) => {
     const k = String(name || '').trim(); if (!k) return null;
     if (sets.has(k)) return sets.get(k);
-    if (/[+\-*()]/.test(k)) { const cb = parseCombos('X = ' + k, md.cases.map(c => c.name), S)[0]; const r = combine(sol, cb.f, cb.txt, md); r.kind = 'comb'; r.txt = cb.txt; return r; }
+    if (/[+\-*()]/.test(k)) { const cb = parseCombos('X = ' + k, md.cases.map(c => c.name), S)[0]; return mk(cb.f, cb.txt, cb.txt); }
     throw new Error(what + ': no existe el caso o combinación «' + k + '» (disponibles: ' + [...sets.keys()].join(', ') + '; también se acepta una expresión como «CM + CV»)');
   };
   const verSet = pick(b.ver, 'Diagramas');
   const combSets = combos.map(c => sets.get(c.name));
   const envSets = verSet ? [verSet] : combSets;
-  const serv = pick(b.servicio, 'Deformada') || (md.cases.length > 1 ? combine(sol, Object.fromEntries(md.cases.map(c => [c.name, 1])), 'Servicio (Σ casos)', md) : sets.get(md.cases[0].name));
+  const serv = pick(b.servicio, 'Deformada') || (md.cases.length > 1 ? mk(Object.fromEntries(md.cases.map(c => [c.name, 1])), 'Servicio (Σ casos)', '') : sets.get(md.cases[0].name));
   // envolvente por estación
   const envOf = (mi, key) => { const st = md.mems[mi].st; const mx = st.map((_, p) => Math.max(...envSets.map(s => s.mf[mi][key][p]))); const mn = st.map((_, p) => Math.min(...envSets.map(s => s.mf[mi][key][p]))); return { mx, mn }; };
   const memRes = md.mems.map((m, mi) => {
@@ -1021,12 +1438,12 @@ function renderFrame(b, ctx) {
   html += `<div class="dt">Reacciones en los apoyos [${lu}, ${lu}·m]</div><table class="tbl"><thead><tr><th>Nudo</th>${rset.map(s => `<th>${esc(s.name)}</th>`).join('')}</tr></thead><tbody>`;
   for (const i of supN) {
     for (let d = 0; d < 3; d++) {
-      if (!md.sup[i].r[d] && !md.sup[i].k[d]) continue;
+      if (!md.sup[i].r[d] && !md.sup[i].k[d] && !(md.sup[i].ang !== null && d < 2)) continue;
       html += `<tr><td>${esc(md.nodes[i].id)} · ${['Rx', 'Ry', 'Mz'][d]}</td>${rset.map(s => `<td>${fx(s.R[3 * i + d])}</td>`).join('')}</tr>`;
     }
   }
   // equilibrio
-  html += `<tr class="tot"><td>Σ cargas + Σ reacciones (x; y)</td>${rset.map(s => { const ex = s.kind === 'caso' ? sol.res.find(r => r.name === s.name).eq : (() => { let a = 0, bb = 0; for (const r of sol.res) { const f = combos.find(c => c.name === s.name).f[r.name] || 0; a += f * r.eq[0]; bb += f * r.eq[1]; } return [a, bb]; })(); return `<td>${fx(ex[0], 3)}; ${fx(ex[1], 3)}</td>`; }).join('')}</tr>`;
+  html += `<tr class="tot"><td>Σ cargas + Σ reacciones (Fx; Fy; Mz,O)</td>${rset.map(s => `<td>${fx(s.eq[0], 3)}; ${fx(s.eq[1], 3)}; ${Number.isFinite(s.eq[2]) ? fx(s.eq[2], 3) : '—'}</td>`).join('')}</tr>`;
   html += '</tbody></table>';
   // esfuerzos por barra
   const envName = verSet ? verSet.name : (envSets.length > 1 ? 'envolvente' : envSets[0].name);
@@ -1042,6 +1459,24 @@ function renderFrame(b, ctx) {
       groups.map(gr => `<tr><td>${esc(gr.name)}</td><td>${esc(gr.ids.map(i => md.mems[i].id).join(', '))}</td>${md.truss ? '' : `<td>${fx(gr.Mpos)}</td><td>${fx(gr.Mneg)}</td><td>${fx(gr.Vmax)}</td>`}<td>${fx(gr.Nt)}</td><td>${fx(-gr.Nc)}</td><td>${fx(gr.Lmax)}</td></tr>`).join('') + '</tbody></table>';
   }
   if (driftTb) html += `<div class="dt">Control de derivas de entrepiso — ${esc(dcase.name)}</div>` + driftTb;
+  // P-Δ: amplificación por combinación
+  if (md.pdelta) {
+    const pr = combSets.filter(q => q.pd);
+    html += `<div class="dt">Análisis de segundo orden P-Δ (matriz geométrica, iterativo)</div><table class="tbl"><thead><tr><th>Combinación</th><th>Iteraciones</th><th>|ux| máx. 1.er orden [mm]</th><th>|ux| máx. P-Δ [mm]</th><th>Amplificación</th></tr></thead><tbody>` +
+      pr.map(q => `<tr><td>${esc(q.name)}</td><td>${q.pd.it}</td><td>${fx(q.pd.ux1 * 1000, 3)}</td><td>${fx(q.pd.ux2 * 1000, 3)}</td><td>${f2(q.pd.amp, 3)}</td></tr>`).join('') + '</tbody></table>';
+    const amp = Math.max(1, ...pr.map(q => q.pd.amp));
+    setVar(ctx, 'ampPD' + sfx, amp);
+  }
+  // análisis modal
+  if (modal) {
+    const md0 = modal.modes;
+    md0.forEach((q, k) => { setVar(ctx, 'T' + (k + 1) + sfx, math.unit(q.T, 's')); setVar(ctx, 'MPx' + (k + 1) + sfx, q.mef[0]); setVar(ctx, 'MPy' + (k + 1) + sfx, q.mef[1]); });
+    const cum = [0, 0];
+    html += `<div class="dt">Análisis modal — masas concentradas (${modal.ndof} GDL dinámicos; masa total x = ${fx(modal.Mtot[0], 3)}, y = ${fx(modal.Mtot[1], 3)} ${lu}·s²/m)</div><table class="tbl"><thead><tr><th>Modo</th><th>T [s]</th><th>f [Hz]</th><th>ω [rad/s]</th><th>Γx</th><th>Masa efectiva x</th><th>Σ x</th><th>Γy</th><th>Masa efectiva y</th><th>Σ y</th></tr></thead><tbody>` +
+      md0.map((q, k) => { cum[0] += q.mef[0]; cum[1] += q.mef[1]; return `<tr><td>${k + 1}</td><td>${f2(q.T, 4)}</td><td>${f2(q.f, 3)}</td><td>${f2(q.w, 3)}</td><td>${f2(q.gam[0], 3)}</td><td>${f2(100 * q.mef[0], 1)} %</td><td>${f2(100 * cum[0], 1)} %</td><td>${f2(q.gam[1], 3)}</td><td>${f2(100 * q.mef[1], 1)} %</td><td>${f2(100 * cum[1], 1)} %</td></tr>`; }).join('') + '</tbody></table>';
+    setVar(ctx, 'SMPx' + sfx, cum[0]); setVar(ctx, 'SMPy' + sfx, cum[1]);
+    html += `<div class="figure">${drawModes(md, modal, W)}${caption(ctx, 'Formas modales normalizadas (máxima traslación = 1)')}</div>`;
+  }
   // resumen
   const kv = [];
   const sh = (n, v) => kv.push(K(symTex(n) + '=' + valTex(v)));
@@ -1049,7 +1484,10 @@ function renderFrame(b, ctx) {
   sh('Nt' + sfx, math.unit(gmax('Nt'), FU)); sh('Nc' + sfx, math.unit(gmax('Nc'), FU)); sh('deltamax' + sfx, math.unit(dmax * 1000, 'mm'));
   if (deflInfo) kv.push(K('\\delta_{' + esc(md.mems[deflInfo.mi].id) + '} = ' + fx(Math.abs(deflInfo.d) * 1000) + '\\,\\mathrm{mm} \\le L/' + f2(dlim, 0) + ' = ' + fx(deflInfo.lim * 1000) + '\\,\\mathrm{mm}'));
   html += `<div class="kv">${kv.join(' ')}</div>`;
-  html += `<div class="dt" style="text-transform:none;font-weight:400">Método de rigidez directa (${md.nodes.length} nudos, ${md.mems.length} barras, ${sol.free.length} GDL libres${sol.auto.length ? ', ' + sol.auto.length + ' giros de nudos articulados eliminados' : ''}). Convenciones: ejes globales x → derecha, y ↑; N + tracción; M + tracción en la cara inferior de la barra (eje local y a la izquierda de i→j). No incluye deformación por cortante, zonas rígidas ni efectos P-Δ.</div>`;
+  const opts = [md.pdelta ? 'Combinaciones con efecto P-Δ (2.º orden; los casos individuales en 1.er orden)' : 'Análisis elástico de 1.er orden (sin P-Δ)',
+    md.shear !== null ? 'con deformación por cortante (Timoshenko, ν = ' + f2(md.shear, 2) + ', As = 5/6·A en secciones rectangulares)' : 'sin deformación por cortante',
+    md.mems.some(m => m.zi > 0 || m.zj > 0) ? 'con zonas rígidas en nudos' : 'sin zonas rígidas'];
+  html += `<div class="dt" style="text-transform:none;font-weight:400">Método de rigidez directa (${md.nodes.length} nudos, ${md.mems.length} barras, ${sol.free.length} GDL libres${sol.auto.length ? ', ' + sol.auto.length + ' giros de nudos articulados eliminados' : ''}). Convenciones: ejes globales x → derecha, y ↑; N + tracción; M + tracción en la cara inferior de la barra (eje local y a la izquierda de i→j). ${opts.join(' · ')}.</div>`;
   return html;
 }
 

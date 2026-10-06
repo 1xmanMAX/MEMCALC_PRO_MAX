@@ -391,23 +391,35 @@ function surfY(pts, x) {
 }
 const layerAt = (lay, y) => { for (const l of lay) if (y <= l.top + 1e-9 && y > l.bot - 1e-9) return l; return lay[lay.length - 1]; };
 // Calcula las dovelas y FS para un círculo (xc, yc, R); null si no es válido
+// Nivel freático: null, cota constante o polilínea [[x, y], …] (interpolación lineal, extremos constantes)
+const wtAt = (wt, x) => (wt === null ? null : typeof wt === 'number' ? wt : surfY(wt, x));
+// Intersecciones exactas del arco inferior del círculo con la poligonal del terreno → abscisas ordenadas
+function circleCuts(pts, xc, yc, R) {
+  const xs = [];
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], dx = x1 - x0, dy = y1 - y0;
+    const a = dx * dx + dy * dy, bq = 2 * (dx * (x0 - xc) + dy * (y0 - yc)), c = (x0 - xc) ** 2 + (y0 - yc) ** 2 - R * R;
+    const disc = bq * bq - 4 * a * c; if (!(a > 0) || disc < 0) continue;
+    const sq = Math.sqrt(disc);
+    for (const t of [(-bq - sq) / (2 * a), (-bq + sq) / (2 * a)]) if (t >= -1e-12 && t <= 1 + 1e-12 && y0 + t * dy <= yc + 1e-9) xs.push(x0 + t * dx);
+  }
+  return xs.sort((p, q) => p - q);
+}
+// Calcula las dovelas y FS para un círculo (xc, yc, R); null si no es válido
 export function slopeCircle(m, xc, yc, R, n = 30) {
-  const { pts, lay, ywt, gw, kh, surch, hmin } = m;
+  const { pts, lay, gw, kh, surch, hmin } = m, wt = m.wt !== undefined ? m.wt : m.ywt;
   const xa = Math.max(pts[0][0], xc - R), xb = Math.min(pts[pts.length - 1][0], xc + R);
   if (xb - xa < 1e-6) return null;
   const f = (x) => surfY(pts, x) - (yc - Math.sqrt(Math.max(0, R * R - (x - xc) ** 2)));
-  // tramo continuo con base bajo la superficie (el más ancho)
-  const ns = 240; let best = null, s0 = null;
-  for (let i = 0; i <= ns; i++) {
-    const x = xa + (xb - xa) * i / ns, inside = f(x) > 1e-9 && Math.abs(x - xc) < R;
-    if (inside && s0 === null) s0 = i;
-    if ((!inside || i === ns) && s0 !== null) { const e = inside ? i : i - 1; if (!best || e - s0 > best[1] - best[0]) best = [s0, e]; s0 = null; }
+  // tramo continuo con la base del círculo bajo la superficie (el más ancho), con intersecciones exactas
+  const cuts = [xa, ...circleCuts(pts, xc, yc, R).filter(x => x > xa && x < xb), xb];
+  let best = null, cur = null;
+  for (let i = 1; i < cuts.length; i++) {
+    const a = cuts[i - 1], c = cuts[i], mid = (a + c) / 2, inside = c - a > 1e-9 && f(mid) > 1e-9 && Math.abs(mid - xc) < R;
+    if (inside) { cur = cur ? [cur[0], c] : [a, c]; if (!best || cur[1] - cur[0] > best[1] - best[0]) best = cur; } else cur = null;
   }
-  if (!best || best[1] - best[0] < 3) return null;
-  const root = (a, c) => { let fa = f(a); for (let k = 0; k < 50; k++) { const mid = (a + c) / 2, fm = f(mid); if ((fm > 0) === (fa > 0)) { a = mid; fa = fm; } else c = mid; } return (a + c) / 2; };
-  const dx = (xb - xa) / ns;
-  const xl = best[0] === 0 ? xa : root(xa + (best[0] - 1) * dx, xa + best[0] * dx);
-  const xr = best[1] === ns ? xb : root(xa + best[1] * dx, xa + (best[1] + 1) * dx);
+  if (!best || best[1] - best[0] < 1e-3 * R) return null;
+  const [xl, xr] = best;
   // un círculo que corta los bordes del modelo no es válido
   if (xl <= pts[0][0] + 1e-6 || xr >= pts[pts.length - 1][0] - 1e-6) return null;
   // la superficie de falla debe aflorar en el terreno en ambos extremos (no en la tangente vertical del círculo)
@@ -418,11 +430,12 @@ export function slopeCircle(m, xc, yc, R, n = 30) {
   for (let i = 0; i < n; i++) {
     const x = xl + (i + 0.5) * b, ys = surfY(pts, x), yb = yc - Math.sqrt(Math.max(0, R * R - (x - xc) ** 2));
     const h = ys - yb; if (h <= 0) continue; hmx = Math.max(hmx, h);
+    const yw = wtAt(wt, x);
     // peso por estratos horizontales (γ sobre NF, γsat bajo NF)
     let Wt = 0, my = 0;
     for (const l of lay) {
       const t = Math.min(ys, l.top), bo = Math.max(yb, l.bot); if (t <= bo) continue;
-      const parts = ywt === null ? [[t, bo, l.g]] : [[t, Math.max(bo, Math.min(t, ywt)), l.g], [Math.min(t, ywt), bo, l.gs]];
+      const parts = yw === null ? [[t, bo, l.g]] : [[t, Math.max(bo, Math.min(t, yw)), l.g], [Math.min(t, yw), bo, l.gs]];
       for (const [a, c, gg] of parts) if (a > c) { Wt += gg * (a - c) * b; my += gg * (a - c) * b * (a + c) / 2; }
     }
     const yg = Wt > 0 ? my / Wt : (ys + yb) / 2;
@@ -432,7 +445,7 @@ export function slopeCircle(m, xc, yc, R, n = 30) {
     const L = R * Math.abs(asn((x + b / 2 - xc) / R) - asn((x - b / 2 - xc) / R)); // longitud exacta del arco de la base
     const lb = layerAt(lay, yb);
     // nivel freático horizontal recortado por la superficie del terreno (sin agua libre sobre el talud)
-    const u = ywt === null ? 0 : gw * Math.max(0, Math.min(ywt, ys) - yb);
+    const u = yw === null ? 0 : gw * Math.max(0, Math.min(yw, ys) - yb);
     sl.push({ x, b, h, W: Wt + Q, Wsoil: Wt, yg, ys, yb, sa, ca, L, c: lb.c, tf: Math.tan(lb.phi), u, lay: lb });
   }
   if (!sl.length || hmx < hmin) return null;
@@ -477,12 +490,22 @@ registerBlock('slope', {
     const ymaxS = Math.max(...pts.map(p => p[1])), ybase = evalParam(b.ybase, S, 'm', Math.min(...pts.map(p => p[1])) - 5);
     lay[0].top = Math.max(lay[0].top, ymaxS + 1);
     lay.forEach((l, i) => { l.bot = i < lay.length - 1 ? lay[i + 1].top : -1e6; });
-    const ywt = b.nf === undefined || String(b.nf).trim() === '' ? null : evalParam(b.nf, S, 'm');
+    // NF: cota constante (un valor) o polilínea «x y» por línea (o «x y; x y; …»)
+    let wt = null;
+    if (b.nf !== undefined && String(b.nf).trim() !== '') {
+      const raw = String(b.nf).split(/[\n;]/).map(l => l.split('//')[0].trim()).filter(Boolean);
+      if (raw.length === 1 && raw[0].split(/\s+/).length === 1) wt = evalParam(raw[0], S, 'm');
+      else {
+        wt = raw.map(l => l.split(/\s+/).map(s => evalParam(s, S, 'm'))).filter(p => p.length >= 2).map(p => [p[0], p[1]]);
+        if (wt.length < 2) throw new Error('Nivel freático: indique una cota o al menos dos puntos «x y»');
+        for (let i = 1; i < wt.length; i++) if (wt[i][0] <= wt[i - 1][0]) throw new Error('Nivel freático: las abscisas deben ser crecientes');
+      }
+    }
     const kh = evalParam(b.kh, S, '', 0), gw = kN ? 9.81 : 1.0;
     const surch = lines(b.sobrecarga).map(l => { const t = toks(l); return { x1: evalParam(t[0], S, 'm'), x2: evalParam(t[1], S, 'm'), q: evalParam(t.slice(2).join(' '), S, uS) }; });
     const n = Math.max(8, Math.min(100, parseInt(b.ndov) || 30));
     const H = ymaxS - Math.min(...pts.map(p => p[1]));
-    const model = { pts, lay, ywt, gw, kh, surch, hmin: Math.max(0.3, 0.05 * H) };
+    const model = { pts, lay, wt, gw, kh, surch, hmin: Math.max(0.3, 0.05 * H) };
     const useF = b.metodo === 'fellenius';
     const fsOf = (r) => (useF ? r.FSf : r.FSb);
     let crit = null; const grid = [];
@@ -494,7 +517,7 @@ registerBlock('slope', {
       const gm = toks(String(b.malla || '').trim()).map(s => evalParam(s, S, ''));
       const [x1, x2, y1, y2] = gm.length >= 4 ? gm : [pts[0][0], pts[pts.length - 1][0], ymaxS, ymaxS + 2 * H];
       const ng = Math.max(3, Math.min(30, Math.round(gm[4] || 10)));
-      const nq = Math.min(n, 40);
+      const nq = Math.min(n, 24); // dovelas durante la búsqueda (el círculo final se recalcula con n)
       // mejor radio para un centro dado: barrido grueso + refinamiento
       const bestR = (xc, yc) => {
         const rmin = yc - (ymaxS - 0.1), rmax = yc - ybase; if (rmax <= 0.5) return null;
@@ -545,7 +568,7 @@ registerBlock('slope', {
     g += '</g>';
     g += `<path d="${pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="${C.ink}" stroke-width="1.8"/>`;
     g += Lne(X(xs0), Y(ybase), X(xs1), Y(ybase), '#7a6a50', 0.8, '2 3') + T(X(xs1) - 4, Y(ybase) - 3, 'cota mínima de falla', { fs: 8, c: C.axis, a: 'end' });
-    if (ywt !== null) { const wp = []; for (let i = 0; i <= 60; i++) { const x = xs0 + (xs1 - xs0) * i / 60; wp.push([x, Math.min(ywt, surfY(pts, x))]); } g += `<path d="${wp.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="${C.blue}" stroke-width="1.4" stroke-dasharray="7 4"/>`; const xw = xs1 - (xs1 - xs0) * 0.06; g += `<path d="M${X(xw) - 5},${Y(Math.min(ywt, surfY(pts, xw))) - 9} l10,0 l-5,8 z" fill="${C.blue}"/>` + T(X(xw) + 8, Y(Math.min(ywt, surfY(pts, xw))) - 3, 'NF', { fs: 9, c: C.blue, a: 'start' }); }
+    if (wt !== null) { const ywAt = (x) => Math.min(wtAt(wt, x), surfY(pts, x)); const wp = []; for (let i = 0; i <= 120; i++) { const x = xs0 + (xs1 - xs0) * i / 120; wp.push([x, ywAt(x)]); } g += `<path d="${wp.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="${C.blue}" stroke-width="1.4" stroke-dasharray="7 4"/>`; const xw = xs1 - (xs1 - xs0) * 0.06; g += `<path d="M${X(xw) - 5},${Y(ywAt(xw)) - 9} l10,0 l-5,8 z" fill="${C.blue}"/>` + T(X(xw) + 8, Y(ywAt(xw)) - 3, 'NF', { fs: 9, c: C.blue, a: 'start' }); }
     surch.forEach(s => { const a = X(s.x1), c = X(s.x2), y = Y(surfY(pts, (s.x1 + s.x2) / 2)); g += `<rect x="${a}" y="${y - 12}" width="${c - a}" height="10" fill="${C.blueF}" stroke="${C.blue}" stroke-width=".8"/>` + lab((a + c) / 2, y - 16, 'q = ' + f2(s.q) + ' ' + uStr, { c: C.blue, fs: 9 }); });
     // grid
     if (grid.length) { const fsv = grid.filter(q => q.FS !== null).map(q => q.FS), lo = Math.min(...fsv), hi = Math.max(...fsv); grid.forEach(q => { if (q.FS === null) { g += `<circle cx="${X(q.xc)}" cy="${Y(q.yc)}" r="1.4" fill="#bbb"/>`; return; } const t = hi > lo ? (q.FS - lo) / (hi - lo) : 0; const col = `hsl(${(t * 120).toFixed(0)},70%,45%)`; g += `<circle cx="${X(q.xc).toFixed(1)}" cy="${Y(q.yc).toFixed(1)}" r="2.2" fill="${col}"/>`; }); }

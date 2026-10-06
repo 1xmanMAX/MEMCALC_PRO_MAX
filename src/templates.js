@@ -12,7 +12,9 @@ const BASE_TEMPLATES = [
     titulo: 'Diseño de viga de concreto armado',
     blocks: [
       text(`# Generalidades
-La presente memoria desarrolla el diseño por resistencia de una viga rectangular de concreto armado sometida a flexión simple y fuerza cortante, conforme a la **Norma Técnica E.060 Concreto Armado** del Reglamento Nacional de Edificaciones. Las solicitaciones últimas provienen del análisis estructural con la combinación $U = 1.4\\,CM + 1.7\\,CV$.`),
+La presente memoria desarrolla el diseño por resistencia de una viga rectangular de concreto armado sometida a flexión simple y fuerza cortante, conforme a la **Norma Técnica E.060 Concreto Armado** (2009) del Reglamento Nacional de Edificaciones. Las solicitaciones últimas provienen del análisis estructural con la envolvente de las combinaciones del Art. 9.2 ($U = 1.4\\,CM + 1.7\\,CV$; $1.25(CM + CV) \\pm CS$; $0.9\\,CM \\pm CS$).
+
+> Diseño por resistencia de una sección. Para vigas de pórticos sismorresistentes con cortante por capacidad ($M_{pr}$, Art. 21.5) use *co-vigaductil*; para secciones T o doblemente reforzadas, *co-vigat* y *co-vigadoble*; para deflexiones, *co-deflexion*.`),
       calc(`# Datos de diseño
 fc = 210 kgf/cm^2 // Resistencia a compresión del concreto [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2|350 kgf/cm^2]
 fy = 4200 kgf/cm^2 // Esfuerzo de fluencia del acero (ASTM A615 Gr. 60)
@@ -31,7 +33,8 @@ beta1 = si(fc <= 280 kgf/cm^2, 0.85, max(0.65, 0.85 - 0.05*(fc - 280 kgf/cm^2)/(
 phif = 0.90 // Factor de reducción por flexión (E.060 9.3.2.1)`),
       calc(`## Diseño por flexión
 Rn = Mu/(phif*b*d^2) // Parámetro de resistencia
-rho = 0.85*fc/fy*(1 - sqrt(1 - 2*Rn/(0.85*fc))) // Cuantía requerida
+check Rn <= 0.85*fc/2 // Sección suficiente como simplemente reforzada (si no cumple, aumentar la sección o usar acero en compresión)
+rho = 0.85*fc/fy*(1 - sqrt(max(1 - 2*Rn/(0.85*fc), 0))) // Cuantía requerida
 As = rho*b*d // Acero requerido
 Asmin = 0.7*sqrtfc(fc)/fy*b*d // Acero mínimo (E.060 Art. 10.5.2)
 rhob = 0.85*beta1*fc/fy*(0.003*Es/(0.003*Es + fy)) // Cuantía balanceada
@@ -61,13 +64,14 @@ smax = si(Vs <= 1.1*sqrtfc(fc)*b*d, min(d/2, 60 cm), min(d/4, 30 cm)) // Espacia
 s = rounddown(min(s1, smax), 2.5 cm) // Espaciamiento adoptado
 phiVn = phiv*(Vc + Av*fy*d/s) -> tonf // Resistencia de diseño a cortante
 check Vu <= phiVn // Resistencia a cortante
-Avmin = max(0.2*sqrtfc(fc)*b*s/fy, 3.5 kgf/cm^2*b*s/fy) // Refuerzo mínimo por cortante (E.060 11.5.6.3)
+Avmin = max(0.2*sqrtfc(fc)*b*s/fy, 3.5 kgf/cm^2*b*s/fy) // Refuerzo mínimo por cortante (E.060 11.5.6.2; exigido si Vu > 0.5 φVc, 11.5.6.1)
 check Av >= Avmin // Área mínima de estribos
-## Confinamiento en vigas sísmicas (E.060 21.4.4)
-so = rounddown(min(d/4, 10*db(bar), 24*db(est), 30 cm), 2.5 cm) // Espaciamiento en zona confinada
-Lconf = 2*h // Longitud de confinamiento desde la cara del apoyo
-"Distribución de estribos #{est}: 1 @ 5 cm, resto @ {so} en {Lconf} a cada extremo; resto @ {s}.`),
-      { type: 'section', b: 'b', h: 'h', recub: 'rec', estribo: 'est', inf: '{n}#{bar}', sup: '2#4', lat: '0', sest: '@ {s}', titulo: 'Sección de diseño de la viga' },
+## Confinamiento en vigas sísmicas (E.060 21.4.4.4 — muros estructurales o dual tipo I)
+so = rounddown(min(max(d/4, 15 cm), 10*db(bar), 24*db(est), 30 cm), 2.5 cm) // Zona confinada: d/4 (no menor de 15 cm), 10 db, 24 de, 30 cm
+Lconf = 2*h // Longitud de confinamiento desde la cara del apoyo (21.4.4.4)
+check s <= d/2 // Fuera de la zona confinada s ≤ 0.5 d (21.4.4.5)
+"Distribución de estribos #{est}: 1 @ 5 cm (≤ 10 cm de la cara), resto @ {min(so, s)} en {Lconf} a cada extremo; resto @ {s}. El cortante de diseño de vigas sísmicas debe además cumplir 21.4.3 (capacidad o 2.5 CS).`),
+      { type: 'section', b: 'b', h: 'h', recub: 'rec', estribo: 'est', inf: '{min(n, 12)}#{bar}', sup: '2#4', lat: '0', sest: '@ {s}', titulo: 'Sección de diseño de la viga' },
       { type: 'summary' },
     ],
   },
@@ -509,50 +513,68 @@ st = min(5*hf, 40 cm) // Espaciamiento máximo
   },
   // ------------------------------------------------------------------
   {
-    id: 'sismo', normas: 'RNE — NTE E.030 Diseño Sismorresistente (modificada por RM 183-2026-VIVIENDA)', cat: 'Sismo — Perú', name: 'Análisis sísmico estático E.030-2026', icon: 'quake',
-    desc: 'Versión vigente 2026: suelo por Vs30 con S, TP y TL interpolados, R0 actualizados (EMDL 3.5), irregularidades extremas, C/R ≥ 0.11, distribución en altura y derivas por material.',
+    id: 'sismo', normas: 'RNE — NTE E.030 Diseño Sismorresistente (modificada por RM 183-2026-VIVIENDA)', cat: 'Sismo — Perú', name: 'Sismo estático E.030-2026 (versión rápida)', icon: 'quake',
+    desc: 'Versión rápida con pesos por nivel ingresados: suelo por Vs30, sistema permitido (Tabla 9), Ts < 0.65 TP, aplicabilidad del método, C/R ≥ 0.11, distribución con k y derivas en el extremo. Memoria completa: «pe-e030-estatico».',
     titulo: 'Análisis sísmico estático — NTE E.030 (2026)',
     blocks: [
       text(`# Alcance
-Análisis sísmico estático según la Norma Técnica E.030 *Diseño Sismorresistente* del RNE, con las modificaciones aprobadas por la **RM N° 183-2026-VIVIENDA** (clasificación de suelos por $\\bar V_{s30}$, factores $S$, $T_P$, $T_L$ interpolados y nuevos coeficientes $R_0$). Para proyectos con expediente aprobado antes de su vigencia aplica la versión 2018 (plantilla «transición»).`),
-      calc(`# Parámetros sísmicos
-zona = 4 // Zona sísmica [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
-Z = si(zona == 4, 0.45, si(zona == 3, 0.35, si(zona == 2, 0.25, 0.10))) // Factor de zona (Tabla N° 1)
-Vs30 = 300 m/s // Velocidad promedio de ondas de corte (Estudio de Mecánica de Suelos)
-S = SE030(zona, Vs30) // Factor de suelo (Tabla N° 4, interpolación lineal)
-Tp = TpE030(Vs30) // Periodo TP (Tabla N° 5)
+Análisis sísmico estático **rápido** según la Norma Técnica E.030 *Diseño Sismorresistente* del RNE, con las modificaciones aprobadas por la **RM N° 183-2026-VIVIENDA** (clasificación de suelos por $\\bar V_{s30}$, factores $S$, $T_P$, $T_L$ interpolados, nuevos coeficientes $R_0$ y numeración de artículos 2026). Los pesos por nivel, los desplazamientos elásticos y la relación $\\Delta_{extremo}/\\Delta_{CM}$ se toman del modelo estructural.
+
+> Para la memoria **completa** (metrado de pesos, periodo de Rayleigh, torsión accidental, evaluación automática de irregularidades con el bloque *irregE030*) use la plantilla **«Análisis sísmico estático E.030-2026 — edificio de 5 pisos»** (*pe-e030-estatico*); para el análisis modal espectral, *pe-e030-dinamico*. Para proyectos con expediente iniciado con la E.030-2018 use la plantilla de transición *sismo2018*.`),
+      calc(`# Peligro sísmico y condiciones de sitio
+zona = 4 // Zona sísmica (Art. 10, Anexo II) [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
+Z = ZE030(zona) // Factor de zona (Art. 11, Tabla N° 1)
+Vs30 = 300 m/s // Velocidad promedio de ondas de corte en 30 m (Art. 15.2, del Estudio de Mecánica de Suelos)
+S = SE030(zona, Vs30) // Factor de suelo, interpolado por Vs30 (Art. 17, Tabla N° 4)
+Tp = TpE030(Vs30) // Periodo TP de la plataforma (Tabla N° 5)
 Tl = TlE030(Vs30) // Periodo TL (Tabla N° 5)
-U = 1.0 // Factor de uso [1.5 : Cat. A2 esencial|1.3 : Cat. B importante|1.0 : Cat. C común]
-R0 = 8 // Coeficiente básico de reducción (Tabla N° 10) [8 : C°A° pórticos|7 : C°A° dual|6 : C°A° muros estructurales|3.5 : Muros de ductilidad limitada|3 : Albañilería|8 : Acero SMF / EBF|5 : Acero IMF|4 : Acero OMF / OCBF|7 : Acero SCBF / Madera]
-Ia = 1.0 // Irregularidad en altura (Tabla N° 11) [1.0 : Regular|0.90 : Masa o geometría vertical|0.80 : Discontinuidad en sistemas resistentes|0.75 : Rigidez – piso blando|0.60 : Discontinuidad extrema|0.50 : Rigidez extrema]
+# Categoría y sistema estructural
+categoria = 4 // Categoría de la edificación (Art. 19, Tabla N° 7) [2 : A2 Esencial|3 : B Importante|4 : C Común]
+U = UE030(categoria) // Factor de uso (Tabla N° 7)
+sistema = 7 // Sistema estructural en la dirección de análisis (Tabla N° 10) [7 : C°A° pórticos|8 : C°A° dual|9 : C°A° muros estructurales|10 : C°A° muros de ductilidad limitada|11 : Albañilería armada o confinada|1 : Acero SMF|2 : Acero IMF|3 : Acero OMF|4 : Acero SCBF|5 : Acero OCBF|6 : Acero EBF|12 : Madera]
+check sisE030(categoria, zona, sistema) == 1 // Sistema estructural permitido para la categoría y la zona (Art. 21, Tabla N° 9)
+Ts = 0.30 s // Periodo predominante del terreno por razón espectral H/V (Art. 15.3; exigido en categorías A y B de la zona 4)
+check Ts < 0.65*Tp or categoria == 4 or zona < 4 // Categorías A y B en zona 4: Ts < 0.65 TP; si no, perfil siguiente más desfavorable o estudio de sitio (Art. 14.2 y 14.8)
+R0 = R0E030(sistema) // Coeficiente básico de reducción (Art. 22, Tabla N° 10)
+Ia = 1.0 // Irregularidad en altura (Tabla N° 11) [1.0 : Regular|0.90 : Masa o geometría vertical|0.80 : Discontinuidad en sistemas resistentes|0.75 : Piso blando o piso débil|0.60 : Discontinuidad extrema|0.50 : Rigidez o resistencia extrema]
 Ip = 1.0 // Irregularidad en planta (Tabla N° 12) [1.0 : Regular|0.90 : Esquinas entrantes / sistemas no paralelos|0.85 : Discontinuidad del diafragma|0.75 : Torsión|0.60 : Torsión extrema]
-hn = 12.0 // Altura total de la edificación [m]
-CT = 35 // Coeficiente para el periodo [35 : Pórticos de C°A° o acero|45 : Pórticos con muros en ascensores y escaleras|60 : Albañilería, dual, muros, EMDL]
+regular = si(Ia*Ip == 1, 1, 0) // 1 = estructura regular
+extrema = si(min(Ia, Ip) <= 0.60, 1, 0) // 1 = existe alguna irregularidad extrema
+npisos = 4 // Número de pisos
+hn = 12.0 m // Altura total de la edificación
+check (categoria == 2 and (regular == 1 or (zona == 1 and extrema == 0))) or (categoria == 3 and (extrema == 0 or zona == 1)) or (categoria == 4 and (extrema == 0 or zona == 1 or (zona == 2 and (npisos <= 2 or hn <= 8 m)))) // Restricciones a la irregularidad según categoría y zona (Art. 25, Tabla N° 13)
+check zona == 1 or (regular == 1 and hn <= 30 m) or ((sistema == 9 or sistema == 10 or sistema == 11) and hn <= 15 m) // Método estático aplicable: zona 1, regular ≤ 30 m, o muros portantes ≤ 15 m (Art. 33.2); si no, análisis dinámico
 ## Periodo y factor de amplificación
-R = R0*Ia*Ip // Coeficiente de reducción de fuerzas sísmicas
-T = hn/CT // Periodo fundamental aproximado [s]
-C = CE030(T, Tp, Tl) // Factor de amplificación (análisis estático: C = 2.5 para T ≤ TP)
-CR = max(C/R, 0.11) // C/R no menor que 0.11 (Art. 34.2)
-k = si(T <= 0.5, 1.0, min(0.75 + 0.5*T, 2.0)) // Exponente de distribución en altura
+R = R0*Ia*Ip // Coeficiente de reducción de las fuerzas sísmicas (Art. 26)
+cajas = 0 // Pórticos de C°A° con muros en las cajas de ascensores y escaleras [0 : No|1 : Sí (CT = 45)]
+CT = si(sistema == 7 and cajas == 1, 45, CTE030(sistema)) // Coeficiente para estimar el periodo (Art. 36.1)
+T = hn/CT*1 s/m -> s // Periodo fundamental aproximado, hn en metros (Art. 36.1)
+C = CE030(T, Tp, Tl) // Factor de amplificación; en el análisis estático C = 2.5 para T ≤ TP (Art. 18.3 y 34.1)
+CR = max(C/R, 0.11) // C/R con su valor mínimo 0.11 (Art. 34.2): es un mínimo que se aplica, no una verificación
+k = kE030(T) // Exponente de distribución en altura (Art. 35.2)
 ## Cortante basal y distribución
-wi = [210, 210, 210, 160] tonf // Peso sísmico por nivel (1 → n)
-hi = [3, 6, 9, 12] // Altura de cada nivel desde la base [m]
+wi = [210, 210, 210, 160] tonf // Peso sísmico por nivel 1 → n, con el % de carga viva del Art. 31
+hi = [3, 6, 9, 12] m // Altura de cada nivel desde la base
 P = sum(wi) // Peso sísmico total
-V = Z*U*S*CR*P -> tonf // Fuerza cortante en la base
-alpha_i = wi .* hi.^k / sum(wi .* hi.^k) // Factor de distribución
+V = Z*U*S*CR*P -> tonf // Fuerza cortante en la base V = Z·U·C·S·P/R (Art. 34.1)
+alpha_i = wi .* hi.^k / sum(wi .* hi.^k) // Factor de distribución (Art. 35.1)
 Fi = alpha_i*V // Fuerza en cada nivel
 Vi = V - cumsum(Fi) + Fi // Cortante de entrepiso
-"Las fuerzas se aplican en cada dirección; los elementos verticales se diseñan con el **100 %** de las solicitaciones en una dirección más el **30 %** de la dirección perpendicular (Art. 28.1).
-## Control de derivas
-Di = [0.25, 0.33, 0.30, 0.22] cm // Desplazamiento relativo elástico de cada entrepiso (del modelo)
+"Las fuerzas $F_i$ se aplican en el centro de masas con la excentricidad accidental de 0.05 veces la dimensión perpendicular (Art. 37). Para los elementos verticales se combina el **100 %** de una dirección con el **30 %** de la perpendicular (Art. 33.3).
+## Control de derivas (Art. 50 y 51)
+Di = [0.22, 0.28, 0.26, 0.19] cm // Desplazamiento relativo elástico de cada entrepiso en el centro de masas (del modelo, con las fuerzas Fi)
 hei = [3, 3, 3, 3] m // Altura de cada entrepiso
-fR = 0.75 // Factor de desplazamiento inelástico [0.75 : Estructura regular|0.85 : Estructura irregular]
-dlim = 0.007 // Distorsión máxima (Tabla N° 14) [0.007 : Concreto armado|0.010 : Acero / Madera|0.005 : Albañilería|0.004 : Muros de ductilidad limitada]
-deriva = fR*R*Di ./ hei // Deriva inelástica de entrepiso
-check max(deriva) <= dlim // Distorsión de entrepiso`),
-      { type: 'table', columnas: 'Nivel = 1:4\nAltura $h_i$ [m] = hi\nPeso $w_i$ [tonf] = wi\n$\\alpha_i$ = alpha_i\nFuerza $F_i$ [tonf] = Fi\nCortante $V_i$ [tonf] = Vi\nDeriva = deriva', dec: '4', titulo: 'Distribución de la fuerza sísmica en altura y derivas' },
+rt = [1.10, 1.10, 1.12, 1.12] // Relación Δextremo/ΔCM por entrepiso (modelo 3D con excentricidad accidental)
+fR = si(regular == 1, 0.75, 0.85) // Factor de desplazamiento inelástico: 0.75 R regular, 0.85 R irregular (Art. 50.1 y 50.2)
+fCR = (C/R)/CR // Los desplazamientos no consideran el mínimo C/R (Art. 50.3)
+deriva = fR*R*fCR*Di ./ hei // Distorsión inelástica en el centro de masas
+deriva_max = rt .* deriva // Distorsión máxima de entrepiso, en el extremo del edificio
+mat = si(sistema <= 6, 2, si(sistema == 10, 5, si(sistema == 11, 3, si(sistema == 12, 4, 1)))) // Material predominante según el sistema
+dlim = dlimE030(mat) // Distorsión máxima (Tabla N° 14): C°A° 0.007, acero 0.010, albañilería 0.005, madera 0.010, EMDL 0.004
+check max(deriva_max) <= dlim // Distorsión máxima de entrepiso en el extremo del edificio (Art. 51)`),
+      { type: 'table', columnas: 'Nivel = 1:4\nAltura $h_i$ [m] = hi\nPeso $w_i$ [tonf] = wi\n$\\alpha_i$ = alpha_i\nFuerza $F_i$ [tonf] = Fi\nCortante $V_i$ [tonf] = Vi\n$\\Delta_i/h_{ei}$ CM = deriva\n$\\Delta_{max}/h_{ei}$ extremo = deriva_max', dec: '4', titulo: 'Distribución de la fuerza sísmica en altura y derivas' },
       { type: 'spectrum', Z: 'Z', U: 'U', S: 'S', Tp: 'Tp', Tl: 'Tl', R: 'R', T: 'T', corto: true, titulo: 'Espectro de pseudo-aceleraciones E.030-2026 (incluye rama T < 0.2 TP para análisis dinámico)' },
-      text(`> En **zona 4**, para edificaciones de categorías A y B, la E.030-2026 exige determinar el periodo predominante del terreno $T_s$ (razón espectral H/V). En el análisis dinámico, la cortante basal no será menor que el 80 % (regular) o 90 % (irregular) de la estática.`),
+      text(`> **Notas.** (1) Si la estructura es irregular, verifique las irregularidades con el bloque *irregE030* (plantilla *pe-e030-irregularidades*) y use el análisis dinámico cuando el Art. 33.2 no permita el estático. (2) En el análisis dinámico la cortante basal no será menor que el 80 % (regular) o el 90 % (irregular) de la estática (Art. 44.1). (3) La fuerza sísmica vertical es 2/3 Z·U·S (Art. 38).`),
       { type: 'summary' },
     ],
   },
@@ -689,44 +711,63 @@ SaJP = Ds*Zj*RtBSL(Te, Tc)*1.0 // Coeficiente de corte último requerido`),
   },
   // ------------------------------------------------------------------
   {
-    id: 'sismo2018', normas: 'RNE — NTE E.030-2018 Diseño Sismorresistente', cat: 'Sismo — Perú', name: 'Sismo estático E.030-2018 (proyectos en transición)', icon: 'quake',
-    desc: 'Parámetros sísmicos, periodo fundamental, cortante basal, distribución de fuerzas por nivel y espectro de diseño (NTE E.030-2018).',
-    titulo: 'Análisis sísmico estático — NTE E.030',
+    id: 'sismo2018', normas: 'RNE — NTE E.030-2018 Diseño Sismorresistente (DS 003-2016 mod. RM 355-2018-VIVIENDA)', cat: 'Sismo — Perú', name: 'Sismo estático E.030-2018 (proyectos en transición)', icon: 'quake',
+    desc: 'Para expedientes iniciados con la E.030-2018: perfiles S0–S3 (Tablas 3 y 4), sistema permitido (Tabla 6), restricciones (Tabla 10), aplicabilidad (28.1.2), C/R ≥ 0.11, distribución con k y derivas en el extremo (Tabla 11).',
+    titulo: 'Análisis sísmico estático — NTE E.030-2018',
     blocks: [
+      text(`# Alcance
+Análisis sísmico estático según la **NTE E.030-2018** (RM N° 355-2018-VIVIENDA), aplicable **solo a proyectos en transición** cuyo expediente se inició antes de la vigencia de la RM N° 183-2026-VIVIENDA. Para proyectos nuevos use la plantilla *sismo* (E.030-2026, versión rápida) o la memoria completa *pe-e030-estatico*.
+
+La numeración de artículos y tablas de esta memoria es la de la versión 2018: zonificación (Tabla N° 1), perfiles de suelo S0–S3 (Tablas N° 3 y 4), categoría (Tabla N° 5), sistemas permitidos (Tabla N° 6), $R_0$ (Tabla N° 7), irregularidades (Tablas N° 8 y 9), restricciones (Tabla N° 10) y distorsiones (Tabla N° 11). La E.030-2018 **no** exige la verificación del periodo $T_s$ del terreno (requisito introducido en 2026).`),
       calc(`# Parámetros sísmicos (NTE E.030-2018)
-Z = 0.35 // Factor de zona [0.45 : Zona 4|0.35 : Zona 3|0.25 : Zona 2|0.10 : Zona 1]
-U = 1.0 // Factor de uso [1.5 : Cat. A2 esencial|1.3 : Cat. B importante|1.0 : Cat. C común]
-S = 1.15 // Factor de suelo (Tabla N° 3) [0.80 : S0|1.00 : S1|1.05 : S2 zona 4|1.15 : S2 zona 3|1.20 : S2 zona 2|1.10 : S3 zona 4|1.20 : S3 zona 3|1.40 : S3 zona 2|1.60 : S2 zona 1|2.00 : S3 zona 1]
-Tp = 0.6 // Periodo Tp del suelo [s] [0.3 : S0|0.4 : S1|0.6 : S2|1.0 : S3]
-Tl = 2.0 // Periodo TL del suelo [s] [3.0 : S0|2.5 : S1|2.0 : S2|1.6 : S3]
-R0 = 8 // Coeficiente básico de reducción [8 : Pórticos C°A°|7 : Dual C°A°|6 : Muros estructurales|4 : Muros duct. limitada|3 : Albañilería]
-Ia = 1.0 // Factor de irregularidad en altura
-Ip = 1.0 // Factor de irregularidad en planta
-hn = 12.0 // Altura total de la edificación [m]
-CT = 35 // Coeficiente para el periodo [35 : Pórticos|45 : Pórticos + escaleras/ascensores|60 : Muros / albañilería]
-check hn <= 30 // Método estático: regulares ≤ 30 m, irregulares ≤ 15 m (Art. 28.1.1)
+zona = 3 // Zona sísmica (Art. 10) [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
+Z = ZE030(zona) // Factor de zona (Tabla N° 1): 0.45 / 0.35 / 0.25 / 0.10
+suelo = 2 // Perfil de suelo (Art. 12) [0 : S0 roca dura|1 : S1 roca o suelo muy rígido|2 : S2 suelo intermedio|3 : S3 suelo blando]
+S = si(suelo == 0, 0.80, si(suelo == 1, 1.00, si(suelo == 2, si(zona == 4, 1.05, si(zona == 3, 1.15, si(zona == 2, 1.20, 1.60))), si(zona == 4, 1.10, si(zona == 3, 1.20, si(zona == 2, 1.40, 2.00)))))) // Factor de suelo (Tabla N° 3)
+Tp = si(suelo == 0, 0.3, si(suelo == 1, 0.4, si(suelo == 2, 0.6, 1.0)))*1 s // Periodo TP (Tabla N° 4)
+Tl = si(suelo == 0, 3.0, si(suelo == 1, 2.5, si(suelo == 2, 2.0, 1.6)))*1 s // Periodo TL (Tabla N° 4)
+categoria = 4 // Categoría de la edificación (Art. 15, Tabla N° 5) [2 : A2 Esencial|3 : B Importante|4 : C Común]
+U = UE030(categoria) // Factor de uso (Tabla N° 5): A2 1.5, B 1.3, C 1.0
+sistema = 7 // Sistema estructural (Tabla N° 7) [7 : C°A° pórticos|8 : C°A° dual|9 : C°A° muros estructurales|10 : C°A° muros de ductilidad limitada|11 : Albañilería armada o confinada|1 : Acero SMF|2 : Acero IMF|3 : Acero OMF|4 : Acero SCBF|5 : Acero OCBF|6 : Acero EBF|12 : Madera]
+check sisE030(categoria, zona, sistema) == 1 // Sistema permitido para la categoría y la zona (Art. 17, Tabla N° 6: igual a la Tabla N° 9 de 2026)
+R0 = si(sistema == 10, 4, R0E030(sistema)) // Coeficiente básico de reducción (Tabla N° 7 de 2018: EMDL R0 = 4)
+Ia = 1.0 // Irregularidad en altura (Tabla N° 8) [1.0 : Regular|0.90 : Masa o geometría vertical|0.80 : Discontinuidad en sistemas resistentes|0.75 : Piso blando o piso débil|0.60 : Discontinuidad extrema|0.50 : Rigidez o resistencia extrema]
+Ip = 1.0 // Irregularidad en planta (Tabla N° 9) [1.0 : Regular|0.90 : Esquinas entrantes / sistemas no paralelos|0.85 : Discontinuidad del diafragma|0.75 : Torsión|0.60 : Torsión extrema]
+regular = si(Ia*Ip == 1, 1, 0) // 1 = estructura regular (Art. 19)
+extrema = si(min(Ia, Ip) <= 0.60, 1, 0) // 1 = existe alguna irregularidad extrema
+npisos = 4 // Número de pisos
+hn = 12.0 m // Altura total de la edificación
+check (categoria == 2 and (regular == 1 or (zona == 1 and extrema == 0))) or (categoria == 3 and (extrema == 0 or zona == 1)) or (categoria == 4 and (extrema == 0 or zona == 1 or (zona == 2 and (npisos <= 2 or hn <= 8 m)))) // Restricciones a la irregularidad (Art. 21.1, Tabla N° 10)
+check zona == 1 or (regular == 1 and hn <= 30 m) or ((sistema == 9 or sistema == 10 or sistema == 11) and hn <= 15 m) // Método estático aplicable: zona 1, regular ≤ 30 m, o muros portantes de C°A°/albañilería ≤ 15 m (Art. 28.1.2)
 ## Periodo y factor de amplificación
-R = R0*Ia*Ip // Coeficiente de reducción
-T = hn/CT // Periodo fundamental aproximado [s] (Art. 28.4)
+R = R0*Ia*Ip // Coeficiente de reducción (Art. 22)
+cajas = 0 // Pórticos de C°A° con muros en las cajas de ascensores y escaleras [0 : No|1 : Sí (CT = 45)]
+CT = si(sistema == 7 and cajas == 1, 45, CTE030(sistema)) // Coeficiente para el periodo (Art. 28.4.1)
+T = hn/CT*1 s/m -> s // Periodo fundamental aproximado (Art. 28.4.1)
 C = si(T < Tp, 2.5, si(T <= Tl, 2.5*Tp/T, 2.5*Tp*Tl/T^2)) // Factor de amplificación sísmica (Art. 14)
-k = si(T <= 0.5, 1.0, min(0.75 + 0.5*T, 2.0)) // Exponente de distribución
+CR = max(C/R, 0.11) // C/R no menor que 0.11 (Art. 28.2.2): mínimo que se aplica, no una verificación
+k = si(T <= 0.5 s, 1.0, min(0.75 + 0.5*T/(1 s), 2.0)) // Exponente de distribución (Art. 28.3.2)
 ## Cortante basal
-wi = [210, 210, 210, 160] tonf // Peso sísmico por nivel (1 → n)
-hi = [3, 6, 9, 12] // Altura de cada nivel desde la base [m]
+wi = [210, 210, 210, 160] tonf // Peso sísmico por nivel 1 → n, con el % de carga viva del Art. 26
+hi = [3, 6, 9, 12] m // Altura de cada nivel desde la base
 P = sum(wi) // Peso sísmico total
-CR = max(C/R, 0.11) // C/R no menor que 0.11 (Art. 28.2.1)
-V = Z*U*S*CR*P -> tonf // Fuerza cortante en la base
-alpha_i = wi .* hi.^k / sum(wi .* hi.^k) // Factor de distribución
+V = Z*U*S*CR*P -> tonf // Fuerza cortante en la base (Art. 28.2.1)
+alpha_i = wi .* hi.^k / sum(wi .* hi.^k) // Factor de distribución (Art. 28.3.1)
 Fi = alpha_i*V // Fuerza en cada nivel
 Vi = V - cumsum(Fi) + Fi // Cortante de entrepiso
+"Las fuerzas se aplican en el centro de masas con una excentricidad accidental de 0.05 veces la dimensión perpendicular a la dirección de análisis (Art. 28.5).
 ## Control de derivas (Art. 31 y 32)
-Di = [0.25, 0.33, 0.30, 0.22] cm // Desplazamiento relativo elástico de cada entrepiso (del modelo)
+Di = [0.22, 0.28, 0.26, 0.19] cm // Desplazamiento relativo elástico de cada entrepiso en el centro de masas (del modelo)
 hei = [3, 3, 3, 3] m // Altura de cada entrepiso
-fR = 0.75 // Factor de desplazamiento inelástico (Art. 31.1) [0.75 : Estructura regular|0.85 : Estructura irregular]
-deriva = fR*R*Di ./ hei // Deriva inelástica de entrepiso
-check max(deriva) <= 0.007 // Deriva máxima concreto armado (Tabla N° 11)`),
-      { type: 'table', columnas: 'Nivel = 1:4\nAltura $h_i$ [m] = hi\nPeso $w_i$ [tonf] = wi\n$\\alpha_i$ = alpha_i\nFuerza $F_i$ [tonf] = Fi\nCortante $V_i$ [tonf] = Vi\nDeriva = deriva', total: false, dec: '4', titulo: 'Distribución de la fuerza sísmica en altura y derivas' },
-      { type: 'spectrum', Z: 'Z', U: 'U', S: 'S', Tp: 'Tp', Tl: 'Tl', R: 'R', T: 'T' },
+rt = [1.10, 1.10, 1.12, 1.12] // Relación Δextremo/ΔCM por entrepiso (modelo 3D con excentricidad accidental)
+fR = si(regular == 1, 0.75, 0.85) // 0.75 R regular, 0.85 R irregular (Art. 31.1)
+fCR = (C/R)/CR // Sin el mínimo C/R para los desplazamientos (Art. 31.2)
+deriva = fR*R*fCR*Di ./ hei // Distorsión inelástica en el centro de masas
+deriva_max = rt .* deriva // Máximo desplazamiento relativo de entrepiso, en el extremo (Art. 32)
+dlim = si(sistema <= 6 or sistema == 12, 0.010, si(sistema == 10 or sistema == 11, 0.005, 0.007)) // Tabla N° 11: C°A° 0.007, acero y madera 0.010, albañilería y EMDL 0.005
+check max(deriva_max) <= dlim // Distorsión máxima de entrepiso (Art. 32, Tabla N° 11)`),
+      { type: 'table', columnas: 'Nivel = 1:4\nAltura $h_i$ [m] = hi\nPeso $w_i$ [tonf] = wi\n$\\alpha_i$ = alpha_i\nFuerza $F_i$ [tonf] = Fi\nCortante $V_i$ [tonf] = Vi\n$\\Delta_i/h_{ei}$ CM = deriva\n$\\Delta_{max}/h_{ei}$ extremo = deriva_max', total: false, dec: '4', titulo: 'Distribución de la fuerza sísmica en altura y derivas' },
+      { type: 'spectrum', Z: 'Z', U: 'U', S: 'S', Tp: 'Tp', Tl: 'Tl', R: 'R', T: 'T', titulo: 'Espectro de pseudo-aceleraciones E.030-2018' },
       { type: 'summary' },
     ],
   },

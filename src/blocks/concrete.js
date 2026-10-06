@@ -342,10 +342,11 @@ function renderPMgen(b, ctx) {
     const cv = curves[d];
     const capAt = (P, side) => exactAtP(cv[side], P, true);
     const tf = (P) => (math.isUnit(P) ? P.toNumber('kgf') : +P * 1000);
-    setVar(ctx, 'phiMn_' + d + sfx, (P) => { const p = tf(P); if (p > capP + 1e-6) throw new Error('Pu excede φPn,max'); const r = capAt(p, 'pos'); if (!r) throw new Error('Pu fuera del diagrama'); return U(Math.abs(r.M) / 1e5, 'tonf*m'); });
-    setVar(ctx, 'phiMnneg_' + d + sfx, (P) => { const p = tf(P); const r = capAt(p, 'neg'); if (!r || p > capP + 1e-6) throw new Error('Pu fuera del diagrama'); return U(Math.abs(r.M) / 1e5, 'tonf*m'); });
-    setVar(ctx, 'Mn_' + d + sfx, (P) => { const p = tf(P); const r1 = exactAtP(cv.pos, p), r2 = exactAtP(cv.neg, p); if (!r1 && !r2) throw new Error('P fuera del diagrama nominal'); return U(Math.max(r1 ? Math.abs(r1.M) : 0, r2 ? Math.abs(r2.M) : 0) / 1e5, 'tonf*m'); });
-    setVar(ctx, 'c_' + d + sfx, (P) => { const p = tf(P); const r1 = exactAtP(cv.pos, p), r2 = exactAtP(cv.neg, p); if (!r1 && !r2) throw new Error('P fuera del diagrama nominal'); return U(Math.max(r1 ? r1.c : 0, r2 ? r2.c : 0), 'cm'); });
+    // Fuera del dominio (Pu > φPn,max o tracción mayor que la resistente) la capacidad es nula: devuelve 0 (→ NO CUMPLE, sin error)
+    setVar(ctx, 'phiMn_' + d + sfx, (P) => { const p = tf(P); const r = p > capP + 1e-6 ? null : capAt(p, 'pos'); return U(r ? Math.abs(r.M) / 1e5 : 0, 'tonf*m'); });
+    setVar(ctx, 'phiMnneg_' + d + sfx, (P) => { const p = tf(P); const r = p > capP + 1e-6 ? null : capAt(p, 'neg'); return U(r ? Math.abs(r.M) / 1e5 : 0, 'tonf*m'); });
+    setVar(ctx, 'Mn_' + d + sfx, (P) => { const p = tf(P); const r1 = exactAtP(cv.pos, p), r2 = exactAtP(cv.neg, p); return U(Math.max(r1 ? Math.abs(r1.M) : 0, r2 ? Math.abs(r2.M) : 0) / 1e5, 'tonf*m'); });
+    setVar(ctx, 'c_' + d + sfx, (P) => { const p = tf(P); const r1 = exactAtP(cv.pos, p), r2 = exactAtP(cv.neg, p); if (!r1 && !r2) return U(p > 0 ? 100 * cv.pos.G.D : 0, 'cm'); /* P > P0: eje neutro fuera de la sección */ return U(Math.max(r1 ? r1.c : 0, r2 ? r2.c : 0), 'cm'); });
     setVar(ctx, 'Pn_' + d + sfx, (e) => { const ee = math.isUnit(e) ? e.toNumber('cm') : +e; const r = pAtE(ee >= 0 ? cv.pos : cv.neg, ee); return U(r.Pn / 1000, 'tonf'); });
     setVar(ctx, 'phiPn_' + d + sfx, (e) => { const ee = math.isUnit(e) ? e.toNumber('cm') : +e; const r = pAtE(ee >= 0 ? cv.pos : cv.neg, ee); return U(Math.min(r.phi * r.Pn, capP) / 1000, 'tonf'); });
     setVar(ctx, 'Pb_' + d + sfx, U(Math.max(cv.pos.Pb, cv.neg.Pb) / 1000, 'tonf'));
@@ -375,6 +376,9 @@ function renderPMgen(b, ctx) {
       if (P > capP + 1e-6 || P < Pt - 1e-6 || !r) d.dc = Infinity;
       else if (Math.abs(d.M) < 1e-9) d.dc = P >= 0 ? P / capP : P / Pt;
       else d.dc = Math.abs(d.M) / Math.max(d.cap, 1e-9);
+      // D/C: el mayor entre |Mu|/φMn(Pu) y Pu/φPn,max (ambos ≤ 1 ⇔ el punto está dentro del diagrama);
+      // así una carga axial cercana a φPn,max con momento pequeño no aparenta una holgura inexistente
+      if (P > 0 && isFinite(d.dc)) d.dc = Math.max(d.dc, P / capP);
       if (P > capP + 1e-6) d.dc = Math.max(P / capP, 1.0001);
       maxDC = Math.max(maxDC, d.dc);
     });
@@ -393,7 +397,7 @@ function renderPMgen(b, ctx) {
         else {
           const mag = Math.hypot(d.Mx, d.My);
           if (mag < 1e-9) { d.dc = P >= 0 ? P / capP : P / Pt; d.cap = null; }
-          else { const r = rayCap(poly, d.Mx * 1e5, d.My * 1e5); d.cap = r ? r / 1e5 : null; d.dc = r ? mag / d.cap : Infinity; }
+          else { const r = rayCap(poly, d.Mx * 1e5, d.My * 1e5); d.cap = r ? r / 1e5 : null; d.dc = r ? Math.max(mag / d.cap, P > 0 ? P / capP : 0) : Infinity; }
           d.poly = poly;
         }
       }
@@ -427,7 +431,7 @@ registerBlock('slab2way', {
     F('wud', 'Carga muerta amplificada wud', '1.4*wD'), F('wul', 'Carga viva amplificada wul', '1.7*wL'),
     F('d', 'Peralte efectivo (para cortante)', 'd'), F('sufijo', 'Sufijo', ''), F('titulo', 'Título', ''),
   ],
-  hint: 'Bordes superior e inferior = bordes largos (longitud B, extremos de las franjas en la dirección A); izquierdo y derecho = bordes cortos. Exporta <code>caso</code>, <code>mAB</code>, <code>Ma_neg</code>, <code>Mb_neg</code>, <code>Ma_pos</code>, <code>Mb_pos</code>, <code>Ma_disc</code>, <code>Mb_disc</code> [t·m/m] y <code>Vua</code>, <code>Vub</code> [t/m].',
+  hint: 'Bordes superior e inferior = bordes largos (longitud B, extremos de las franjas en la dirección A); izquierdo y derecho = bordes cortos. Exporta <code>caso</code>, <code>mAB</code>, <code>Ma_neg</code>, <code>Mb_neg</code>, <code>Ma_pos</code>, <code>Mb_pos</code>, <code>Ma_disc</code>, <code>Mb_disc</code> [t·m/m] y <code>Vua</code> (ec. 13-10, bordes largos, +15 % si el borde opuesto es discontinuo) y <code>Vub</code> (bordes cortos, wu(A/2 − d)/2, análogo triangular) [t/m].',
   def: { A: '4.5 m', B: '5.6 m', bordes: 'C D D C', wud: '1.0 tonf/m^2', wul: '0.4 tonf/m^2', d: '12 cm' },
   render(b, ctx) { return renderSlab(b, ctx); },
 });
@@ -439,17 +443,19 @@ function renderSlab(b, ctx) {
   if (ed.length !== 4 || ed.some(e => e !== 'C' && e !== 'D')) throw new Error('Bordes: cuatro letras C/D (superior inferior izquierdo derecho)');
   const [eT, eB, eL, eR] = ed.map(e => e === 'C');
   const nA = (eT ? 1 : 0) + (eB ? 1 : 0), nB = (eL ? 1 : 0) + (eR ? 1 : 0);
-  const caso = slabCase(nA, nB), m = A / B;
-  if (m < 0.5) throw new Error('m = A/B = ' + f2(m) + ' < 0.5: la losa trabaja en una dirección');
+  const caso = slabCase(nA, nB), m0 = A / B, m = Math.max(m0, 0.5);
+  // E.060 13.7.1.2: B/A ≤ 2. Fuera del rango se informa como verificación no cumplida (coeficientes de m = 0.5)
+  if (m0 < 0.5 - 1e-9) ctx.checks.push({ ok: false, label: 'Método de coeficientes: m = A/B = ' + f2(m0) + ' ≥ 0.50 (E.060 13.7.1.2; con m < 0.5 la losa trabaja en una dirección)', ratio: 0.5 / m0, block: ctx.blockId });
   const wud = evalParam(b.wud, S, 'tonf/m^2'), wul = evalParam(b.wul, S, 'tonf/m^2'), wu = wud + wul;
   const d = evalParam(b.d, S, 'm', 0);
   const T_ = SLAB_TABLES;
   const ca = slabCoef(T_.negA, caso, m), cb = slabCoef(T_.negB, caso, m), cad = slabCoef(T_.cmA, caso, m), cbd = slabCoef(T_.cmB, caso, m), cal = slabCoef(T_.cvA, caso, m), cbl = slabCoef(T_.cvB, caso, m);
   const Man = ca * wu * A * A, Mbn = cb * wu * B * B, Map = (cad * wud + cal * wul) * A * A, Mbp = (cbd * wud + cbl * wul) * B * B;
-  const Vua = wu * (A / 2 - d) * (1 - 0.5 * m) * (nA === 1 ? 1.15 : 1), Vub = wu * (A / 2 - d) * 0.5 * (nB === 1 ? 1.15 : 1);
+  // Ec. 13-10 (bordes largos): promedio del área trapezoidal tributaria; bordes cortos: análogo para el triángulo (wu·A/4)
+  const Vua = wu * (A / 2 - d) * (1 - 0.5 * m0) * (nA === 1 ? 1.15 : 1), Vub = wu * (A / 2 - d) * 0.5 * (nB === 1 ? 1.15 : 1);
   const sfx = b.sufijo ? '_' + String(b.sufijo).replace(/\W/g, '') : '';
   const U = (v) => math.unit(v, 'tonf*m/m');
-  setVar(ctx, 'caso' + sfx, caso); setVar(ctx, 'mAB' + sfx, m);
+  setVar(ctx, 'caso' + sfx, caso); setVar(ctx, 'mAB' + sfx, m0);
   setVar(ctx, 'Ma_neg' + sfx, U(Man)); setVar(ctx, 'Mb_neg' + sfx, U(Mbn)); setVar(ctx, 'Ma_pos' + sfx, U(Map)); setVar(ctx, 'Mb_pos' + sfx, U(Mbp));
   setVar(ctx, 'Ma_disc' + sfx, U(Map / 3)); setVar(ctx, 'Mb_disc' + sfx, U(Mbp / 3));
   setVar(ctx, 'Vua' + sfx, math.unit(Vua, 'tonf/m')); setVar(ctx, 'Vub' + sfx, math.unit(Vub, 'tonf/m'));
@@ -477,7 +483,7 @@ function renderSlab(b, ctx) {
   g += Lne(X(B / 2), Y(A * 0.18), X(B / 2), Y(A * 0.82), C.blue, 1.6).replace('/>', ' marker-end="url(#ar)" marker-start="url(#ar)"/>') + lab(X(B / 2) + 6, Y(A * 0.42), 'Ma⁺ = ' + f2(Map), { c: C.blue, a: 'start' });
   g += Lne(X(B * 0.12), Y(A / 2), X(B * 0.88), Y(A / 2), C.blue, 1.6).replace('/>', ' marker-end="url(#ar)" marker-start="url(#ar)"/>') + lab(X(B * 0.70), Y(A / 2) - 6, 'Mb⁺ = ' + f2(Mbp), { c: C.blue });
   g += dimH(X(0), X(B), Y(A) + band + 22, 'B = ' + f2(B) + ' m') + dimV(X(0) - band - 22, Y(0), Y(A), 'A = ' + f2(A) + ' m');
-  g += T(W / 2, 22, 'Caso ' + caso + ' · m = A/B = ' + f2(m, 3) + ' · wu = ' + f2(wu) + ' t/m² (momentos en t·m/m)', { fs: 11, b: 1 });
+  g += T(W / 2, 22, 'Caso ' + caso + ' · m = A/B = ' + f2(m0, 3) + ' · wu = ' + f2(wu) + ' t/m² (momentos en t·m/m)', { fs: 11, b: 1 });
   g += T(W / 2, H - 8, 'Borde rayado = continuo · borde grueso = discontinuo (M⁻ = M⁺/3, E.060 13.7.3.5) · líneas azules = franjas centrales', { fs: 9.5, c: C.axis });
   const tb = `<table class="tbl"><thead><tr><th>Dirección</th><th>C neg (T. 13.1)</th><th>C CM (T. 13.2)</th><th>C CV (T. 13.3)</th><th>M⁻ continuo [t·m/m]</th><th>M⁺ [t·m/m]</th><th>M⁻ discontinuo [t·m/m]</th></tr></thead><tbody>
     <tr><td>A (corta) = ${f2(A)} m</td><td>${ca ? f2(ca, 4) : '—'}</td><td>${f2(cad, 4)}</td><td>${f2(cal, 4)}</td><td>${nA ? f2(Man, 3) : '—'}</td><td>${f2(Map, 3)}</td><td>${nA < 2 ? f2(Map / 3, 3) : '—'}</td></tr>
@@ -490,7 +496,7 @@ function renderSlab(b, ctx) {
 // ---------------------------------------------------------------------
 registerBlock('stmbeam', {
   name: 'Puntal–tensor (viga de gran peralte)', icon: 'beam', group: 'Concreto',
-  fields: [F('L', 'Luz entre ejes de apoyo', 'L'), F('h', 'Peralte total', 'h'), F('a', 'Distancia apoyo–carga', 'a'), F('lb', 'Ancho de placa de apoyo', 'lb'), F('lp', 'Ancho de placa de carga', 'lp'), F('ws', 'Ancho del puntal horizontal', 'ws'), F('wt', 'Altura efectiva del tensor', 'wt'), F('Fd', 'Fuerza en puntal diagonal', 'Fd'), F('Ft', 'Fuerza en tensor', 'Ft'), F('Pu', 'Carga Pu (cada una)', 'Pu'), F('titulo', 'Título', '')],
+  fields: [F('L', 'Luz entre ejes de apoyo', 'L'), F('h', 'Peralte total', 'h'), F('a', 'Distancia apoyo–carga', 'a'), F('lb', 'Ancho de placa de apoyo', 'lb'), F('lp', 'Ancho de placa de carga', 'lp'), F('ws', 'Ancho del puntal horizontal', 'ws'), F('wt', 'Altura efectiva del tensor', 'wt'), F('lext', 'Prolongación más allá del eje del apoyo', ''), F('Fd', 'Fuerza en puntal diagonal', 'Fd'), F('Ft', 'Fuerza en tensor', 'Ft'), F('Pu', 'Carga Pu (cada una)', 'Pu'), F('titulo', 'Título', '')],
   hint: 'Dibuja el modelo puntal-tensor de una viga de gran peralte con dos cargas simétricas (nudos CCC bajo las cargas y CCT en los apoyos).',
   def: { L: '4 m', h: '1.2 m', a: '1.2 m', lb: '0.4 m', lp: '0.4 m', ws: '0.2 m', wt: '0.2 m' },
   render(b, ctx) {
@@ -498,7 +504,8 @@ registerBlock('stmbeam', {
     const L = g0('L', 'm'), h = g0('h', 'm'), a = g0('a', 'm'), lb = g0('lb', 'm', 0.3), lp = g0('lp', 'm', 0.3), ws = g0('ws', 'm', 0.2), wt = g0('wt', 'm', 0.2);
     pos({ L, h, a }); if (2 * a > L + 1e-9) throw new Error('2a no puede exceder la luz L');
     const Fd = g0('Fd', 'kN', 0), Ft = g0('Ft', 'kN', 0), Pu = g0('Pu', 'kN', 0);
-    const ext = lb, Ltot = L + 2 * ext, W = 720, sc = Math.min((W - 80) / Ltot, 300 / h), H = h * sc + 140;
+    let ext = lb; if (b.lext) ext = g0('lext', 'm', lb);
+    const Ltot = L + 2 * ext, W = 720, sc = Math.min((W - 80) / Ltot, 300 / h), H = h * sc + 140;
     const ox = (W - Ltot * sc) / 2, oy = 60, X = (x) => ox + (x + ext) * sc, Y = (y) => oy + (h - y) * sc;
     let g = arrowDefs;
     g += `<rect x="${X(-ext)}" y="${Y(h)}" width="${Ltot * sc}" height="${h * sc}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.4"/>`;

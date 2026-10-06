@@ -34,9 +34,10 @@ P = 110 tonf // Carga vertical de servicio (CM + CV) de la columna
 ML = 6 tonf*m // Momento de servicio en la dirección L
 MB = 3 tonf*m // Momento de servicio en la dirección B
 Hh = 5 tonf // Fuerza horizontal de servicio (carga inclinada, Art. 29)
+gammam = 2.0 tonf/m^3 // Peso unitario promedio zapata + relleno sobre ella
 ## Geometría de la cimentación
-B = 2.40 m // Ancho de la zapata
-L = 2.80 m // Largo de la zapata
+B = 2.60 m // Ancho de la zapata
+L = 3.00 m // Largo de la zapata
 Df = 1.50 m // Profundidad de desplante
 ## Parámetros del suelo (Estudio de Mecánica de Suelos)
 phi = 30 deg // Ángulo de fricción interna efectivo φ' [28 deg|30 deg|32 deg|34 deg|36 deg]
@@ -51,14 +52,16 @@ FS = 3.0 // Factor de seguridad por corte para cargas estáticas (E.050 Art. 21.
 check Df >= 0.80 m // Profundidad mínima de cimentación (E.050 Art. 26.2)
 check Df/B <= 5 // Cimentación superficial: Df/B ≤ 5 (E.050 Art. 23.1)
 ## Excentricidad y área efectiva (E.050 Art. 28)
-eL = ML/P -> m // Excentricidad en la dirección L: e = M/Q (Art. 28.1)
-eB = MB/P -> m // Excentricidad en la dirección B
+Wz = gammam*B*L*Df -> tonf // Peso propio de la zapata y del relleno sobre ella
+Q = P + Wz // Carga vertical total en la base Q (Art. 28.1)
+eL = ML/Q -> m // Excentricidad en la dirección L: e = M/Q (Art. 28.1)
+eB = MB/Q -> m // Excentricidad en la dirección B
 check eL/L + eB/B <= 1/6 // Resultante dentro del núcleo central (sin tracciones)
 Bp = B - 2*eB // B' = B − 2e (Art. 28.2)
 Lp = L - 2*eL // L' = L − 2e (Art. 28.2)
 B1 = min(Bp, Lp) // Ancho efectivo (lado menor del área efectiva)
 L1 = max(Bp, Lp) // Largo efectivo
-alpha = atan(Hh/P) -> deg // Inclinación de la resultante respecto a la vertical (Art. 29)`),
+alpha = atan(Hh/Q) -> deg // Inclinación de la resultante respecto a la vertical (Art. 29)`),
       calc(`# Capacidad de carga por corte
 ## Factores de capacidad de carga (E.050 Art. 20.4)
 Nq = NqBC(phi) // $N_q = e^{\\pi\\tan\\phi}\\tan^2(45° + \\phi/2)$ (Prandtl–Reissner)
@@ -79,22 +82,22 @@ Fqi = Fci // Inclinación: Fqi = Fci
 Fgi = igMeyerhof(alpha, phi) // Inclinación: (1 − α/φ)²
 ## Capacidad última — ecuación general (Meyerhof 1963; Das, cap. 3)
 qu1 = c*Nc*Fcs*Fcd*Fci + qs*Nq*Fqs*Fqd*Fqi + 0.5*gamma2*B1*Ngamma*Fgs*Fgd*Fgi -> tonf/m^2 // Área efectiva B'×L'
-## Capacidad última — expresión de la E.050 (Art. 20.2 y 20.3)
+## Capacidad última — expresión de la E.050 (Art. 20.2: φ = 0 → qd = sc ic c Nc; Art. 20.3: c = 0 → qd = iq γ1 Df Nq + 0.5 sγ iγ γ2 B' Nγ; aquí se suman ambos términos)
 sc = scE050(B1, L1) // sc = 1 + 0.2 B'/L' (Art. 20.4)
 sg = sgE050(B1, L1) // sγ = 1 − 0.2 B'/L' (Art. 20.4)
-qu2 = sc*Fci*c*Nc + Fqi*qs*Nq + 0.5*sg*Fgi*gamma2*B1*Ngamma -> tonf/m^2 // qd = sc ic c Nc + iq γ1 Df Nq + 0.5 sγ iγ γ2 B' Nγ
+qu2 = sc*Fci*c*Nc + Fqi*qs*Nq + 0.5*sg*Fgi*gamma2*B1*Ngamma -> tonf/m^2 // qd = sc ic c Nc + iq q' Nq + 0.5 sγ iγ γ2 B' Nγ (q' efectiva ≤ γ1 Df)
 qult = min(qu1, qu2) -> tonf/m^2 // Se adopta el menor valor (criterio conservador)
 qadm1 = qult/FS -> kgf/cm^2 // Presión admisible por corte (Art. 22.2.1)
 ## Presión admisible por asentamiento (Meyerhof 1965 modificada; Das, cap. 5)
 Sadm = 25 mm // Asentamiento tolerable adoptado en el EMS (Art. 19.1)
 qn_s = qaSPT(N60, B, Df, Sadm) -> tonf/m^2 // Presión neta que produce Sadm en arena (N60, Fd = 1 + 0.33 Df/B ≤ 1.33)
-qadm2 = qn_s + qs -> kgf/cm^2 // Presión bruta admisible por asentamiento (Art. 22.2.2)
+qadm2 = qn_s + gamma1*min(Dw, Df) + gammasat*max(Df - Dw, 0 m) -> kgf/cm^2 // Presión bruta admisible por asentamiento: neta + σv total en Df (Art. 22.2.2)
 qadm = min(qadm1, qadm2) -> kgf/cm^2 // Presión admisible: la menor (Art. 22.2)
 ## Presiones de contacto
-q0 = P/(B*L) -> tonf/m^2 // Presión media
-q1 = P/(B*L)*(1 + 6*eL/L + 6*eB/B) -> tonf/m^2 // Presión máxima (esquina más cargada)
-q2 = P/(B*L)*(1 - 6*eL/L - 6*eB/B) -> tonf/m^2 // Presión mínima
-qe = P/(B1*L1) -> tonf/m^2 // Presión uniforme sobre el área efectiva (Art. 23.3)
+q0 = Q/(B*L) -> tonf/m^2 // Presión media (incluye zapata y relleno)
+q1 = Q/(B*L)*(1 + 6*eL/L + 6*eB/B) -> tonf/m^2 // Presión máxima (esquina más cargada)
+q2 = Q/(B*L)*(1 - 6*eL/L - 6*eB/B) -> tonf/m^2 // Presión mínima
+qe = Q/(B1*L1) -> tonf/m^2 // Presión uniforme sobre el área efectiva (Art. 23.3)
 FSc = qult/qe // Factor de seguridad real frente a falla por corte
 check FSc >= FS // Factor de seguridad por corte ≥ 3.0 (E.050 Art. 21.1)
 check q1 <= qadm // Presión máxima de contacto ≤ presión admisible (Art. 22.2)`),
@@ -104,7 +107,7 @@ check q1 <= qadm // Presión máxima de contacto ≤ presión admisible (Art. 22
 Es = EsSPT(N60, 10) -> kgf/cm^2 // Módulo de elasticidad: Es = 10·pa·N60, arena limpia NC (Kulhawy y Mayne 1990)
 mu = 0.30 // Coeficiente de Poisson de la arena
 Hs = 5.0 m // Espesor del estrato granular bajo la base (hasta la arcilla)
-qn = q0 - qs -> tonf/m^2 // Presión neta aplicada
+qn = q0 - (gamma1*min(Dw, Df) + gammasat*max(Df - Dw, 0 m)) -> tonf/m^2 // Presión neta aplicada (descuenta el σv total excavado)
 mp = L/B // m' = L/B (centro: cuatro rectángulos B/2 × L/2)
 np = Hs/(B/2) // n' = H/(B/2)
 Is = IsStein(mp, np, mu) // Is = F1 + (1 − 2μ)/(1 − μ)·F2 (Steinbrenner)
@@ -125,7 +128,7 @@ Sc = ScCons(Cc, Cr, e0, Hc, sigma0, sigmaz, sigmac) -> mm // Cr·H/(1+e0)·log(�
 ## Asentamiento total y distorsión angular
 St = Se + Sc -> mm // Asentamiento total
 check St <= Sadm // Asentamiento total ≤ asentamiento tolerable (Art. 19.1)
-Lc = 6.0 m // Distancia entre columnas adyacentes
+Lc = 7.0 m // Distancia entre columnas adyacentes
 dd = 0.75*St -> mm // Asentamiento diferencial: 75 % del total en suelos granulares (Art. 19.2)
 dist = dd/Lc // Distorsión angular α = δ/L
 check dist <= 1/500 // α ≤ 1/500: límite seguro para edificios en los que no se permiten grietas (Tabla 8)
@@ -213,10 +216,10 @@ Asmin = 0.0018*Bz*hz // Acero mínimo (E.060 Art. 9.7.2)
 Mus = abs(Mneg_u) // Momento negativo entre columnas (acero superior)
 As_sup = max(Asreq(Mus, Bz), Asmin) // Acero superior
 n_sup = ceil(As_sup/Ab(bar)) // Número de varillas superiores
-s_sup = rounddown((Bz - 15 cm)/(n_sup - 1), 2.5 cm) // Espaciamiento
+s_sup = rounddown((Bz - 15 cm)/max(n_sup - 1, 1), 2.5 cm) // Espaciamiento
 As_inf = max(Asreq(Mpos_u, Bz), Asmin) // Acero inferior (bajo columnas)
 n_inf = ceil(As_inf/Ab(bar))
-s_inf = rounddown((Bz - 15 cm)/(n_inf - 1), 2.5 cm)
+s_inf = rounddown((Bz - 15 cm)/max(n_inf - 1, 1), 2.5 cm)
 check max(s_sup, s_inf) <= min(3*hz, 40 cm) // Espaciamiento máximo (E.060 Art. 9.8)
 ## Flexión transversal (vigas transversales bajo cada columna)
 lvt = (Bz - min(b1, b2))/2 -> m // Volado transversal
@@ -226,9 +229,12 @@ Mut1 = Pu1/Bz*((Bz - b1)/2)^2/2 -> tonf*m // Momento en la cara (columna 1)
 Mut2 = Pu2/Bz*((Bz - b2)/2)^2/2 -> tonf*m // Momento en la cara (columna 2)
 Ast1 = max(Asreq(Mut1, bt1), 0.0018*bt1*hz) // Acero transversal bajo columna 1
 Ast2 = max(Asreq(Mut2, bt2), 0.0018*bt2*hz) // Acero transversal bajo columna 2
+nt1 = ceil(Ast1/Ab(bart)) // Varillas transversales bajo la columna 1
+st1 = rounddown(max(bt1/nt1, 2.5 cm), 2.5 cm) // Espaciamiento en la franja de la columna 1
 nt2 = ceil(Ast2/Ab(bart)) // Varillas transversales bajo la columna 2
-st2 = rounddown(bt2/nt2, 2.5 cm) // Espaciamiento en la franja de la columna 2
-check st2 <= min(3*hz, 40 cm) // Espaciamiento transversal
+st2 = rounddown(max(bt2/nt2, 2.5 cm), 2.5 cm) // Espaciamiento en la franja de la columna 2
+check max(st1, st2) <= min(3*hz, 40 cm) // Espaciamiento transversal en las franjas de columna
+check min(st1, st2) >= db(bart) + 2.5 cm // Espaciamiento mínimo: libre ≥ db y ≥ 25 mm (E.060 Art. 7.6.1)
 "Fuera de las franjas de columna se coloca refuerzo transversal mínimo $0.0018\\,b\\,h$ = {0.0018*1 m*hz -> cm^2} por metro.`),
       summary(),
     ],
@@ -319,7 +325,7 @@ check Vud1 <= phiVc1 // Cortante en la zapata exterior
 Mu1 = qu1*Bz1*lv1^2/2 -> tonf*m
 As1 = max(0.85*fc*Bz1*d/fy*(1 - sqrt(1 - 2*Mu1/(0.85*phif*fc*Bz1*d^2))), 0.0018*Bz1*hz) // Acero perpendicular a la viga
 n1 = ceil(As1/Ab(5))
-s1 = rounddown((Bz1 - 15 cm)/(n1 - 1), 2.5 cm)
+s1 = rounddown((Bz1 - 15 cm)/max(n1 - 1, 1), 2.5 cm)
 check s1 <= min(3*hz, 40 cm) // Espaciamiento zapata exterior
 ## Zapata interior (cuadrada, columna centrada)
 qu2 = (Ru2)/Bz2^2 -> tonf/m^2 // Presión última
@@ -334,7 +340,7 @@ check Vud2 <= phiVc2 // Cortante zapata interior
 Mu2 = qu2*Bz2*lv2^2/2 -> tonf*m
 As2 = max(0.85*fc*Bz2*d/fy*(1 - sqrt(1 - 2*Mu2/(0.85*phif*fc*Bz2*d^2))), 0.0018*Bz2*hz)
 n2 = ceil(As2/Ab(5))
-s2 = rounddown((Bz2 - 15 cm)/(n2 - 1), 2.5 cm)
+s2 = rounddown((Bz2 - 15 cm)/max(n2 - 1, 1), 2.5 cm)
 check s2 <= min(3*hz, 40 cm) // Espaciamiento zapata interior`),
       summary(),
     ],
@@ -411,11 +417,11 @@ Asreq(Mx, bx) = 0.85*fc*bx*d/fy*(1 - sqrt(1 - 2*Mx/(0.85*phif*fc*bx*d^2)))
 MuB = qmax_u*Lz*(Bz - t)^2/2 -> tonf*m // Momento en la cara (dirección B, conservador)
 AsB = max(Asreq(MuB, Lz), 0.0018*Lz*hz)
 nB = ceil(AsB/Ab(bar))
-sB = rounddown((Lz - 15 cm)/(nB - 1), 2.5 cm)
+sB = rounddown((Lz - 15 cm)/max(nB - 1, 1), 2.5 cm)
 MuL = quav*Bz*lvL^2/2 -> tonf*m // Momento en la cara (dirección L)
 AsL = max(Asreq(MuL, Bz), 0.0018*Bz*hz)
 nL = ceil(AsL/Ab(bar))
-sL = rounddown((Bz - 15 cm)/(nL - 1), 2.5 cm)
+sL = rounddown((Bz - 15 cm)/max(nL - 1, 1), 2.5 cm)
 check max(sB, sL) <= min(3*hz, 40 cm) // Espaciamiento máximo
 "Refuerzo: #{bar} @ {sB} perpendicular al lindero y #{bar} @ {sL} paralelo al lindero. Tensor del primer techo para $T_u$ = {Mtu/hs -> tonf}.`),
       summary(),
@@ -509,6 +515,13 @@ bo6 = 2*(c + d/2 + 0.5 m - c/2) + (c + d) // Perímetro crítico (columna a 0.5 
 Vu6 = Pu6 - fu*qcol[6]*(c + d/2 + 0.5 m - c/2)*(c + d) -> tonf
 phiVc6 = 0.85*min(0.27*(30*d/bo6 + 2), 1.06)*sqrtfc(fc)*bo6*d -> tonf // αs = 30
 check Vu6 <= phiVc6 // Punzonamiento columna de borde
+## Punzonamiento de la columna de esquina más cargada (2 lados)
+Pu3 = fu*Pc[3] // Columna 3, esquina (12.5; 0.5)
+a3 = 0.5 m + c/2 + d/2 // Lado de la sección crítica (desde los bordes libres hasta d/2 de la cara)
+bo3 = 2*a3 // Perímetro crítico de esquina
+Vu3 = Pu3 - fu*qcol[3]*a3^2 -> tonf
+phiVc3 = 0.85*min(0.27*(20*d/bo3 + 2), 1.06)*sqrtfc(fc)*bo3*d -> tonf // αs = 20 (columna de esquina, E.060 Art. 11.12.2.1 b)
+check Vu3 <= phiVc3 // Punzonamiento columna de esquina
 ## Flexión por metro de ancho
 phif = 0.9
 bm = 1 m
@@ -592,7 +605,7 @@ As_inf = max(Asreq(Mpos_u, Bv), Asmin) // Acero inferior (momento positivo bajo 
 As_sup = max(Asreq(abs(Mneg_u), Bv), Asmin) // Acero superior (momento negativo entre columnas)
 ninf = ceil(As_inf/Ab(8)) // Varillas de 1" inferiores
 nsup = ceil(As_sup/Ab(8)) // Varillas de 1" superiores
-sinf = rounddown((Bv - 15 cm)/(ninf - 1), 2.5 cm)
+sinf = rounddown((Bv - 15 cm)/max(ninf - 1, 1), 2.5 cm)
 check sinf <= min(3*hv, 40 cm) // Espaciamiento máximo
 Vud = Vmax_u -> tonf // Cortante último máximo (conservador, en el eje)
 phiVc = 0.85*0.53*sqrtfc(fc)*Bv*d -> tonf
@@ -609,12 +622,12 @@ sest = rounddown(min(si(Vs > 0 tonf, 4*Ab(4)*fy*d/Vs, d/2), d/2, 60 cm), 2.5 cm)
   {
     id: 'ge-corrido', pais: 'PE', cat: 'Cimentaciones', icon: 'wall',
     name: 'Cimiento corrido para muros de albañilería',
-    normas: E050 + ' (Art. 23, 26) · NTE E.070 Albañilería · NTE E.060 Cap. 22 (concreto simple)',
+    normas: E050 + ' (Art. 23, 26) · NTE E.070 Albañilería · NTE E.060 Cap. 22 (concreto estructural simple)',
     desc: 'Ancho por presión admisible, profundidad mínima 0.80 m, verificación del concreto ciclópeo a flexión y cortante y presión en la base.',
     titulo: 'Diseño de cimiento corrido de concreto ciclópeo',
     blocks: [
       text(`# Generalidades
-Cimiento corrido continuo ($L > 10B$, E.050 Art. 23.3) de **concreto ciclópeo** (cemento-hormigón 1:10 + 30 % de piedra grande) bajo un muro portante de albañilería. Se analiza por metro lineal: el ancho se fija con la presión admisible neta y el peralte se verifica como **concreto simple** (NTE E.060 Cap. 22; ACI 318 Cap. 14) a flexión y cortante en la cara del sobrecimiento, con $\\phi = 0.65$. La profundidad mínima de cimentación es 0.80 m (E.050 Art. 26.2).`),
+Cimiento corrido continuo ($L > 10B$, E.050 Art. 23.3) de **concreto ciclópeo** (concreto simple con 30 % de piedra grande) bajo un muro portante de albañilería. Se analiza por metro lineal: el ancho se fija con la presión admisible neta y el peralte se verifica como **concreto estructural simple** (NTE E.060 Cap. 22) a flexión (ec. 22-2, $M_n = 0.42\\sqrt{f'_c}\\,S_m$ en MPa) y cortante como viga (ec. 22-9, $V_n = 0.11\\sqrt{f'_c}\\,b\\,h$), con $\\phi = 0.65$ (Art. 9.3.2.8) y un peralte de cálculo 50 mm menor que el real por estar vaciado contra el suelo (Art. 22.4.8). La resistencia mínima del concreto simple estructural es 14 MPa (Art. 22.2.4). La profundidad mínima de cimentación es 0.80 m (E.050 Art. 26.2).`),
       calc(`# Datos (por metro lineal de muro)
 wD = 8.5 tonf/m // Carga muerta de servicio del muro y techos
 wL = 2.0 tonf/m // Carga viva de servicio
@@ -625,10 +638,11 @@ qa = 1.2 kgf/cm^2 // Presión admisible (EMS)
 Df = 1.00 m // Profundidad de desplante
 gammas = 1.80 tonf/m^3 // Peso unitario del suelo
 gammacc = 2.30 tonf/m^3 // Peso unitario del concreto ciclópeo
-fc = 100 kgf/cm^2 // Resistencia del concreto ciclópeo
+fc = 140 kgf/cm^2 // Resistencia del concreto ciclópeo (≥ 14 MPa, E.060 Art. 22.2.4)
 hc = 0.80 m // Peralte del cimiento
 check Df >= 0.80 m // Profundidad mínima (E.050 Art. 26.2)
 check bs >= tm // El sobrecimiento es al menos tan ancho como el muro
+check fc >= 140 kgf/cm^2 // Resistencia mínima del concreto simple estructural: 14 MPa ≈ 140 kgf/cm² (E.060 Art. 22.2.4)
 ## Ancho del cimiento
 qn = qa - gammas*(Df - hc) - gammacc*hc -> tonf/m^2 // Presión neta (descuenta relleno y cimiento)
 w = wD + wL + gammacc*bs*hs // Carga de servicio más sobrecimiento
@@ -640,14 +654,15 @@ wu = 1.4*(wD + gammacc*bs*hs) + 1.7*wL // Carga última por metro
 qu = wu/Bc -> tonf/m^2 // Presión última neta
 v = (Bc - bs)/2 -> m // Volado desde la cara del sobrecimiento
 Mu = qu*v^2/2*1 m -> tonf*m // Momento en la cara (por metro)
-Sm = 1 m*hc^2/6 // Módulo de sección
-phiMn = 0.65*1.33*sqrtfc(fc)*Sm -> tonf*m // φMn = φ·1.33√f'c·S (E.060 22.5; ACI 14.5.2.1)
+hcal = hc - 5 cm // Peralte de cálculo: 50 mm menos por vaciarse contra el suelo (E.060 Art. 22.4.8)
+Sm = 1 m*hcal^2/6 // Módulo de sección
+phiMn = 0.65*1.34*sqrtfc(fc)*Sm -> tonf*m // φMn = φ·0.42√f'c(MPa)·Sm = φ·1.34√f'c(kgf/cm²)·Sm (E.060 ec. 22-2)
 check Mu <= phiMn // Flexión en concreto simple
-Vu = qu*max(v - hc, 0 m)*1 m -> tonf // Cortante a una distancia h de la cara
-phiVn = 0.65*0.35*sqrtfc(fc)*1 m*hc -> tonf // φVn = φ·(4/3)√f'c b h (psi) ≈ 0.35√f'c b h
+Vu = qu*max(v - hcal, 0 m)*1 m -> tonf // Cortante a una distancia h de la cara
+phiVn = 0.65*0.35*sqrtfc(fc)*1 m*hcal -> tonf // φVn = φ·0.11√f'c(MPa)·b·h = φ·0.35√f'c(kgf/cm²)·b·h (E.060 ec. 22-9)
 check Vu <= phiVn // Cortante en concreto simple
 check hc >= v // Proporción recomendada: peralte ≥ volado (ángulo de difusión ≥ 45°)`),
-      { type: 'stripfooting', B: 'Bc', hc: 'hc', bs: 'bs', hs: 'hs', tm: 'tm', Df: 'Df', npt: '0.20 m', q: 'qs', material: 'Concreto ciclópeo 1:10 + 30 % P.G.', titulo: 'Sección del cimiento corrido y presión de servicio en la base' },
+      { type: 'stripfooting', B: 'Bc', hc: 'hc', bs: 'bs', hs: 'hs', tm: 'tm', Df: 'Df', npt: '0.20 m', q: 'qs', material: "Concreto ciclópeo f'c = 140 kgf/cm² + 30 % P.G.", titulo: 'Sección del cimiento corrido y presión de servicio en la base' },
       summary(),
     ],
   },
@@ -657,13 +672,13 @@ check hc >= v // Proporción recomendada: peralte ≥ volado (ángulo de difusi�
   {
     id: 'ge-pilote', pais: 'PE', cat: 'Cimentaciones', icon: 'column',
     name: 'Pilote individual: capacidad por punta y fuste',
-    normas: E050 + ' (Art. 32) · Meyerhof (1976) · API RP2A (método α) · Burland (1973, método β) · Vesic (1977) · Das cap. 11',
-    desc: 'Pilote hincado en suelo estratificado: punta por Meyerhof (Nq*, límite ql) y SPT, fuste por métodos α y β, FS ≥ 2 y asentamiento elástico (Vesic).',
+    normas: E050 + ' (Art. 15, 32) · Meyerhof (1976) · API RP2A (método α) · Burland (1973, método β) · Vesic (1977) · Broms (1964) · Das cap. 11',
+    desc: 'Pilote hincado en suelo estratificado: punta por Meyerhof (Nq*, límite ql) y SPT, fuste por métodos α y β, fricción negativa, FS ≥ 2, asentamiento elástico (Vesic) y capacidad lateral (Broms).',
     titulo: 'Capacidad de carga y asentamiento de pilote individual',
     blocks: [
       text(`# Generalidades
-Capacidad última de un pilote hincado de concreto según la E.050 Art. 32.3: $Q_u = Q_p + \\sum Q_f$. La **punta** se evalúa con la teoría de Meyerhof (1976) $q_p = q'\\,N_q^* \\le q_l = 0.5\\,p_a\\,N_q^*\\tan\\phi$ y con la correlación SPT de Meyerhof, adoptando el menor valor. La **fricción lateral** en arcilla se calcula con el método α (API RP2A, $\\alpha$ función de $\\psi = c_u/\\sigma'_v$) y en arena con el método β ($\\beta = (1-\\sin\\phi)\\tan\\phi$, Burland 1973) y la correlación SPT de Meyerhof, adoptando el menor. La capacidad admisible usa $FS \\ge 2.0$ para pilotes individuales (E.050 Art. 32.3.4 c-1). El asentamiento se estima con el método de Vesic (1977; Das, cap. 11): acortamiento elástico, punta y fuste.`),
-      { type: 'soilprofile', estratos: '2.0 CL 1.75 1.80 Arcilla blanda gris\n4.0 CL 1.80 1.80 Arcilla blanda saturada\n10.0 SP 1.95 2.00 Arena densa pobremente gradada', nf: '2.0 m', spt: '1.0 4\n3.0 3\n5.0 4\n7.0 26\n9.0 29\n11.0 30\n13.0 32\n15.0 34', ER: '60', zref: '14 m', zona: '6 16', tabla: false, titulo: 'Perfil estratigráfico del sondeo y ensayos SPT' },
+Capacidad última de un pilote hincado de concreto según la E.050 Art. 32.3: $Q_u = Q_p + \\sum Q_f$. La **punta** se evalúa con la teoría de Meyerhof (1976) $q_p = q'\\,N_q^* \\le q_l = 0.5\\,p_a\\,N_q^*\\tan\\phi$ y con la correlación SPT de Meyerhof, adoptando el menor valor. La **fricción lateral** en arcilla se calcula con el método α (API RP2A, $\\alpha$ función de $\\psi = c_u/\\sigma'_v$) y en arena con el método β ($\\beta = (1-\\sin\\phi)\\tan\\phi$, Burland 1973) y la correlación SPT de Meyerhof, adoptando el menor. Si la arcilla blanda se consolida (relleno nuevo o descenso del nivel freático) se produce **fricción negativa** (E.050 Art. 32.3.4 e): se calcula con el método β hasta el plano neutro (tope de la arena), no se cuenta la fricción positiva de la arcilla y el arrastre $Q_n$ se suma a la carga (Art. 32.3.4 f). La capacidad admisible usa $FS \\ge 2.0$ para pilotes individuales (E.050 Art. 32.3.4 c-1). El asentamiento se estima con el método de Vesic (1977; Das, cap. 11): acortamiento elástico, punta y fuste. La **capacidad lateral última** se evalúa con el método de Broms (1964) para suelo cohesivo, como el menor entre los mecanismos de pilote corto, intermedio y largo (rótula plástica con el momento de fluencia $M_y$).`),
+      { type: 'soilprofile', estratos: '2.0 CL 1.75 1.80 Arcilla blanda gris\n4.0 CL 1.80 1.80 Arcilla blanda saturada\n14.0 SP 1.95 2.00 Arena densa pobremente gradada', nf: '2.0 m', spt: '1.0 4\n3.0 3\n5.0 4\n7.0 26\n9.0 29\n11.0 30\n13.0 32\n15.0 34\n17.0 36\n19.0 38', ER: '60', zref: '14 m', zona: '6 16', tabla: false, titulo: 'Perfil estratigráfico del sondeo y ensayos SPT' },
       calc(`# Datos
 Dp = 0.40 m // Lado del pilote cuadrado de concreto hincado
 Lpil = 14.0 m // Longitud del pilote (punta en la arena densa)
@@ -679,6 +694,11 @@ gammas3 = 2.00 tonf/m^3 // γsat arena
 gammaw = 1.0 tonf/m^3 // Peso unitario del agua
 phis = 34 deg // φ' de la arena densa
 FSp = 2.0 // Factor de seguridad, pilote individual (E.050 Art. 32.3.4 c-1)
+pexp = 20.0 m // Profundidad alcanzada por el sondeo
+check pexp >= Lpil + 6 m // Profundidad mínima de exploración p = Df + z, z = 6 m (E.050 Art. 15, c-2)
+fneg = 1 // Fricción negativa [1 : No — la arcilla no se consolida|2 : Sí — relleno nuevo o descenso del NF]
+qrel = 2.0 tonf/m^2 // Sobrecarga del relleno sobre la arcilla (solo si hay fricción negativa)
+phic = 22 deg // φ' de la arcilla blanda (método β para la fricción negativa)
 Ap = Dp^2 // Área de la punta
 per = 4*Dp // Perímetro
 Lb = Lpil - H1 - H2 // Empotramiento en la arena
@@ -710,12 +730,17 @@ fs_a = beta3*sigmav3 -> tonf/m^2 // Fricción unitaria (β)
 fs_b = fsMeyerhofSPT(N60p, 0.02) -> tonf/m^2 // 0.02·pa·N60 (pilote de gran desplazamiento)
 fs3 = min(fs_a, fs_b) -> tonf/m^2
 Qs3 = fs3*per*Lb -> tonf // Fricción en la arena
-Qs = Qs1 + Qs2 + Qs3 // Fricción total ΣQf
+## Fricción negativa en la arcilla (E.050 Art. 32.3.4 e y f)
+betan = betaBurland(phic, 1) // β = (1 − sinφ')tanφ' ≈ 0.20–0.30 en arcillas (Burland 1973; Fellenius)
+Qn = si(fneg == 2, betan*per*((qrel + sigmav1)*H1 + (qrel + sigmav2)*H2), 0 tonf) -> tonf // Arrastre hacia abajo; plano neutro en el tope de la arena (pilote de punta)
+Qsc = si(fneg == 2, 0 tonf, Qs1 + Qs2) -> tonf // Con fricción negativa la arcilla no aporta fricción positiva (Art. 32.3.4 f-1)
+Qs = Qsc + Qs3 // Fricción total ΣQf
 # Capacidad admisible (E.050 Art. 32.3)
 Qu = Qp + Qs -> tonf // Capacidad última Qu = Qp + ΣQf
 Qadm = Qu/FSp -> tonf // Capacidad admisible
-check P <= Qadm // Carga de servicio ≤ capacidad admisible (FS ≥ 2.0)
-check P <= 0.25*fc*Ap // Esfuerzo estructural de servicio ≤ 0.25 f'c (práctica usual, pilote de concreto)
+Pt = P + Qn // Carga de diseño: la fricción negativa es una carga adicional (Art. 32.3.4 f-2)
+check Pt <= Qadm // Carga de servicio (+ fricción negativa) ≤ capacidad admisible (FS ≥ 2.0)
+check Pt <= 0.25*fc*Ap // Esfuerzo estructural de servicio ≤ 0.25 f'c (práctica usual, pilote de concreto)
 check Lpil/Dp >= 10 // Cimentación por pilotes: d/b ≥ 10 (E.050 Art. 5.23)
 # Asentamiento del pilote (Vesic 1977; E.050 Art. 32.3.5 b)
 Ep = 15000*sqrtfc(fc) // Módulo del concreto
@@ -729,7 +754,19 @@ Se2 = Qwp/Ap*Dp/Esb*(1 - mus^2)*0.85 -> mm // Asentamiento por la punta (Iwp = 0
 Iws = 2 + 0.35*sqrt(Lpil/Dp) // Factor de influencia del fuste
 Se3 = Qws/(per*Lpil)*Dp/Esb*(1 - mus^2)*Iws -> mm // Asentamiento por el fuste
 Se = Se1 + Se2 + Se3 -> mm // Asentamiento total del pilote
-check Se <= 25 mm // Asentamiento ≤ tolerable (EMS)`),
+check Se <= 25 mm // Asentamiento ≤ tolerable (EMS)
+# Capacidad lateral (Broms 1964; E.050 Art. 32.1: cargas sísmicas)
+Hs = 1.5 tonf // Fuerza horizontal de servicio por pilote (sismo)
+cab = 2 // Condición de la cabeza [1 : Libre|2 : Empotrada en el cabezal]
+ebr = 0 m // Altura de aplicación de la carga sobre el terreno (cabeza libre)
+Myp = 8.0 tonf*m // Momento de fluencia de la sección del pilote (diagrama de interacción con P)
+cul = min(cu1, cu2) // cu de la arcilla superior (la reacción lateral se moviliza en los primeros diámetros)
+Hu = HuBromsC(cul, Dp, Lpil, ebr, Myp, cab) -> tonf // Carga lateral última de Broms en suelo cohesivo (9·cu·D bajo 1.5D)
+fH = Hu/(9*cul*Dp) -> m // Profundidad de la reacción plástica bajo 1.5D
+check 1.5*Dp + fH <= H1 + H2 // La zona de reacción lateral queda dentro de la arcilla (hipótesis de suelo homogéneo)
+FSH = 2.5 // Factor de seguridad lateral (sismo, criterio del Art. 21.2)
+check Hs <= Hu/FSH // Carga lateral de servicio ≤ Hu/FS
+"Mecanismo de Broms que gobierna: pilote {modoBromsC(cul, Dp, Lpil, ebr, Myp, cab)} ({si(cab == 2, 1, 0)} = cabeza empotrada). La respuesta lateral en servicio (desplazamientos) debe verificarse con un modelo de reacción horizontal p–y o de Winkler lateral.`),
       summary(),
     ],
   },
@@ -777,7 +814,7 @@ eta = etaConverse(n1, n2, Dp, sp) // Eficiencia de Converse–Labarre
 Qg1 = eta*np*Qu1 -> tonf // Suma de individuales con eficiencia
 Lg = (n1 - 1)*sp + Dp // Lado del bloque en x
 Bg = (n2 - 1)*sp + Dp // Lado del bloque en y
-Ncs = min(9, 5*(1 + 0.2*Lp/Bg)*(1 + 0.2*Bg/Lg)) // Nc* del bloque (Skempton 1951)
+Ncs = 5*(1 + 0.2*min(Lp/Bg, 2.5))*(1 + 0.2*Bg/Lg) // Nc* del bloque (Skempton 1951): D/B ≤ 2.5 → máx. 7.5(1 + 0.2B/L) ≤ 9
 Qg2 = Lg*Bg*cub*Ncs + 2*(Lg + Bg)*cu*Lp -> tonf // Falla en bloque (Terzaghi y Peck)
 Qgu = min(Qg1, Qg2) -> tonf // Capacidad última del grupo
 FSg = 3.0 // FS de grupo, cargas estáticas (E.050 Art. 32.3.4 c-1)
@@ -826,7 +863,7 @@ phiVcc = 0.85*1.06*sqrtfc(fc)*boc*dc -> tonf
 check Vuc <= phiVcc // Punzonamiento por la columna
 ## Punzonamiento por un pilote de esquina
 bop = pi*(Dp + dc)/4 + 2*ed // Perímetro crítico de esquina (cuarto de círculo + bordes)
-phiVcp = 0.85*1.06*sqrtfc(fc)*bop*dc -> tonf
+phiVcp = 0.85*min(0.27*(20*dc/bop + 2), 1.06)*sqrtfc(fc)*bop*dc -> tonf // αs = 20 (esquina, E.060 Art. 11.12.2.1)
 check Pup <= phiVcp // Punzonamiento por el pilote de esquina
 ## Cortante y flexión (sección en la cara de la columna)
 Vud = n2*Pup -> tonf // Fila de pilotes más cargada fuera de la sección a d de la cara (conservador)
@@ -836,7 +873,7 @@ Mu = n2*Pup*(sp - cc/2) -> tonf*m // Momento en la cara de la columna
 phif = 0.9
 As = max(0.85*fc*Bc*dc/fy*(1 - sqrt(1 - 2*Mu/(0.85*phif*fc*Bc*dc^2))), 0.0018*Bc*hc) // Acero inferior en cada dirección
 nb = ceil(As/Ab(8)) // Varillas de 1"
-sb = rounddown((Bc - 20 cm)/(nb - 1), 2.5 cm)
+sb = rounddown((Bc - 20 cm)/max(nb - 1, 1), 2.5 cm)
 check sb <= min(3*hc, 40 cm) // Espaciamiento máximo`),
       summary(),
     ],
@@ -856,8 +893,8 @@ Según la E.050 Art. 38.5.1 el potencial de licuación de suelos granulares sume
 
 - Resistencia normalizada: $(N_1)_{60} = C_N N_{60}$, $N_{60} = N\\,C_E C_B C_S C_R$, $C_N = (100\\,\\mathrm{kPa}/\\sigma'_v)^{0.5} \\le 1.7$ (Art. 5.27), corregida por finos a $(N_1)_{60cs}$.
 - Demanda sísmica: $CSR = 0.65\\,(a_{max}/g)(\\sigma_v/\\sigma'_v)\\,r_d$ (Art. 5.29).
-- Resistencia: $CRR_{7.5}$ (Youd et al. 2001) y $CRR_M = MSF \\cdot CRR_{7.5}$ (Art. 5.28).
-- Factor de seguridad $FS_L = CRR_M/CSR$ con el mínimo de la Tabla 13A según la categoría E.030, y probabilidad de licuación $P_L$ (Cetin et al. 2004) que debe ser $\\le 10\\,\\%$ para cimentar (Art. 38.6.2).`),
+- Resistencia: $CRR_{7.5}$ (Youd et al. 2001) y $CRR_M = MSF \\cdot K_\\sigma \\cdot CRR_{7.5}$ (Art. 5.28), con la corrección por sobrecarga $K_\\sigma$ de Hynes y Olsen recomendada por Youd et al. (2001).
+- Factor de seguridad $FS_L = CRR_M/CSR$ con el mínimo de la Tabla 13A según la categoría E.030, y probabilidad de licuación $P_L$ (Cetin et al. 2004, con su propio $r_d$ función de $V^*_{s,12}$, Art. 38.5.3) que debe ser $\\le 10\\,\\%$ para cimentar (Art. 38.6.2).`),
       { type: 'soilprofile', estratos: '1.5 RELL 1.70 1.85 Relleno arenoso compactado\n4.5 SP 1.85 2.00 Arena pobremente gradada densa\n5.0 SM 1.85 1.95 Arena limosa densa\n4.0 GP 2.00 2.15 Grava arenosa muy densa', nf: '3.0 m', spt: '1.0 14\n2.0 18\n3.0 26\n4.0 25\n5.0 27\n6.0 32\n7.0 32\n8.0 34\n9.0 35\n10.0 37\n11.0 38\n12.0 40\n13.0 42\n14.0 45\n15.0 48', ER: '60', CB: '1.0', CS: '1.0', barra: '1.0 m', zref: '3 m', tabla: true, titulo: 'Perfil estratigráfico, SPT y correcciones (E.050 Art. 5.27)' },
       calc(`# Parámetros sísmicos
 amax = 0.30 // Aceleración máxima horizontal en la superficie amax/g (Art. 38.5.4)
@@ -865,6 +902,7 @@ Mw = 8.0 // Magnitud momento del sismo de diseño
 Dw = 3.0 m // Profundidad del nivel freático (la del perfil)
 FSreq = 1.25 // FS_L mínimo según la categoría E.030 [1.25 : A (esencial)|1.15 : B (importante)|1.00 : C (común)]
 FC = [10, 10, 10, 8, 6, 6, 6, 18, 20, 20, 22, 22, 5, 5, 5] // Contenido de finos (% < 75 μm) por ensayo
+Vs12 = 250 m/s // Velocidad media de ondas de corte en los 12 m superiores V*s,12 (Art. 38.5.3)
 # Cálculo por profundidad
 z = zSPT // Profundidades de los ensayos
 rd = rdYoud(z) // Coeficiente de reducción de esfuerzos (Youd et al. 2001)
@@ -873,9 +911,12 @@ N1 = N160v // (N1)60 (perfil: CN·N60, Art. 5.27)
 Ncs = N160cs(N1, FC) // (N1)60cs = α + β(N1)60 (corrección por finos)
 CRR = CRR75(Ncs) // CRR7.5 (Youd et al. 2001); N ≥ 30: no licuable
 MSF = MSFYoud(Mw) // Factor de escala de magnitud 10^2.24/Mw^2.56
-CRRM = MSF*CRR // CRR_M = FSM × CRR7.5 (Art. 5.28)
+Ks = KsigmaYoud(svpSPT, N1) // Kσ = (σ'v/pa)^(f−1) ≤ 1 por sobrecarga (Hynes y Olsen 1999; Youd et al. 2001)
+CRRM = MSF*Ks.*CRR // CRR_M = FSM·Kσ·CRR7.5 (Art. 5.28; Youd et al. 2001)
 FSL = FSLiq(CRRM, CSR, z, Dw) // FS_L = CRR_M/CSR (Art. 38.5.8); 3 = no licuable / sobre el NF
-PL = PLCetin(N1, CSR, Mw, svpSPT, FC) // Probabilidad de licuación (Cetin et al. 2004)
+rdC = rdCetin(z, amax, Mw, Vs12) // rd de Cetin et al. (2004) con V*s,12
+CSReq = CSRSeed(amax, svSPT, svpSPT, rdC) // CSR de Cetin (sin MSF ni Kσ: Mw y σ'v entran en la ecuación de PL)
+PL = PLCetin(N1, CSReq, Mw, svpSPT, FC) // Probabilidad de licuación (Cetin et al. 2004, Art. 38.5.6)
 @modo corto
 PLs = PL.*(z >= Dw) // Solo estratos sumergidos (Art. 38.2 b)
 @modo completo
@@ -885,7 +926,7 @@ PLmax = max(PLs) // Probabilidad máxima de licuación
 check FSLmin >= FSreq // FS_L ≥ mínimo de la Tabla 13A (E.050 Art. 38.5.8)
 check PLmax <= 0.10 // P_L ≤ 10 %: potencial de licuación bajo, se permite cimentar (Art. 38.6.2, Tabla 13)
 "Clasificación del potencial de licuación (Tabla 13): $P_L$ máx = {100*PLmax} % → {si(PLmax > 0.5, 4, si(PLmax > 0.1, 3, si(PLmax > 0.05, 2, 1)))} (1 = muy baja, 2 = baja, 3 = moderada, 4 = alta).`),
-      { type: 'table', columnas: 'z [m] = z\nN = NSPT\n(N1)60 = N1\nFC [%] = FC\n(N1)60cs = Ncs\nrd = rd\nCSR = CSR\nCRR7.5 = CRR\nCRR_M = CRRM\nFS_L = FSL\nP_L = PL\nEstado = liqEstado(FSL, FSreq, z, Dw, Ncs)', dec: '3', titulo: 'Evaluación de licuación por ensayo SPT (FS_L = 3 indica no licuable o sobre el NF)' },
+      { type: 'table', columnas: 'z [m] = z\nN = NSPT\n(N1)60 = N1\nFC [%] = FC\n(N1)60cs = Ncs\nrd = rd\nCSR = CSR\nCRR7.5 = CRR\nKσ = Ks\nCRR_M = CRRM\nFS_L = FSL\nP_L = PL\nEstado = liqEstado(FSL, FSreq, z, Dw, Ncs)', dec: '3', titulo: 'Evaluación de licuación por ensayo SPT (FS_L = 3 indica no licuable o sobre el NF)' },
       { type: 'liqchart', z: 'z', CSR: 'CSR', CRR: 'CRRM', FS: 'FSL', FSmin: 'FSreq', nf: 'Dw', titulo: 'CSR, CRR_M y factor de seguridad frente a licuación con la profundidad' },
       summary(),
     ],

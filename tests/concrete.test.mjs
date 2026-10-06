@@ -1,6 +1,8 @@
 // Pruebas de validación — módulo «concrete» (NTE E.060-2009 / ACI 318-19)
 import { near, truthy, calc, block, runTemplate, section, done, ctxOf, math, TEMPLATES, runDoc } from './helpers.mjs';
 import { blockPM } from '../src/blocks.js';
+import { makeSection, stateAt, parseBarsGen } from '../src/blocks/concrete.js';
+import { SLAB_TABLES } from '../src/norms/concrete.js';
 
 const U = (v, u) => math.unit(v, u);
 
@@ -190,5 +192,110 @@ for (const t of mine) {
   near('Deflexión: análisis por rigidez = 5wL⁴/384EcIe', df('deltamax_s', 'cm'), df('dDL', 'cm'), 0.005);
   const st = runTemplate('co-stm');
   near('Puntal-tensor: T = Pu/tan θ', st('Ft', 'kN'), 900 / Math.tan(st('theta', 'rad')));
+}
+section('Revisión independiente — ejemplos publicados y casos límite');
+// Reemplaza el valor de un dato "nombre = ..." en los bloques de cálculo de una plantilla
+const setData = (vals) => (d) => { for (const b of d.blocks) if (b.type === 'calc') b.src = b.src.split('\n').map(l => { const m = /^(\w+)\s*=/.exec(l); return m && m[1] in vals ? m[1] + ' = ' + vals[m[1]] + (l.includes('//') ? ' //' + l.split('//').slice(1).join('//') : '') : l; }).join('\n'); };
+{
+  // E.060 Tablas 13.1–13.3 transcritas del PDF oficial (2009); casos según las figuras de la norma:
+  // A vertical (luz corta), B horizontal; bordes rayados = continuos
+  const T = SLAB_TABLES, i1 = T.ms.indexOf(1.0), i5 = T.ms.indexOf(0.5);
+  truthy('Tabla 13.1 m = 1.00 (Ca): —, .045, —, .050, .075, .071, —, .033, .061', JSON.stringify(T.negA[i1]) === JSON.stringify([0, .045, 0, .050, .075, .071, 0, .033, .061]));
+  truthy('Tabla 13.1 m = 0.50 (Cb): —, .006, .022, .006, —, —, .014, .010, .003', JSON.stringify(T.negB[i5]) === JSON.stringify([0, .006, .022, .006, 0, 0, .014, .010, .003]));
+  truthy('Tabla 13.2 m = 0.85 (Ca): .050 .024 .029 .036 .031 .042 .040 .029 .028', JSON.stringify(T.cmA[T.ms.indexOf(0.85)]) === JSON.stringify([.050, .024, .029, .036, .031, .042, .040, .029, .028]));
+  truthy('Tabla 13.3 m = 0.60 (Ca): .081 .058 .071 .067 .059 .068 .077 .065 .059', JSON.stringify(T.cvA[T.ms.indexOf(0.6)]) === JSON.stringify([.081, .058, .071, .067, .059, .068, .077, .065, .059]));
+  // Figuras de la Tabla 13.1: caso 3 = bordes cortos (izq./der.) continuos; 5 = bordes largos (sup./inf.);
+  // 6 = solo el borde largo superior; 7 = solo el borde corto derecho; 8 = izq., inf. y der. (largo superior discontinuo);
+  // 9 = izq., sup. e inf. (corto derecho discontinuo); 4 = izq. e inf. (adyacentes)
+  const cases = { 'D D C C': 3, 'C C D D': 5, 'C D D D': 6, 'D D D C': 7, 'D C C C': 8, 'C C C D': 9, 'D C C D': 4, 'C C C C': 2, 'D D D D': 1 };
+  const ok = Object.entries(cases).every(([bd, k]) => block('slab2way', { A: '4 m', B: '5 m', bordes: bd, wud: '1 tonf/m^2', wul: '0.5 tonf/m^2', d: '10 cm' })('caso') === k);
+  truthy('slab2way: los 9 casos coinciden con las figuras de la E.060 (bordes sup inf izq der)', ok);
+  const s1 = block('slab2way', { A: '3 m', B: '7 m', bordes: 'C C C C', wud: '1 tonf/m^2', wul: '0.5 tonf/m^2', d: '10 cm' });
+  truthy('slab2way: m < 0.5 → NO CUMPLE (13.7.1.2) sin error', s1.ctx.checks.length === 1 && !s1.ctx.checks[0].ok);
+  g = calc('lsc = lscE060(8, 210 kgf/cm^2, 4200 kgf/cm^2)');
+  near('Empalme en compresión MKS 0.007 fy db = SI 0.071 fy[MPa] db (12.16.1; el Anexo II dice 0.071 por errata)', g('lsc', 'cm'), 0.071 * (4200 / 10.197) * 2.54, 0.01);
+}
+{
+  // pmgen frente a un cálculo independiente con recorte exacto de polígonos (eje neutro inclinado)
+  const bars = parseBarsGen('R 6 6 44 54 4 4 8', new Map());
+  const sec = makeSection([{ x0: 0, y0: 0, b: 50, h: 60 }], bars, { fc: 280, fy: 4200, Es: 2e6, norma: 'E060' });
+  const clip = (poly, ux, uy, t0) => { const o = []; for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length], tp = p[0] * ux + p[1] * uy - t0, tq = q[0] * ux + q[1] * uy - t0; if (tp >= 0) o.push(p); if (tp * tq < 0) { const s = tp / (tp - tq); o.push([p[0] + s * (q[0] - p[0]), p[1] + s * (q[1] - p[1])]); } } return o; };
+  const cen = (P) => { let A = 0, cx = 0, cy = 0; for (let i = 0; i < P.length; i++) { const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % P.length], c = x1 * y2 - x2 * y1; A += c; cx += (x1 + x2) * c; cy += (y1 + y2) * c; } A /= 2; return { A, cx: cx / (6 * A), cy: cy / (6 * A) }; };
+  let worst = 0;
+  for (const [deg, c] of [[0, 20], [30, 35], [45, 25], [60, 50], [17, 15]]) {
+    const th = deg * Math.PI / 180, ux = Math.cos(th), uy = Math.sin(th), rect = [[0, 0], [50, 0], [50, 60], [0, 60]];
+    const tmax = Math.max(...rect.map(p => p[0] * ux + p[1] * uy)), a = 0.85 * c, gC = cen(clip(rect, ux, uy, tmax - a));
+    let P = 0.85 * 280 * gC.A, Mx = P * (gC.cx - 25), My = P * (gC.cy - 30);
+    for (const b of bars) { const dep = tmax - (b.x * ux + b.y * uy); let fs = Math.max(-4200, Math.min(4200, 2e6 * 0.003 * (c - dep) / c)); if (dep < a) fs -= 0.85 * 280; P += b.A * fs; Mx += b.A * fs * (b.x - 25); My += b.A * fs * (b.y - 30); }
+    const st = stateAt(sec, { ux, uy, tmax }, c);
+    worst = Math.max(worst, Math.abs(st.P - P) / 1e3, Math.hypot(st.Mx - Mx, st.My - My) / 1e5);
+  }
+  truthy('pmgen = integración exacta por polígonos (5 ejes neutros inclinados): error < 0.1 t y 0.1 t·m', worst < 0.1, 'máx ' + worst.toFixed(4));
+}
+{
+  // StructurePoint, "Interaction Diagram – Tied RC Column Design Strength (ACI 318-19)": 16×16 in, 8 #9,
+  // f'c = 5000 psi, fy = 60 ksi, Es = 29 000 ksi, recubrimiento 2.5 in al centro de barras (= spColumn)
+  const p = block('pmgen', { geom: '0 0 40.64 40.64', barras: 'L 6.35 6.35 6.35 34.29 4 9\nL 34.29 6.35 34.29 34.29 4 9', fc: '5000 psi', fy: '60000 psi', Es: '29000 ksi', norma: 'ACI', dir: 'X', demandas: '' });
+  const S = p.ctx.scope, kip = (v) => U(v, 'kip');
+  near('SP/spColumn: φPn,max = 0.80·0.65·P0 = 797.7 kip', p('phiPnmax', 'kip'), 797.7, 0.002);
+  for (const [lab, P, M] of [['fs = 0', 957.4, 261.33], ['fs = 0.5fy', 649.1, 338.54], ['balanceado', 416.8, 385.81], ['εt = εy + 0.003', 190.7, 318.61], ['flexión pura', 0, 237.73]])
+    near('SP/spColumn: Mn en el punto ' + lab + ' (Pn = ' + P + ' kip) [kip·ft]', S.get('Mn_X')(kip(P)).toNumber('kip*ft'), M, 0.003);
+  near('SP/spColumn: φMn en flexión pura = 213.96 kip·ft', S.get('phiMn_X')(kip(0)).toNumber('kip*ft'), 213.96, 0.003);
+  near('SP/spColumn: φMn para φPn = 622.3 kip (fs = 0) = 169.86 kip·ft', S.get('phiMn_X')(kip(622.3)).toNumber('kip*ft'), 169.86, 0.003);
+}
+{
+  // StructurePoint, "Biaxial Bending Interaction Diagrams for Rectangular RC Column (ACI 318-19)" (Pincheira, Ex. 10.20.1):
+  // 16×20 in, 10 #8, f'c = 6000 psi; spColumn: Pn = 426.64 kip, Mnx = 320.84, Mny = 200.92 kip·ft con φ = 0.667
+  const I = 2.54, bars = `L ${2.5 * I} ${2.5 * I} ${2.5 * I} ${17.5 * I} 4 8\nL ${13.5 * I} ${2.5 * I} ${13.5 * I} ${17.5 * I} 4 8\n${8 * I} ${2.5 * I} 8\n${8 * I} ${17.5 * I} 8`;
+  const ph = 0.667, p = block('pmgen', { geom: `0 0 ${16 * I} ${20 * I}`, barras: bars, fc: '6000 psi', fy: '60000 psi', Es: '29000 ksi', norma: 'ACI', dir: 'XY', demandas: `${ph * 426.64} kip, ${ph * 200.92} kip*ft, ${ph * 320.84} kip*ft` });
+  near('SP/spColumn biaxial: el punto (φPn, φMny, φMnx) está sobre el contorno de carga (D/C = 1)', p('DCpmg'), 1.0, 0.015);
+}
+{
+  // StructurePoint, "The Role of γf in Two-way Slab Punching Shear (ACI 318)": columna interior 16×16 in, d = 5.75 in,
+  // f'c = 4000 psi, Vu = 75.91 kip, Mu = 11.52 kip·ft → Jc = 40 131 in⁴, γv = 0.400, vu = 166.7 psi, vc = 253 psi
+  g = calc('Jc = jcInterior(16 in, 16 in, 5.75 in)\ngv = gammavSlab(21.75 in, 21.75 in)');
+  near('SP: Jc columna interior = 40 131 in⁴', g('Jc', 'in^4'), 40131, 0.001);
+  near('SP: γv = 0.400', g('gv'), 0.400, 0.001);
+  const t = runTemplate('co-punzonamiento', setData({ fc: '4000 psi', h: '7 in', d: '5.75 in', c1: '16 in', c2: '16 in', Vu: '75.91 kip', Mu: '11.52 kip*ft' }));
+  near('SP: plantilla de punzonamiento vu = 166.7 psi', t('vu', 'psi'), 166.7, 0.003);
+  near('SP: plantilla vc = mín(4, 2 + 4/β, αs d/bo + 2)·√f\'c = 253 psi (coeficientes MKS 1.06/0.53/0.27)', t('vc', 'psi'), 253, 0.005);
+}
+{
+  // StructurePoint / Wang (Ex. 13.17.3): columna exterior de pórtico arriostrado, ψA = 4.32, base articulada → k = 0.959
+  g = calc('k1 = kBraced(4.32, 1000000)');
+  near('SP: k (nomograma arriostrado) ψA = 4.32, ψB = ∞ → 0.959', g('k1'), 0.959, 0.002);
+}
+{
+  // StructurePoint, "Equilibrium Torsion (ACI 318-14)": viga 14×24 in, f'c = 4000 psi, #4 cerrados, rec. 1.5 in,
+  // Tu = 28 kip·ft, Vu = 57.14 kip, φ = 0.75 → Aoh = 215.25 in², At/s = 0.0204, Av/s = 0.0295 in²/in, Aℓ = 1.265 in²
+  const t = runTemplate('co-torsion', setData({ fc: '4000 psi', fy: '60000 psi', fyt: '60000 psi', b: '14 in', h: '24 in', recl: '1.5 in', est: '4', Tu: '28 kip*ft', Vu: '57.14 kip', Mu: '228.25 kip*ft', phi: '0.75', d: '21.5 in' }));
+  near('SP torsión: Aoh = 215.25 in²', t('Aoh', 'in^2'), 215.25, 0.001);
+  near('SP torsión: esfuerzo combinado = 325.55 psi', t('tau', 'psi'), 325.55, 0.003);
+  near('SP torsión: At/s = 0.0204 in²/in por rama', t('At_s', 'in^2/in'), 0.0204, 0.005);
+  near('SP torsión: Av/s = 0.0295 in²/in (Vc MKS 0.53√f\'c ≈ 2√f\'c psi)', t('Av_s', 'in^2/in'), 0.0295, 0.01);
+  near('SP torsión: Aℓ = 1.265 in²', t('Al', 'in^2'), 1.265, 0.003);
+  near('SP torsión: φTth = 5.87 kip·ft (0.27√f\'c MKS ≈ 1√f\'c psi, +1.9 %)', t('Tth', 'kip*ft'), 5.87, 0.025);
+}
+{
+  // Ramas de las plantillas: clasificaciones que cambian el procedimiento (no son verificaciones)
+  const e = runTemplate('co-colesbelta', setData({ lu: '2.0 m' }));
+  truthy('Columna poco esbelta (lu = 2 m): δns = 1 y sin errores', e('dns') === 1 && e.res.ctx.errors.length === 0 && e.res.ctx.checks.every(c => c.ok));
+  const b = runTemplate('co-biaxial', setData({ Pu: '20 tonf', Mux: '10 tonf*m', Muy: '8 tonf*m' }));
+  truthy('Biaxial con Pu < 0.1φPon: rige la ec. 10-23 (Mux/φMnx + Muy/φMny)', b('bres') === 0 && Math.abs(b('DCb') - (10 / b.res.ctx.scope.get('phiMn_X')(U(20, 'tonf')).toNumber('tonf*m') + 8 / b.res.ctx.scope.get('phiMn_Y')(U(20, 'tonf')).toNumber('tonf*m'))) < 1e-9);
+  const tq = runTemplate('co-torsion', setData({ Tu: '0.3 tonf*m' }));
+  truthy('Torsión menor que el umbral: se informa (tors = 0) sin verificación fallida', tq('tors') === 0 && tq.res.ctx.checks.every(c => c.ok));
+}
+{
+  // Datos extremos: cargas × 20 → NO CUMPLE, sin errores ni NaN en ninguna plantilla
+  const re = /^(\s*\w+\s*=\s*)(-?\d+(?:\.\d+)?)(\s*(?:tonf|kN|kip)\S*\s*)(\/\/.*)?$/;
+  let okAll = true; const info = [];
+  for (const t of TEMPLATES.filter(t => t.id.startsWith('co-') && !['co-anclajes', 'co-nudo'].includes(t.id))) {
+    const r = runDoc({ meta: {}, settings: t.settings || {}, blocks: t.blocks.map((b, i) => { const c = { ...JSON.parse(JSON.stringify(b)), id: t.id + i }; if (c.type === 'calc') c.src = c.src.split('\n').map(l => { const m = re.exec(l); return m ? m[1] + (+m[2] * 20) + m[3] + (m[4] || '') : l; }).join('\n'); return c; }) });
+    const fine = r.ctx.errors.length === 0 && r.ctx.checks.some(c => !c.ok) && r.ctx.checks.every(c => !Number.isNaN(c.ratio));
+    if (!fine) { okAll = false; info.push(t.id); }
+  }
+  truthy('Cargas × 20 en 16 plantillas: NO CUMPLE sin errores ni NaN', okAll, info.join(', '));
+  const nj = runTemplate('co-nudo', setData({ bc: '30 cm', hc: '30 cm', barv: '8' }));
+  truthy('Nudo con columna de 30×30 y barras de 1": NO CUMPLE sin errores', nj.res.ctx.errors.length === 0 && nj.res.ctx.checks.some(c => !c.ok));
 }
 done();

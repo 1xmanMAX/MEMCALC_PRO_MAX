@@ -37,23 +37,23 @@ function KpCl(phi, delta, beta, theta) {
   chk(r < 1, 'Coulomb pasivo: combinación φ, δ, β sin solución (δ demasiado alto)');
   return cos(phi + theta) ** 2 / (cos(theta) ** 2 * cos(delta - theta) * (1 - r) ** 2);
 }
-// ---------- Mononobe–Okabe (Kramer 1996, ec. 11.? ; AASHTO LRFD A11.3) ----------
+// ---------- Mononobe–Okabe (Kramer 1996, §11.6.1; AASHTO LRFD A11.3) ----------
 function psiMO(kh, kv) { chk(kv < 1, 'kv debe ser menor que 1'); return atan(kh / (1 - kv)); }
 function KaeM(phi, delta, kh, kv, beta, theta) {
   const psi = psiMO(kh, kv);
-  chk(phi - beta - psi >= -1e-12, 'Mononobe–Okabe: φ − β − ψ < 0 (sismo demasiado intenso para el talud; no existe equilibrio)');
-  const a = sin(phi + delta) * sin(phi - beta - psi), b = cos(delta + theta + psi) * cos(beta - theta);
+  // φ − β − ψ < 0: no hay equilibrio del relleno; como EN 1998-5 Anexo E (E.4) se anula el término
+  // sen(φ − β − ψ) (la raíz) y se obtiene un valor acotado. Verifique aparte φ − β − ψ ≥ 0 (MOequil).
+  const a = sin(phi + delta) * Math.max(0, sin(phi - beta - psi)), b = cos(delta + theta + psi) * cos(beta - theta);
   return cos(phi - theta - psi) ** 2 / (cos(psi) * cos(theta) ** 2 * cos(delta + theta + psi) * (1 + sqrt(Math.max(0, a / b))) ** 2);
 }
 function KpeM(phi, delta, kh, kv, beta, theta) {
   const psi = psiMO(kh, kv);
-  chk(phi + beta - psi >= 0, 'Mononobe–Okabe pasivo: φ + β − ψ < 0');
-  const r = sqrt(sin(phi + delta) * sin(phi + beta - psi) / (cos(delta - theta + psi) * cos(beta - theta)));
+  const r = sqrt(sin(phi + delta) * Math.max(0, sin(phi + beta - psi)) / (cos(delta - theta + psi) * cos(beta - theta)));
   chk(r < 1, 'Mononobe–Okabe pasivo: combinación sin solución (δ demasiado alto)');
   return cos(phi + theta - psi) ** 2 / (cos(psi) * cos(theta) ** 2 * cos(delta - theta + psi) * (1 - r) ** 2);
 }
 // ---------- Sobrecargas: Boussinesq modificado (muro rígido, factor 2) ----------
-// Franja de ancho a, a una distancia b del muro, presión q; profundidad z (Das 7.? / Jarquio 1981)
+// Franja de ancho a, a una distancia b del muro, presión q; profundidad z (Das, Principios, cap. 7 / Jarquio 1981)
 function sigStrip(q, a, b, z) {
   if (z <= 0) return 0;
   const a1 = atan(b / z), a2 = atan((a + b) / z), be = a2 - a1, al = a1 + be / 2;
@@ -65,7 +65,7 @@ function stripInt(q, a, b, H) {
   P *= H / n / 3; M *= H / n / 3; return { P, y: P > 0 ? M / P : 0 };
 }
 // Terzaghi (1954) / NAVFAC DM-7.2: carga lineal y puntual paralelas al muro
-function sigLine(QL, x, z, H) { const m = x / H, n = z / H; return m <= 0.4 ? 0.20 * QL / H * n * n / (0.16 + n * n) ** 2 : 1.28 * QL / H * m * m * n / (m * m + n * n) ** 2; }
+function sigLine(QL, x, z, H) { const m = x / H, n = z / H; return m <= 0.4 ? 0.20 * QL / H * n / (0.16 + n * n) ** 2 : 1.28 * QL / H * m * m * n / (m * m + n * n) ** 2; }
 function sigPoint(Q, x, z, H) { const m = x / H, n = z / H; return m <= 0.4 ? 0.28 * Q / (H * H) * n * n / (0.16 + n * n) ** 3 : 1.77 * Q / (H * H) * m * m * n * n / (m * m + n * n) ** 3; }
 // ---------- Bisección genérica ----------
 function bisect(f, lo, hi, msg) {
@@ -90,6 +90,7 @@ defineFns({
   KpCoulomb: { fn: (phi, delta, beta, theta) => KpCl(ang(phi), ang(delta), ang(beta), ang(theta)), tex: 'K_p', args: 'φ, δ, β=0, θ=0', desc: 'Kp de Coulomb (sobrestima Kp si δ > φ/2)' },
   // ----------------------------- Sismo -----------------------------
   psiMO: { fn: (kh, kv) => mkUnit(psiMO(nn(kh, 0), nn(kv, 0)) * D, 'deg'), tex: '\\psi', args: 'kh, kv=0', desc: 'Ángulo sísmico ψ = atan(kh/(1 − kv))' },
+  MOequil: { fn: (phi, kh, kv, beta) => mkUnit((ang(phi) - ang(beta) - psiMO(nn(kh, 0), nn(kv, 0))) * D, 'deg'), tex: '\\phi-\\beta-\\psi', args: 'φ, kh, kv=0, β=0', desc: 'Margen de equilibrio sísmico del relleno φ − β − ψ (debe ser ≥ 0 para que Mononobe–Okabe tenga solución)' },
   KaeMO: { fn: (phi, delta, kh, kv, beta, theta) => KaeM(ang(phi), ang(delta), nn(kh, 0), nn(kv, 0), ang(beta), ang(theta)), tex: 'K_{ae}', args: 'φ, δ, kh, kv=0, β=0, θ=0', desc: 'Kae de Mononobe–Okabe (Pae = ½γH²(1 − kv)Kae)' },
   KpeMO: { fn: (phi, delta, kh, kv, beta, theta) => KpeM(ang(phi), ang(delta), nn(kh, 0), nn(kv, 0), ang(beta), ang(theta)), tex: 'K_{pe}', args: 'φ, δ, kh, kv=0, β=0, θ=0', desc: 'Kpe de Mononobe–Okabe (pasivo sísmico)' },
   DKaeSW: { fn: (kh) => 0.75 * nn(kh, 0), tex: '\\Delta K_{ae}', args: 'kh', desc: 'Incremento dinámico Seed–Whitman (1970): ΔKae ≈ ¾ kh (aplicado a 0.6H)' },
@@ -113,7 +114,7 @@ defineFns({
     tex: 'D_0', args: 'H, γ, Ka, Kp, q=0', desc: 'Tablestaca en voladizo (Blum simplificado): ΣM = 0 respecto al punto de giro; D = 1.2·D0' },
   DFreeEarth: { fn: (H, a, gamma, Ka, Kp, q) => { const h = L(H), ya = L(a), g = G(gamma), ka = nn(Ka), kp = nn(Kp), s = Q(q);
     const f = (Dd) => { const T = h + Dd; return kp * g * Dd * Dd / 2 * (h + 2 * Dd / 3 - ya) - ka * g * T * T / 2 * (2 * T / 3 - ya) - ka * s * T * (T / 2 - ya); };
-    return mkUnit(bisect(f, 1e-6, 5 * h + 1, 'Apoyo libre: sin solución'), 'm'); },
+    return mkUnit(bisect(f, 1e-6, 5 * h + 1, 'Apoyo libre: sin solución (el anclaje está por debajo de la resultante del empuje activo: reduzca la profundidad a del anclaje)'), 'm'); },
     tex: 'D', args: 'H, a, γ, Ka, Kp, q=0', desc: 'Tablestaca anclada, apoyo libre (free earth support): ΣM = 0 respecto al anclaje a la prof. a' },
   // ----------------------------- Suelo reforzado (AASHTO 11.10) -----------------------------
   KrKaAASHTO: { fn: (z, tipo) => { const t = nn(tipo, 3), zz = L(z); if (t >= 3) return 1; const k0 = t === 1 ? 1.7 : 2.5; return interp1(zz, [0, 6], [k0, 1.2]); },

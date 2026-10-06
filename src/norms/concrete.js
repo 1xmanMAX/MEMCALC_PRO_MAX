@@ -29,7 +29,10 @@ export function asFlex(Mu, b, d, fc, fy, phi = 0.9) {
   const M = toNum(Mu, 'kgf*cm'), B = cm(b), D = cm(d), f = kgcm(fc), y = kgcm(fy), p = nn(phi);
   req(B > 0 && D > 0 && f > 0 && y > 0, 'asFlex: datos no válidos');
   const disc = 1 - 2 * Math.abs(M) / (0.85 * p * f * B * D * D);
-  req(disc >= 0, 'La sección es insuficiente para Mu (aumente b, d o f\'c)');
+  // Sección insuficiente (Mu > φ·0.425 f'c b d²): no se lanza error para que la memoria muestre
+  // «NO CUMPLE» en las verificaciones posteriores; se devuelve un área creciente con Mu, mayor que
+  // 0.85 f'c b d/fy (≈ 2ρb), que ninguna verificación de resistencia o cuantía máxima puede aceptar.
+  if (disc < 0) return mkUnit(0.85 * f * B * D / y * (1 - disc), 'cm^2');
   return mkUnit(0.85 * f * B * D / y * (1 - Math.sqrt(disc)), 'cm^2');
 }
 // Acero requerido en viga T (ala en compresión): si a ≤ hf se diseña como rectangular de ancho bf

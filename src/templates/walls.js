@@ -46,12 +46,12 @@ Muro de contención de concreto armado en voladizo (T invertida) que sostiene un
 ## Geometría (por metro lineal)
 H = 5.00 m // Altura total: fondo de cimentación a corona (E.050 39.13.5)
 hz = 0.60 m // Espesor de la zapata (predimensionado ≈ H/10 a H/12)
-B = 4.00 m // Ancho de la base (0.5H a 0.8H, Das 8.2; aumentado por sismo)
+B = 4.50 m // Ancho de la base (0.5H a 0.7H estático, Das 8.2; ≈ 0.9H por el sismo de zona 4 con pasivo reducido)
 Lp = 0.90 m // Longitud de la punta (≈ B/4 a B/3)
 t1 = 0.25 m // Espesor de la pantalla en la corona (≥ 0.20 m)
 t2 = 0.50 m // Espesor de la pantalla en la base (≈ H/10)
 bk = 0.50 m // Ancho del dentellón (bajo la pantalla)
-hk = 0.70 m // Profundidad del dentellón bajo la zapata
+hk = 1.20 m // Profundidad del dentellón bajo la zapata
 Df = 1.20 m // Altura del suelo frente a la punta, desde el fondo de la zapata
 fp = 0.50 // Fracción del empuje pasivo que se considera (AASHTO Tabla 11.5.7-1: φep = 0.50; el pasivo requiere desplazamientos grandes y el suelo puede excavarse) [0 : despreciar el pasivo|0.50 : 50 % (recomendado)|1.00 : pasivo completo]
 hp = H - hz // Altura de la pantalla
@@ -74,7 +74,7 @@ rec = 5 cm // Recubrimiento de la pantalla, concreto expuesto al suelo (E.060 7.
 recz = 7.5 cm // Recubrimiento de la zapata vaciada contra el suelo (E.060 7.7.1 a)
 ${SISMO}
 ## Coeficientes de empuje
-Ka = KaRankine(phis, beta) // Activo de Rankine (Das ec. 7.?; β = 0 → tan²(45° − φ/2))
+Ka = KaRankine(phis, beta) // Activo de Rankine (Das, Principios, cap. 7, relleno inclinado; β = 0 → tan²(45° − φ/2))
 Kae = KaeMO(phis, beta, kh, kv, beta) // Activo sísmico de Mononobe–Okabe, δ = β en el plano virtual (AASHTO 11.6.5.3)
 DKae = Kae - Ka // Incremento dinámico del coeficiente
 DKsw = DKaeSW(kh) // Comparación: Seed–Whitman ΔKae ≈ ¾ kh
@@ -92,11 +92,11 @@ Mu = max(Mus, Mue) // Momento último de diseño
 bar = 6 // Varilla vertical interior [5 : 5/8"|6 : 3/4"|8 : 1"]
 d = t2 - rec - db(bar)/2 // Peralte efectivo
 Rn = Mu/(0.9*d^2) -> kgf/cm^2 // φ = 0.90 (E.060 9.3.2.1)
-rho = 0.85*fc/fy*(1 - sqrt(1 - 2*Rn/(0.85*fc))) // Cuantía requerida
+rho = 0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*Rn/(0.85*fc)))) // Cuantía requerida
 As_req = rho*d -> cm^2/m // Acero requerido por metro
 As_min = 0.0018*t2 -> cm^2/m // Acero mínimo de losas y muros en flexión (E.060 10.5.4 y 9.7.2)
 As = max(As_req, As_min)
-s = rounddown(Ab(bar)/As, 2.5 cm) // Espaciamiento de la varilla elegida
+s = rounddown(max(Ab(bar)/As, 2.5 cm), 2.5 cm) // Espaciamiento de la varilla elegida
 check s <= min(3*t2, 40 cm) // Espaciamiento máximo del refuerzo principal (E.060 10.5.4)
 rhob = 0.85*0.85*fc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy) // Cuantía balanceada (β1 = 0.85)
 check rho <= 0.75*rhob // Cuantía máxima (E.060 10.3.4)
@@ -111,11 +111,11 @@ check Vu <= phiVc // Cortante en la pantalla (sin estribos)`),
     calc(`## Refuerzo horizontal y de la cara exterior (E.060 14.3)
 tm = (t1 + t2)/2 // Espesor medio de la pantalla
 Ash = 0.0020*tm -> cm^2/m // Cuantía horizontal mínima 0.0020 (barras ≤ 5/8", fy ≥ 4200; E.060 14.3.3)
-sh_ext = rounddown(Ab(4)/(2/3*Ash), 2.5 cm) // 2/3 en la cara exterior expuesta, varilla de 1/2" (E.060 14.3.4)
-sh_int = rounddown(Ab(3)/(1/3*Ash), 2.5 cm) // 1/3 en la cara en contacto con el relleno, varilla de 3/8"
+sh_ext = rounddown(max(Ab(4)/(2/3*Ash), 2.5 cm), 2.5 cm) // 2/3 en la cara exterior expuesta, varilla de 1/2" (E.060 14.3.4)
+sh_int = rounddown(max(Ab(3)/(1/3*Ash), 2.5 cm), 2.5 cm) // 1/3 en la cara en contacto con el relleno, varilla de 3/8"
 check max(sh_ext, sh_int) <= min(3*tm, 40 cm) // Espaciamiento máximo (E.060 14.3.5)
 Asv_ext = 0.0012*t2 -> cm^2/m // Refuerzo vertical mínimo de la cara exterior (E.060 14.3.2)
-sv_ext = rounddown(Ab(4)/Asv_ext, 2.5 cm) // Varilla de 1/2" en la cara exterior
+sv_ext = rounddown(max(Ab(4)/Asv_ext, 2.5 cm), 2.5 cm) // Varilla de 1/2" en la cara exterior
 check sv_ext <= min(3*t2, 40 cm) // Espaciamiento del refuerzo vertical exterior
 ## Anclaje del refuerzo vertical en la zapata (E.060 12.5)
 ldg = max(0.075*fy*db(bar)/sqrtfc(fc), 8*db(bar), 15 cm) // Longitud de desarrollo con gancho estándar
@@ -123,9 +123,9 @@ check ldg <= hz - recz // El gancho cabe en el peralte de la zapata
 "Refuerzo de la pantalla: cara interior varilla {bar} (Ø según lista) @ {s} con la mitad de las barras cortadas a {hcorte} sobre la zapata; cara exterior 1/2\\" @ {sv_ext} vertical; horizontal 1/2\\" @ {sh_ext} (exterior) y 3/8\\" @ {sh_int} (interior).
 # Diseño de la zapata
 "Presiones de contacto de servicio obtenidas en la estabilidad. La longitud de contacto es $L_c = \\min\\left[B,\\ 3\\left(B/2 - e\\right)\\right]$ y la presión varía linealmente con pendiente $m = (q_{talón} - q_{punta})/L_c$. Mayoración: estático $1.7$ (E.060 9.2.5) y sísmico $1.25$ aplicado a toda la reacción (E.060 9.2.3: la reacción sísmica, dominada por $\\Delta E_{ae}$ y la inercia que ya están a nivel de resistencia, queda mayorada en exceso, lo que compensa el menor factor de su parte estática; verifíquese que $1.25\\,q_{sismo} \\ge 1.7\\,q_{estático}$ en la tabla de presiones); el peso propio de la punta se reduce con $0.9$ (E.060 9.2.5, carga muerta favorable).
-check e >= 0 m // Resultante hacia la punta (hipótesis de las fórmulas siguientes)
-Lcs = min(B, 3*(B/2 - e)) // Longitud de contacto, estático
-Lce = min(B, 3*(B/2 - es)) // Longitud de contacto, sismo
+check es >= 0 m // Resultante sísmica hacia la punta (hipótesis de L_ce; en estático |e| ≤ B/6: contacto total)
+Lcs = min(B, max(3*(B/2 - e), 0.03*B)) // Longitud de contacto, estático
+Lce = min(B, max(3*(B/2 - es), 0.03*B)) // Longitud de contacto, sismo (acotada si la resultante sale de la base)
 slS = (qheel - qtoe)/Lcs // Pendiente del diagrama estático
 slE = (qheels - qtoes)/Lce // Pendiente del diagrama sísmico
 ## Punta (voladizo desde la cara de la pantalla)
@@ -133,8 +133,9 @@ Mp(q0, sl) = q0*Lp^2/2 + sl*Lp^3/6 // Momento de la reacción del suelo bajo la 
 Mwp = gammac*hz*Lp^2/2 -> tonf*m/m // Momento del peso propio de la punta (relleno sobre la punta despreciado)
 Mup = max(1.7*Mp(qtoe, slS), 1.25*Mp(qtoes, slE)) - 0.9*Mwp -> tonf*m/m // Momento último en la cara de la pantalla
 dz = hz - recz - db(5)/2 // Peralte efectivo de la zapata (varilla de 5/8")
-Asp = max(0.85*fc/fy*(1 - sqrt(1 - 2*Mup/(0.9*0.85*fc*dz^2)))*dz, 0.0018*hz) -> cm^2/m // Acero inferior (mínimo E.060 10.5.4)
-sp = rounddown(Ab(5)/Asp, 2.5 cm) // Varilla de 5/8"
+Asp = max(0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*Mup/(0.9*0.85*fc*dz^2))))*dz, 0.0018*hz) -> cm^2/m // Acero inferior (mínimo E.060 10.5.4)
+check Asp/dz <= 0.75*rhob // Cuantía máxima de la punta (E.060 10.3.4)
+sp = rounddown(max(Ab(5)/Asp, 2.5 cm), 2.5 cm) // Varilla de 5/8"
 check sp <= min(3*hz, 40 cm) // Espaciamiento máximo
 Lv = Lp - dz // Tramo a d de la cara (E.060 11.1.3)
 Vp(q0, sl) = q0*Lv + sl*Lv^2/2 // Resultante de la reacción entre la sección crítica y el borde
@@ -148,14 +149,15 @@ wde = gammas*hp + gammac*hz + 0.5*ws // Carga descendente, sismo
 Mq(q0, sl, Lc) = si(Lc > xb, (q0 + sl*xb)*(min(Lc, B) - xb)^2/2 + sl*(min(Lc, B) - xb)^3/6, 0 tonf*m/m) // Momento de la reacción del suelo bajo el talón
 Vq(q0, sl, Lc) = si(Lc > xb, (q0 + sl*xb)*(min(Lc, B) - xb) + sl*(min(Lc, B) - xb)^2/2, 0 tonf/m) // Resultante de la reacción bajo el talón
 Mut = max(1.7*(wds*Lt^2/2 - Mq(qtoe, slS, Lcs)), 1.25*(wde*Lt^2/2 - Mq(qtoes, slE, Lce))) -> tonf*m/m // Momento último (tracción arriba)
-Ast = max(0.85*fc/fy*(1 - sqrt(1 - 2*Mut/(0.9*0.85*fc*dz^2)))*dz, 0.0018*hz) -> cm^2/m // Acero superior del talón
-sth = rounddown(Ab(5)/Ast, 2.5 cm) // Varilla de 5/8"
+Ast = max(0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*Mut/(0.9*0.85*fc*dz^2))))*dz, 0.0018*hz) -> cm^2/m // Acero superior del talón
+check Ast/dz <= 0.75*rhob // Cuantía máxima del talón (E.060 10.3.4)
+sth = rounddown(max(Ab(5)/Ast, 2.5 cm), 2.5 cm) // Varilla de 5/8"
 check sth <= min(3*hz, 40 cm) // Espaciamiento máximo
 Vut = max(1.7*(wds*Lt - Vq(qtoe, slS, Lcs)), 1.25*(wde*Lt - Vq(qtoes, slE, Lce))) -> tonf/m // Cortante en la cara (reacción que tracciona: sección en la cara)
 check Vut <= phiVcz // Cortante en el talón
 ## Refuerzo transversal de temperatura (E.060 9.7.2)
 Astemp = 0.0018*hz -> cm^2/m // Repartido en ambas caras
-stemp = rounddown(Ab(4)/(Astemp/2), 2.5 cm) // Varilla de 1/2" en cada cara
+stemp = rounddown(max(Ab(4)/(Astemp/2), 2.5 cm), 2.5 cm) // Varilla de 1/2" en cada cara
 check stemp <= min(3*hz, 40 cm) // Espaciamiento máximo del refuerzo por temperatura
 "Zapata: inferior 5/8\\" @ {sp} (punta), superior 5/8\\" @ {sth} (talón), transversal 1/2\\" @ {stemp} en ambas caras. Dentellón con el refuerzo vertical de la pantalla prolongado y estribos mínimos.`),
     text(`> **Drenaje (E.050 39.13.8):** colocar filtro de grava graduada o geodren detrás de la pantalla, lloraderos de PVC Ø 3" @ 1.50 m y tubería perforada en el talón para evitar presiones de agua, que no se han considerado en este cálculo. Juntas verticales de contracción cada 6–9 m.`),
@@ -292,13 +294,13 @@ La estabilidad se calcula por metro de muro despreciando el peso de los contrafu
 ## Geometría
 H = 8.00 m // Altura total
 hz = 0.70 m // Espesor de la zapata
-B = 6.00 m // Ancho de la base (≈ 0.75H por sismo)
+B = 6.50 m // Ancho de la base (≈ 0.8H por sismo)
 Lp = 1.30 m // Longitud de la punta
 tp = 0.30 m // Espesor de la pantalla (constante)
 Sc = 3.00 m // Separación de contrafuertes entre ejes (≈ H/3 a H/2)
 tc = 0.35 m // Espesor de los contrafuertes
 bk = 0.50 m // Ancho del dentellón
-hk = 1.00 m // Profundidad del dentellón
+hk = 1.40 m // Profundidad del dentellón
 Df = 1.50 m // Suelo frente a la punta desde el fondo
 fp = 0.50 // Fracción del empuje pasivo que se considera (AASHTO Tabla 11.5.7-1: φep = 0.50; el pasivo requiere desplazamientos grandes y el suelo puede excavarse) [0 : despreciar el pasivo|0.50 : 50 % (recomendado)|1.00 : pasivo completo]
 hp = H - hz // Altura de la pantalla
@@ -333,12 +335,14 @@ pu = max(pus, pue) // Presión de diseño
 Mneg = pu*Ln^2/12 -> tonf*m/m // En los contrafuertes, tracción en la cara del relleno
 Mpos = pu*Ln^2/16 -> tonf*m/m // En el centro del vano, tracción en la cara exterior
 d = tp - rec - db(5)/2 // Peralte efectivo (5/8")
-Asreq(M) = 0.85*fc/fy*(1 - sqrt(1 - 2*M/(0.9*0.85*fc*d^2)))*d // Acero por metro para el momento M
+Asreq(M) = 0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*M/(0.9*0.85*fc*d^2))))*d // Acero por metro para el momento M
+rhob = 0.85*0.85*fc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy) // Cuantía balanceada (β1 = 0.85, E.060 10.3.2)
 Asmin = 0.0018*tp -> cm^2/m // Mínimo (E.060 10.5.4)
 Ashn = max(Asreq(Mneg), Asmin) -> cm^2/m // Horizontal, cara del relleno
 Ashp = max(Asreq(Mpos), Asmin) -> cm^2/m // Horizontal, cara exterior
-shn = rounddown(Ab(5)/Ashn, 2.5 cm) // 5/8"
-shp = rounddown(Ab(5)/Ashp, 2.5 cm) // 5/8"
+check Ashn/d <= 0.75*rhob // Cuantía máxima de la pantalla (E.060 10.3.4)
+shn = rounddown(max(Ab(5)/Ashn, 2.5 cm), 2.5 cm) // 5/8"
+shp = rounddown(max(Ab(5)/Ashp, 2.5 cm), 2.5 cm) // 5/8"
 check max(shn, shp) <= min(3*tp, 40 cm) // Espaciamiento máximo (E.060 10.5.4)
 Vup = pu*(Ln/2 - d) -> tonf/m // Cortante a d de la cara del contrafuerte
 phiVc = 0.85*0.53*sqrtfc(fc)*d -> tonf/m
@@ -346,7 +350,7 @@ check Vup <= phiVc // Cortante en la pantalla
 ## Momento vertical en la base de la pantalla (Huntington)
 Mv = 0.03*pu*hp*Ln -> tonf*m/m // Negativo en la unión con la zapata (cara del relleno)
 Asv = max(Asreq(Mv), Asmin) -> cm^2/m
-sv = rounddown(Ab(5)/Asv, 2.5 cm) // Vertical interior, en la franja inferior hp/4
+sv = rounddown(max(Ab(5)/Asv, 2.5 cm), 2.5 cm) // Vertical interior, en la franja inferior hp/4
 check sv <= min(3*tp, 40 cm) // Espaciamiento máximo
 "Momento vertical positivo $M_v/4$: se cubre con el refuerzo mínimo vertical de la cara exterior.
 # Contrafuerte (viga T en voladizo)
@@ -369,21 +373,23 @@ check Vnet <= phiVcc // Cortante en el contrafuerte
 ## Tirantes de unión (anclaje de la pantalla y del talón al contrafuerte)
 Tuh = pu*Sc -> tonf/m // Tracción horizontal por metro de altura en la base
 Ash = Tuh/(0.9*fy) -> cm^2/m // Estribos horizontales (2 ramas)
-sth = min(rounddown(2*Ab(4)/Ash, 2.5 cm), 30 cm) // Estribo de 1/2" en dos ramas, separación ≤ 30 cm
+sth = min(rounddown(max(2*Ab(4)/Ash, 2.5 cm), 2.5 cm), 30 cm) // Estribo de 1/2" en dos ramas, separación ≤ 30 cm
 check 2*Ab(4)/sth >= Ash // Tirantes horizontales suficientes
 wn = 1.7*(gammas*hp + gammac*hz + ws - qheel) -> tonf/m^2 // Carga neta descendente sobre el talón (presión mínima del suelo)
 Asvt = wn*Sc/(0.9*fy) -> cm^2/m // Tirantes verticales talón–contrafuerte
-svt = min(rounddown(2*Ab(4)/Asvt, 2.5 cm), 30 cm) // Estribo de 1/2" en dos ramas
+svt = min(rounddown(max(2*Ab(4)/Asvt, 2.5 cm), 2.5 cm), 30 cm) // Estribo de 1/2" en dos ramas
 check 2*Ab(4)/svt >= Asvt // Tirantes verticales suficientes
 # Talón y punta
 Mtn = wn*Ln^2/12 -> tonf*m/m // Talón: losa continua entre contrafuertes (tracción arriba en los apoyos)
 dz = hz - 7.5 cm - db(5)/2
-Astal = max(0.85*fc/fy*(1 - sqrt(1 - 2*Mtn/(0.9*0.85*fc*dz^2)))*dz, 0.0018*hz) -> cm^2/m
-stal = rounddown(Ab(5)/Astal, 2.5 cm)
+Astal = max(0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*Mtn/(0.9*0.85*fc*dz^2))))*dz, 0.0018*hz) -> cm^2/m
+check Astal/dz <= 0.75*rhob // Cuantía máxima del talón (E.060 10.3.4)
+stal = rounddown(max(Ab(5)/Astal, 2.5 cm), 2.5 cm)
 check stal <= min(3*hz, 40 cm) // Espaciamiento máximo
 Mpu = max(1.7*qtoe, 1.25*qtoes)*Lp^2/2 - 0.9*gammac*hz*Lp^2/2 -> tonf*m/m // Punta en voladizo (presión máxima uniforme, conservador)
-Aspu = max(0.85*fc/fy*(1 - sqrt(1 - 2*Mpu/(0.9*0.85*fc*dz^2)))*dz, 0.0018*hz) -> cm^2/m
-spu = rounddown(Ab(5)/Aspu, 2.5 cm)
+Aspu = max(0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*Mpu/(0.9*0.85*fc*dz^2))))*dz, 0.0018*hz) -> cm^2/m
+check Aspu/dz <= 0.75*rhob // Cuantía máxima de la punta (E.060 10.3.4)
+spu = rounddown(max(Ab(5)/Aspu, 2.5 cm), 2.5 cm)
 check spu <= min(3*hz, 40 cm) // Espaciamiento máximo
 Vupu = max(1.7*qtoe, 1.25*qtoes)*(Lp - dz) - 0.9*gammac*hz*(Lp - dz) -> tonf/m
 check Vupu <= 0.85*0.53*sqrtfc(fc)*dz // Cortante en la punta
@@ -436,22 +442,24 @@ Mub = max(abs(Mneg), abs(Mneg_s))/(1 m) -> tonf*m/m // Momento en el empotramien
 Mup = max(Mpos, Mpos_s)/(1 m) -> tonf*m/m // Momento positivo máximo (tracción en la cara interior)
 Vu = max(Vmax, Vmax_s)/(1 m) -> tonf/m // Cortante máximo
 d = tw - rec - db(4)/2 // Peralte efectivo
-Asreq(M) = 0.85*fc/fy*(1 - sqrt(1 - 2*M/(0.9*0.85*fc*d^2)))*d
+Asreq(M) = 0.85*fc/fy*(1 - sqrt(max(0, 1 - 2*M/(0.9*0.85*fc*d^2))))*d
+rhob = 0.85*0.85*fc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy) // Cuantía balanceada (β1 = 0.85, E.060 10.3.2)
 Asmin = 0.0018*tw -> cm^2/m // Mínimo en flexión (E.060 10.5.4)
 Asb = max(Asreq(Mub), Asmin) -> cm^2/m // Vertical, cara del suelo en la base
 Asp = max(Asreq(Mup), 0.0012*tw) -> cm^2/m // Vertical, cara interior (mínimo vertical de muros E.060 14.3.2)
-sb = rounddown(Ab(4)/Asb, 2.5 cm) // Varilla de 1/2"
-sp = rounddown(Ab(4)/Asp, 2.5 cm) // Varilla de 1/2"
+check max(Asb, Asp)/d <= 0.75*rhob // Cuantía máxima (E.060 10.3.4)
+sb = rounddown(max(Ab(4)/Asb, 2.5 cm), 2.5 cm) // Varilla de 1/2"
+sp = rounddown(max(Ab(4)/Asp, 2.5 cm), 2.5 cm) // Varilla de 1/2"
 check max(sb, sp) <= min(3*tw, 40 cm) // Espaciamiento máximo (E.060 14.3.5)
 phiVc = 0.85*0.53*sqrtfc(fc)*d -> tonf/m
 check Vu <= phiVc // Cortante (sin estribos, E.060 11.3)
 Ash = 0.0020*tw -> cm^2/m // Horizontal mínimo (E.060 14.3.3), en dos capas
-sh = rounddown(Ab(3)/(Ash/2), 2.5 cm) // 3/8" en cada cara
+sh = rounddown(max(Ab(3)/(Ash/2), 2.5 cm), 2.5 cm) // 3/8" en cada cara
 check sh <= min(3*tw, 40 cm) // Espaciamiento horizontal
 ## Conexión con la losa (cortante-fricción, E.060 11.7)
 Ru = max(R1, R1_s)/(1 m) -> tonf/m // Reacción última en la losa
 Avf = Ru/(0.85*fy*0.6) -> cm^2/m // μ = 0.6 (junta no rugosa), φ = 0.85
-sd = rounddown(Ab(3)/Avf, 2.5 cm) // Pasadores de 3/8"
+sd = rounddown(max(Ab(3)/Avf, 2.5 cm), 2.5 cm) // Pasadores de 3/8"
 check sd <= 40 cm // Espaciamiento de pasadores
 "Refuerzo: vertical 1/2\\" @ {sb} (cara del suelo, en la base y hasta $h_s/3$), 1/2\\" @ {sp} (cara interior), horizontal 3/8\\" @ {sh} en ambas caras; pasadores 3/8\\" @ {sd} a la losa. Impermeabilizar la cara del suelo y colocar drenaje perimetral.`),
     summary(),
@@ -489,6 +497,7 @@ KaC1 = KaCoulomb(phi, phi/2, beta, theta) // Coulomb, δ = φ/2
 KaC2 = KaCoulomb(phi, 2/3*phi, beta, theta) // Coulomb, δ = 2φ/3
 KpC1 = KpCoulomb(phi, phi/2, beta, theta) // Pasivo de Coulomb, δ = φ/2 (no usar δ > φ/2: sobrestima Kp)
 psi = psiMO(kh, kv) // Ángulo sísmico
+check MOequil(phi, kh, kv, beta) >= 0 deg // Equilibrio sísmico del relleno: φ − β − ψ ≥ 0 (M-O tiene solución)
 Kae = KaeMO(phi, phi/2, kh, kv, beta, theta) // Mononobe–Okabe activo, δ = φ/2
 Kpe = KpeMO(phi, 0 deg, kh, kv, beta, theta) // Mononobe–Okabe pasivo, δ = 0
 DKMO = Kae - KaC1 // Incremento dinámico exacto (M-O)
@@ -546,6 +555,7 @@ Ka = KaRankine(phis) // Rankine (β = 0)
 Ea = 0.5*Ka*gammas*H^2 -> tonf/m // Empuje del relleno, a H/3
 Eq = Ka*ws*H -> tonf/m // Empuje de la sobrecarga, a H/2
 Kae = KaeMO(phis, 0 deg, kh, kv) // Mononobe–Okabe en el plano vertical (δ = β = 0)
+check MOequil(phis, kh, kv) >= 0 deg // Equilibrio sísmico del relleno: φ − β − ψ ≥ 0 (M-O tiene solución)
 DEae = 0.5*(Kae - Ka)*gammas*H^2*(1 - kv) -> tonf/m // Incremento dinámico, a 0.6H (Seed–Whitman)
 Eqe = Kae*0.5*ws*H -> tonf/m // Sobrecarga con sismo (50 %)
 # Pesos y momentos estabilizantes (respecto a la arista exterior de la base)
@@ -580,7 +590,7 @@ FSds = mu*SV/(Ea + DEae + Eqe + Fi)
 check FSds >= FSminE050(1) // Deslizamiento, sismo (E.050 39.13.6)
 es = B/2 - (Mr - Mos)/SV -> m
 check abs(es) <= B/3 // Excentricidad sísmica (AASHTO 11.6.5.1)
-qmaxs = si(abs(es) <= B/6, SV/B*(1 + 6*abs(es)/B), 2*SV/(3*(B/2 - abs(es)))) -> tonf/m^2
+qmaxs = si(abs(es) <= B/6, SV/B*(1 + 6*abs(es)/B), 2*SV/(3*max(B/2 - abs(es), 0.01*B))) -> tonf/m^2
 check qmaxs <= qas // Presión máxima con sismo (E.050 Art. 21)`),
     { type: 'gabionwall', anchos: 'bv', h: 'h', Ka: 'Ka', gs: 'gammas', q: 'ws', qmax: 'qmax', qmin: 'qmin', e: 'e' },
     calc(`# Junta entre las hiladas 1 y 2 (estabilidad interna)
@@ -660,17 +670,17 @@ check eb <= L/3 // Resultante dentro de los 2/3 centrales en suelo (11.6.3.3)
 Vb = 1.35*V1 + 1.75*ws*L -> tonf/m
 Mb = 1.50*F1*H/3 + 1.75*F2*H/2 -> tonf*m/m
 ebb = Mb/Vb -> m
-sigv = Vb/(L - 2*ebb) -> tonf/m^2 // Presión uniforme de Meyerhof (11.6.3.2)
+sigv = Vb/max(L - 2*ebb, 0.01*L) -> tonf/m^2 // Presión uniforme de Meyerhof (11.6.3.2)
 qR = 0.65*qn // φb = 0.65 (Tabla 11.5.7-1)
 check sigv <= qR // Capacidad portante
 ## Sismo (Evento Extremo I, 11.10.7.1)
 ${SISMO}
 PIR = 0.5*kh*gammar*H^2 -> tonf/m // Inercia del macizo de ancho 0.5H (11.10.7.1)
 PAE = 0.375*kh*gammaf*H^2 -> tonf/m // Incremento dinámico del relleno retenido (Seed–Whitman)
-Pdrve = F1 + 0.5*F2 + PIR + 0.5*PAE -> tonf/m // PIR + 50 % PAE (11.10.7.1), γEQ = 0.5 para LS
+Pdrve = F1 + 0.5*F2 + max(PIR + 0.5*PAE, 0.5*PIR + PAE) -> tonf/m // Envolvente de PIR + 50 % PAE (11.10.7.1) y PAE + 50 % PIR (11.6.5.1); γEQ = 0.5 para LS
 Rte = mub*V1 -> tonf/m // φ = 1.0 en Evento Extremo (11.5.8)
 check Pdrve <= Rte // Deslizamiento sísmico
-ebe = (F1*H/3 + 0.5*F2*H/2 + PIR*H/2 + 0.5*PAE*0.6*H)/V1 -> m
+ebe = (F1*H/3 + 0.5*F2*H/2 + max(PIR*H/2 + 0.5*PAE*0.6*H, 0.5*PIR*H/2 + PAE*0.6*H))/V1 -> m // Envolvente de ambas combinaciones
 check ebe <= 0.4*L // Excentricidad sísmica: 8/10 centrales (11.6.5.1)
 # Estabilidad interna (11.10.6)
 Kar = KaRankine(phir) // Ka del relleno reforzado
@@ -684,7 +694,7 @@ DCr = Tmax/(0.90*Tal) // Demanda/capacidad por capa
 check max(DCr) <= 1 // Rotura de la geomalla (capa más cargada)
 ## Arranque (11.10.6.3)
 La = (H - zr)*tan(45 deg - phir/2) // Longitud en la zona activa (superficie de Rankine)
-Le = L - La // Longitud de anclaje en la zona resistente
+Le = (L - La + 0.01 m + abs(L - La - 0.01 m))/2 // Longitud de anclaje en la zona resistente, max(L − La, 0.01 m) capa a capa
 check min(Le) >= 0.90 m // Longitud de anclaje mínima (11.10.6.3.2)
 Fst = FstarAASHTO(0 m, phir, 3) // F* = 0.67 tan φr para geosintéticos
 Pr = Fst*alphar*gammar*zr*Cr .* Le -> tonf/m // Resistencia al arranque (sin sobrecarga viva)

@@ -25,6 +25,7 @@ coeficientes de empuje**; capacidad portante, taludes, pilotes y licuación pert
 | `KaCoulomb(φ, δ, β, θ)` | cos²(φ−θ)/[cos²θ cos(δ+θ)(1+√(sen(φ+δ)sen(φ−β)/(cos(δ+θ)cos(θ−β))))²] — Das ec. 7.26 |
 | `KpCoulomb(φ, δ, β, θ)` | cos²(φ+θ)/[cos²θ cos(δ−θ)(1−√(sen(φ+δ)sen(φ+β)/(cos(δ−θ)cos(β−θ))))²] |
 | `psiMO(kh, kv)` | ψ = atan(kh/(1−kv)) |
+| `MOequil(φ, kh, kv, β)` | φ − β − ψ (≥ 0 para que M-O tenga solución; si es < 0, `KaeMO`/`KpeMO` anulan la raíz como EN 1998-5 Anexo E y la plantilla marca NO CUMPLE) |
 | `KaeMO(φ, δ, kh, kv, β, θ)` | cos²(φ−θ−ψ)/[cos ψ cos²θ cos(δ+θ+ψ)(1+√(sen(φ+δ)sen(φ−β−ψ)/(cos(δ+θ+ψ)cos(β−θ))))²]; Pae = ½γH²(1−kv)Kae — Mononobe–Okabe; Kramer (1996); AASHTO A11.3 |
 | `KpeMO(φ, δ, kh, kv, β, θ)` | cos²(φ+θ−ψ)/[cos ψ cos²θ cos(δ−θ+ψ)(1−√(sen(φ+δ)sen(φ+β−ψ)/(cos(δ−θ+ψ)cos(β−θ))))²] |
 | `DKaeSW(kh)`, `DPaeSW(kh, γ, H)` | ΔKae ≈ ¾kh; ΔPae = ⅜ kh γH² a 0.6H — Seed y Whitman (1970) |
@@ -49,10 +50,15 @@ coeficientes de empuje**; capacidad portante, taludes, pilotes y licuación pert
   `coulomb` (plano talón–corona, θ = atan(Lb/H)). Sismo: Kae M-O, ΔEae a `ysis`·H (0.6 por defecto,
   Seed–Whitman), inercia khW del muro y del suelo incluido, pesos ×(1−kv), pasivo con Kpe.
   Deslizamiento: μΣV + ca·B + fp·Ep (Ep sobre Df + hk). Presiones trapezoidales o triangulares
-  (Lc = 3(B/2 − e)). Exporta `Ka Kp Hv Pa Pah SV SMr SMo FSv FSd xr e qmax qmin qtoe qheel Ep` y con
+  (Lc = 3(B/2 − e); si la resultante sale de la base se acota Lc = 0.03B y se marca NO CUMPLE).
+  **Nivel freático** opcional `hw` (altura sobre el fondo de la base), `gsat`, `gw`: suelo bajo el N.F. con
+  γsat en los pesos y γ' en el empuje (por tramos), empuje hidrostático ½γw·hw² sobre el plano de empuje,
+  subpresión triangular ½γw·hw·B a 2B/3 de la punta (sumada al momento de volteo) y, con sismo, agua
+  retenida (Matsuzawa et al. 1985; Kramer §11.6): K'ae con k'h = kh·γsat/γ' bajo el N.F. Con sismo se
+  verifica además φ − β − ψ ≥ 0. Exporta `Ka Kp Hv Pa Pah SV SMr SMo FSv FSd xr e qmax qmin qtoe qheel Ep` y con
   sismo `Kae Pae DPae FSvs FSds es qmaxs qmins qtoes qheels`. Checks: FS (E.050), |e| ≤ B/6 (estático),
   ≤ B/3 (sismo), qmax ≤ qa y ≤ 1.2qa.
-- **`wallrebar`** — Mu(z) en la pantalla: U1 = 1.7(CE + sobrecarga), U2 = 1.25 CE + 1.0 CS (M-O a 0.6z +
+- **`wallrebar`** — Mu(z) en la pantalla: U1 = 1.7(CE + sobrecarga), U2 = 1.7 CE + 1.0 CS (campo `fE2`) (M-O a 0.6z +
   inercia), capacidad φMn del refuerzo colocado, corte teórico de la mitad de barras y prolongación
   max(d, 12db) (E.060 12.10.3), ld (E.060 12.2.2). Exporta `Mub Vub phiMnb Asv hcorte DCpant`.
 - **`gabionwall`**, **`msewall`** — dibujos acotados (hiladas, empuje, presiones; refuerzos, superficie
@@ -74,11 +80,22 @@ coeficientes de empuje**; capacidad portante, taludes, pilotes y licuación pert
 | `wa-tablestaca-anclada` | Apoyo libre, fuerza de anclaje, Mmax, tirante (0.6fy), viga de reparto (wL²/10), muerto fuera de la cuña activa con FS ≥ 2 |
 | `wa-coeficientes` | Comparativo K0, Rankine, Coulomb, M-O, Seed–Whitman con 3 gráficos (`plot`) |
 
-Criterios de carga adoptados: E.060 9.2.3 (U = 1.7 CE; con peso favorable 0.9 CM); con sismo
-U = 1.25 CE + 1.0 CS (por analogía con 1.25(CM + CV) ± CS de E.060 9.2.1) y 50 % de la sobrecarga.
-kh = 0.5·Z·S (AASHTO 11.6.5.2.2 con PGA = Z·S de la E.030), kv = 0.
+Criterios de carga adoptados (revisados, ver `revision-walls.md`): **E.060 9.2.5** (U = 1.4CM + 1.7CV + 1.7CE;
+con peso favorable U = 0.9CM + 1.7CE). La E.060 no combina CE con sismo (9.2.3 solo da U = 1.25(CM+CV) ± CS):
+para elementos cuyo esfuerzo proviene del empuje (pantalla, contrafuerte, cuerpo de gravedad, muro de sótano)
+se adopta **U = 1.7 CE + 1.0 CS** con 50 % de la sobrecarga, equivalente a ACI 318-19 5.3.8 / ASCE 7-16 2.3.6
+(1.6H + 1.0E) y AASHTO Evento Extremo I (1.5EH + 1.0EQ). Para la punta y el talón se mayora la reacción
+sísmica completa con 1.25 (su parte sísmica, dominante, queda sobre-mayorada). kh = 0.5·Z·S (AASHTO
+11.6.5.2.2 con PGA = Z·S de la E.030), kv = 0. Empuje pasivo frente a la punta y el dentellón: se cuenta
+**fp = 0.50** por defecto en las plantillas (AASHTO Tabla 11.5.7-1, φep = 0.50), editable (0 / 0.5 / 1).
 
-## 5. Validación (tests/walls.test.mjs — 65 comprobaciones)
+## 5. Validación (tests/walls.test.mjs — 104 comprobaciones; revisión independiente en `revision-walls.md`)
+
+- **Das, PoFE 7.ª ed., Ej. 7.6** (M-O): φ = 30°, δ = 15°, kh = 0.2 → Kae = 0.452, Pae = 56.05 kN/m.
+- **S. Sağlam (Adnan Menderes Univ.), *Retaining wall problems*** P1 (voladizo: ΣV = 655.5 kN/m, ΣMr = 1855.75,
+  ΣMo = 832, FSv = 2.23, FSd = 1.20 → NO CUMPLE) y P2 (Coulomb θ = 15°: Ka = 0.4023, Pa = 157.22 kN/m).
+- Nivel freático contra cálculo manual; carga lineal NAVFAC (∫σh = PL); empuje de sobrecarga de Coulomb
+  contra cuña; Kpe con ejes rotados; plantillas con datos extremos → NO CUMPLE sin errores.
 
 - Rankine: Ka(30°) = 1/3, Kp = 3; con talud 10° → 0.3495, 20° → 0.4142 (tabla de Das).
 - **Coulomb — tabla de Das (θ = 0, α = 0), φ = 30°**: Ka = 0.3333, 0.3189, 0.3085, 0.3014, 0.2973,
@@ -110,8 +127,12 @@ kh = 0.5·Z·S (AASHTO 11.6.5.2.2 con PGA = Z·S de la E.030), kv = 0.
 
 ## 7. Limitaciones
 
-- Sin nivel freático ni presión de poros en el relleno (se exige drenaje, E.050 39.13.8); en
-  tablestacas usar pesos sumergidos y presión neta del agua manualmente.
+- Nivel freático solo en `retwall` (no en `wallrebar` ni en las fórmulas de punta/talón de las plantillas, que
+  suponen relleno drenado, E.050 39.13.8); agua frente al muro y flujo (subpresión no lineal) no se modelan.
+  En tablestacas usar pesos sumergidos y presión neta del agua manualmente.
+- `retwall` combina 100 % de ΔEae con 100 % de la inercia (conservador frente a AASHTO 11.6.5.1, que
+  permite 100 % PAE + 50 % PIR y 50 % PAE + 100 % PIR). MSE: envolvente de ambas combinaciones.
+- MSE: sin verificación sísmica interna (AASHTO 11.10.7.2) ni compuesta; ΔEae a 0.6H.
 - Relleno granular sin cohesión (la cohesión solo se considera en el suelo de cimentación).
 - La estabilidad global (círculos de falla) y la capacidad portante última corresponden al módulo
   «geotech»; aquí se compara con qa del EMS.
