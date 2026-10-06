@@ -318,7 +318,7 @@ export function blockSection(b, ctx) {
   pos({ b: bw, h }); if (2 * rec >= Math.min(bw, h)) throw new Error('El recubrimiento es demasiado grande para la sección');
   const estN = Math.round(evalParam(b.estribo, S, '', 3));
   const de = (BARS[estN] || BARS[3]).d;
-  for (const t of [interp(b.sup, S), interp(b.inf, S)]) for (const br of parseBars(t)) if (br.n > 24) throw new Error('Número de barras excesivo en la sección (' + br.n + '): revise los datos');
+  const tooMany = [interp(b.sup, S), interp(b.inf, S)].some(t => parseBars(t).some(br => br.n > 24));
   const top = parseBars(interp(b.sup, S)), bot = parseBars(interp(b.inf, S)), side = Math.round(evalParam(b.lat, S, '', 0)) || 0;
   const W = 420, H = 380, wMax = Math.max(bw, bf);
   const sc = Math.min(250 / wMax, 290 / h), ox = (W - wMax * sc) / 2 + 15, oy = 35;
@@ -333,7 +333,7 @@ export function blockSection(b, ctx) {
   const layers = (str, dir) => {
     let off = rec + de;
     String(interp(str, S) || '').split('/').map(t => parseBars(t)).filter(a => a.length).forEach((grp, li) => {
-      const all = []; grp.forEach(br => { for (let i = 0; i < br.n; i++) all.push(br.d); });
+      const all = []; grp.forEach(br => { for (let i = 0; i < Math.min(br.n, 24); i++) all.push(br.d); });
       const dmax = Math.max(...all);
       if (li > 0) off += 2.5;
       const y = off + dmax / 2; off += dmax;
@@ -352,6 +352,7 @@ export function blockSection(b, ctx) {
   if (bf > bw) g += dimH(ox, ox + bf * sc, Y(0) - 14, f2(bf, 1) + ' cm');
   g += dimV(X(0) - 22, Y(0), Y(h), f2(h, 1) + ' cm');
   g += T(X(bw / 2), Y(h) + 50, 'Estribo #' + estN + ' (' + (BARS[estN] || BARS[3]).n + ')' + (b.sest ? '  ' + interp(b.sest, S) : '') + ' · recubrimiento ' + f2(rec, 1) + ' cm', { fs: 10, c: C.axis });
+  if (tooMany) g += T(W / 2, 16, '⚠ Más de 24 barras por capa: el dibujo muestra solo 24', { fs: 10, c: C.red, b: 1 });
   return `<div class="figure fig-sm">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Sección transversal')}</div>`;
 }
 

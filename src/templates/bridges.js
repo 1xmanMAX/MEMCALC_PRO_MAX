@@ -39,11 +39,12 @@ Modificador de cargas $\\eta = \\eta_D\\,\\eta_R\\,\\eta_I = 1.00$ (puente típi
     calc(`# Datos de diseño
 ## Geometría
 L = 20.00 m // Luz de cálculo entre ejes de apoyos
-wc = 7.20 m // Ancho de calzada entre caras de barreras
-bbar = 0.40 m // Ancho de la barrera en su base
-B = wc + 2*bbar // Ancho total del tablero
-Nb = 4 // Número de vigas longitudinales
+Nb = 4 // Número de vigas longitudinales (la franja de losa se modela con 4 vigas)
 S = 2.10 m // Separación entre ejes de vigas
+vol = 0.85 m // Longitud del voladizo, desde el eje de la viga exterior
+bbar = 0.40 m // Ancho de la barrera en su base
+B = (Nb - 1)*S + 2*vol // Ancho total del tablero
+wc = B - 2*bbar // Ancho de calzada entre caras de barreras
 ta = 0.05 m // Espesor de la carpeta asfáltica
 bsup = 0.40 m // Longitud de apoyo (dispositivo de neopreno) en el sentido longitudinal
 ## Materiales
@@ -67,9 +68,9 @@ tsmin = max((S + 3 m)/30, 175 mm) -> m // Espesor mínimo de losa: (S + 3000)/30
 ts = roundup(tsmin, 0.05 m) // Espesor de la losa adoptado
 bw = 0.50 m // Ancho del alma: aloja 6 barras por capa (5.10.3.1)
 hv = h - ts // Altura del alma bajo la losa
-vol = (B - (Nb - 1)*S)/2 // Longitud del voladizo, desde el eje de la viga exterior
 de = vol - bbar // Distancia del eje de la viga exterior a la cara interior de la barrera (4.6.2.2.1)
-check de <= 0.91 m // Límite de de para la regla e (−0.30 ≤ de ≤ 1.70 m) y voladizo ≤ 0.91 m (4.6.2.2.1)
+check de >= -0.30 m and de <= 0.91 m // −0.30 ≤ de ≤ 1.70 m (Tabla 4.6.2.2.2d-1) y parte de calzada del voladizo ≤ 0.91 m (4.6.2.2.1)
+check Nb == 4 // El modelo de la franja de losa y de la sección rígida está planteado para 4 vigas
 check hv >= hmin - ts // Peralte del alma suficiente`),
     { type: 'bridgesec', tipo: 'T', B: 'B', ts: 'ts', nv: 'Nb', S: 'S', hv: 'hv', bw: 'bw', barrera: 'bbar', hbarrera: '0.85', tasf: 'ta', titulo: 'Sección transversal del puente (dimensiones en m)' },
     calc(`# Diseño de la losa del tablero
@@ -121,6 +122,7 @@ Asdist = pdist*Ab(barL)*100 cm/spos // Acero de distribución inferior, longitud
 sdist = max(rounddown(min(Ab(4)*100 cm/Asdist, 45 cm), 2.5 cm), 5 cm) // Espaciamiento de varillas #4
 Astem = max(0.75*(B/(1 mm))*(ts/(1 mm))/(2*((B + ts)/(1 mm))*fy/(1 MPa))*1 mm^2/mm, 0.233 mm^2/mm) -> cm^2/m // Temperatura 0.75bh/[2(b+h)fy] ≥ 0.233 mm²/mm (5.10.6)
 stem = max(rounddown(min(Ab(3)/Astem, 3*ts, 45 cm), 2.5 cm), 5 cm) // Varillas #3 de temperatura (superior, longitudinal)
+check min(spos, sneg) >= db(barL) + max(1.5*db(barL), 3.8 cm) // Separación libre mínima entre barras (5.10.3.1.1)
 "Losa: #{barL} @ {spos} inferior transversal, #{barL} @ {sneg} superior transversal, #4 @ {sdist} de distribución y #3 @ {stem} de temperatura.
 ## Voladizo — Resistencia I (cara del alma de la viga exterior)
 Xv = vol - bw/2 // Longitud del voladizo hasta la cara del alma
@@ -199,8 +201,9 @@ gMe1 = mpLRFD(1)*Rlev // Un carril, con m = 1.20 (Tabla 4.6.2.2.2d-1)
 gMe2 = eMLRFD(de, verDF)*gM2 // Dos carriles: e = 0.77 + de/2800 mm (de/9.1 ft)
 gVe2 = eVLRFD(de, verDF)*gV2 // Cortante dos carriles: e = 0.6 + de/3000 mm (de/10 ft) (Tabla 4.6.2.2.3b-1)
 xext = (Nb - 1)*S/2 // Distancia del eje del puente a la viga exterior
-sumx2 = 2*((S/2)^2 + (3*S/2)^2) // Σx² de las vigas (Nb = 4)
+sumx2 = S^2*Nb*(Nb^2 - 1)/12 // Σx² de las vigas respecto al eje del puente
 e1 = B/2 - bbar - 0.60 m - 0.90 m // Excentricidad del primer camión (ruedas a 0.60 m de la barrera)
+check NL <= 2 // La sección rígida considera uno y dos carriles cargados
 e2 = e1 - 3.60 m // Excentricidad del segundo camión (carril adyacente)
 Rr1 = mpLRFD(1)*(1/Nb + xext*e1/sumx2) // Sección rígida, un carril (4.6.2.2.2d-1)
 Rr2 = mpLRFD(2)*(2/Nb + xext*(e1 + e2)/sumx2) // Sección rígida, dos carriles
@@ -415,7 +418,7 @@ gM = max(gMi1LRFD(S, L, ts, Kg), gMi2LRFD(S, L, ts, Kg)) // Momento, viga interi
 gV = max(gVi1LRFD(S), gVi2LRFD(S)) // Cortante, viga interior
 hc = h + hh + ts // Peralte de la sección compuesta
 xv = 0.72*hc + 9 in // Sección de cortante: dv ≥ 0.72 h desde la cara del apoyo (apoyo de 18 in)`),
-    { type: 'bridgesec', tipo: 'I', B: 'wcc + 2*1.5 ft', ts: 'ts', nv: 'Nb', S: 'S', hv: 'h + hh', bw: 'bw', bf: '26 in', tf: '8 in', barrera: '1.5 ft', hbarrera: '32 in', tasf: '0', titulo: 'Sección transversal: seis vigas AASHTO Tipo IV @ 8.0 ft, losa de 8 in' },
+    { type: 'bridgesec', tipo: 'I', B: 'max(wcc + 2*1.5 ft, (Nb - 1)*S + 26 in)', ts: 'ts', nv: 'Nb', S: 'S', hv: 'h + hh', bw: 'bw', bf: '26 in', tf: '8 in', barrera: '1.5 ft', hbarrera: '32 in', tasf: '0', titulo: 'Sección transversal: seis vigas AASHTO Tipo IV @ 8.0 ft, losa de 8 in' },
     { type: 'hl93env', tramos: 'L', apoyos: 'A A', vehiculo: 'HL-93', IM: 'IMLRFD(1)', g: 'gM', secciones: 'xv', titulo: 'Envolventes HL-93 × gM en la viga interior (IM = 33 %, carril sin IM)' },
     calc(`MLL = MLLp // Momento LL+IM máximo en la viga interior (distribuido)
 # Pérdidas de presfuerzo (5.9.3)
@@ -597,7 +600,7 @@ check Kg >= 10000 in^4 and Kg <= 7000000 in^4 // Rango de aplicación
 NL = NLLRFD(wcc) // Carriles de diseño
 gM = max(gMi1LRFD(S, L, ts, Kg), gMi2LRFD(S, L, ts, Kg)) // Momento, viga interior
 gV = max(gVi1LRFD(S), gVi2LRFD(S)) // Cortante, viga interior`),
-    { type: 'bridgesec', tipo: 'acero', B: 'wcc + 2*1.5 ft', ts: 'ts', nv: 'Nb', S: 'S', hv: 'hs + th', bw: 'tw', bf: 'bt', tf: 'tt', barrera: '1.5 ft', hbarrera: '32 in', tasf: '0', titulo: 'Sección transversal: cinco vigas de acero @ 9.0 ft con losa de 8.5 in' },
+    { type: 'bridgesec', tipo: 'acero', B: 'max(wcc + 2*1.5 ft, (Nb - 1)*S + bt)', ts: 'ts', nv: 'Nb', S: 'S', hv: 'hs + th', bw: 'tw', bf: 'bt', tf: 'tt', barrera: '1.5 ft', hbarrera: '32 in', tasf: '0', titulo: 'Sección transversal: cinco vigas de acero @ 9.0 ft con losa de 8.5 in' },
     { type: 'hl93env', tramos: 'L', apoyos: 'A A', vehiculo: 'HL-93', IM: 'IMLRFD(1)', g: 'gM', titulo: 'Envolventes HL-93 × gM, viga interior (IM = 33 %)' },
     calc(`MLL = MLLp // Momento LL+IM en L/2 (distribuido)
 VLLv = gV/gM*VLL // Cortante LL+IM en el apoyo (distribuido con gV)
@@ -848,6 +851,7 @@ phiMh = phif1*Ab(barP)*100 cm/sph*fy*(dz - Ab(barP)*100 cm/sph*fy/(2*0.85*fc*100
 check Muh <= phiMh // Flexión en el talón
 Vuh = (1.35*gammas*hp + 1.25*gammac*hz + 1.75*gammas*heq)*(Lt - dz)*1 m -> tonf
 check Vuh <= phiv*0.083*2*sqrtMPa(fc)*100 cm*0.9*dz // Cortante en el talón
+check min(sps, spt, sph) >= db(barP) + max(1.5*db(barP), 3.8 cm) // Separación libre mínima entre barras (5.10.3.1.1)
 "Refuerzo: pantalla #{barP} @ {sps} (cara del relleno); punta #{barP} @ {spt} (inferior); talón #{barP} @ {sph} (superior). Refuerzo de temperatura y contracción en ambas caras según 5.10.6.`),
     summary(),
   ],
@@ -936,9 +940,23 @@ Pu1 = 1.25*PD + 1.50*PW + 1.75*PLL // Resistencia I
 Mu1 = 1.75*BRLRFD(2*L1, NL)/ncol*(Hc + 2.5 m) -> tonf*m // Resistencia I: frenado a 1.80 m sobre la rasante
 Pu2 = 1.25*PD + 1.50*PW + 0.5*PLL + PEQe // Evento Extremo I (máx. compresión): γp máximos, γEQ = 0.5 (Tabla 3.4.1-1)
 Pu3 = 0.90*PD + 0.65*PW - PEQe // Evento Extremo I (mín. compresión): γp mínimos, sin carga viva
+## Esbeltez y magnificación de momentos en Resistencia I (5.6.4.3)
+Kcol = 2.0 // Factor de longitud efectiva longitudinal: columna en voladizo con desplazamiento lateral
+rcol = 0.30*bcol // Radio de giro de la sección rectangular (5.6.4.3)
+KLr = Kcol*Hc/rcol // Esbeltez
+check KLr <= 100 // Método aproximado aplicable (KLu/r < 100); si no, análisis de segundo orden (5.6.4.3)
+EIcol = Ec*Ig/2.5 -> tonf*m^2 // EI = Ec Ig/2.5 (5.6.4.3-2), βd ≈ 0 para la carga lateral de frenado
+Pe = pi^2*EIcol/(Kcol*Hc)^2 -> tonf // Carga de pandeo de Euler de una columna
+check Pu1 < 0.75*Pe // Estabilidad del pórtico (φK = 0.75)
+deltas = 1/(1 - ncol*Pu1/(0.75*ncol*Pe)) // Magnificador de momentos con desplazamiento lateral (4.5.3.2.2b-2)
+Mu1m = deltas*Mu1 // Momento magnificado de Resistencia I
 "Se verifican las columnas con el diagrama de interacción de AASHTO LRFD 5.6.4 con los factores $\\phi$ de 5.5.4.2 (0.75 en secciones controladas por compresión → 0.90 controladas por tracción) para Resistencia I y, para Evento Extremo I, $\\phi = 0.90$ (5.10.11.4.1b, zonas sísmicas 3 y 4). La resistencia axial máxima es $0.80\\,\\phi P_0$ (5.6.4.4-3).`),
-    { type: 'pmLRFD', b: 'bcol', h: 'bcol', fc: 'fc', fy: 'fy', dp: '7.5', nx: '8', ny: '6', barra: '10', phiEE: 'si(zona >= 3, 0.90, 1.00)', demandas: 'Pu1, Mu1 // Resistencia I\nPu2, MEQ // Evento Extremo I (Pmáx)\nPu3, MEQ // Evento Extremo I (Pmín)', titulo: 'Diagrama de interacción de la columna 1.20 × 1.20 m (28 #10)' },
-    calc(`# Detallado sísmico de las columnas (5.10.11.4)
+    { type: 'pmLRFD', b: 'bcol', h: 'bcol', fc: 'fc', fy: 'fy', dp: '7.5', nx: '8', ny: '6', barra: '10', phiEE: 'si(zona >= 3, 0.90, 1.00)', demandas: 'Pu1, Mu1m // Resistencia I\nPu2, MEQ // Evento Extremo I (Pmáx)\nPu3, MEQ // Evento Extremo I (Pmín)', titulo: 'Diagrama de interacción de la columna 1.20 × 1.20 m (28 #10)' },
+    calc(`## Requisito de desplazamiento P–Δ (4.7.4.5)
+Rd = si(TL < 1.25*Ts, (1 - 1/R)*1.25*Ts/TL + 1/R, 1) // Amplificación de desplazamientos para periodos cortos (4.7.4.5-2)
+DeltaD = Rd*DeltaL -> cm // Desplazamiento de diseño longitudinal
+check Pu2*DeltaD <= 0.25*phiMnEE(Pu2) // ΔPu ≤ 0.25 φMn (4.7.4.5-1)
+# Detallado sísmico de las columnas (5.10.11.4)
 check rhog >= 0.01 and rhog <= 0.04 // Cuantía longitudinal 1 % – 4 % (5.10.11.4.1a)
 ## Cortante (3.10.9.4.3 y 5.10.11.4.1c)
 VuL = max(FeL, FeT)/ncol // Cortante con la fuerza elástica no reducida (R = 1) en la dirección más desfavorable, cota superior de la rótula plástica (3.10.9.4.3)
@@ -1288,6 +1306,7 @@ fss = min(Ms/(Asx*dts*(1 - kx/3)), 0.6*fy) -> kgf/cm^2
 dc = rec + db(bar)/2
 betas = 1 + dc/(0.7*(tt - dc))
 check s1 <= 123000*1.0/(betas*fss/(1 MPa))*1 mm - 2*dc // Espaciamiento máximo, exposición clase 1
+check min(s1, s2, s3, s4) >= db(bar) + max(1.5*db(bar), 3.8 cm) // Separación libre mínima entre barras (5.10.3.1.1)
 "Refuerzo: losa superior #{bar} @ {s1} inferior; esquinas y cara exterior #{bar} @ {s2}; losa inferior #{bar} @ {s3} superior; muros #{bar} @ {s4} interior; el acero exterior de las esquinas se prolonga en toda la altura de los muros (el momento a media altura del muro produce tracción exterior). Distribución y temperatura según 5.10.6 y 9.7.3.2.`),
     { type: 'table', columnas: 'Combinación = [1, 2, 3]\nM esquina sup. [tonf*m] = [MA1, MA2, MA3]\nM esquina inf. [tonf*m] = [MB1, MB2, MB3]\nM centro losa sup. [tonf*m] = [Mt1, Mt2, Mt3]\nM centro losa inf. [tonf*m] = [Mb1, Mb2, Mb3]\nM muro [tonf*m] = [Mw1, Mw2, Mw3]', dec: '2', titulo: 'Momentos flectores por metro (convención: + tracción interior en losas y muros; esquinas: horario +)' },
     summary(),
@@ -1326,7 +1345,8 @@ tf = 25 mm // Espesor de las alas
 tl = 0.12 m // Espesor de la losa de concreto
 gammac = 23.5 kN/m^3 // Concreto armado
 wbar = 0.50 kN/m // Barandas (cada lado)
-PL = 4.3 kPa // Carga peatonal (Guide Spec 3.1)
+PL = 4.3 kPa // Carga peatonal 90 psf, sin reducción por área ni IM (Guide Spec 3.1)
+check wb >= 2.10 m and wb <= 3.05 m // Vehículo de mantenimiento H5 para anchos libres de 7 a 10 ft; > 10 ft: H10 (Guide Spec 3.2)
 # Propiedades de la viga
 Av = 2*bf*tf + D*tw -> mm^2 // Área
 d = D + 2*tf // Peralte total
@@ -1380,7 +1400,8 @@ Ilat = tl*(wb + 0.30 m)^3/12 -> m^4 // Inercia lateral del tablero (diafragma de
 Elat = 4700*sqrtMPa(28 MPa) // Módulo del concreto de la losa
 flat = pi/(2*L^2)*sqrt(Elat*Ilat*9.81 m/s^2/(nv*wv)) -> Hz // Frecuencia lateral fundamental
 check flat >= 1.3 Hz // f lateral ≥ 1.3 Hz (Guide Spec 6.2)
-"Frecuencias: vertical {fv}, lateral {flat}. Se recomienda verificar la aceleración vertical con el criterio de HIVOSS/Sétra si $f_v$ < 5 Hz.`),
+"Frecuencias: vertical {fv}, lateral {flat}. Se recomienda verificar la aceleración vertical con el criterio de HIVOSS/Sétra si $f_v$ < 5 Hz.
+"Barandas peatonales (AASHTO LRFD 13.8.2): carga de diseño $w = 0.73$ N/mm (50 lbf/ft) transversal y vertical simultáneas sobre cada riel longitudinal, más una carga concentrada de 890 N (200 lbf ≈ 91 kgf) en cualquier punto y dirección; los postes se diseñan para $P_{LL} = 890 + 0.73L$ N. Su diseño se hace por separado.`),
     summary(),
   ],
 };

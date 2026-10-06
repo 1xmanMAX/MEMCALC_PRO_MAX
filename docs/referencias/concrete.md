@@ -26,9 +26,9 @@ Archivos: `src/norms/concrete.js`, `src/blocks/concrete.js`, `src/templates/conc
 - **11.7/11.9** ménsulas: av/d ≤ 1, Nuc ≥ 0.2Vu, Vn ≤ min(0.2f'c bw d, 55 bw d), μ = 1.4, Asc ≥ max(Af+An, 2/3Avf+An, 0.04 f'c/fy bd), Ah = 0.5(Asc − An), φ = 0.85.
 - **11.10** muros: αc = 0.80 (hm/lm ≤ 1.5) a 0.53 (≥ 2.0), Vn ≤ 2.6√f'c Acw, ρh ≥ 0.0025, ρv (ec. 11-32), s ≤ 3t y 400 mm.
 - **11.12** punzonamiento: Vc = mín(0.53(1+2/β), 0.27(αs d/bo + 2), 1.06)√f'c bo d; γv = 1 − γf; Jc de la Fig. 11.12.6.
-- **12.2 Tabla 12.1** ℓd = fy ψt ψe λ db/(8.2√f'c) (≤ 3/4") y /(6.6√f'c) (≥ 7/8"), ≥ 300 mm (equivale a 2.6 y 2.1 √f'c en MPa: la E.060 incorpora ψs = 0.8 en las barras pequeñas). Ec. 12-1 con 3.5√f'c. **12.3** ℓdc = máx(0.075fy db/√f'c, 0.0044 fy db) ≥ 200 mm. **12.5** ℓdg = 0.075ψeλ fy db/√f'c ≥ máx(8db, 150 mm). **12.15** clase A = 1.0ℓd, B = 1.3ℓd. **12.16** compresión 0.071 fy db (MPa) → 0.007 fy db en kgf/cm² (el Anexo II reproduce "0,071" por error tipográfico; 0.071/10.2 = 0.007).
+- **12.2 Tabla 12.1** ℓd = fy ψt ψe λ db/(8.2√f'c) (≤ 3/4") y /(6.6√f'c) (≥ 7/8"), ≥ 300 mm (equivale a 2.6 y 2.1 √f'c en MPa: la E.060 incorpora ψs = 0.8 en las barras pequeñas). Ec. 12-1 con 3.5√f'c. **12.3** ℓdc = máx(0.075fy db/√f'c, 0.0044 fy db) ≥ 200 mm. **12.5** ℓdg = 0.075ψeλ fy db/√f'c ≥ máx(8db, 150 mm). **12.15** clase A = 1.0ℓd, B = 1.3ℓd. **12.16** compresión 0.071 fy db (MPa) → 0.007 fy db en kgf/cm² (el Anexo II reproduce "0,071" por error tipográfico; 0.071/10.197 = 0.00696 ≈ 0.007, +0.5 % del lado seguro).
 - **13.7** Método de coeficientes: Ma = Ca wu A², Mb = Cb wu B² con A, B luces libres, m = A/B ∈ [0.5, 1]; M⁻ en bordes discontinuos = M⁺/3; V = wu(A/2 − d)(1 − 0.5m), +15 % con borde continuo opuesto a discontinuo. Tablas 13.1–13.3 transcritas íntegramente; interpolación lineal en m.
-  Casos (deducidos de la presencia de coeficientes negativos y verificados con el reparto de carga por rigidez de franjas): 1 todos discontinuos; 2 todos continuos; 3 bordes cortos continuos; 4 dos bordes adyacentes; 5 bordes largos continuos; 6 un borde largo; 7 un borde corto; 8 tres continuos con un borde largo discontinuo; 9 tres continuos con un borde corto discontinuo.
+  Casos **confirmados con las figuras de la Tabla 13.1 del PDF oficial** (A vertical, B horizontal, borde rayado = continuo): 1 todos discontinuos; 2 todos continuos; 3 bordes cortos continuos; 4 dos bordes adyacentes; 5 bordes largos continuos; 6 un borde largo; 7 un borde corto; 8 tres continuos con un borde largo discontinuo; 9 tres continuos con un borde corto discontinuo. Las 198 celdas de las Tablas 13.1–13.3 se compararon automáticamente con el texto del PDF: 0 diferencias. Revisión: `revision-concrete.md`.
 - **21.5** vigas: ln ≥ 4h, bw ≥ 0.25h y 250 mm, ρ ≤ 0.025, M⁺ ≥ M⁻/2, **Mpr = 1.25 Mn** (definición E.060; el ACI usa 1.25fy y φ = 1, se informa como comparación), so ≤ d/4, 8db, 24de, 300 mm, 2h.
 - **21.6** columnas: Pu > 0.1f'cAg, ΣMnc ≥ 1.2ΣMnv, ρ 1–6 %, Ash (21-3, 21-4), s ≤ b/3, 6db, 100 mm, hx ≤ 350 mm, Lo ≥ h, hn/6, 500 mm; Vu con Mpr = 1.25Mn sin exceder lo que transmiten las vigas.
 - **21.7** nudos: 1.25fy, φ = 0.85, Vn = 5.3/4.0/3.2 √f'c Aj (MKS; 1.7/1.2/1.0 en MPa), hc ≥ 20db.
@@ -38,15 +38,24 @@ ACI 318-19 (plantilla puntal-tensor): φ = 0.75; fce = 0.85βcβs f'c (βs = 1.0
 
 ## Bloque `pmgen` (método de fibras)
 
-- Concreto discretizado en ≈ 2500 fibras rectangulares; bloque de Whitney de profundidad β1c medida perpendicular al eje neutro desde la fibra más comprimida; la fracción de fibra dentro del bloque se integra linealmente (exacto para ejes neutros paralelos a los lados).
+- Concreto discretizado en ≈ 2500 fibras rectangulares; las funciones exportadas (`Mn_X`, `phiMn_X`, `c_X`, `Pn_X`) y el D/C resuelven la profundidad c **exactamente** por bisección (sin interpolar entre puntos de la curva); D/C = máx(|Mu|/φMn(Pu), Pu/φPn,máx); fuera del dominio devuelven capacidad 0 (→ NO CUMPLE) en vez de error; bloque de Whitney de profundidad β1c medida perpendicular al eje neutro desde la fibra más comprimida; la fracción de fibra dentro del bloque se integra linealmente (exacto para ejes neutros paralelos a los lados).
 - Acero elastoplástico (Es = 2·10⁶ kgf/cm²), εcu = 0.003; se descuenta el concreto desplazado por las barras comprimidas dentro del bloque.
 - Momentos respecto del centroide de la sección bruta; P0 = 0.85f'c(Ag − Ast) + fy Ast.
 - Biaxial (`dir: XY`): para cada ángulo del eje neutro (cada 5°) se halla por bisección la profundidad c con φPn = Pu y se obtiene el contorno de carga (φMnx, φMny); D/C = |Mu| / radio del contorno en la dirección de Mu.
 - Validación (tests): coincide con `blockPM` del núcleo en φPn,máx (0.05 %) y D/C (0.3 %); un punto del diagrama de un muro de 300×25 con núcleos y alma calculado a mano por capas (c = 60 cm) coincide en Mn (0.4 %) y en c (0.5 %); con Muy = 0 el biaxial reproduce el uniaxial; simetría en cuadrantes; Pn(e) devuelve un punto con Mn/Pn = e.
 
-## Validaciones numéricas (tests/concrete.test.mjs, 84 comprobaciones)
+## Validaciones numéricas (tests/concrete.test.mjs, 117 comprobaciones)
 
 As para Mu = 25 t·m en 30×54 (13.59 cm², igual a `verify.mjs`), viga T por equilibrio de ala y alma, doble refuerzo por compatibilidad resuelto a mano, ℓd/ℓdg/ℓdc/empalmes con las fórmulas del Anexo II, ℓd y ℓdh ACI 318-19, Icr rectangular y T, Ie de Branson y Bischoff, ξ, coeficientes de tabla (casos 1, 2, 3, 4, 9) e interpolación, momentos del bloque `slab2way`, k de los nomogramas (0.77 y 1.32 para ψ = 1; 0.5 y 1.0 para ψ → 0), γv y Jc, y resultados clave de las plantillas (αc, c_lím, Vn y Vu de la placa; δns y Q; identidad de Bresler; Vu por capacidad; deflexión por rigidez = 5wL⁴/384EIe; T = Pu/tanθ).
+
+## Validación contra ejemplos publicados (revisión independiente)
+
+- StructurePoint/spColumn, *Interaction Diagram – Tied RC Column (ACI 318-19)*: 5 puntos de control (Mn) con error ≤ 0.15 %, φPn,máx y φMn exactos.
+- StructurePoint/spColumn, *Biaxial Bending – Rectangular Column (ACI 318-19)* (Pincheira Ex. 10.20.1): el punto (φPn, φMnx, φMny) de spColumn cae sobre el contorno de `pmgen` (D/C = 0.995).
+- StructurePoint, *Role of γf in punching shear*: Jc = 40 131 in⁴, γv = 0.40, vu = 166.7 psi, vc = 253 psi reproducidos con la plantilla `co-punzonamiento`.
+- StructurePoint / Wang Ex. 13.17.3: k = 0.959 (ψA = 4.32, base articulada).
+- StructurePoint, *Equilibrium Torsion (ACI 318-14)*: Aoh, esfuerzo combinado, At/s, Av/s, Aℓ reproducidos con la plantilla `co-torsion` (φ = 0.75).
+- Integración por fibras frente a recorte exacto de polígonos con ejes neutros inclinados: error < 0.04 t.
 
 ## Limitaciones
 

@@ -326,7 +326,7 @@ function updateStatus() {
 function updateBlockErrors() {
   document.querySelectorAll('.bk').forEach(el => {
     const id = el.dataset.id, errs = lastRes.ctx.errors.filter(e => e.block === id);
-    const box = el.querySelector('.errs'); if (box) box.innerHTML = errs.map(e => `⚠ ${e.line ? 'Línea ' + e.line + ': ' : ''}${esc(e.msg)}`).join('<br>');
+    const box = el.querySelector('.errs'); const eh = errs.map(e => `⚠ ${e.line ? 'Línea ' + e.line + ': ' : ''}${esc(e.msg)}`).join('<br>'); if (box && box._eh !== eh) { box.innerHTML = eh; box._eh = eh; }
     const ta = el.querySelector('textarea.code'); if (ta) paintHL(ta);
   });
 }
@@ -484,16 +484,17 @@ function paintHL(ta, noSize) {
   const errL = new Set((lastRes?.ctx.errors || []).filter(e => e.block === id).map(e => e.line - 1));
   // caché: solo se vuelve a resaltar si cambió el texto o las líneas con error
   const key = ta.value + '\u0000' + [...errL].join(',');
-  if (ta._hk !== key) { ta._hk = key; pre.innerHTML = ta.value.split('\n').map((l, i) => errL.has(i) ? `<span class="h-err">${hlLine(l) || ' '}</span>` : hlLine(l)).join('\n') + '\n'; ta._sz = 0; }
-  if (!noSize && ta.offsetParent && ta._sz !== ta.clientWidth) autosize(ta);
+  if (ta._hk === key) return; // sin cambios: no tocar el DOM ni leer el layout
+  ta._hk = key; pre.innerHTML = ta.value.split('\n').map((l, i) => errL.has(i) ? `<span class="h-err">${hlLine(l) || ' '}</span>` : hlLine(l)).join('\n') + '\n';
+  if (!noSize) autosize(ta);
 }
-function autosize(ta) { if (!ta.offsetParent) return; ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; ta._sz = ta.clientWidth; }
+function autosize(ta) { if (!ta.offsetParent) return; ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; }
 // Ajusta la altura de muchas áreas de texto con dos pasadas (lectura / escritura) para evitar reflujos en cadena
 function autosizeAll(list) {
   const tas = [...list].filter(t => t.offsetParent); if (!tas.length) return;
   tas.forEach(t => { t.style.height = 'auto'; });
   const hs = tas.map(t => t.scrollHeight);
-  tas.forEach((t, i) => { t.style.height = (hs[i] + 2) + 'px'; t._sz = t.clientWidth; });
+  tas.forEach((t, i) => { t.style.height = (hs[i] + 2) + 'px'; });
 }
 
 const SNIPS = [

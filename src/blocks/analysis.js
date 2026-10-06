@@ -1050,11 +1050,14 @@ function drawDiagram(md, sets, key, W, opts = {}) {
       let imax = 0, imin = 0; vals.forEach((x, p) => { if (x > vals[imax]) imax = p; if (x < vals[imin]) imin = p; });
       const endMax = Math.max(Math.abs(vals[0]), Math.abs(vals[vals.length - 1]));
       for (const p of [imax, imin]) if (p > 0 && p < vals.length - 1 && Math.abs(vals[p]) > 1.03 * Math.abs(vals[0] + (vals[vals.length - 1] - vals[0]) * m.st[p][0] / m.L) && Math.abs(vals[p]) > 0.05 * amax) idx.add(p);
-      if (key === 'N' && Math.abs(vals[0] - vals[vals.length - 1]) < 1e-6 * amax + 1e-9) { idx.clear(); idx.add(Math.floor(vals.length / 2)); }
+      let nLab = 0;
+      // N: un solo rótulo por barra (valor de mayor magnitud, al centro); V constante: al centro
+      if (key === 'N') { let ib = 0; vals.forEach((x, p) => { if (Math.abs(x) > Math.abs(vals[ib])) ib = p; }); idx.clear(); idx.add(Math.floor(vals.length / 2)); nLab = vals[ib]; }
       if (key === 'V' && Math.abs(vals[0] - vals[vals.length - 1]) < 1e-6 * amax + 1e-9) { idx.clear(); idx.add(Math.floor(vals.length / 2)); }
-      void endMax;
       for (const p of idx) {
-        const val = vals[p]; if (Math.abs(val) < 0.004 * amax) continue;
+        const val = key === 'N' ? nLab : vals[p];
+        // rótulos de extremo pequeños (< 6 % del máximo) se omiten si no son el valor gobernante de la barra
+        if (Math.abs(val) < 0.004 * amax || ((p === 0 || p === vals.length - 1) && key !== 'N' && Math.abs(val) < 0.06 * amax && Math.abs(val) < 0.999 * endMax)) continue;
         const q = pts[p], sg = val >= 0 ? 1 : -1;
         labels.push({ x: q[0], y: q[1], nx: ny[0] * sg, ny: ny[1] * sg, val, end: p === 0 || p === vals.length - 1, mem: mi, tx: m.st[p][0] / m.L, ex, ey });
       }

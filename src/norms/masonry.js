@@ -60,21 +60,21 @@ defineFns({
   fmE070: { fn: (u) => mkUnit(pick(E070_T9, u, 'Unidad E.070')[1], KG), tex: "f'_{m}", desc: "E.070 Tabla 9: resistencia característica f'm de pilas", args: 'unidad' },
   vmE070: { fn: (u) => mkUnit(pick(E070_T9, u, 'Unidad E.070')[2], KG), tex: "v'_{m}", desc: "E.070 Tabla 9: resistencia característica v'm de muretes", args: 'unidad' },
   matE070: { fn: (u) => pick(E070_T9, u, 'Unidad E.070')[3], tex: '\\mathrm{mat}', desc: 'E.070: materia prima de la unidad (1 arcilla, 2 sílice-cal, 3 concreto)', args: 'unidad' },
-  EmE070: { fn: (fm, mat = 1) => math.multiply(pick({ 1: 500, 2: 600, 3: 700 }, mat, 'Materia prima'), fm), tex: 'E_m', desc: "E.070 Art. 24.7 (8.3.7): Em = 500 f'm arcilla, 600 sílice-cal, 700 concreto", args: 'fm, mat' },
+  EmE070: { fn: (fm, mat = 1) => math.multiply(pick({ 1: 500, 2: 600, 3: 700 }, mat, 'Materia prima'), fm), tex: 'E_m', desc: "E.070 Art. 24.7: Em = 500 f'm arcilla, 600 sílice-cal, 700 concreto (Gm = 0.4 Em)", args: 'fm, mat' },
   FaE070: { fn: bc((fm, h, t) => { const r = toNum(h, 'm') / (35 * toNum(t, 'm')); return math.multiply(Math.min(0.2 * (1 - r * r), 0.15), fm); }), tex: 'F_a', desc: "E.070 Art. 19.1.b: Fa = 0.2 f'm [1 − (h/35t)²] ≤ 0.15 f'm", args: 'fm, h, t' },
   alphaE070: { fn: bc((Ve, L, Me) => clamp(toNum(Ve, 'tonf') * toNum(L, 'm') / toNum(Me, 'tonf*m'), 1 / 3, 1)), tex: '\\alpha', desc: 'E.070 Art. 26.3: α = Ve·L/Me, 1/3 ≤ α ≤ 1', args: 'Ve, L, Me' },
   VmE070: {
     fn: bc((vm, alpha, t, L, Pg, mat = 1) => { const c = Math.round(n0(mat)) === 2 ? 0.35 : 0.5; const r = math.add(math.multiply(c * n0(alpha), math.multiply(vm, math.multiply(t, L))), math.multiply(0.23, Pg)); return math.isUnit(r) ? r.to('tonf') : r; }),
     tex: 'V_m', desc: "E.070 Art. 26.3: Vm = 0.5 v'm α t L + 0.23 Pg (0.35 para sílice-cal)", args: 'vm, alpha, t, L, Pg, mat',
   },
-  factE070: { fn: bc((Vm1, Ve1) => clamp(n0(math.divide(Vm1, Ve1)), 2, 3)), tex: '\\frac{V_{m1}}{V_{e1}}', desc: 'E.070 Art. 27: factor de amplificación 2 ≤ Vm1/Ve1 ≤ 3', args: 'Vm1, Ve1' },
+  factE070: { fn: bc((Vm1, Ve1) => clamp(n0(math.divide(Vm1, Ve1)), 2, 3)), tex: '\\frac{V_{m1}}{V_{e1}}', desc: 'E.070 Art. 27 c): factor de amplificación 2 ≤ Vm1/Ve1 ≤ 3 (Vu = Ve·Vm1/Ve1, Mu = Me·Vm1/Ve1)', args: 'Vm1, Ve1' },
   dminE070: { fn: (Z, U, S, N) => n0(Z) * n0(U) * n0(S) * n0(N) / 56, tex: '\\frac{ZUSN}{56}', desc: 'E.070 Art. 19.2.b: densidad mínima de muros ΣLt/Ap ≥ ZUSN/56', args: 'Z, U, S, N' },
   mE070: {
     fn: (caso, ba = 1) => { const c = Math.round(n0(caso)); const r = n0(ba); if (c === 3) return 0.125; if (c === 4) return 0.5; if (!(r > 0)) throw new Error('b/a debe ser positivo'); if (c === 1) return mTabla(T12_C1, Math.max(r, 1)); if (c === 2) { if (r < 0.5) throw new Error('E.070 Tabla 12 caso 2: b/a ≥ 0.5'); return mTabla(T12_C2, r); } throw new Error('Caso de la Tabla 12: 1, 2, 3 o 4'); },
     tex: 'm', desc: 'E.070 Tabla 12: coeficiente de momento m (caso 1: 4 bordes, 2: 3 bordes, 3: bordes horizontales, 4: voladizo)', args: 'caso, b/a',
   },
-  ftE070: { fn: (tipo = 1) => mkUnit(Math.round(n0(tipo)) === 2 ? 3.0 : 1.5, KG), tex: "f'_{t}", desc: "E.070 Art. 30.8 (9.1.8): f't = 1.5 kg/cm² albañilería simple; 3.0 armada rellena", args: 'tipo' },
-  C1E030a: { fn: (k) => pick({ 1: 1.3, 2: 1.3, 3: 0.9, 4: 0.6, 5: 0.9, 6: 0.6 }, k, 'C1'), tex: 'C_1', desc: 'E.030-2003 Tabla 12 (usada por E.070 9.1.6): 1 precipitarse fuera 1.3; 2 peligro 1.3; 3 muros interiores 0.9; 4 cercos 0.6; 5 tanques/letreros 0.9; 6 diafragmas 0.6', args: 'tipo' },
+  ftE070: { fn: (tipo = 1) => mkUnit(Math.round(n0(tipo)) === 2 ? 3.0 : 1.5, KG), tex: "f'_{t}", desc: "E.070 Art. 29.8: f't = 1.5 kg/cm² albañilería simple; 3.0 armada rellena de grout", args: 'tipo' },
+  C1E030a: { fn: (k) => pick({ 1: 1.3, 2: 1.3, 3: 0.9, 4: 0.6, 5: 0.9, 6: 0.6 }, k, 'C1'), tex: 'C_1', desc: 'C1 de la E.030-2003 (Art. 23, Tabla N° 9), al que remite E.070 Art. 29.6: 1 precipitarse fuera 1.3; 2 peligro 1.3; 3 muros interiores 0.9; 4 cercos 0.6; 5 tanques/letreros 0.9; 6 diafragmas 0.6. (La E.030-2018 usa otra escala: F = 0.5 ZUS Pe para cercos, Art. 41)', args: 'tipo' },
 }, 'Albañilería — E.070');
 
 // ---------------------------------------------------------------------
@@ -99,13 +99,15 @@ defineFns({
   CkE010: { fn: (E, fc, forma = 1) => (Math.round(n0(forma)) === 2 ? 0.6077 : 0.7025) * Math.sqrt(n0(math.divide(E, fc))), tex: 'C_k', desc: 'E.010 / JUNAC 9.4: Ck = 0.7025√(E/fc) (rectangular); 0.6077√(E/fc) (circular)', args: 'Emin, fc, forma' },
   NadmE010: {
     fn: (fc, E, A, lam, Ck) => { const l = n0(lam), ck = Ck === undefined ? 0.7025 * Math.sqrt(n0(math.divide(E, fc))) : n0(Ck);
-      if (l > 50) throw new Error('E.010: esbeltez λ = ' + l.toFixed(1) + ' > 50 no permitida');
+      // λ > 50 no está permitido (E.010 9.4): se sigue usando 0.329·E·A/λ² para que la memoria continúe y la
+      // verificación «λ ≤ 50» de la plantilla marque NO CUMPLE (sin errores en cadena)
+      if (!(l > 0)) throw new Error('E.010: la esbeltez debe ser positiva');
       if (l < 10) return math.multiply(fc, A);
       if (l <= ck) return math.multiply(1 - (l / ck) ** 4 / 3, math.multiply(fc, A));
       return math.multiply(0.329 / (l * l), math.multiply(E, A)); },
-    tex: 'N_{adm}', desc: 'E.010 Art. 9.4: carga admisible de columna corta (λ<10), intermedia (10≤λ≤Ck) o larga (Ck<λ≤50)', args: 'fc, Emin, A, λ, Ck',
+    tex: 'N_{adm}', desc: 'E.010 Art. 9.4: carga admisible de columna corta (λ<10), intermedia (10≤λ≤Ck) o larga (Ck<λ≤50; λ > 50 no permitido: verificar aparte)', args: 'fc, Emin, A, λ, Ck',
   },
-  kmE010: { fn: (N, Ncr) => { const r = n0(math.divide(N, Ncr)); if (r >= 1 / 1.5) throw new Error('E.010: N ≥ Ncr/1.5, elemento inestable'); return 1 / (1 - 1.5 * r); }, tex: 'k_m', desc: 'E.010 Art. 10.3: factor de magnificación km = 1/(1 − 1.5 N/Ncr)', args: 'N, Ncr' },
+  kmE010: { fn: (N, Ncr) => { const r = n0(math.divide(N, Ncr)); if (!(r >= 0)) throw new Error('E.010: N y Ncr deben ser positivos'); return r >= 0.666 ? 1000 : 1 / (1 - 1.5 * r); }, tex: 'k_m', desc: 'E.010 Art. 10.3: km = 1/(1 − 1.5 N/Ncr); si N ≥ Ncr/1.5 (inestable) devuelve 1000 para que la interacción NO CUMPLA', args: 'N, Ncr' },
 }, 'Madera — E.010');
 
 // ---------------------------------------------------------------------
@@ -158,6 +160,12 @@ defineFns({
       const Cl = 10 * aci.Cw(hl / d) * Math.sqrt(t / (d / 2)); const w = Cl / hl * Math.sqrt(E * GRAV / ga); return mkUnit(2 * Math.PI / w, 's'); },
     tex: 'T_i', desc: 'ACI 350.3 Ec. 9-23 a 9-25: periodo impulsivo de tanque circular (Cl = 10 Cw √(tw/r))', args: 'HL, D, tw, Ec, γc',
   },
+  TvACIc: {
+    fn: (D, HL, tw, Ec, gL = 9806.65) => { const d = toNum(D, 'm'), hl = toNum(HL, 'm'), t = toNum(tw, 'm'), E = toNum(Ec, 'Pa'), g = math.isUnit(gL) ? toNum(gL, 'N/m^3') : n0(gL);
+      return mkUnit(2 * Math.PI * Math.sqrt(g * d * hl * hl / (2 * GRAV * t * E)), 's'); },
+    tex: 'T_v', desc: 'ACI 350.3-06 Ec. 9-31 (SI): periodo vertical del líquido Tv = 2π√(γL D HL²/(2 g tw Ec)), tanque circular', args: 'D, HL, tw, Ec, γL',
+  },
+  CtACI: { fn: (Tv, SDS, SD1, forma = 1) => (Math.round(n0(forma)) === 2 ? 0.4 * n0(SDS) : aci.Ci(toNum(Tv, 's'), n0(SDS), n0(SD1))), tex: 'C_t', desc: 'ACI 350.3-06 Ec. 9-39/40: Ct = SDS (Tv ≤ Ts) o SD1/Tv (circular); 0.4 SDS (rectangular, forma = 2)', args: 'Tv, SDS, SD1, forma' },
   epsACIc: { fn: (r) => aci.eps(r0(r, 'D/HL')), tex: '\\varepsilon', desc: 'ACI 350.3 Ec. 9-45: coeficiente de masa efectiva de la pared', args: 'D/HL' },
   epsACIr: { fn: (r) => aci.eps(r0(r, 'L/HL')), tex: '\\varepsilon', desc: 'ACI 350.3 Ec. 9-44', args: 'L/HL' },
   CiACI: { fn: (T, SDS, SD1) => aci.Ci(toNum(T, 's'), n0(SDS), n0(SD1)), tex: 'C_i', desc: 'ACI 350.3 Ec. 9-32/33: coeficiente sísmico impulsivo', args: 'Ti, SDS, SD1' },

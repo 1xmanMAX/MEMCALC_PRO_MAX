@@ -1,5 +1,5 @@
 // Pruebas de validación — módulo «geotech» (E.050, Das, Bowles, Hetényi, Taylor, Youd et al.)
-import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES } from './helpers.mjs';
+import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES, math } from './helpers.mjs';
 
 section('Factores de capacidad de carga (Das, Tabla 3.1 y 3.3)');
 let v = calc(`phi = 30 deg
@@ -230,6 +230,85 @@ section('Estabilidad de taludes');
   truthy('Sismo (kh = 0.15) reduce el FS', g2('FS') < g('FS'), `${g2('FS').toFixed(3)} < ${g('FS').toFixed(3)}`);
 }
 
+section('Das, Ejemplo 3.7 (7.ª ed.): carga excéntrica, área efectiva (B = 1.5 m, e = 0.15 m, φ = 30°, Df = 0.7 m)');
+v = calc(`phi = 30 deg
+B = 1.5 m
+L = 1.5 m
+Df = 0.7 m
+g = 18 kN/m^3
+Bp = B - 2*0.15 m
+q = g*Df
+qu = q*NqBC(phi)*sqDeBeer(Bp, L, phi)*dqHansen(Df, B, phi) + 0.5*g*Bp*NgVesic(phi)*sgDeBeer(Bp, L)
+Qu = qu*Bp*L`);
+near("q'u = q Nq Fqs Fqd + ½γB'Nγ Fγs ≈ 549 kN/m² (Das)", v('qu', 'kPa'), 549.2, 0.005);
+near('Qult = q′u·B′·L ≈ 989 kN (Das)', v('Qu', 'kN'), 988.6, 0.005);
+
+section('Viga de cimentación finita (Hetényi 1946): carga central en viga libre de longitud L');
+{
+  // y_c = Pλ/(2k)·(cosh λL + cos λL + 2)/(sinh λL + sin λL);  M_c = P/(4λ)·(cosh λL − cos λL)/(sinh λL + sin λL)
+  for (const lamL of [1.0, 3.0]) {
+    const EI = 1e4, k = 2000, P = 60, lam = (k / (4 * EI)) ** 0.25, L = lamL / lam;
+    const g = block('winkler', { L: L + ' m', B: '1 m', E: EI + ' tonf/m^2', I: '1 m^4', ks: k + ' tonf/m^3', cargas: 'P ' + L / 2 + ' ' + P, nel: '200' });
+    const ch = Math.cosh(lamL), c = Math.cos(lamL), sh = Math.sinh(lamL), sn = Math.sin(lamL);
+    near(`λL = ${lamL}: asentamiento bajo la carga`, g('wmax', 'm'), P * lam / (2 * k) * (ch + c + 2) / (sh + sn), 0.003);
+    near(`λL = ${lamL}: momento bajo la carga`, g('Mpos', 'tonf*m'), P / (4 * lam) * (ch - c) / (sh + sn), 0.005);
+  }
+}
+
+section('Taludes — problemas de verificación publicados (Rocscience Slide2 Verification Manual)');
+{
+  // ACADS 1(a) (Giam y Donald 1989): c' = 3 kPa, φ' = 19.6°, γ = 20 kN/m³; Bishop 0.987 (Slide), referencia 1.00
+  let g = block('slope', { superficie: '20 25\n30 25\n50 35\n70 35', estratos: '35 3 19.6 20 Suelo', unidades: 'kN', malla: '22.8 43.7 42.3 62.6 12', ybase: '20', ndov: '50' });
+  near('ACADS 1(a): FS Bishop = 0.987 (Slide #1)', g('FS'), 0.987, 0.01);
+  // Arai y Tagyo (1985) ej. 1: c' = 41.65 kPa, φ' = 15°, γ = 18.82 kN/m³; Bishop 1.409 (Slide #14), 1.451 (Arai)
+  g = block('slope', { superficie: '0 15\n18 15\n48 35\n66 35', estratos: '35 41.65 15 18.82 Suelo', unidades: 'kN', malla: '10 40 36 70 10', ybase: '0', ndov: '50' });
+  near('Arai y Tagyo ej. 1: FS Bishop = 1.409 (Slide #14)', g('FS'), 1.409, 0.01);
+  // Arai y Tagyo (1985) ej. 3: mismo talud con NF poligonal; Bishop 1.118 (Slide #16)
+  g = block('slope', { superficie: '0 15\n18 15\n48 35\n66 35', estratos: '35 41.65 15 18.82 Suelo', unidades: 'kN', nf: '0 15\n18 15\n30 23\n48 29\n66 32', malla: '10 40 30 70 10', ybase: '0', ndov: '50' });
+  near('Arai y Tagyo ej. 3 (NF poligonal): FS Bishop = 1.118 (Slide #16)', g('FS'), 1.118, 0.01);
+  // Yamagami y Ueta (1988): c' = 9.8 kPa, φ' = 10°, γ = 17.64 kN/m³; círculo (8.672, 13.934, R 9.695)
+  g = block('slope', { superficie: '0 5\n5 5\n15 10\n25 10', estratos: '10 9.8 10 17.64 Suelo', unidades: 'kN', circulo: '8.672 13.934 9.695', ndov: '100' });
+  near('Yamagami y Ueta: Bishop en el círculo crítico = 1.344 (Slide #17; 1.348 Y-U)', g('FSb'), 1.344, 0.005);
+  near('Yamagami y Ueta: Fellenius = 1.282 (Y-U; Slide «Original» 1.278)', g('FSf'), 1.282, 0.006);
+  g = block('slope', { superficie: '0 5\n5 5\n15 10\n25 10', estratos: '10 9.8 10 17.64 Suelo', unidades: 'kN', malla: '3 15 10 25 10', ybase: '0', ndov: '40' });
+  near('Yamagami y Ueta: búsqueda automática, FS Bishop = 1.344', g('FS'), 1.344, 0.005);
+  near('Yamagami y Ueta: centro del círculo crítico xc ≈ 8.67 m', g('xc', 'm'), 8.672, 0.03);
+}
+
+section('Pilotes: carga lateral de Broms (1964) — soluciones cerradas');
+v = calc(`H1 = HuBromsC(1 kPa, 1 m, 100 m, 0 m, 100 kN*m, 1)
+H2 = HuBromsC(1 kPa, 1 m, 100 m, 0 m, 100 kN*m, 2)
+H3 = HuBromsC(1 kPa, 1 m, 4 m, 0 m, 1e9 kN*m, 2)
+H4 = HuBromsC(50 kPa, 0.5 m, 10 m, 0 m, 1e9 kN*m, 1)
+H5 = HuBromsS(1 kN/m^3, 30 deg, 1 m, 4 m, 0 m, 1e9 kN*m, 1)
+H6 = HuBromsS(1 kN/m^3, 30 deg, 1 m, 4 m, 0 m, 1e9 kN*m, 2)
+H7 = HuBromsS(1 kN/m^3, 30 deg, 1 m, 40 m, 0 m, 300 kN*m, 1)
+H8 = HuBromsS(1 kN/m^3, 30 deg, 1 m, 6 m, 0 m, 100 kN*m, 2)`);
+near('Cohesivo, cabeza libre, largo: H(1.5D + H/(18cuD)) = My', v('H1', 'kN'), 9 * (-1.5 + Math.sqrt(2.25 + 4 * 100 / 18)), 0.001);
+near('Cohesivo, cabeza empotrada, largo: H(1.5D + 0.5f) = 2My', v('H2', 'kN'), 9 * (-1.5 + Math.sqrt(2.25 + 4 * 200 / 18)), 0.001);
+near('Cohesivo, empotrado, corto: Hu = 9cuD(L − 1.5D)', v('H3', 'kN'), 22.5, 0.001);
+{ const H = v('H4', 'kN'), f = H / 225, g2 = 9.25 - f; near('Cohesivo, libre, corto: H(1.5D + 0.5f) = 2.25cuDg²', H * (0.75 + 0.5 * f), 2.25 * 50 * 0.5 * g2 * g2, 0.001); }
+near('Granular, libre, corto: 0.5γDL³Kp/(e + L) = 0.5·64·3/4', v('H5', 'kN'), 0.5 * 64 * 3 / 4, 0.001);
+near('Granular, empotrado, corto: 1.5γL²DKp', v('H6', 'kN'), 1.5 * 16 * 3, 0.001);
+{ const H = v('H7', 'kN'); near('Granular, libre, largo: H·0.54√(H/(γDKp)) = My', H * 0.54 * Math.sqrt(H / 3), 300, 0.001); }
+near('Granular, empotrado, intermedio: (0.5γDL³Kp + My)/L', v('H8', 'kN'), (0.5 * 3 * 216 + 100) / 6, 0.001);
+
+section('Licuación: rd de Cetin et al. (2004) y Kσ (Hynes y Olsen 1999)');
+v = calc(`r0 = rdCetin(0 m, 0.3, 7.5, 200 m/s)
+r10 = rdCetin(10 m, 0.3, 7.5, 200 m/s)
+r25 = rdCetin(25 m, 0.3, 7.5, 200 m/s)
+r20 = rdCetin(20 m, 0.3, 7.5, 200 m/s)
+K1 = KsigmaYoud(50 kPa, 10)
+K2 = KsigmaYoud(200 kPa, 7.36)
+K3 = KsigmaYoud(400 kPa, 29.44)`);
+near('rd Cetin (z = 0) = 1', v('r0'), 1, 0.0001);
+{ const A = -23.013 - 2.949 * 0.3 + 0.999 * 7.5 + 0.0525 * 200, f = (d) => 1 + A / (16.258 + 0.201 * Math.exp(0.341 * (-d + 0.0785 * 200 + 7.586)));
+  near('rd Cetin (z = 10 m) = ec. de Cetin et al. (2004)', v('r10'), f(10) / f(0), 0.0001); }
+near('rd Cetin (z ≥ 20 m): rd(20) − 0.0046(z − 20)', v('r25'), v('r20') - 0.023, 0.0001);
+near("Kσ = 1 para σ'v ≤ pa", v('K1'), 1, 0.0001);
+near("Kσ (Dr = 40 %, f = 0.8): (200/101.3)^−0.2", v('K2'), (200 / 101.325) ** -0.2, 0.002);
+near("Kσ (Dr = 80 %, f = 0.6): (400/101.3)^−0.4", v('K3'), (400 / 101.325) ** -0.4, 0.002);
+
 section('Perfil estratigráfico');
 {
   const g = block('soilprofile', { estratos: '2 SM 1.8 2.0 Arena\n3 CL 1.7 1.9 Arcilla', nf: '1.0 m', spt: '1.5 10\n4 12', ER: '60', zref: '4 m' });
@@ -248,7 +327,7 @@ for (const t of TEMPLATES.filter(t => t.id.startsWith('ge-'))) {
 {
   const g = runTemplate('ge-portante');
   near('Portante: Nγ Meyerhof (φ = 30°) en la plantilla', g('Ngamma'), 15.67, 0.002);
-  near("Portante: B' = B − 2eB", g('Bp', 'm'), 2.4 - 2 * 3 / 110, 0.001);
+  near("Portante: Q = P + γm·B·L·Df; B' = B − 2·MB/Q", g('Bp', 'm'), 2.6 - 2 * 3 / (110 + 2 * 2.6 * 3.0 * 1.5), 0.001);
   truthy('Portante: qadm = min(qadm1, qadm2) (E.050 Art. 22.2)', Math.abs(g('qadm', 'kPa') - Math.min(g('qadm1', 'kPa'), g('qadm2', 'kPa'))) < 1e-9);
   const gc = runTemplate('ge-combinada');
   near('Combinada: presión de servicio uniforme = R/(B·L)', gc('q', 'tonf/m^2'), 185 / (gc('Bz', 'm') * gc('Lz', 'm')), 0.001);
@@ -256,6 +335,31 @@ for (const t of TEMPLATES.filter(t => t.id.startsWith('ge-'))) {
   near('Pilote: Qu = Qp + ΣQs', gp('Qu', 'tonf'), gp('Qp', 'tonf') + gp('Qs', 'tonf'), 0.0001);
   const gl = runTemplate('ge-licuacion', (d) => { d.blocks[2].src = d.blocks[2].src.replace('amax = 0.30', 'amax = 0.45'); });
   truthy('Licuación con amax = 0.45 g ya no cumple (prueba de sensibilidad)', !gl.res.ctx.checks.every(x => x.ok));
+  near('Licuación: CRR_M = MSF·Kσ·CRR7.5 (z = 15 m)', gl('CRRM').toArray()[14], gl('MSF') * gl('Ks').toArray()[14] * gl('CRR').toArray()[14], 0.0001);
+  const gn = runTemplate('ge-pilote', (d) => { d.blocks.forEach(b => { if (typeof b.src === 'string') b.src = b.src.replace(/^fneg = 1/m, 'fneg = 2'); }); });
+  near('Pilote con fricción negativa: Qn = β·per·Σ(q + σ\'v)H', gn('Qn', 'tonf'), gn('betan') * 1.6 * ((2 + gn('sigmav1', 'tonf/m^2')) * 2 + (2 + gn('sigmav2', 'tonf/m^2')) * 4), 0.001);
+  truthy('Pilote con fricción negativa: sin fricción positiva en la arcilla y P + Qn > Qadm → NO CUMPLE', gn('Qsc', 'tonf') === 0 && gn.res.ctx.checks.some(x => !x.ok) && gn.res.ctx.errors.length === 0);
+  const gt = runTemplate('ge-talud');
+  truthy('Talud: FS estático Bishop ≥ Fellenius y seudoestático < estático', gt('FSb_est') >= gt('FSf_est') && gt('FS_sis') < gt('FS_est'), `${gt('FS_est').toFixed(3)} / ${gt('FS_sis').toFixed(3)}`);
+}
+
+section('Plantillas con datos extremos: NO CUMPLE, sin errores ni NaN');
+{
+  const sub = (re, to) => (d) => { d.blocks.forEach(b => { if (typeof b.src === 'string') b.src = b.src.replace(re, to); }); };
+  const cases = [
+    ['ge-portante', /^P = 110 tonf/m, 'P = 400 tonf'], ['ge-portante', /^ML = 6 tonf\*m/m, 'ML = 120 tonf*m'],
+    ['ge-combinada', /^PD2 = 80 tonf/m, 'PD2 = 400 tonf'], ['ge-combinada', /^qa = 2.0 kgf\/cm\^2/m, 'qa = 0.5 kgf/cm^2'],
+    ['ge-conectada', /^PD1 = 40 tonf/m, 'PD1 = 200 tonf'], ['ge-medianera', /^caso = 2/m, 'caso = 1'],
+    ['ge-platea', /^qa = 1.2 kgf\/cm\^2/m, 'qa = 0.4 kgf/cm^2'], ['ge-winkler', /^PD2 = 75 tonf/m, 'PD2 = 400 tonf'],
+    ['ge-corrido', /^wD = 8.5 tonf\/m/m, 'wD = 40 tonf/m'], ['ge-pilote', /^P = 45 tonf/m, 'P = 200 tonf'],
+    ['ge-grupo', /^PD = 180 tonf/m, 'PD = 900 tonf'], ['ge-licuacion', /^amax = 0.30/m, 'amax = 0.60'],
+    ['ge-talud', /^c1 = 3.5 tonf\/m\^2/m, 'c1 = 0.3 tonf/m^2'], ['ge-spt', /^pexp = 10.0 m/m, 'pexp = 3 m'],
+  ];
+  for (const [id, re, to] of cases) {
+    const g = runTemplate(id, sub(re, to)), c = g.res.ctx;
+    const nan = [...c.scope.entries()].filter(([, val]) => { try { return /NaN|Infinity/.test(math.format(val)); } catch (e) { return false; } }).map(([k]) => k);
+    truthy(`${id} con ${to}`, c.errors.length === 0 && !nan.length && c.checks.some(x => !x.ok), c.errors.map(e => e.msg).join('; ') + nan.join(','));
+  }
 }
 
 done();

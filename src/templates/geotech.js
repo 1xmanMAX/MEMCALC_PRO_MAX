@@ -926,7 +926,7 @@ PLmax = max(PLs) // Probabilidad máxima de licuación
 check FSLmin >= FSreq // FS_L ≥ mínimo de la Tabla 13A (E.050 Art. 38.5.8)
 check PLmax <= 0.10 // P_L ≤ 10 %: potencial de licuación bajo, se permite cimentar (Art. 38.6.2, Tabla 13)
 "Clasificación del potencial de licuación (Tabla 13): $P_L$ máx = {100*PLmax} % → {si(PLmax > 0.5, 4, si(PLmax > 0.1, 3, si(PLmax > 0.05, 2, 1)))} (1 = muy baja, 2 = baja, 3 = moderada, 4 = alta).`),
-      { type: 'table', columnas: 'z [m] = z\nN = NSPT\n(N1)60 = N1\nFC [%] = FC\n(N1)60cs = Ncs\nrd = rd\nCSR = CSR\nCRR7.5 = CRR\nKσ = Ks\nCRR_M = CRRM\nFS_L = FSL\nP_L = PL\nEstado = liqEstado(FSL, FSreq, z, Dw, Ncs)', dec: '3', titulo: 'Evaluación de licuación por ensayo SPT (FS_L = 3 indica no licuable o sobre el NF)' },
+      { type: 'table', columnas: 'z [m] = z\n(N1)60 = N1\nFC [%] = FC\n(N1)60cs = Ncs\nrd = rd\nCSR = CSR\nCRR7.5 = CRR\nKσ = Ks\nCRR_M = CRRM\nFS_L = FSL\nP_L = PL\nEstado = liqEstado(FSL, FSreq, z, Dw, Ncs)', dec: '3', titulo: 'Evaluación de licuación por ensayo SPT (FS_L = 3 indica no licuable o sobre el NF)' },
       { type: 'liqchart', z: 'z', CSR: 'CSR', CRR: 'CRRM', FS: 'FSL', FSmin: 'FSreq', nf: 'Dw', titulo: 'CSR, CRR_M y factor de seguridad frente a licuación con la profundidad' },
       summary(),
     ],

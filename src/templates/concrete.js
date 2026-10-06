@@ -512,7 +512,8 @@ check As >= As_req // Acero suficiente
 Asf = 0.85*fc*(bf - bw)*hf/fy // Acero equivalente a las alas sobresalientes
 aw = (As*fy - Asf*fy)/(0.85*fc*bw) // Bloque de compresión en el alma (si a > hf)
 a = si(As*fy/(0.85*fc*bf) <= hf, As*fy/(0.85*fc*bf), aw) // Profundidad del bloque
-"Profundidad del bloque a = {a} frente a hf = {hf}: el bloque de compresión ingresa al alma y la sección trabaja como **viga T**.
+tipoT = si(As*fy/(0.85*fc*bf) > hf, 1, 0) // 1 = el bloque ingresa al alma (viga T); 0 = rectangular de ancho bf
+"Profundidad del bloque a = {a} frente a hf = {hf} → sección trabajando como viga T (1) o rectangular de ancho bf (0): **{tipoT}**.
 Mn = si(a <= hf, As*fy*(d - a/2), Asf*fy*(d - hf/2) + (As - Asf)*fy*(d - a/2)) -> tonf*m // Momento nominal
 beta1 = beta1E060(fc) // E.060 10.2.7.3
 c = a/beta1 // Eje neutro
@@ -524,6 +525,10 @@ cb = 6000 kgf/cm^2*d/(6000 kgf/cm^2 + fy) // Eje neutro balanceado
 Asb = (0.85*fc*(bf - bw)*hf + 0.85*fc*bw*beta1*cb)/fy // Acero balanceado de la sección T
 check As <= 0.75*Asb // Acero máximo (E.060 10.3.4)
 check As >= 0.7*sqrtfc(fc)/fy*bw*d // Acero mínimo con el ancho del alma (E.060 10.5.2)
+yg = (bf*hf^2/2 + bw*(h - hf)*(hf + (h - hf)/2))/(bf*hf + bw*(h - hf)) // Centroide de la sección T bruta desde la fibra superior
+IgT = bf*hf^3/12 + bf*hf*(yg - hf/2)^2 + bw*(h - hf)^3/12 + bw*(h - hf)*(hf + (h - hf)/2 - yg)^2 // Inercia bruta de la sección T
+McrT = 2*sqrtfc(fc)*IgT/(h - yg) -> tonf*m // Momento de agrietamiento (fr = 0.62√f'c, E.060 10.5.1)
+check phiMn >= 1.2*McrT // φMn ≥ 1.2 Mcr (E.060 10.5.1)
 sl_libre = (bw - 2*4 cm - 2*db(3) - 3*db(bar))/2 // Espaciamiento libre entre barras (3 por capa)
 check sl_libre >= max(db(bar), 2.5 cm) // Espaciamiento libre mínimo (E.060 7.6.1)`),
     { type: 'section', b: 'bw', h: 'h', bf: 'bf', hf: 'hf', recub: '4', estribo: '3', sup: '2#5', inf: '3#{bar} / 3#{bar}', titulo: 'Sección T: ala de ancho efectivo {bf}' },

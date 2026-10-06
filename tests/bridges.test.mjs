@@ -113,4 +113,84 @@ for (const id of ['br-vigalosa', 'br-presforzada', 'br-acero', 'br-estribo', 'br
   const bad = runTemplate('br-vigalosa', d => { d.blocks[1].src = d.blocks[1].src.replace('L = 20.00 m', 'L = 35.00 m').replace('nb = 18', 'nb = 18'); d.blocks.forEach(b => { if (b.type === 'calc') b.src = b.src.replace('nb = 18 //', 'nb = 8 //'); }); });
   truthy('Viga T con datos insuficientes (L = 35 m, 8 barras) produce verificaciones que no cumplen', bad.res.ctx.checks.some(c => !c.ok));
 }
+
+section('Revisión — envolvente HL-93 en viga continua contra Müller-Breslau (líneas de influencia cerradas) y tabla HS20 del Apéndice A (AASHTO Standard)');
+{
+  // Viga continua de dos tramos iguales (ejemplo FHWA de viga de acero: 2 × 140 ft). Línea de influencia exacta:
+  // M_B(a) = −a(L² − a²)/(4L²) y M(x) = M0(x, a) + M_B·x/L; barrido fino de posiciones de los ejes (independiente del bloque).
+  const ft = 0.3048, L = 140 * ft, kft = 1 / 0.45359237 / ft;
+  const MB = (p) => { if (p < 0 || p > 2 * L) return 0; const a = p <= L ? p : 2 * L - p; return -a * (L * L - a * a) / (4 * L * L); };
+  const M0 = (x, p) => (p < 0 || p > L ? 0 : p <= x ? p * (L - x) / L : x * (L - p) / L);
+  const il = (x, p) => M0(x, p) + MB(p) * x / L;
+  const truck = (s) => [[3.63, 0], [14.52, 4.3], [14.52, 4.3 + s]], tand = [[11.34, 0], [11.34, 1.2]];
+  const best = (x, ax, sg) => { let b = 0; const sp = ax[ax.length - 1][1]; for (const fl of [0, 1]) for (let s = -sp; s <= 2 * L; s += 0.05) { let m = 0; for (const [P, xa] of ax) { const v = P * il(x, (fl ? sp - xa : xa) + s); if (v * sg > 0) m += v; } if (m * sg > b * sg) b = m; } return b; };
+  const lane = (x, sg) => { let a = 0; const n = 4000; for (let i = 0; i < n; i++) { const v = il(x, (i + 0.5) * 2 * L / n); if (v * sg > 0) a += v * 2 * L / n; } return 0.952 * a; };
+  const x4 = 0.4 * L; let tr = 0; for (const s of [4.3, 5, 6, 7, 8, 9]) tr = Math.max(tr, best(x4, truck(s), 1));
+  const Mpos = Math.max(tr, best(x4, tand, 1)) * 1.33 + lane(x4, 1);
+  let tn = 0; for (const s of [4.3, 5, 6, 7, 8, 9]) tn = Math.min(tn, best(L, truck(s), -1));
+  let dt = 0; for (let G = 15; G <= 2 * L; G += 0.5) { const t = truck(4.3); dt = Math.min(dt, best(L, t.concat(t.map(([P, a]) => [P, a + 8.6 + G])), -1)); }
+  const Mneg = Math.min(Math.min(tn, best(L, tand, -1)) * 1.33 + lane(L, -1), 0.9 * (dt * 1.33 + lane(L, -1)));
+  const e = block('hl93env', { tramos: `${L} m, ${L} m`, apoyos: 'A A A', vehiculo: 'HL-93', IM: '0.33', g: '1', secciones: `${x4} m, ${L} m` });
+  near('2 × 140 ft: M⁺(0.4L) LL+IM por carril [kip·ft] = Müller-Breslau', e('MLLx1', 'tonf*m') * kft, Mpos * kft, 0.005);
+  near('2 × 140 ft: M⁻ en el pilar (90 % de dos camiones + 90 % carril) [kip·ft]', e('MLLnx2', 'tonf*m') * kft, Mneg * kft, 0.005);
+  truthy('2 × 140 ft: el doble camión gobierna el momento negativo en el pilar', 0.9 * (dt * 1.33 + lane(L, -1)) < Math.min(tn, best(L, tand, -1)) * 1.33 + lane(L, -1));
+  // Apéndice A, AASHTO Standard Specifications (HS20-44 = camión de diseño HL-93): L = 100 ft → 1524.9 kip·ft
+  const h = block('hl93env', { tramos: '100 ft', apoyos: 'A A', IM: '0', g: '1', carril: '0' });
+  near('Simple L = 100 ft: momento del camión = 1524.9 kip·ft (tabla HS20, Apéndice A)', h('Mtr', 'tonf*m') * kft, 1524.9, 0.003);
+  const hl = block('hl93env', { tramos: '100 ft', apoyos: 'A A', IM: '0', g: '1' });
+  near('Simple L = 100 ft: carril 0.64 klf → wL²/8 = 800 kip·ft', hl('Mln', 'tonf*m') * kft, 800, 0.003);
+}
+
+section('Revisión — fórmulas de distribución forma SI del Manual MTC 2018 (ver = 2) y otras correcciones');
+{
+  const S = 2100, L = 20000, ts = 200, Kg = 1.0e11;
+  const r = Kg / (L * ts ** 3);
+  const q = calc(`a = gMi1LRFD(2100 mm, 20 m, 200 mm, 1e11 mm^4, 2)
+b = gMi2LRFD(2100 mm, 20 m, 200 mm, 1e11 mm^4, 2)
+c = gVi1LRFD(2100 mm, 2)
+d = gVi2LRFD(2100 mm, 2)
+e = eMLRFD(450 mm, 2)
+f = eVLRFD(450 mm, 2)
+p = leverLRFD(2.1 m, 0.45 m, 0.60 m, 2)
+b9 = gMi2LRFD(2100 mm, 20 m, 200 mm, 1e11 mm^4)
+n2 = NpctLRFD(2, 0.2)
+Ft4 = FtLRFD(4)
+Lt5 = LtLRFD(5)
+H4 = HbminLRFD(4)`);
+  near('MTC: gM1 = 0.06 + (S/4300)^0.4 (S/L)^0.3 (Kg/Lts³)^0.1', q('a'), 0.06 + (S / 4300) ** 0.4 * (S / L) ** 0.3 * r ** 0.1, 1e-6);
+  near('MTC: gM2 = 0.075 + (S/2900)^0.6 (S/L)^0.2 (Kg/Lts³)^0.1', q('b'), 0.075 + (S / 2900) ** 0.6 * (S / L) ** 0.2 * r ** 0.1, 1e-6);
+  near('MTC: gV1 = 0.36 + S/7600', q('c'), 0.36 + S / 7600, 1e-6);
+  near('MTC: gV2 = 0.2 + S/3600 − (S/10700)²', q('d'), 0.2 + S / 3600 - (S / 10700) ** 2, 1e-6);
+  near('MTC: e = 0.77 + de/2800', q('e'), 0.77 + 450 / 2800, 1e-6); near('MTC: e = 0.6 + de/3000', q('f'), 0.6 + 450 / 3000, 1e-6);
+  near('MTC: palanca con ruedas a 1.80 m y 0.60 m de la barrera = 0.50', q('p'), 0.5, 1e-6);
+  near('9.ª ed. y MTC difieren en menos de 1.5 % (gM2)', q('b') / q('b9'), 1, 0.015);
+  near('Tabla 4.7.4.4-1: zona 2 → 150 % de N', q('n2'), 1.5);
+  near('Tabla A13.2-1: Ft TL-4 = 240 kN', q('Ft4', 'kN'), 240, 1e-6); near('Lt TL-5 = 2.44 m', q('Lt5', 'm'), 2.44, 1e-6); near('H mín TL-4 = 810 mm', q('H4', 'mm'), 810, 1e-6);
+  // pmLRFD: φ·0.80·P0 con φ = 0.75 (5.6.4.4-3)
+  const pm = block('pmLRFD', { b: '40 cm', h: '60 cm', fc: '280 kgf/cm^2', fy: '4200 kgf/cm^2', dp: '6', nx: '3', ny: '1', barra: '8', demandas: '0 tonf, 1 tonf*m // Resistencia I' });
+  const Ast = 8 * 5.10, P0 = (0.85 * 280 * (40 * 60 - Ast) + 4200 * Ast) / 1000;
+  near('pmLRFD: Pr,max = 0.75·0.80·P0 (5.6.4.4-3)', pm('phiPnmax', 'tonf'), 0.75 * 0.8 * P0, 0.002);
+  // flexión pura: sección controlada por tracción (φ = 0.90) — 3#8 en tracción, 3#8 en compresión y 2#8 a media altura
+  const Mn0 = pm.ctx.scope.get('phiMnS')(0).toNumber('tonf*m');
+  truthy('pmLRFD: φMn(P = 0) entre 0.9·As·fy·(d − a/2) de las 3 barras traccionadas y el de todas', Mn0 > 0.9 * 3 * 5.10 * 4.2 * (0.54 - 0.03) / 1.0 * 0.95 && Mn0 < 0.9 * Ast * 4.2 * 0.54, 'φMn = ' + Mn0.toFixed(2) + ' t·m');
+  // estribo: el momento de las fuerzas de inercia = Σ kh·Wi·yi (error corregido: EQw multiplicaba por kh)
+  const t = runTemplate('br-estribo');
+  near('Estribo: Fi·EQw = kh·Σ Wi·yi', t('Fi', 'tonf') * t('EQw', 'm'), t('kh') * (t('W1', 'tonf') * t('hz', 'm') / 2 + t('W2', 'tonf') * (t('hz', 'm') + (t('hp', 'm') - t('hb', 'm')) / 2) + t('W3', 'tonf') * (t('H', 'm') - t('hb', 'm') / 2) + t('W4', 'tonf') * (t('hz', 'm') + t('hp', 'm') / 2)), 1e-6);
+  const v1 = runTemplate('br-vigalosa');
+  near('Viga-losa: Δ = DF·máx[(1+IM)Δcamión, 0.25(1+IM)Δcamión + Δcarril]', v1('DeltaLL', 'mm'), v1('DFd') * Math.max(1.33 * v1('d1', 'mm'), 0.25 * 1.33 * v1('d1', 'mm') + v1('dln', 'mm')), 1e-6);
+  truthy('Viga-losa: M⁻ de diseño en la cara de las almas ≤ suma de máximos en el eje (4.6.2.1.6)', v1('Muneg', 'tonf*m/m') <= 1.25 * Math.abs(v1('MDCnL1', 'tonf*m')) + 1.5 * Math.abs(v1('MDWnL1', 'tonf*m')) + 1.75 * Math.abs(v1('MLLneg', 'tonf*m/m')), 'Mu⁻ = ' + v1('Muneg', 'tonf*m/m').toFixed(3) + ' t·m/m');
+}
+
+section('Revisión — datos extremos: verificaciones NO CUMPLE sin errores ni NaN');
+{
+  const setIn = (d, name, val) => { let hit = 0; d.blocks.forEach(b => { if (b.type === 'calc') { const re = new RegExp('^' + name + ' = .*?( //|$)', 'm'); if (re.test(b.src)) { b.src = b.src.replace(re, name + ' = ' + val + '$1'); hit++; } } }); if (!hit) throw new Error('Dato inexistente: ' + name); };
+  const cases = [['br-vigalosa', { L: '40.00 m' }], ['br-vigalosa', { S: '3.20 m' }], ['br-vigalosa', { TL: '5' }], ['br-presforzada', { L: '140 ft' }], ['br-presforzada', { S: '14 ft' }],
+    ['br-acero', { L: '160 ft' }], ['br-estribo', { H: '12.00 m' }], ['br-estribo', { qn: '15 tonf/m^2' }], ['br-pilar', { Hc: '30.00 m' }], ['br-pilar', { bcol: '0.60 m' }],
+    ['br-neopreno', { PLL: '1500 kN' }], ['br-sismo', { bseat: '0.30 m' }], ['br-alcantarilla', { Hf: '6.00 m' }], ['br-peatonal', { L: '60.0 m' }]];
+  for (const [id, c] of cases) {
+    const r = runTemplate(id, d => { for (const [k, v] of Object.entries(c)) setIn(d, k, v); }).res;
+    const nan = r.ctx.checks.filter(x => x.ratio !== null && x.ratio !== undefined && !Number.isFinite(x.ratio));
+    truthy(`${id} ${JSON.stringify(c)}: ${r.ctx.checks.filter(x => !x.ok).length} NO CUMPLE, ${r.ctx.errors.length} errores, ${nan.length} D/C no finitos`, r.ctx.errors.length === 0 && nan.length === 0 && r.ctx.checks.some(x => !x.ok), r.ctx.errors.map(e => e.msg).join('; '));
+  }
+}
 done();

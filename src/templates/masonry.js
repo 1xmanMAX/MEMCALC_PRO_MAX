@@ -84,7 +84,7 @@ Gm = 0.4*Em // Módulo de corte Gm = 0.4 Em (Art. 24.7)
 fc = 175 kgf/cm^2 // Concreto de confinamiento f'c ≥ 175 kg/cm² (Art. 20.1.f) [175 kgf/cm^2|210 kgf/cm^2]
 fy = 4200 kgf/cm^2 // Acero corrugado ASTM A615 grado 60
 # Parámetros de la edificación
-N = 4 // Número de pisos (E.070 Art. 27: hasta 5 pisos o 15 m)
+N = 4 // Número de pisos (E.070 Art. 27 a: hasta 5 pisos o 15 m)
 h1 = 2.60 m // Altura de entrepiso (piso a piso)
 hl = 2.40 m // Altura libre del muro (Art. 19.1.a)
 wp = 0.90 tonf/m^2 // Peso sísmico por m² de planta (CM + 25 % CV, E.030 Art. 26)
@@ -96,17 +96,20 @@ Tl = 2.0 s // Periodo TL (E.030 Tabla 4) ${TL}`),
       { type: 'wallplan', muros: MUROS_EDIF, planta: '0 0 10 15', Ap: '', cm: '', Z: 'Z', U: 'U', S: 'S', N: 'N', h: 'h1', hl: 'hl', apoyo: 'voladizo', ea: '0.05', titulo: 'Planta típica de muros (muros de soga t = 13 cm y de cabeza t = 23 cm), CM y CR' },
       calc(`# Análisis sísmico (E.030 Art. 28 — fuerzas estáticas equivalentes)
 hn = N*h1 // Altura total de la edificación
+check N <= 5 // Albañilería confinada: hasta 5 pisos (E.070 Art. 27 a)
+check hn <= 15 m // Albañilería confinada: altura total ≤ 15 m (E.070 Art. 27 a)
 CT = 60 m/s // Coeficiente CT para albañilería (E.030 Art. 28.4.1)
 Te = hn/CT -> s // Periodo fundamental T = hn/CT
 Cs = CE030(Te, Tp, Tl) // Factor de amplificación sísmica (E.030 Art. 14)
 P = N*wp*Ap -> tonf // Peso sísmico de la edificación (E.030 Art. 26)
-VE = Z*U*Cs*S/3*P -> tonf // Cortante basal del sismo severo, R = 3 (E.070 Art. 23)
-Ve1 = VE/2 -> tonf // Cortante basal del sismo moderado, R = 6 (E.070 Art. 23)
+VE = Z*U*Cs*S/3*P -> tonf // Cortante basal del sismo severo, R = 3 (E.070 Art. 22)
+Ve1 = VE/2 -> tonf // Cortante basal del sismo moderado = ½ sismo severo (E.070 Art. 22)
 ## Distribución en altura (pisos de igual peso, T < 0.5 s → k = 1)
 hi = (1:N)*h1 // Altura de cada nivel sobre la base
 Fi = Ve1*hi/sum(hi) // Fuerzas por nivel Fi = αi·V con αi = Pi hi/Σ Pj hj (E.030 Art. 28.3)
 M1 = sum(Fi .* hi) -> tonf*m // Momento de volteo en la base (sismo moderado)
 hM = M1/Ve1 -> m // Brazo del momento Me/Ve para los muros del primer piso
+"Momento de cada muro $M_e = V_e\,(M_1/V_1)$: reparto del momento de volteo en proporción al cortante (muros en voladizo, Art. 24.5). Es conservador para $\alpha$ y para $M_u$ de las columnas; si los muros están acoplados por vigas o losas, use los $M_e$ de un modelo elástico.
 "Excentricidad accidental 0.05 B en cada dirección (E.030 Art. 28.5) incluida en el reparto de la planta: los factores $r$ suman {sum(rX)} en X y {sum(rY)} en Y (no se reducen fuerzas por torsión).`),
       calc(`# Muros de la dirección X\n` + dirAxial('X')),
       tabAxial('X'),
@@ -146,7 +149,7 @@ check Ac >= 15*tw*1 cm // Sección mínima Ac ≥ 15 t (Art. 27.3.a.1)
 ## Refuerzo vertical (Art. 27.3.a.2)
 mu = 1.0 // Coeficiente de fricción (0.8 junta sin tratar; 1.0 junta rugosa) [0.8|1.0]
 Asf = Vc/(fy*mu*phi) -> cm^2 // Acero por corte-fricción
-Ast = Tcol/(fy*phi) -> cm^2 // Acero por tracción
+Ast = max(Tcol, 0 tonf)/(fy*phi) -> cm^2 // Acero por tracción (T > 0; si T ≤ 0 no hay tracción)
 Asmin = 0.1*fc*Ac/fy -> cm^2 // Mínimo 0.1 f'c Ac/fy
 Asreq = max(Asf + Ast, Asmin) // Refuerzo vertical requerido
 nb = 4 // Número de varillas (mínimo 4)
@@ -221,9 +224,9 @@ alpha = alphaE070(Ve, L, Me) // Factor de esbeltez (Art. 26.3)
 Vm = VmE070(vm, alpha, t, L, Pg, matE070(uni)) -> tonf // Resistencia al agrietamiento diagonal
 check Ve <= 0.55*Vm // Control de fisuración (Art. 26.2)
 # Diseño por flexocompresión (Art. 28.2 y 28.3)
-Mu = 1.25*Me // Momento de diseño Mu = 1.25 Me (Art. 28.2.1.g)
-Vu = 1.25*Ve // Cortante de diseño Vu = 1.25 Ve
-Pu = 0.9*Pg // Carga axial mínima para dimensionar el acero de borde
+Mu = 1.25*Me // Momento de diseño Mu = 1.25 Me (Art. 28.2 a)
+Vu = 1.25*Ve // Cortante de diseño Vu = 1.25 Ve (Art. 28.2 a)
+Pu = 0.9*Pg // Carga axial mínima para dimensionar el acero de borde (Art. 28.3 b)
 Po = 0.1*fm*t*L -> tonf // Po = 0.1 f'm t L (Art. 28.3)
 phif = min(max(0.85 - 0.2*Pu/Po, 0.65), 0.85) // 0.65 ≤ φ = 0.85 − 0.2 Pu/Po ≤ 0.85
 D = 0.8*L // Brazo D = 0.8 L
@@ -232,26 +235,27 @@ nb = 2 // Varillas en cada extremo
 bar = 4 // Diámetro [3 : 3/8"|4 : 1/2"|5 : 5/8"]
 As = nb*Ab(bar) // Acero vertical de borde colocado
 check As >= Asreq // Refuerzo vertical en los extremos (Art. 28.3)
-Pu1 = 1.25*Pm // Máxima carga axial del primer piso
-Mn1 = As*fy*D + Pu1*L/2 -> tonf*m // Capacidad en flexión Mn1 = As fy D + Pu L/2
-check phif*Mn1 >= Mu // Resistencia a flexocompresión φMn ≥ Mu (Art. 28.3)
-"Refuerzo vertical repartido: φ 3/8\\" @ 40 cm (ρ = {0.71 cm^2/(40 cm*t)}) en la zona central (Art. 28.1.11).
-check Ab(3)/(40 cm*t) >= 0.001 // Cuantía vertical mínima 0.1 % (Art. 28.1.1)
+Mn = As*fy*D + Pu*L/2 -> tonf*m // Capacidad con la carga axial mínima Pu = 0.9 Pg (Art. 28.3 b)
+check phif*Mn >= Mu // Resistencia a flexocompresión φMn ≥ Mu (Art. 28.3 a)
+Pu1 = 1.25*Pm // Máxima carga axial del primer piso (Art. 28.3 f)
+Mn1 = As*fy*D + Pu1*L/2 -> tonf*m // Mn1 con Pu = 1.25 Pm, solo para el cortante por capacidad (Art. 28.3 f)
+"Refuerzo vertical repartido: φ 3/8\\" @ 40 cm (ρ = {0.71 cm^2/(40 cm*t)}) en la zona central, espaciado ≤ 45 cm (Art. 28.1 k).
+check Ab(3)/(40 cm*t) >= 0.001 // Cuantía vertical mínima 0.1 % (Art. 28.1 a)
 # Confinamiento de los extremos libres (Art. 28.4)
 Ag = L*t // Área bruta
 Ig = t*L^3/12 // Inercia bruta
 sigmau = Pu1/Ag + Mu*(L/2)/Ig -> kgf/cm^2 // σu = Pu/A + Mu y/I
-check sigmau < 0.3*fm // σu < 0.3 f'm: no requiere confinar los bordes (Art. 28.4)
+check sigmau < 0.3*fm // σu < 0.3 f'm: no requiere confinar los bordes (Art. 28.4 b)
 # Diseño por corte — capacidad (Art. 28.5)
 Vuf = max(1.25*Vu*Mn1/Mu, Vm) -> tonf // Vuf1 = 1.25 Vu1 (Mn1/Mu1), no menor que Vm1
 vi = Vuf/(t*L) -> kgf/cm^2 // Esfuerzo de corte
 check vi <= 0.1*fm // vi ≤ 0.10 f'm en la zona de rótula plástica (Art. 28.5)
 Dh = si(Me/(Ve*L) >= 1, 0.8*L, L) // D = 0.8 L (esbelto) o L (no esbelto)
-sh = 20 cm // Espaciamiento del refuerzo horizontal (≤ 200 mm, edificio de más de 3 pisos, Art. 28.1.4)
+sh = 20 cm // Espaciamiento del refuerzo horizontal (≤ 200 mm, edificio de más de 3 pisos, Art. 28.1 d)
 Ashreq = Vuf*sh/(fy*Dh) -> cm^2 // Ash = Vuf s/(fy D)
 Ash = Ab(3) // Refuerzo horizontal colocado: 1 φ 3/8" @ 20 cm
 check Ash >= Ashreq // Refuerzo horizontal por corte (Art. 28.5)
-check Ash/(sh*t) >= 0.001 // Cuantía horizontal mínima 0.1 % (Art. 28.1.1)`),
+check Ash/(sh*t) >= 0.001 // Cuantía horizontal mínima 0.1 % (Art. 28.1 a)`),
       summary(),
     ],
   },
@@ -269,7 +273,8 @@ Cerco perimétrico de ladrillo King Kong industrial en aparejo de soga, arriostr
       calc(`# Datos
 Z = 0.45 // Factor de zona ${ZONA}
 U = 1.0 // Factor de uso [1.0|1.3|1.5]
-C1 = C1E030a(4) // Coeficiente sísmico de cercos C1 = 0.6 (E.030 Tabla 12, versión citada por E.070 Art. 29.6)
+S = 1.05 // Factor de suelo (E.030-2018 Tabla 3) ${SUELO}
+C1 = C1E030a(4) // C1 = 0.6 para cercos (E.030-2003 Tabla N° 9, a la que remite E.070 Art. 29.6)
 gm = 1.8 tonf/m^3 // Peso volumétrico de la albañilería con tarrajeo
 t = 13 cm // Espesor efectivo (soga)
 esp = 15 cm // Espesor bruto con tarrajeo e
@@ -277,7 +282,9 @@ ha = 2.40 m // Altura libre del paño (entre sobrecimiento y solera)
 bp = 3.00 m // Distancia entre columnas de arriostre
 caso = 1 // Caso de la Tabla 12 [1 : 4 bordes arriostrados|2 : 3 bordes (sin solera)|3 : bordes horizontales|4 : voladizo]
 # Carga sísmica y momento en el paño (Art. 29.6 y 29.7)
-w = 0.8*Z*U*C1*gm*esp -> kgf/m^2 // w = 0.8 Z U C1 γ e
+w070 = 0.8*Z*U*C1*gm*esp -> kgf/m^2 // w = 0.8 Z U C1 γ e (E.070 Art. 29.6, esfuerzos admisibles)
+w030 = 0.8*0.5*Z*U*S*gm*esp -> kgf/m^2 // E.030-2018: F = 0.5 Z U S Pe para cercos (Art. 41), × 0.8 en esfuerzos admisibles (Art. 43)
+w = max(w070, w030) // Carga de diseño: la mayor (la E.070 remite al C1 de la E.030-2003, ya derogada)
 a = si(caso == 1, min(ha, bp), si(caso == 2, bp, ha)) // Dimensión crítica a (Tabla 12)
 bt = si(caso == 1, max(ha, bp), ha) // Otra dimensión b
 mc = mE070(caso, bt/a) // Coeficiente de momento m (Tabla 12)
@@ -290,13 +297,15 @@ check t >= treq // Espesor efectivo del cerco
 # Diseño de la columna de arriostre (Art. 29.9 y 31.5)
 fcc = 175 kgf/cm^2 // Concreto de columnas y soleras
 fy = 4200 kgf/cm^2
-fu = 1.25 // Factor de amplificación de carga para el diseño a rotura de arriostres
+fu = 1.25 // Paso de cargas de servicio a rotura de los arriostres: 1/0.8 (E.030-2018 Art. 43)
 bcol = t // Ancho de la columna (= espesor del muro)
 hcol = 25 cm // Peralte de la columna (perpendicular al muro)
 Mcol = fu*w*bp*ha^2/2 -> tonf*m // Voladizo con la carga del paño tributario
 dcol = hcol - 4 cm // Peralte efectivo
 Rn = Mcol/(0.9*bcol*dcol^2) -> kgf/cm^2
-rho = 0.85*fcc/fy*(1 - sqrt(1 - 2*Rn/(0.85*fcc))) // Cuantía (E.060 Cap. 10)
+rho = 0.85*fcc/fy*(1 - sqrt(max(0, 1 - 2*Rn/(0.85*fcc)))) // Cuantía (E.060 Cap. 10)
+rhomax = 0.75*0.85*0.85*fcc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy) // ρmax = 0.75 ρb (E.060 10.3.4, β1 = 0.85)
+check rho <= rhomax // Sección de la columna suficiente: ρ ≤ 0.75 ρb (E.060 10.3.4)
 Ascol = max(rho*bcol*dcol, 0.7*sqrtfc(fcc)/fy*bcol*dcol) -> cm^2 // Acero en tracción por cara
 Asc = 2*Ab(3) // 2 φ 3/8" por cara (4 φ 3/8" en total)
 check Asc >= Ascol // Refuerzo de la columna de arriostre
@@ -308,7 +317,8 @@ bsol = t // Ancho de la solera
 hsol = 20 cm // Peralte de la solera
 Msol = fu*w*(a/2)*bp^2/8 -> tonf*m // Faja superior del paño (a/2) simplemente apoyada entre columnas
 Rns = Msol/(0.9*hsol*(bsol - 3 cm)^2) -> kgf/cm^2 // Flexión fuera del plano del muro (ancho resistente hsol)
-rhos = 0.85*fcc/fy*(1 - sqrt(1 - 2*Rns/(0.85*fcc)))
+rhos = 0.85*fcc/fy*(1 - sqrt(max(0, 1 - 2*Rns/(0.85*fcc))))
+check rhos <= rhomax // Sección de la solera suficiente: ρ ≤ 0.75 ρb (E.060 10.3.4)
 Assol = max(rhos*hsol*(bsol - 3 cm), 0.7*sqrtfc(fcc)/fy*hsol*(bsol - 3 cm)) -> cm^2
 check 2*Ab(3) >= Assol // Solera 4 φ 3/8" (2 por cara)
 # Cimiento corrido (Art. 31.6, por metro lineal)
@@ -376,9 +386,10 @@ fpt = 0.30 kgf/cm^2 // Resistencia a tracción indirecta de muretes f't (ensayo)
 check fo >= 10.2 kgf/cm^2 // Resistencia mínima de la unidad (Art. 8.1)
 check fpm >= 6.12 kgf/cm^2 // Resistencia mínima de muretes a compresión (Art. 8.4)
 check fpt >= 0.25 kgf/cm^2 // Resistencia mínima de muretes a tracción indirecta (Art. 8.5)
-fmad = 0.40*fpm -> kgf/cm^2 // Esfuerzo admisible de compresión fm = 0.40 f'm (Art. 8.4)
-vmad = 0.40*fpt -> kgf/cm^2 // Esfuerzo admisible de corte vm = 0.40 f't (Art. 8.5)
-ftad = 1.42 kgf/cm^2/2.5 -> kgf/cm^2 // Tracción por flexión admisible = 1.42/2.5 (Art. 8.6 y 9)
+FS = 2.5 // Coeficiente de seguridad (Art. 9) [2.5 : Con ensayos de laboratorio|3.0 : Sin ensayos]
+fmad = fpm/FS -> kgf/cm^2 // Compresión admisible fm = f'm/FS = 0.40 f'm con ensayos (Art. 8.4 y 9)
+vmad = fpt/FS -> kgf/cm^2 // Corte admisible vm = f't/FS = 0.40 f't con ensayos (Art. 8.5 y 9)
+ftad = 1.42 kgf/cm^2/FS -> kgf/cm^2 // Tracción por flexión admisible: resistencia última 0.14 MPa / FS (Art. 8.6 y 9)
 # Criterios de estabilidad — límites geométricos (Art. 6, Fig. 2)
 check esp >= 0.40 m // Espesor mínimo de muro (Art. 6.1)
 check av <= Larr/3 // Ancho de vano a ≤ L/3 (Fig. 2-II)
@@ -416,7 +427,9 @@ mf = mE070(2, H/Larr) // Coeficiente m (3 bordes, a = borde libre = L)
 Msf = mf*wf*Larr^2 -> kgf*m/m // Momento por metro
 ff = 6*Msf/esp^2 -> kgf/cm^2 // Esfuerzo de tracción por flexión
 check ff <= ftad // Tracción por flexión admisible (Art. 8.6)`),
-      text(`> **Refuerzos (Art. 6.10 y 7.3.3):** geomalla biaxial en ambas caras de los muros, conectada con pasadores a través de las hiladas, viga collar de madera fijada a la malla y a los muros, y dinteles flexibles. Los vanos deben ser pequeños y centrados (Art. 6.6).`),
+      text(`> **Zonas 3 y 4:** con $C$ = 0.20–0.25 (Tabla 3) las verificaciones de resistencia de la tierra sin reforzar (corte con $f'_t$ ≈ 0.25–0.30 kg/cm² y flexión fuera del plano con 1.42 kg/cm²/FS) normalmente **no cumplen** para esta planta (cambie la zona para comprobarlo). En esos casos la seguridad depende del criterio de **desempeño** (Art. 7.3.3): refuerzo de geomalla o sogas que controle los desplazamientos tras la fisuración, más densidad de muros, menor distancia entre arriostres ($L$) y ensayos que acrediten un $f'_t$ mayor. Esta memoria no cuantifica la contribución del refuerzo.
+
+> **Refuerzos (Art. 6.10 y 7.3.3):** geomalla biaxial en ambas caras de los muros, conectada con pasadores a través de las hiladas, viga collar de madera fijada a la malla y a los muros, y dinteles flexibles. Los vanos deben ser pequeños y centrados (Art. 6.6).`),
       summary(),
     ],
   },
@@ -476,7 +489,7 @@ check delta <= dadm // Deflexión
 # Estabilidad lateral (JUNAC Tabla 8.2)
 rhb = h/b // Relación peralte/ancho
 check rhb <= 6 // h/b ≤ 6: arriostrar el borde comprimido (entablado) y colocar crucetas o bloques
-"Con $h/b$ = {rhb}: el entablado clavado arriostra el borde comprimido; colocar bloques o crucetas a no más de 8 veces el peralte (JUNAC Tabla 8.2).`),
+"Con $h/b$ = {rhb}: restringir el desplazamiento lateral en los apoyos y el borde comprimido (entablado clavado) y colocar bloques o crucetas de arriostre a lo largo de la luz (JUNAC Tabla 8.2).`),
       summary(),
     ],
   },
@@ -516,6 +529,7 @@ Nadm = NadmE010(fc, Emin, A, lam, Ck) -> tonf // Carga admisible
 check Nd <= Nadm // Compresión
 # Flexocompresión (JUNAC 9.6)
 Ncr = pi^2*Emin*Ix/lef^2 -> tonf // Carga crítica de Euler
+check Nd < Ncr/1.5 // Estabilidad: N < Ncr/1.5 (E.010 Art. 10.3)
 km = kmE010(Nd, Ncr) // Factor de magnificación km = 1/(1 − 1.5 N/Ncr)
 ic = Nd/Nadm + km*Md/(Zx*fm) // Ecuación de interacción
 check ic < 1 // N/Nadm + km|M|/(Z fm) < 1`),

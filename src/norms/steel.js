@@ -15,6 +15,9 @@ for (const fam of Object.keys(RAW)) {
   for (const row of RAW[fam].split('\n')) {
     const c = row.split('|'); const p = {};
     f.forEach((k, i) => { const v = c[i + 1]; if (v !== '' && v !== undefined) p[k] = +v; });
+    // Ángulos de lados desiguales: en el archivo de origen «d» es el ala corta y «b» la larga, pero Ix, ȳ se refieren
+    // al ala larga vertical (Manual AISC, Tabla 1-7). Se ordena d = ala larga (vertical), b2 = ala corta (revisión 2026).
+    if (fam === 'L' && p.d < p.b2) { const t = p.d; p.d = p.b2; p.b2 = t; }
     DB.set(c[0], { fam, name: c[0], p });
   }
 }

@@ -45,6 +45,18 @@ function shapeSvg(s, X, Y, sc) {
     g += `<path ${st} d="M${X(0)},${Y(0)} H${X(t)} V${Y(d - t - r)} A${rs},${rs} 0 0 0 ${X(t + r)},${Y(d - t)} H${X(b)} V${Y(d)} H${X(0)} Z"/>`;
     return { g, w: b, h: d, cx: p.x, cy: d - p.y };
   }
+  if (s.fam === 'T') {
+    const d = p.d, bf = p.bf, tf = p.tf, tw = p.tw, r = Math.max(0, p.kdes - tf), rs = r * sc, xw = bf / 2 - tw / 2, xw2 = bf / 2 + tw / 2;
+    g += `<path ${st} d="M${X(0)},${Y(0)} H${X(bf)} V${Y(tf)} H${X(xw2 + r)} A${rs},${rs} 0 0 0 ${X(xw2)},${Y(tf + r)} V${Y(d)} H${X(xw)} V${Y(tf + r)} A${rs},${rs} 0 0 0 ${X(xw - r)},${Y(tf)} H${X(0)} Z"/>`;
+    return { g, w: bf, h: d, cx: bf / 2, cy: p.y };
+  }
+  if (s.fam === 'D') {
+    // dos ángulos con las alas verticales espalda con espalda y las salientes arriba (como una T)
+    const d = p.d, b = p.b2, t = p.t, s2 = p.gap, W = 2 * b + s2;
+    g += `<path ${st} d="M${X(0)},${Y(0)} H${X(b)} V${Y(d)} H${X(b - t)} V${Y(t)} H${X(0)} Z"/>`;
+    g += `<path ${st} d="M${X(W)},${Y(0)} H${X(b + s2)} V${Y(d)} H${X(b + s2 + t)} V${Y(t)} H${X(W)} Z"/>`;
+    return { g, w: W, h: d, cx: W / 2, cy: p.y };
+  }
   if (s.fam === 'K') {
     const H = p.d, B = p.bf, D = p.D, t = p.t;
     let d = `M${X(B)},${Y(D)} V${Y(0)} H${X(0)} V${Y(H)} H${X(B)} V${Y(H - D)} H${X(B - t)} V${Y(H - t)} H${X(t)} V${Y(t)} H${X(B - t)} V${Y(D)} Z`;
@@ -78,9 +90,13 @@ const EXP = {
   O: [['A', 'A', 'Área'], ['D', 'OD', 'Diámetro exterior'], ['t', 'tdes', 'Espesor de diseño'], ['Ix', 'Ix', 'Inercia'], ['Sx', 'Sx', 'Módulo elástico'], ['Zx', 'Zx', 'Módulo plástico'], ['rx', 'rx', 'Radio de giro'], ['J', 'J', 'Constante de torsión'], ['Ct', 'C', 'Constante torsional C'], ['lambdaD', 'D/t', 'Esbeltez D/t'], ['peso', 'W', 'Peso por unidad de longitud']],
 };
 EXP.E = EXP.I.map(e => e);
+EXP.T = [['A', 'A', 'Área'], ['d', 'd', 'Peralte d'], ['bf', 'bf', 'Ancho del ala'], ['tf', 'tf', 'Espesor del ala'], ['tw', 'tw', 'Espesor del alma'], ['yc', 'y', 'Centroide ȳ desde la cara del ala'], ['Ix', 'Ix', 'Inercia eje x'], ['Sx', 'Sx', 'Módulo elástico x (punta del alma)'], ['Zx', 'Zx', 'Módulo plástico x'], ['rx', 'rx', 'Radio de giro x'],
+  ['Iy', 'Iy', 'Inercia eje y'], ['Sy', 'Sy', 'Módulo elástico y'], ['Zy', 'Zy', 'Módulo plástico y'], ['ry', 'ry', 'Radio de giro y'], ['J', 'J', 'Constante de torsión'], ['Cw', 'Cw', 'Constante de alabeo'], ['ro', 'ro', 'Radio polar r̄o'], ['Hc', 'H3', 'Constante de flexión H'], ['lambdaf', 'bf/2tf', 'Esbeltez del ala bf/2tf'], ['lambdaw', 'd/tw', 'Esbeltez del alma d/tw'], ['peso', 'W', 'Peso por unidad de longitud']];
+EXP.D = [['A', 'A', 'Área (2 ángulos)'], ['d', 'd', 'Ala vertical (espalda con espalda)'], ['b', 'b2', 'Ala saliente'], ['t', 't', 'Espesor'], ['yc', 'y', 'Centroide ȳ'], ['Ix', 'Ix', 'Inercia eje x'], ['Sx', 'Sx', 'Módulo elástico x (mín.)'], ['Zx', 'Zx', 'Módulo plástico x'], ['rx', 'rx', 'Radio de giro x'],
+  ['Iy', 'Iy', 'Inercia eje y (con separación)'], ['Sy', 'Sy', 'Módulo elástico y'], ['Zy', 'Zy', 'Módulo plástico y'], ['ry', 'ry', 'Radio de giro y'], ['rz', 'rz', 'Radio mínimo de un ángulo (E6)'], ['J', 'J', 'Constante de torsión'], ['ro', 'ro', 'Radio polar r̄o'], ['Hc', 'H3', 'Constante de flexión H'], ['lambdaf', 'b/t', 'Esbeltez b/t (ala mayor)'], ['peso', 'W', 'Peso por unidad de longitud']];
 EXP.K = [['A', 'A', 'Área'], ['d', 'd', 'Peralte H'], ['bf', 'bf', 'Ancho del ala B'], ['D', 'D', 'Altura del labio D'], ['t', 't', 'Espesor'], ['xc', 'x', 'Centroide desde el dorso del alma'], ['Ix', 'Ix', 'Inercia eje x'], ['Sx', 'Sx', 'Módulo elástico x'], ['rx', 'rx', 'Radio de giro x'],
   ['Iy', 'Iy', 'Inercia eje y'], ['Sy', 'Sy', 'Módulo elástico y (fibra del labio)'], ['ry', 'ry', 'Radio de giro y'], ['J', 'J', 'Constante de torsión'], ['lambdaw', 'h/t', 'Esbeltez del alma h/t'], ['lambdaf', 'b/t', 'Esbeltez del ala b/t'], ['peso', 'W', 'Peso por unidad de longitud']];
-const NAMEF = { K: 'Canal atiesado conformado en frío (método lineal, esquinas rectas)', I: 'Perfil laminado I (W/HP/M/S) — AISC', C: 'Canal laminado C/MC — AISC', L: 'Ángulo laminado L — AISC', R: 'Tubo estructural HSS rectangular — AISC', O: 'Tubo circular HSS / Pipe — AISC', E: 'Perfil europeo (EN 10365 / ArcelorMittal)' };
+const NAMEF = { T: 'Perfil T (WT) cortado de un W — propiedades calculadas', D: 'Doble ángulo 2L espalda con espalda — propiedades calculadas', K: 'Canal atiesado conformado en frío (método lineal, esquinas rectas)', I: 'Perfil laminado I (W/HP/M/S) — AISC', C: 'Canal laminado C/MC — AISC', L: 'Ángulo laminado L — AISC', R: 'Tubo estructural HSS rectangular — AISC', O: 'Tubo circular HSS / Pipe — AISC', E: 'Perfil europeo (EN 10365 / ArcelorMittal)' };
 
 registerBlock('steelsec', {
   name: 'Perfil de acero', icon: 'steel', group: 'Acero',
@@ -102,7 +118,7 @@ registerBlock('steelsec', {
     // ---- dibujo ----
     const p = s.p, nat = s.fam === 'E' ? 'cm' : s.fam === 'K' ? 'mm' : 'in';
     const W = 400, H = 330;
-    const dims = s.fam === 'K' ? [p.bf, p.d] : s.fam === 'R' ? [p.B, p.Ht] : s.fam === 'O' ? [p.OD, p.OD] : s.fam === 'L' ? [p.b2, p.d] : [p.bf, p.d];
+    const dims = s.fam === 'D' ? [2 * p.b2 + p.gap, p.d] : s.fam === 'K' ? [p.bf, p.d] : s.fam === 'R' ? [p.B, p.Ht] : s.fam === 'O' ? [p.OD, p.OD] : s.fam === 'L' ? [p.b2, p.d] : [p.bf, p.d];
     const sc = Math.min(230 / dims[0], 240 / dims[1]);
     const ox = (W - dims[0] * sc) / 2 + 10, oy = (H - dims[1] * sc) / 2 + 5;
     const X = (x) => ox + x * sc, Y = (y) => oy + y * sc;
@@ -115,13 +131,21 @@ registerBlock('steelsec', {
     g += Lne(X(sh.cx), Y(0) - 18, X(sh.cx), Y(sh.h) + 14, C.red, 0.8, '8 3 2 3') + Lne(X(0) - 14, Y(sh.cy), X(sh.w) + 18, Y(sh.cy), C.red, 0.8, '8 3 2 3');
     g += T(X(sh.w) + 24, Y(sh.cy) + 4, 'x', { c: C.red, fs: 12, b: 1 }) + T(X(sh.cx) + 2, Y(0) - 22, 'y', { c: C.red, fs: 12, b: 1 });
     g += dimV(X(0) - 26, Y(0), Y(sh.h), (s.fam === 'R' ? 'H = ' : s.fam === 'O' ? 'D = ' : 'd = ') + fl(sh.h));
-    g += dimH(X(0), X(sh.w), Y(sh.h) + 26, (s.fam === 'R' ? 'B = ' : s.fam === 'O' ? 'D = ' : s.fam === 'L' ? 'b = ' : 'bf = ') + fl(sh.w));
+    g += dimH(X(0), X(sh.w), Y(sh.h) + 26, (s.fam === 'R' ? 'B = ' : s.fam === 'O' ? 'D = ' : s.fam === 'L' ? 'b = ' : s.fam === 'D' ? '2b + s = ' : 'bf = ') + fl(sh.w));
     // línea de referencia con quiebre horizontal bajo el texto
     const lead = (x1, y1, x2, y2, txt, a = 'start') => {
       const w = txt.length * 5.6 + 4, ex = a === 'start' ? x2 : x2 - w;
       return Lne(x1, y1, ex, y2, C.axis, 0.8) + Lne(ex, y2, ex + w, y2, C.axis, 0.8) + `<circle cx="${x1}" cy="${y1}" r="1.8" fill="${C.ink}"/>` + T(ex + 2, y2 - 3, txt, { fs: 10, a: 'start' });
     };
-    if (s.fam === 'I' || s.fam === 'E' || s.fam === 'C') {
+    if (s.fam === 'T') {
+      g += lead(X(p.bf * 0.85), Y(p.tf / 2), W - 6, Y(0) - 10, 'tf = ' + fl(p.tf), 'end');
+      g += lead(X(p.bf / 2), Y(p.d * 0.7), W - 6, Y(p.d * 0.7) + 20, 'tw = ' + fl(p.tw), 'end');
+      g += `<circle cx="${X(p.bf / 2)}" cy="${Y(p.y)}" r="3" fill="${C.red}"/>` + T(X(p.bf / 2) + 6, Y(p.y) - 6, 'ȳ = ' + fl(p.y), { fs: 10, a: 'start', c: C.red });
+    } else if (s.fam === 'D') {
+      g += lead(X(p.b2 * 0.3), Y(p.t / 2), X(0) - 4, Y(0) - 14, 't = ' + fl(p.t), 'start');
+      g += T(X(p.b2 + p.gap / 2), Y(p.d) + 14, 's = ' + fl(p.gap), { fs: 10 });
+      g += `<circle cx="${X(p.b2 + p.gap / 2)}" cy="${Y(p.y)}" r="3" fill="${C.red}"/>` + T(X(p.b2 + p.gap / 2) + 6, Y(p.y) + 12, 'ȳ = ' + fl(p.y), { fs: 10, a: 'start', c: C.red });
+    } else if (s.fam === 'I' || s.fam === 'E' || s.fam === 'C') {
       const xw = s.fam === 'C' ? p.tw / 2 : p.bf / 2;
       g += lead(X(p.bf * 0.85), Y(p.tf / 2), W - 6, Y(0) - 10, 'tf = ' + fl(p.tf), 'end');
       g += lead(X(xw), Y(p.d * 0.62), W - 6, Y(p.d * 0.62) + 26, 'tw = ' + fl(p.tw), 'end');
@@ -146,7 +170,7 @@ registerBlock('steelsec', {
       for (let i = 0; i < cells.length; i += 2) tb += '<tr>' + cells[i] + (cells[i + 1] || '<td></td><td></td>') + '</tr>';
       tb += '</tbody></table>';
     }
-    const src = s.fam === 'K' ? 'Propiedades calculadas por el método lineal con esquinas rectas (AISI Cold-Formed Steel Design Manual); dimensiones exteriores H × B × D × t en mm.' : s.fam === 'E' ? 'Fuente: tablas ArcelorMittal / EN 10365 (It e Iw calculados con las fórmulas del fabricante).' : 'Fuente: AISC Shapes Database (Steel Construction Manual, Parte 1).';
+    const src = s.fam === 'T' ? 'Propiedades calculadas a partir del ' + s.parent + ' (AISC Shapes Database): rectángulos + filetes; Iy, Zy, J = mitad del W; Cw = bf³tf³/144 + (d − tf/2)³tw³/36.' : s.fam === 'D' ? 'Propiedades calculadas a partir de dos ' + s.parent + ' (AISC Shapes Database) con separación s; r̄o y H respecto al centro de corte en la intersección de las alas salientes.' : s.fam === 'K' ? 'Propiedades calculadas por el método lineal con esquinas rectas (AISI Cold-Formed Steel Design Manual); dimensiones exteriores H × B × D × t en mm.' : s.fam === 'E' ? 'Fuente: tablas ArcelorMittal / EN 10365 (It e Iw calculados con las fórmulas del fabricante).' : 'Fuente: AISC Shapes Database (Steel Construction Manual, Parte 1).';
     return `<div class="figure">${head}<div class="fig-sm">${svgWrap(W, H, g)}</div>${tb}<div class="txt muted" style="font-size:.85em">${src}</div>${caption(ctx, b.titulo || 'Sección ' + s.name)}</div>`;
   },
 });

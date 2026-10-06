@@ -339,10 +339,14 @@ export function intersect(c, SaDem) {
   }
   return null;
 }
+// punto de prueba inicial: intersección elástica o, si no existe, igual desplazamiento (ATC-40 §8.2.2.1 paso 3)
+function startPoint(c, Sa) {
+  const d = intersect(c, Sa); if (d !== null) return d;
+  const T0 = PI2 * Math.sqrt(1 / c.k0); return Math.min(Sa(T0) * (T0 / PI2) ** 2, 0.98 * c.xmax);
+}
 export function atc40CSM(cap, Sa, Ts, type = 'A', tol = 1e-4) {
   const c = tab(cap);
-  let dpi = intersect(c, Sa);
-  if (dpi === null) return { ok: false, msg: 'La curva de capacidad no intersecta el espectro elástico (capacidad insuficiente)' };
+  let dpi = startPoint(c, Sa);
   let res = null;
   for (let it = 0; it < 200; it++) {
     const bl = bilinEqualArea(c, dpi), api = bl.ap;
@@ -372,8 +376,7 @@ export function fema440Beff(mu, alpha) {
 }
 export function fema440ELM(cap, Sa) {
   const c = tab(cap);
-  let dpi = intersect(c, Sa);
-  if (dpi === null) return { ok: false, msg: 'La curva de capacidad no intersecta el espectro elástico' };
+  let dpi = startPoint(c, Sa);
   let res = null;
   for (let it = 0; it < 300; it++) {
     const bl = bilinEqualArea(c, Math.min(dpi, c.xmax));
@@ -560,18 +563,20 @@ export function simqke({ Sa, dur = 20, dt = 0.01, t1 = 2, t2 = 12, cdec = 0.25, 
     void I;
     return x;
   };
-  let x, sp, hist = [];
+  let x, sp, hist = [], best = null;
   for (let it = 0; it < iters; it++) {
     x = synth();
     sp = spectrumNJ(x, dt, fr.map(f => 1 / f), z);
-    A = A.map((a, j) => a * Sa(1 / fr[j]) / sp[j].SA);
     const rr = sp.filter(s => s.T >= Tmin && s.T <= Tmax).map(s => s.SA / Sa(s.T));
-    hist.push({ it: it + 1, min: Math.min(...rr), max: Math.max(...rr) });
+    const h = { it: it + 1, min: Math.min(...rr), max: Math.max(...rr) };
+    hist.push(h);
+    if (!best || h.min / h.max > best.h.min / best.h.max) best = { x, h };
+    A = A.map((a, j) => a * Sa(1 / fr[j]) / sp[j].SA);
   }
-  x = synth();
+  x = best.x;
   sp = spectrumNJ(x, dt, Tc, z);
   const rr = sp.map(s => s.SA / Sa(s.T));
-  return { ag: x, dt, N, fr, hist, ratioMin: Math.min(...rr), ratioMax: Math.max(...rr), ratioMean: rr.reduce((a, b) => a + b, 0) / rr.length, sp };
+  return { ag: x, dt, N, fr, hist, best: best.h.it, ratioMin: Math.min(...rr), ratioMax: Math.max(...rr), ratioMean: rr.reduce((a, b) => a + b, 0) / rr.length, sp };
 }
 
 // ---------------------------------------------------------------------

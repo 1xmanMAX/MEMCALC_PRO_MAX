@@ -468,7 +468,7 @@ registerBlock('slope', {
   fields: [
     F('superficie', 'Superficie del terreno: x y (de izquierda a derecha)', '0 10\n12 10\n27 0\n45 0', 'area'),
     F('estratos', 'Estratos: y_tope c φ γ [γsat] nombre', '10 2.0 25 1.85 1.95 Arcilla arenosa\n0 4.0 30 1.95 2.05 Arena densa', 'area'),
-    F('nf', 'Nivel freático (cota y, vacío = seco)', ''), F('kh', 'Coeficiente sísmico horizontal kh', '0'),
+    F('nf', 'Nivel freático: cota y, o polilínea «x y» por línea (vacío = seco)', '', 'area'), F('kh', 'Coeficiente sísmico horizontal kh', '0'),
     F('sobrecarga', 'Sobrecargas: x1 x2 q', '2 10 2.0', 'area'),
     F('circulo', 'Círculo de falla: xc yc R (vacío = búsqueda)', ''), F('malla', 'Malla de centros: xmin xmax ymin ymax n', '10 30 12 30 12'),
     F('ybase', 'Cota mínima de la superficie de falla (estrato firme)', '-5'),
@@ -476,7 +476,7 @@ registerBlock('slope', {
     F('ndov', 'Número de dovelas', '30'), F('FSmin', 'FS mínimo (vacío = E.050: 1.5 estático / 1.25 sísmico)', ''),
     F('unidades', 'Unidades de c, γ, q', '', 'select', [['t', 't/m² · t/m³'], ['kN', 'kPa · kN/m³']]), F('tabla', 'Mostrar tabla de dovelas', '', 'check'), F('sufijo', 'Sufijo de resultados', ''), F('titulo', 'Título', ''),
   ],
-  hint: 'Coordenadas en m (y hacia arriba). Cada estrato rige desde su cota <code>y_tope</code> hasta el tope del siguiente (horizontales). φ en grados. La búsqueda recorre la malla de centros y, para cada centro, radios cuya cota inferior va desde <i>y_base</i> hasta la cresta. Exporta <code>FS FSb FSf xc yc Rc</code> y verifica FS ≥ 1.5 (estático) o ≥ 1.25 (seudoestático, kh &gt; 0) según E.050 Art. 30.3.',
+  hint: 'Coordenadas en m (y hacia arriba). Cada estrato rige desde su cota <code>y_tope</code> hasta el tope del siguiente (horizontales). φ en grados. El nivel freático puede ser una cota constante o una polilínea (presión de poros hidrostática u = γw·(y<sub>NF</sub> − y<sub>base</sub>), sin agua libre sobre el terreno). La búsqueda recorre la malla de centros y, para cada centro, radios cuya cota inferior va desde <i>y_base</i> hasta la cresta. Exporta <code>FS FSb FSf xc yc Rc</code> y verifica FS ≥ 1.5 (estático) o ≥ 1.25 (seudoestático, kh &gt; 0) según E.050 Art. 30.3.',
   def: { superficie: '0 10\n12 10\n27 0\n45 0', estratos: '10 2.0 25 1.85 1.95 Arcilla arenosa\n2 4.0 32 1.95 2.05 Arena densa', nf: '', kh: '0', malla: '12 32 12 32 12', ybase: '-4', metodo: 'bishop', ndov: '30', unidades: 't', tabla: false },
   render(b, ctx) {
     const S = ctx.scope;

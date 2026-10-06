@@ -89,7 +89,10 @@ export function splitRef(s) {
   const m = /\(([^()]{2,70})\)\s*\.?\s*$/.exec(s || '');
   if (!m || !/\d/.test(m[1])) return null;
   const r = NORM_RX.exec(m[1]); if (!r || r.index > 2) return null; // la cita empieza por la norma o el artículo
-  return { text: s.slice(0, m.index).replace(/[\s,;:—–-]+$/, ''), ref: m[1].trim() };
+  let ref = m[1].trim(), text = s.slice(0, m.index).replace(/[\s,;:—–-]+$/, '');
+  const k = ref.search(/;\s/); // «Art. 33.2; la regularidad se verifica…» → la nota vuelve al texto
+  if (k > 0) { text += (text ? ' ' : '') + '(' + ref.slice(k + 1).trim() + ')'; ref = ref.slice(0, k).trim(); }
+  return { text, ref };
 }
 const refSpan = (r) => `<span class="nref">${r}</span>`;
 function polish(h) {
@@ -203,10 +206,10 @@ export function fitEquations(root, on = true) {
   if (!on) return;
   paper.classList.add('fitm');
   const eqs = [...paper.querySelectorAll('.ln .eq')];
-  const over = (e) => { const k = e.firstElementChild; return k ? k.getBoundingClientRect().width - e.clientWidth : 0; };
+  const over = (e) => { const k = e.firstElementChild; return k ? k.getBoundingClientRect().width - e.clientWidth * 0.98 : 0; };
   const wide = eqs.filter(e => over(e) > 1);
   wide.forEach(e => { const ln = e.parentElement; if (!ln.classList.contains('al') && ln.querySelector('.cm')) ln.classList.add('fitw', 'al'); });
-  const z = wide.map(e => { const k = e.firstElementChild, w = k.getBoundingClientRect().width, have = e.clientWidth; return w > have + 1 && have > 40 ? [k, Math.max(0.5, (have - 2) / w)] : null; }).filter(Boolean);
+  const z = wide.map(e => { const k = e.firstElementChild, w = k.getBoundingClientRect().width, have = e.clientWidth; return w > have * 0.98 && have > 40 ? [k, Math.max(0.42, have * 0.97 / w)] : null; }).filter(Boolean);
   paper.classList.remove('fitm');
   z.forEach(([k, f]) => { k.style.zoom = f.toFixed(3); });
 }

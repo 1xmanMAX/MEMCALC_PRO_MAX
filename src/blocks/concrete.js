@@ -313,7 +313,7 @@ registerBlock('pmgen', {
     F('demandas', 'Demandas: "Pu, Mu // etiqueta" (XY: "Pu, Mux, Muy")', '', 'area'),
     F('sufijo', 'Sufijo de variables', ''), F('titulo', 'Título', ''),
   ],
-  hint: 'Diagrama de interacción por compatibilidad de deformaciones (εcu = 0.003, bloque de Whitney) para secciones formadas por rectángulos: columnas, placas con núcleos, secciones L, T, I. <b>Dirección X</b>: compresión que varía a lo largo de X (sismo X-X); <b>Y</b>: a lo largo de Y; <b>XY</b>: flexión biaxial exacta (contorno de carga). Momento positivo comprime el extremo +X (+Y). Exporta <code>DCpmg</code>, <code>phiPnmax</code>, <code>Pn0</code>, <code>Ast</code>, <code>rhog</code> y las funciones <code>phiMn_X(P)</code>, <code>Mn_X(P)</code>, <code>c_X(P)</code>, <code>Pn_X(e)</code>, <code>phiPn_X(e)</code> (y _Y).',
+  hint: 'Diagrama de interacción por compatibilidad de deformaciones (εcu = 0.003, bloque de Whitney) para secciones formadas por rectángulos: columnas, placas con núcleos, secciones L, T, I. <b>Dirección X</b>: compresión que varía a lo largo de X (sismo X-X); <b>Y</b>: a lo largo de Y; <b>XY</b>: flexión biaxial exacta (contorno de carga). Momento positivo comprime el extremo +X (+Y). Las capacidades exportadas se obtienen resolviendo exactamente la profundidad c (bisección) para cada P; D/C = máx(|Mu|/φMn(Pu), Pu/φPn,máx). Exporta <code>DCpmg</code>, <code>phiPnmax</code>, <code>Pn0</code>, <code>Ast</code>, <code>rhog</code> y las funciones <code>phiMn_X(P)</code>, <code>Mn_X(P)</code>, <code>c_X(P)</code>, <code>Pn_X(e)</code>, <code>phiPn_X(e)</code> (y _Y).',
   def: { geom: '0 0 300 25', barras: 'R 5 5 45 20 4 2 6\nR 255 5 295 20 4 2 6\nM 55 5 245 5 20 3\nM 55 20 245 20 20 3', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'X', demandas: '350 tonf, 520 tonf*m // Sismo' },
   render(b, ctx) { return renderPMgen(b, ctx); },
 });
@@ -562,8 +562,8 @@ registerBlock('mensula', {
     g += dimH(X(bc), xa, Y(h) + 22, 'av = ' + f2(av) + ' cm') + dimH(X(bc), X(bc + lc), Y(h) + 44, 'ℓ = ' + f2(lc) + ' cm');
     g += dimV(X(bc + lc) + 18, Y(0), Y(he), f2(he) + ' cm', C.ink, 1);
     g += dimV(X(0) - 22, Y(0), Y(h), 'h = ' + f2(h) + ' cm') + dimV(X(0) - 50, Y(yc), Y(h), 'd = ' + f2(d) + ' cm');
-    g += T(X(bc + lc) + 30, Y(yc) + 4, 'Asc: ' + interp(b.asc || '', S) + ' + barra transversal soldada', { fs: 10, a: 'start', b: 1 });
-    g += T(X(bc + lc) + 30, Y(yc + d / 3) + 4, 'Ah: ' + interp(b.ah || '', S) + ' en 2/3 d', { fs: 10, a: 'start', c: C.blue });
+    g += T(X(bc + lc) + 48, Y(yc) + 4, 'Asc: ' + interp(b.asc || '', S) + ' + barra transversal soldada', { fs: 10, a: 'start', b: 1 });
+    g += T(X(bc + lc) + 48, Y(yc + d / 3) + 4, 'Ah: ' + interp(b.ah || '', S) + ' en 2/3 d', { fs: 10, a: 'start', c: C.blue });
     g += T(X(bc / 2), 34, 'Columna', { fs: 10, c: C.axis });
     return `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Ménsula: geometría, cargas y refuerzo (E.060 11.9)')}</div>`;
   },

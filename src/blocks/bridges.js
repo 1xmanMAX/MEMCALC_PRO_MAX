@@ -617,6 +617,10 @@ function renderPMLRFD(b, ctx) {
   setVar(ctx, 'phiPnmax' + sfx, math.unit(capS, 'tonf'));
   setVar(ctx, 'Ast' + sfx, math.unit(Ast, 'cm^2'));
   setVar(ctx, 'rhog' + sfx, Ast / Ag);
+  // funciones φMn(Pu) de las curvas de diseño (Resistencia y Evento Extremo)
+  const capFn = (des, cap) => (P) => { const p = math.isUnit(P) ? P.toNumber('tonf') : +P; if (p > cap + 1e-9) throw new Error('Pu excede la resistencia axial máxima'); const m = capM(des, p); if (m === null) throw new Error('Pu fuera del diagrama'); return math.unit(m, 'tonf*m'); };
+  setVar(ctx, 'phiMnS' + sfx, capFn(desS, capS));
+  setVar(ctx, 'phiMnEE' + sfx, capFn(desE, capE));
   dem.forEach((d, i) => ctx.checks.push({ ok: d.dc <= 1, label: 'Flexocompresión ' + (d.lab || 'P' + (i + 1)) + ' (Pu=' + f2(d.P) + ' t, Mu=' + f2(d.M) + ' t·m' + (d.ee ? ', φ = ' + f2(phiEE) : '') + ') (AASHTO 5.6.4.4)', ratio: d.dc, block: ctx.blockId }));
   // dibujo
   const W = 640, H = 470, pl = 70, pr = 160, pt = 20, pb = 45;
@@ -658,7 +662,7 @@ registerBlock('pmLRFD', {
     F('espiral', 'Columna zunchada (espiral)', '', 'check'), F('phiEE', 'φ en Evento Extremo (5.10.11.4.1b)', '0.90'),
     F('demandas', 'Demandas "Pu, Mu // etiqueta" (etiqueta con «Evento» → φ de EE)', '', 'area'), F('sufijo', 'Sufijo', ''), F('titulo', 'Título', ''),
   ],
-  hint: 'Compatibilidad de deformaciones (εcu = 0.003, α1 y β1 de 5.6.2.2) con φ de AASHTO 5.5.4.2. Exporta <code>DCpm phiPnmax Ast rhog</code> y una verificación por demanda.',
+  hint: 'Compatibilidad de deformaciones (εcu = 0.003, α1 y β1 de 5.6.2.2) con φ de AASHTO 5.5.4.2. Exporta <code>DCpm phiPnmax Ast rhog</code>, las funciones <code>phiMnS(P)</code> y <code>phiMnEE(P)</code> y una verificación por demanda.',
   def: { b: '120 cm', h: '120 cm', fc: '280 kgf/cm^2', fy: '4200 kgf/cm^2', dp: '7.5 cm', nx: '8', ny: '6', barra: '10', phiEE: '0.90', demandas: '900 tonf, 150 tonf*m // Resistencia I\n700 tonf, 600 tonf*m // Evento Extremo I' },
   render: renderPMLRFD,
 });

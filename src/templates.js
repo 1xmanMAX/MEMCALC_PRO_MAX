@@ -61,7 +61,7 @@ check Vs <= Vsmax // Dimensiones de la sección adecuadas
 Av = 2*Ab(est) // Área de refuerzo por cortante (2 ramas)
 s1 = si(Vs > 0 tonf, Av*fy*d/Vs, 100 cm) // Espaciamiento requerido por resistencia
 smax = si(Vs <= 1.1*sqrtfc(fc)*b*d, min(d/2, 60 cm), min(d/4, 30 cm)) // Espaciamiento máximo (E.060 11.5.5)
-s = rounddown(min(s1, smax), 2.5 cm) // Espaciamiento adoptado
+s = rounddown(max(min(s1, smax), 2.5 cm), 2.5 cm) // Espaciamiento adoptado (múltiplo de 2.5 cm)
 phiVn = phiv*(Vc + Av*fy*d/s) -> tonf // Resistencia de diseño a cortante
 check Vu <= phiVn // Resistencia a cortante
 Avmin = max(0.2*sqrtfc(fc)*b*s/fy, 3.5 kgf/cm^2*b*s/fy) // Refuerzo mínimo por cortante (E.060 11.5.6.2; exigido si Vu > 0.5 φVc, 11.5.6.1)
@@ -105,8 +105,10 @@ Se analiza la viga por el método de rigidez considerando la combinación $U = 1
       calc(`## Diseño del refuerzo longitudinal
 d = h - 6 cm // Peralte efectivo
 phif = 0.9 // Factor de reducción por flexión
-Asreq(M) = 0.85*fc*b*d/fy*(1 - sqrt(1 - 2*M/(0.85*phif*fc*b*d^2)))
-Asmin = 0.7*sqrtfc(fc)/fy*b*d // Acero mínimo
+Asreq(M) = 0.85*fc*b*d/fy*(1 - sqrt(max(1 - 2*M/(0.85*phif*fc*b*d^2), 0)))
+check max(Mpos, abs(Mneg)) <= 0.85*phif*fc*b*d^2/2 // Sección suficiente como simplemente reforzada
+Asmin = 0.7*sqrtfc(fc)/fy*b*d // Acero mínimo (E.060 10.5.2)
+Asmax = 0.75*0.85*0.85*fc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy)*b*d -> cm^2 // 0.75 Asb con β1 = 0.85 (E.060 10.3.4)
 As_pos = max(Asreq(Mpos), Asmin) // Acero positivo (máximo de tramos)
 As_neg = max(Asreq(abs(Mneg)), Asmin) // Acero negativo (apoyo crítico)
 n_pos = ceil(As_pos/Ab(5)) // Varillas de 5/8" (positivo)
@@ -115,16 +117,21 @@ phiMn_pos = phif*n_pos*Ab(5)*fy*(d - n_pos*Ab(5)*fy/(1.7*fc*b)) -> tonf*m
 phiMn_neg = phif*n_neg*Ab(5)*fy*(d - n_neg*Ab(5)*fy/(1.7*fc*b)) -> tonf*m
 check Mpos <= phiMn_pos // Flexión positiva
 check abs(Mneg) <= phiMn_neg // Flexión negativa
-## Control de cortante
+check max(n_pos, n_neg)*Ab(5) <= Asmax // Falla dúctil: As ≤ 0.75 Asb (E.060 10.3.4)
+## Control de cortante (E.060 11.3 y 11.5)
 phiVc = 0.85*0.53*sqrtfc(fc)*b*d -> tonf // Resistencia del concreto
-"Cortante máximo de la envolvente: {Vmax}. Se requieren estribos por resistencia en las zonas donde $V_u > \\phi V_c$.
+Vsr = max(Vmax/0.85 - 0.53*sqrtfc(fc)*b*d, 0 tonf) // Resistencia requerida del refuerzo (Vmax en el eje, conservador)
+check Vsr <= 2.1*sqrtfc(fc)*b*d // Vs ≤ 0.66√f'c bw d (11.5.7.9)
+sv = rounddown(max(min(si(Vsr > 0 tonf, 2*Ab(3)*fy*d/max(Vsr, 0.01 tonf), 60 cm), si(Vsr <= 1.1*sqrtfc(fc)*b*d, min(d/2, 60 cm), min(d/4, 30 cm))), 2.5 cm), 2.5 cm) // Estribos #3 de 2 ramas (11.5.5)
+"Cortante máximo de la envolvente: {Vmax}. Estribos de 3/8\" @ {sv} en la zona de cortante máximo; en vigas sismorresistentes complete con el confinamiento de 21.4.4 (plantilla *viga*) o 21.5 (*co-vigaductil*).
 ## Momentos en la cara de apoyos
 "Los momentos y cortantes provienen de ejes de apoyo; el diseño en la cara del apoyo (y el cortante a "d") resulta igual o menos exigente.`),
       text(`## Deflexión inmediata por carga viva de servicio
 Se analiza la viga con la carga viva **sin factorar** para controlar la deflexión inmediata según la Tabla 9.2 de la NTE E.060.`),
       { type: 'beam', tramos: 'L1, L2, L3', apoyos: 'A, A, A, A', E: 'Ec', I: 'Ig', cargas: 'U * wL', alternancia: false, sufijo: 'CV', titulo: 'Deflexión inmediata por carga viva de servicio' },
-      calc(`deltaadm = (L2/360) -> mm // Límite por carga viva inmediata (E.060 Tabla 9.2)
-check deltamax_CV <= deltaadm // Deflexión inmediata por CV (sección bruta)`),
+      calc(`deltaadm = (L2/360) -> mm // Límite por carga viva inmediata (E.060 9.6.2.6, Tabla 9.2)
+check deltamax_CV <= deltaadm // Deflexión inmediata por CV (sección bruta)
+"La deflexión con la inercia bruta $I_g$ es un **control rápido**: la E.060 9.6.2.4 exige la inercia efectiva $I_e$ de la sección fisurada y 9.6.2.5 la deflexión diferida. Para ese cálculo use la plantilla *co-deflexion*.`),
       { type: 'summary' },
     ],
   },
@@ -145,27 +152,35 @@ ny = 2 // Barras intermedias por cara lateral
 bar = 6 // Varilla longitudinal [5 : 5/8"|6 : 3/4"|8 : 1"]
 ln = 2.70 m // Luz libre de la columna`),
       text(`## Combinaciones de diseño (E.060 Art. 9.2)
-Las cargas axiales y momentos últimos se ingresan en el diagrama como pares $(P_u, M_u)$, uno por línea.`),
+Las cargas axiales y momentos últimos se ingresan en el diagrama como pares $(P_u, M_u)$, uno por línea. Los momentos ya deben incluir los efectos de esbeltez (E.060 10.10–10.13).
+
+> Verificación rápida de una dirección. Para flexión biaxial use *co-biaxial*; para esbeltez, *co-colesbelta*; para el diseño por capacidad (columna fuerte–viga débil y cortante con $M_{pr}$, Art. 21.6.2 y 21.6.5) use *co-colductil*; para secciones arbitrarias (L, T, placas) el bloque **pmgen**.`),
       { type: 'pm', b: 'b', h: 'h', fc: 'fc', fy: 'fy', dp: 'rd', nx: 'nx', ny: 'ny', barra: 'bar', norma: 'E060', demandas: '180 tonf, 12 tonf*m // 1.4CM+1.7CV\n140 tonf, 22 tonf*m // 1.25(CM+CV)+CS\n95 tonf, 20 tonf*m // 0.9CM+CS', titulo: '' },
       calc(`## Verificaciones complementarias
 Ag = b*h // Área bruta
 Ast = (2*nx + 2*ny)*Ab(bar) // Acero longitudinal total
 rhog = Ast/Ag // Cuantía
-check rhog >= 0.01 // Cuantía mínima (E.060 10.9.1)
-check rhog <= 0.06 // Cuantía máxima (E.060 21.6.3.1)
+check rhog >= 0.01 // Cuantía mínima (E.060 10.9.1 y 21.6.3.1)
+check rhog <= 0.06 // Cuantía máxima (E.060 10.9.1 y 21.6.3.1)
 check DCpm <= 1.0 // Todas las combinaciones dentro del diagrama
-## Confinamiento sísmico — sistema de pórticos (E.060 Art. 21.6.4)
-Lo = max(ln/6, max(b, h), 50 cm) -> cm // Longitud de la zona de confinamiento
-so = rounddown(min(6*db(bar), min(b, h)/4, 10 cm), 2.5 cm) // Espaciamiento máximo en zona confinada
-s_fuera = min(16*db(bar), 48*db(4), min(b, h), 30 cm) // Espaciamiento máximo fuera de la zona
+check min(b, h) >= 25 cm // Dimensión menor de la sección ≥ 250 mm (E.060 21.6.1.2)
+check min(b, h)/max(b, h) >= 0.25 // Relación entre dimensiones ≥ 0.25 (E.060 21.6.1.3)
+## Confinamiento sísmico — pórticos y dual tipo II (E.060 Art. 21.6.4)
 est = 4 // Varilla de estribos [3 : 3/8"|4 : 1/2"]
-n_ramas = 3 // Ramas de estribo en la dirección analizada
-bc = b - 2*4 cm // Ancho del núcleo confinado (a ejes de estribo exterior)
-Ach = (b - 2*4 cm)*(h - 2*4 cm) // Área del núcleo
-Ash_req = max(0.3*so*bc*fc/fy*(Ag/Ach - 1), 0.09*so*bc*fc/fy) // Refuerzo transversal de confinamiento
+check est >= si(bar <= 8, 3, 4) // Estribo mínimo: 3/8" para barras hasta 1", 1/2" para barras mayores (E.060 21.4.5.3)
+recl = 4 cm // Recubrimiento libre al estribo
+Lo = max(ln/6, max(b, h), 50 cm) -> cm // Longitud de la zona de confinamiento (21.6.4.4)
+so = rounddown(min(min(b, h)/3, 6*db(bar), 10 cm), 2.5 cm) // Espaciamiento en la zona confinada: b/3, 6 db, 100 mm (21.6.4.2)
+s_fuera = rounddown(min(10*db(bar), 25 cm), 2.5 cm) // Espaciamiento fuera de Lo: 10 db y 250 mm (21.6.4.5)
+n_ramas = 3 // Ramas de estribo perpendiculares a bc (estribo + grapa)
+bc = b - 2*recl - db(est) // Dimensión del núcleo, centro a centro del estribo exterior (21.6.4.1 b)
+Ach = (b - 2*recl)*(h - 2*recl) // Área del núcleo al exterior del estribo
+Ash_req = max(0.3*so*bc*fc/fy*(Ag/Ach - 1), 0.09*so*bc*fc/fy) // Refuerzo de confinamiento (ec. 21-3 y 21-4)
 Ash = n_ramas*Ab(est) // Refuerzo colocado
-check Ash >= Ash_req // Confinamiento (E.060 21.6.4.2)
-"Estribos #{est}: 1 @ 5 cm, resto @ {so} en {roundup(Lo, 5 cm)} desde cada extremo, resto @ {rounddown(s_fuera, 2.5 cm)}.`),
+check Ash >= Ash_req // Confinamiento (E.060 21.6.4.1 b)
+hx = bc/(n_ramas - 1) // Separación entre ramas
+check hx <= 35 cm // hx ≤ 350 mm (21.6.4.3)
+"Estribos #{est}: 1 @ 5 cm, resto @ {so} en {roundup(Lo, 5 cm)} desde cada extremo, resto @ {s_fuera}. El espaciamiento también debe cumplir el requerido por el cortante de diseño por capacidad (21.6.5, ver *co-colductil*).`),
       { type: 'summary' },
     ],
   },
@@ -180,7 +195,9 @@ PD = 60 tonf // Carga muerta de servicio
 PL = 25 tonf // Carga viva de servicio
 MD = 2.0 tonf*m // Momento de servicio por carga muerta (dirección L)
 ML = 1.0 tonf*m // Momento de servicio por carga viva (dirección L)
-qa = 2.5 kgf/cm^2 // Capacidad admisible del suelo (Estudio de Mecánica de Suelos)
+PS = 5 tonf // Axial por sismo (servicio, del análisis con E.030)
+MS = 4.0 tonf*m // Momento por sismo (servicio, dirección L)
+qa = 2.5 kgf/cm^2 // Presión admisible del suelo (Estudio de Mecánica de Suelos, E.050 Art. 22)
 Df = 1.50 m // Profundidad de desplante
 gammam = 2.0 tonf/m^3 // Peso unitario promedio suelo-concreto
 spiso = 0.25 tonf/m^2 // Sobrecarga sobre el piso
@@ -191,13 +208,14 @@ fy = 4200 kgf/cm^2 // Fluencia del acero
 hz = 60 cm // Peralte de la zapata
 bar = 5 // Varilla de refuerzo [4 : 1/2"|5 : 5/8"|6 : 3/4"]
 barcol = 6 // Varilla longitudinal de la columna [5 : 5/8"|6 : 3/4"|8 : 1"]
+check Df >= 0.80 m // Profundidad mínima de cimentación (E.050 Art. 26.2)
 ## Dimensionamiento en planta
 qn = qa - gammam*Df - spiso -> tonf/m^2 // Capacidad portante neta
 check qn > 0 tonf/m^2 // Capacidad neta positiva
 P = PD + PL // Carga de servicio
 M = MD + ML // Momento de servicio
 e = M/P -> m // Excentricidad
-A0 = P/qn -> m^2 // Área por carga axial
+A0 = P/max(qn, 1 tonf/m^2) -> m^2 // Área por carga axial
 Areq = A0*(1 + 6*e/sqrt(A0)) -> m^2 // Área requerida incluyendo excentricidad
 Dc = c1 - c2 // Diferencia de lados (volados iguales)
 B = roundup((-Dc + sqrt(Dc^2 + 4*Areq))/2, 0.05 m) // Ancho adoptado
@@ -205,17 +223,24 @@ L = B + Dc -> m // Largo adoptado
 check e <= L/6 // Resultante dentro del núcleo central
 q1 = P/(B*L) + 6*M/(B*L^2) -> tonf/m^2 // Presión máxima
 q2 = P/(B*L) - 6*M/(B*L^2) -> tonf/m^2 // Presión mínima
-check q1 <= qn // Presión máxima ≤ capacidad neta`),
+check q1 <= qn // Presión máxima ≤ capacidad neta
+## Condición con sismo (E.050 Art. 21: FS = 2.5 en lugar de 3.0)
+qns = qaSismoE050(qa) - gammam*Df - spiso -> tonf/m^2 // Presión neta admisible con sismo (1.20 qa)
+es = (M + MS)/(P + PS) -> m // Excentricidad con sismo
+q1s = (P + PS)/(B*L)*(1 + 6*es/L) -> tonf/m^2 // Presión máxima con sismo (resultante en el núcleo central)
+check es <= L/6 // Resultante con sismo dentro del núcleo central
+check q1s <= qns // Presión máxima con sismo ≤ 1.20 qa neta`),
       calc(`## Presión última de diseño
 Pu = 1.4*PD + 1.7*PL // Carga última (E.060 9.2.1)
 Mu = 1.4*MD + 1.7*ML // Momento último
 qu = Pu/(B*L) + 6*Mu/(B*L^2) -> tonf/m^2 // Presión última (máxima, conservadora)
-d = hz - 7.5 cm - db(bar) // Peralte efectivo
+d = hz - 7.5 cm - db(bar) // Peralte efectivo (al centro de la malla, conservador)
+check d >= 30 cm // Altura sobre el refuerzo inferior ≥ 300 mm (E.060 15.7)
 ## Verificación por punzonamiento (E.060 11.12)
 bo = 2*(c1 + d) + 2*(c2 + d) // Perímetro crítico a d/2
 Vup = Pu - Pu/(B*L)*(c1 + d)*(c2 + d) -> tonf // Cortante último de punzonamiento (presión media)
 betac = max(c1, c2)/min(c1, c2) // Relación de lados de la columna
-alphas = 40 // Columna interior
+alphas = 40 // Posición de la columna (E.060 11.12.2.1 b) [40 : Interior|30 : Borde|20 : Esquina]
 Vc1 = 0.53*(1 + 2/betac)*sqrtfc(fc)*bo*d -> tonf
 Vc2 = 0.27*(alphas*d/bo + 2)*sqrtfc(fc)*bo*d -> tonf
 Vc3 = 1.06*sqrtfc(fc)*bo*d -> tonf
@@ -232,22 +257,24 @@ phiVc_B = 0.85*0.53*sqrtfc(fc)*L*d -> tonf
 check Vud_B <= phiVc_B // Cortante dirección B
 ## Diseño por flexión
 phif = 0.9
-Asreq(Mx, bx) = 0.85*fc*bx*d/fy*(1 - sqrt(1 - 2*Mx/(0.85*phif*fc*bx*d^2)))
-Mu_L = qu*B*lv_L^2/2 -> tonf*m // Momento en la cara (dirección L)
+Asreq(Mx, bx) = 0.85*fc*bx*d/fy*(1 - sqrt(max(1 - 2*Mx/(0.85*phif*fc*bx*d^2), 0)))
+Mu_L = qu*B*lv_L^2/2 -> tonf*m // Momento en la cara (dirección L, E.060 15.4.2)
+Mu_B = qu*L*lv_B^2/2 -> tonf*m // Momento en la cara (dirección B)
+check max(Mu_L/B, Mu_B/L) <= 0.85*phif*fc*d^2/2 // Peralte suficiente por flexión
 As_L = max(Asreq(Mu_L, B), 0.0018*B*hz) // Acero dirección L (mín. 0.0018 b h)
 n_L = max(2, ceil(As_L/Ab(bar))) // Número de varillas
-sep_L = rounddown((B - 15 cm)/(n_L - 1), 2.5 cm) // Espaciamiento
-Mu_B = qu*L*lv_B^2/2 -> tonf*m // Momento en la cara (dirección B)
+sep_L = rounddown(max((B - 15 cm)/(n_L - 1), 2.5 cm), 2.5 cm) // Espaciamiento
 As_B = max(Asreq(Mu_B, L), 0.0018*L*hz) // Acero dirección B
 n_B = max(2, ceil(As_B/Ab(bar)))
-sep_B = rounddown((L - 15 cm)/(n_B - 1), 2.5 cm)
-check max(sep_L, sep_B) <= min(3*hz, 40 cm) // Espaciamiento máximo (3h y 40 cm, E.060)
+sep_B = rounddown(max((L - 15 cm)/(n_B - 1), 2.5 cm), 2.5 cm)
+check max(sep_L, sep_B) <= min(3*hz, 40 cm) // Espaciamiento máximo: 3h y 400 mm (E.060 10.5.4)
+gammas = 2/(L/B + 1) // Fracción del acero de la dirección corta en la franja central de ancho B (E.060 15.4.4.2)
 ## Longitud de desarrollo
-ld = max(fy*db(bar)/(si(bar <= 6, 6.7, 5.4)*sqrtfc(fc)), 30 cm) // Longitud de desarrollo en tracción (E.060 12.2.2)
+ld = ldE060(bar, fc, fy) // Longitud de desarrollo en tracción, barra recta (E.060 12.2.2, Tabla 12.1)
 check ld <= min(lv_L, lv_B) - 7.5 cm // Longitud disponible
-ldc = max(0.075*fy*db(barcol)/sqrtfc(fc), 0.0044*fy*db(barcol)/(1 kgf/cm^2)) // Anclaje en compresión de barras de columna (E.060 12.3)
+ldc = ldcE060(barcol, fc, fy) // Anclaje en compresión de las barras de la columna (E.060 12.3.2)
 check d >= ldc // Peralte suficiente para el anclaje de la columna
-"Para la condición con sismo la presión admisible puede incrementarse en 30 % (E.050), verificando $q \\le 1.3\\,q_a$ con las cargas de sismo.`),
+"En zapatas rectangulares, una fracción $\\gamma_s$ = {gammas} del acero de la dirección corta se concentra en la franja central de ancho B (15.4.4.2). Para zapatas combinadas, conectadas, medianeras o con presión no uniforme (Winkler) vea las plantillas *ge-combinada*, *ge-conectada*, *ge-medianera* y *ge-winkler*.`),
       { type: 'footing', B: 'B', L: 'L', hz: 'hz', c1: 'c1', c2: 'c2', Df: 'Df', d: 'd', q1: 'q1', q2: 'q2', acero: 'Malla #{bar} @ {sep_L} (dir. L)  /  #{bar} @ {sep_B} (dir. B)', titulo: '' },
       { type: 'summary' },
     ],
@@ -275,7 +302,8 @@ Vu = 180 kN // Cortante último en la sección crítica
 d = h - cover - dbs - dbl/2 // Peralte efectivo
 beta1 = si(fc <= 28 MPa, 0.85, max(0.65, 0.85 - 0.05*(fc - 28 MPa)/(7 MPa))) // Tabla 22.2.2.4.3
 Rn = Mu/(0.9*b*d^2) // Supone sección controlada por tracción
-rho = 0.85*fc/fy*(1 - sqrt(1 - 2*Rn/(0.85*fc))) // Cuantía requerida
+check Rn <= 0.85*fc/2 // Sección suficiente como simplemente reforzada
+rho = 0.85*fc/fy*(1 - sqrt(max(1 - 2*Rn/(0.85*fc), 0))) // Cuantía requerida
 As = rho*b*d // Acero requerido
 Asmin = max(0.25*sqrtMPa(fc)/fy, 1.4 MPa/fy)*b*d // Acero mínimo (9.6.1.2)
 Ab1 = pi*dbl^2/4 // Área de una barra
@@ -304,10 +332,10 @@ Vs = max(Vu/phiv - Vc, 0 kN) // Resistencia requerida del refuerzo
 s1 = si(Vs > 0 kN, Av*fyt*d/Vs, 600 mm) // Espaciamiento por resistencia
 smax = si(Vs <= 0.33*sqrtMPa(fc)*b*d, min(d/2, 600 mm), min(d/4, 300 mm)) // Espaciamiento máximo (9.7.6.2.2)
 s2 = Av/avmin // Espaciamiento por refuerzo mínimo
-s = rounddown(min(s1, smax, s2), 25 mm) // Espaciamiento adoptado
+s = rounddown(max(min(s1, smax, s2), 25 mm), 25 mm) // Espaciamiento adoptado (múltiplo de 25 mm)
 phiVn = phiv*(Vc + Av*fyt*d/s) -> kN // Resistencia de diseño
 check Vu <= phiVn // Resistencia a cortante
-"Si no se coloca el refuerzo mínimo por cortante, la resistencia del concreto se reduce a $V_c$ = {Vcc} por efecto de tamaño (caso c).`),
+"Si no se coloca el refuerzo mínimo por cortante, la resistencia del concreto se reduce a $V_c$ = {Vcc} por efecto de tamaño (caso c). Las referencias de artículos son de ACI 318-19 (en SI); verifique la numeración si aplica ACI 318-25. Para diseño por puntal-tensor (regiones D) vea *co-stm*.`),
       { type: 'summary' },
     ],
   },
@@ -333,7 +361,9 @@ fcd = alphacc*fck/gammac // Resistencia de cálculo del concreto
 fyd = fyk/gammas // Resistencia de cálculo del acero
 fctm = 0.30*(fck/(1 MPa))^(2/3)*1 MPa // Resistencia media a tracción (Tabla 3.1)
 ## Flexión (6.1)
-a = d*(1 - sqrt(1 - 2*MEd/(fcd*b*d^2))) // Profundidad del bloque (λx)
+mu_Ed = MEd/(fcd*b*d^2) // Momento reducido
+check mu_Ed <= 0.5 // Sección suficiente con bloque rectangular sin armadura de compresión
+a = d*(1 - sqrt(max(1 - 2*mu_Ed, 0))) // Profundidad del bloque (λx)
 x = a/0.8 // Profundidad del eje neutro
 check x/d <= 0.45 // Sin redistribución, δ = 1 (5.5(4), valores recomendados)
 z = min(d - a/2, 0.95*d) // Brazo mecánico
@@ -343,7 +373,11 @@ Asmax = 0.04*b*h // Armadura máxima
 Asreq = max(As, Asmin)
 n = max(2, ceil(Asreq/(pi*(20 mm)^2/4))) // Barras de 20 mm
 Asprov = n*pi*(20 mm)^2/4 // Armadura dispuesta
-check Asprov <= Asmax // Armadura máxima
+check Asprov <= Asmax // Armadura máxima (9.2.1.1(3))
+xp = Asprov*fyd/(0.8*fcd*b) // Eje neutro con la armadura dispuesta
+check xp/d <= 0.45 // Ductilidad con la armadura dispuesta (5.5(4))
+MRd = Asprov*fyd*(d - 0.4*xp) -> kN*m // Momento resistente
+check MEd <= MRd // Resistencia a flexión (6.1)
 ## Cortante (6.2)
 k = min(1 + sqrt(200 mm/d), 2.0) // Factor de canto
 rhol = min(Asprov/(b*d), 0.02) // Cuantía longitudinal
@@ -358,7 +392,7 @@ check VEd <= VRdmax // Compresión en bielas
 fywd = fyd // Acero de estribos
 Asw_s = max(VEd/(zv*fywd*cot_theta), 0.08*sqrt(fck/(1 MPa))/(fyk/(1 MPa))*b) -> mm^2/m // Armadura transversal (6.8) y mínima (9.5N)
 smax = 0.75*d // Separación longitudinal máxima (9.6N)
-sw = rounddown(min(2*pi*(8 mm)^2/4/Asw_s, smax), 25 mm) // Estribos de 8 mm, 2 ramas
+sw = rounddown(max(min(2*pi*(8 mm)^2/4/Asw_s, smax), 25 mm), 25 mm) // Estribos de 8 mm, 2 ramas
 VRds = 2*pi*(8 mm)^2/4/sw*zv*fywd*cot_theta -> kN // Resistencia con estribos
 check VEd <= max(VRdc, VRds) // Resistencia a cortante`),
       { type: 'summary' },
@@ -366,10 +400,14 @@ check VEd <= max(VRdc, VRds) // Resistencia a cortante`),
   },
   // ------------------------------------------------------------------
   {
-    id: 'portante', normas: 'RNE — NTE E.050 Suelos y Cimentaciones', cat: 'Geotecnia', name: 'Capacidad portante del suelo', icon: 'soil',
-    desc: 'Ecuación general de capacidad de carga (Meyerhof/Vesic) con factores de forma y profundidad; gráfico qadm vs ancho B.',
+    id: 'portante', normas: 'RNE — NTE E.050 Suelos y Cimentaciones (RM 406-2018-VIVIENDA)', cat: 'Geotecnia', name: 'Capacidad portante del suelo (versión rápida)', icon: 'soil',
+    desc: 'Versión rápida: ecuación general con Nγ de Meyerhof (E.050) o Vesic, factores de forma y profundidad, FS = 3.0 / 2.5 y gráfico qadm vs B. Memoria completa con N.F., excentricidad y asentamientos: «ge-portante».',
     titulo: 'Capacidad portante admisible del terreno',
     blocks: [
+      text(`# Alcance
+Estimación **rápida** de la presión admisible por resistencia al corte de una cimentación superficial con carga vertical centrada y sin nivel freático, mediante la ecuación general de capacidad de carga (E.050 Art. 20) con factores de forma de De Beer y de profundidad de Hansen (Das, *Principios de ingeniería de cimentaciones*, cap. 3).
+
+> La presión admisible de diseño es la **menor** entre la obtenida por corte y la que produce el asentamiento tolerable (E.050 Art. 22.2). Para la memoria completa (nivel freático, carga excéntrica e inclinada con área efectiva, asentamientos elástico y por consolidación) use *ge-portante*.`),
       calc(`# Parámetros del suelo y la cimentación
 phi = 28 deg // Ángulo de fricción interna
 c = 1.0 tonf/m^2 // Cohesión
@@ -377,11 +415,14 @@ gamma = 1.75 tonf/m^3 // Peso unitario del suelo
 Df = 1.50 m // Profundidad de desplante
 B = 2.0 m // Ancho de la cimentación
 L = 2.0 m // Largo de la cimentación
-FS = 3.0 // Factor de seguridad (E.050)
+FS = 3.0 // Factor de seguridad por corte (E.050 Art. 21) [3.0 : Cargas estáticas|2.5 : Sismo o viento]
+metodo = 1 // Factor Nγ [1 : Meyerhof (E.050 Art. 20.4)|2 : Vesic (1973)]
+check Df >= 0.80 m // Profundidad mínima de cimentación (E.050 Art. 26.2)
+check Df/B <= 5 // Cimentación superficial (E.050 Art. 23.1)
 ## Factores de capacidad de carga
 Nq = e^(pi*tan(phi))*tan(45 deg + phi/2)^2
-Nc = (Nq - 1)*cot(phi)
-Ngamma = 2*(Nq + 1)*tan(phi)
+Nc = si(phi >= 0.5 deg, (Nq - 1)*cot(max(phi, 0.5 deg)), 5.14) // Nc (φ = 0: Prandtl 5.14)
+Ngamma = si(metodo == 1, (Nq - 1)*tan(1.4*phi), 2*(Nq + 1)*tan(phi))
 ## Factores de forma (De Beer) y profundidad (Hansen)
 Fcs = 1 + B/L*Nq/Nc
 Fqs = 1 + B/L*tan(phi)
@@ -392,17 +433,24 @@ Fqd = 1 + 2*tan(phi)*(1 - sin(phi))^2*kD
 q = gamma*Df -> tonf/m^2 // Sobrecarga al nivel de desplante
 ## Capacidad última y admisible
 qu = c*Nc*Fcs*Fcd + q*Nq*Fqs*Fqd + 0.5*gamma*B*Ngamma*Fgs -> tonf/m^2
-qadm = qu/FS -> kgf/cm^2 // Capacidad admisible`),
+qadm = qu/FS -> kgf/cm^2 // Presión admisible por corte (E.050 Art. 22.2)
+qserv = 1.5 kgf/cm^2 // Presión de servicio de la cimentación (P/(B·L))
+check qserv <= qadm // Presión de servicio ≤ presión admisible por corte`),
       { type: 'plot', expr: '(c*Nc*(1+(x m)/L*Nq/Nc)*(1+0.4*(Df/(x m) <= 1 ? Df/(x m) : atan(Df/(x m)))) + q*Nq*(1+(x m)/L*tan(phi))*(1+2*tan(phi)*(1-sin(phi))^2*(Df/(x m) <= 1 ? Df/(x m) : atan(Df/(x m)))) + 0.5*gamma*(x m)*Ngamma*(1-0.4*(x m)/L))/FS', var: 'x', desde: '1', hasta: '4', puntos: '120', xlabel: 'Ancho B [m] (B = L)', ylabel: 'qadm [kg/cm²]', titulo: 'Variación de la capacidad admisible con el ancho de la cimentación' },
-      text(`> Nota: la capacidad admisible por resistencia debe compararse con la presión que produce el asentamiento tolerable indicado en el Estudio de Mecánica de Suelos (NTE E.050).`),
+      text(`> Nota: la capacidad admisible por resistencia debe compararse con la presión que produce el asentamiento tolerable indicado en el Estudio de Mecánica de Suelos (NTE E.050 Art. 22.2); ver *ge-portante*.`),
+      { type: 'summary' },
     ],
   },
   // ------------------------------------------------------------------
   {
-    id: 'muro', normas: 'RNE — NTE E.020, E.050, E.060', cat: 'Muros de contención', name: 'Muro de contención en voladizo', icon: 'wall',
-    desc: 'Empuje de Rankine con sobrecarga, estabilidad al volteo y deslizamiento, presiones en la base y diseño de la pantalla.',
+    id: 'muro', normas: 'RNE — NTE E.020, E.050 (Art. 39.13), E.060', cat: 'Muros de contención', name: 'Muro de contención en voladizo (versión rápida)', icon: 'wall',
+    desc: 'Versión rápida estática: empuje de Rankine con sobrecarga, volteo, deslizamiento, presiones en la base y pantalla. Memoria completa con sismo (M-O), dentellón, punta y talón: «wa-voladizo».',
     titulo: 'Diseño de muro de contención en voladizo',
     blocks: [
+      text(`# Alcance
+Predimensionamiento y verificación **rápida** de un muro de contención en voladizo en condición **estática**: empuje activo de Rankine con relleno horizontal y sobrecarga, estabilidad al volteo y al deslizamiento (E.050 Art. 39.13.6: FS ≥ 1.5), presiones en la base y diseño de la pantalla (E.060, $U = 1.7\\,E$, Art. 9.2.4).
+
+> Para la memoria **completa** (sismo con Mononobe–Okabe, dentellón, empuje pasivo, diseño de punta y talón, corte de barras) use *wa-voladizo*; el bloque **retwall** permite además Coulomb, talud del relleno y nivel freático.`),
       calc(`# Geometría y materiales
 H = 4.0 m // Altura total del muro
 hz = 0.50 m // Espesor de la zapata
@@ -413,11 +461,13 @@ t2 = 0.40 m // Espesor de la pantalla en la base
 gammas = 1.80 tonf/m^3 // Peso unitario del relleno
 phis = 30 deg // Ángulo de fricción del relleno
 ws = 1.0 tonf/m^2 // Sobrecarga sobre el relleno
-mu = 0.55 // Coeficiente de fricción base-suelo
+mu = 0.55 // Coeficiente de fricción base-suelo (≈ tan(2φf/3), del EMS)
 qa = 2.5 kgf/cm^2 // Capacidad admisible del suelo
 gammac = 2.4 tonf/m^3 // Peso unitario del concreto
 fc = 210 kgf/cm^2
 fy = 4200 kgf/cm^2
+FSvmin = 2.0 // FS mínimo al volteo [1.5 : Mínimo E.050 Art. 39.13.6|2.0 : Criterio usual de diseño]
+FSdmin = FSminE050(0) // FS mínimo al deslizamiento, condición estática (E.050 Art. 39.13.6)
 ## Empujes (Rankine)
 Ka = (1 - sin(phis))/(1 + sin(phis)) // Coeficiente de empuje activo
 Ea = 0.5*Ka*gammas*H^2 -> tonf/m // Empuje del relleno
@@ -427,6 +477,7 @@ Ma = Ea*H/3 + Eq*H/2 -> tonf*m/m // Momento de volteo`),
       calc(`## Fuerzas estabilizantes (por metro de muro)
 hp = H - hz // Altura de la pantalla
 Lt = B - Lp - t2 // Longitud del talón
+check Lt > 0 m // Geometría: el talón existe
 W1 = gammac*t1*hp -> tonf/m // Pantalla (rectángulo)
 W2 = gammac*0.5*(t2 - t1)*hp -> tonf/m // Pantalla (triángulo)
 W3 = gammac*B*hz -> tonf/m // Zapata
@@ -437,14 +488,14 @@ SWr = W1 + W2 + W3 + W4 // Fuerza vertical estabilizante (sin sobrecarga, conser
 Mr = W1*(Lp + t2 - t1/2) + W2*(Lp + 2/3*(t2 - t1)) + W3*B/2 + W4*(Lp + t2 + Lt/2) -> tonf*m/m // Momento resistente (sin sobrecarga)
 ## Estabilidad
 FSv = Mr/Ma // Factor de seguridad al volteo
-check FSv >= 2.0 // Volteo (criterio usual FS ≥ 2.0)
-FSd = mu*SWr/(Ea + Eq) // Factor de seguridad al deslizamiento
-check FSd >= 1.5 // Deslizamiento (criterio usual FS ≥ 1.5)
+check FSv >= FSvmin // Volteo (E.050 39.13.6: FS ≥ 1.5)
+FSd = mu*SWr/(Ea + Eq) // Factor de seguridad al deslizamiento (sin empuje pasivo)
+check FSd >= FSdmin // Deslizamiento (E.050 39.13.6: FS ≥ 1.5)
 xr = (Mr + W5*(Lp + t2 + Lt/2) - Ma)/SW -> m // Ubicación de la resultante desde la punta (con sobrecarga)
 e = B/2 - xr -> m // Excentricidad
-check e <= B/6 // Resultante en el tercio central
-q1 = SW/B*(1 + 6*e/B) -> tonf/m^2 // Presión en la punta
-q2 = SW/B*(1 - 6*e/B) -> tonf/m^2 // Presión en el talón
+check abs(e) <= B/6 // Resultante en el tercio central
+q1 = SW/B*(1 + 6*abs(e)/B) -> tonf/m^2 // Presión máxima
+q2 = SW/B*(1 - 6*abs(e)/B) -> tonf/m^2 // Presión mínima
 check q1 <= qa // Presión máxima admisible
 ## Diseño de la pantalla (sección crítica en la base)
 Mu = 1.7*(Ka*gammas*hp^3/6 + Ka*ws*hp^2/2) -> tonf*m/m // Momento último
@@ -452,12 +503,14 @@ Vu = 1.7*(Ka*gammas*hp^2/2 + Ka*ws*hp) -> tonf/m // Cortante último
 bw = 100 cm // Franja de diseño
 d = t2 - 5 cm - 0.8 cm // Peralte efectivo
 Rn = Mu*1 m/(0.9*bw*d^2) // Parámetro de resistencia
-rho = 0.85*fc/fy*(1 - sqrt(1 - 2*Rn/(0.85*fc)))
-As = max(rho*bw*d, 0.0015*bw*t2) // Acero vertical (cara interior)
-s = rounddown(Ab(5)/As*bw, 2.5 cm) // Espaciamiento con varilla de 5/8"
+check Rn <= 0.85*fc/2 // Espesor de pantalla suficiente por flexión
+rho = 0.85*fc/fy*(1 - sqrt(max(1 - 2*Rn/(0.85*fc), 0)))
+As = max(rho*bw*d, 0.0015*bw*t2) // Acero vertical, cara interior (mín. 0.0015, E.060 14.3.1)
+s = rounddown(max(min(Ab(5)/As*bw, 3*t2, 40 cm), 2.5 cm), 2.5 cm) // Espaciamiento con 5/8": ≤ 3t y 400 mm (E.060 14.3.3)
+check Ab(5)/s*bw >= As // Acero colocado ≥ requerido
 phiVc = 0.85*0.53*sqrtfc(fc)*bw*d/(1 m) -> tonf/m // Resistencia al corte por metro
 check Vu <= phiVc // Cortante en la pantalla
-"Refuerzo vertical interior: varilla de 5/8\" @ {s}. Completar con el diseño de punta y talón, refuerzo horizontal (s ≤ 3t, 40 cm) y, en zonas 3–4, el empuje sísmico (Mononobe–Okabe).`),
+"Refuerzo vertical interior: varilla de 5/8\" @ {s}. Refuerzo horizontal mínimo 0.0020 (E.060 14.3.1 a): {0.002*bw*t2} por metro, repartido en ambas caras. Completar con el diseño de punta y talón y, en zonas 3–4, el empuje sísmico (Mononobe–Okabe, FS ≥ 1.25): ver *wa-voladizo*.`),
       { type: 'summary' },
     ],
   },
@@ -477,10 +530,10 @@ bw = 10 cm // Ancho del alma
 hf = 5 cm // Espesor de la losa superior
 fc = 210 kgf/cm^2
 fy = 4200 kgf/cm^2
-pal = si(h <= 17 cm, 0.28, si(h <= 20 cm, 0.30, si(h <= 25 cm, 0.35, 0.42)))*1 tonf/m^2 // Peso propio del aligerado (E.020)
+pal = pAligE020(h) -> tonf/m^2 // Peso propio del aligerado con ladrillo de arcilla (E.020 Anexo 1: 17 cm 280, 20 cm 300, 25 cm 350, 30 cm 420 kgf/m²)
 wpt = 0.10 tonf/m^2 // Piso terminado
 wtab = 0.10 tonf/m^2 // Tabiquería repartida
-sc = 0.20 tonf/m^2 // Sobrecarga
+sc = 0.20 tonf/m^2 // Sobrecarga (E.020 Tabla 1) [0.20 tonf/m^2|0.25 tonf/m^2|0.30 tonf/m^2|0.40 tonf/m^2|0.50 tonf/m^2]
 wD = (pal + wpt + wtab)*bv -> tonf/m // Carga muerta por vigueta
 wL = sc*bv -> tonf/m // Carga viva por vigueta
 Ec = 15000*sqrtfc(fc)
@@ -489,7 +542,8 @@ Ig = bw*h^3/12 // Inercia del alma (conservador)`),
       calc(`## Diseño por flexión
 d = h - 3 cm // Peralte efectivo
 phif = 0.9
-Asreq(M, bx) = 0.85*fc*bx*d/fy*(1 - sqrt(1 - 2*M/(0.85*phif*fc*bx*d^2)))
+Asreq(M, bx) = 0.85*fc*bx*d/fy*(1 - sqrt(max(1 - 2*M/(0.85*phif*fc*bx*d^2), 0)))
+check abs(Mneg) <= 0.85*phif*fc*bw*d^2/2 // Alma suficiente para el momento negativo (si no, ensanche alternado o macizado)
 Aspos = Asreq(Mpos, bv) // Acero positivo (ancho bv)
 apos = Aspos*fy/(0.85*fc*bv) // Bloque de compresión
 check apos <= hf // Bloque dentro del ala (sección rectangular)
@@ -503,7 +557,10 @@ check max(Aspos, Asmin) <= Ab(4) + Ab(3) // Acero positivo colocado
 check max(Asneg, Asmin) <= Ab(4) + Ab(3) // Acero negativo colocado
 ## Cortante (E.060 Art. 8.11.8)
 phiVc = 0.85*1.1*0.53*sqrtfc(fc)*bw*d -> tonf // Incremento 10 % para viguetas
-check Vmax <= phiVc // Sin ensanche de vigueta
+check Vmax <= phiVc // Sin ensanche de vigueta (Vmax en el eje del apoyo, conservador)
+## Peralte para no verificar deflexiones (E.060 9.6.2.1, Tabla 9.1)
+hmin = max(La1, La3)/18.5 -> cm // Tramos extremos (un extremo continuo); interiores Ln/21
+"El peralte adoptado h = {h} se compara con $h_{min}$ = {hmin}. Si $h < h_{min}$ —caso usual con la práctica $h \\approx L_n/25$— debe calcularse la deflexión (E.060 9.6.2.2 a 9.6.2.6), por ejemplo con la plantilla *co-deflexion*; para aligerados en dos direcciones vea *co-aligerado2d*.
 ## Acero de temperatura
 Ast = 0.0025*100 cm*hf -> cm^2 // Por metro de losa (barras lisas, E.060 9.7.2)
 st = min(5*hf, 40 cm) // Espaciamiento máximo

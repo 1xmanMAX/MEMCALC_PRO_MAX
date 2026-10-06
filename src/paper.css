@@ -88,6 +88,10 @@
 
 /* ---------- figuras ---------- */
 .paper .figure{margin:14px 0 16px;break-inside:avoid;page-break-inside:avoid}
+/* figuras compuestas (varios diagramas + tabla): pueden partirse entre sus piezas, nunca dentro de ellas */
+.paper .figure:has(> svg ~ svg),.paper .figure:has(> svg ~ table),.paper .figure:has(> table ~ svg),.paper .figure:has(> div ~ svg ~ div ~ svg){break-inside:auto;page-break-inside:auto}
+.paper .figure > svg,.paper .figure > img,.paper .figure > .kv,.paper .figure > .legend{break-inside:avoid}
+.paper .figure > .cap:last-child{break-before:avoid;page-break-before:avoid}
 .paper .figure svg.fig{display:block;max-width:100%;height:auto;margin:0 auto}
 .paper .fig-sm svg.fig{max-width:420px}
 .paper .figure.img img{display:block;width:var(--w,70%);max-width:100%;margin:0 auto}
@@ -226,6 +230,8 @@
   .paper .pb{border:0;margin:0}
   .paper .pb::after{display:none}
   .paper .ln .eq{overflow:visible}
+  .paper .ln{margin-left:0;margin-right:0;padding-left:5px;padding-right:0}
+  .paper .ln.chk{margin:8px 0;padding-right:6px}
   .paper .ln.in{background:var(--in)}
   .paper .katex{font-size:1.04em}
   .paper h2.hd{font-size:12.5pt;margin-top:7mm}
@@ -239,3 +245,6 @@
 /* medición previa a la impresión (ver fitEquations en docrun.js) */
 .paper.fitm{width:178mm;max-width:none;padding:0;font-size:9.8pt;line-height:1.45}
 .paper.fitm .katex{font-size:1.04em}
+.paper.fitm .ln{margin-left:0;margin-right:0;padding-left:5px;padding-right:0}
+.paper.fitm .ln.chk{margin:8px 0;padding-right:6px}
+.paper.fitm .ln .cm{font-size:8.3pt}
