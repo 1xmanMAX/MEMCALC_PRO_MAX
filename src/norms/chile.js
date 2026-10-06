@@ -159,7 +159,7 @@ function cqc(X, T, xi = 0.05) {
 }
 
 // =====================================================================
-defineFns({
+const FN433 = {
   // ---------------- NCh433 + DS61 ----------------
   AoNCh433: { fn: (z) => [0.20, 0.30, 0.40][zona(z) - 1], tex: 'A_0/g', desc: 'Aceleración efectiva Ao/g por zona sísmica 1, 2, 3 (NCh433 Tabla 6.2)', args: 'zona' },
   INCh433: { fn: (c) => { c = Math.round(toNum(c)); if (!(c >= 1 && c <= 4)) throw new Error('Categoría de ocupación I a IV (use 1–4)'); return [0.6, 1.0, 1.2, 1.2][c - 1]; }, tex: 'I', desc: 'Coeficiente de importancia por categoría I–IV (NCh433 Tabla 6.1, DS61)', args: 'categoría (1–4)' },
@@ -231,6 +231,52 @@ defineFns({
     tex: '\\Delta', desc: 'Desplazamientos relativos de entrepiso por modo', args: 'U (niveles × modos)',
   },
   cqcNCh433: { fn: (X, T, xi = 0.05) => cqc(X, T, toNum(xi)), tex: '\\mathrm{CQC}', desc: 'Combinación modal CQC con ρij de NCh433 ec. 6-14 (ξ = 0.05)', args: 'X (niveles × modos), Tn, ξ' },
+};
+defineFns(FN433, 'Sismo — Chile');
+
+// =====================================================================
+//  NCh433:2026 — Diseño sísmico de edificios (D.Ex. N° 28 MINVU, D.O. 10-08-2026;
+//  vigente seis meses después, ≈ 10-02-2027; reemplaza a NCh433 Mod.2009 + DS61).
+//  Texto técnico de referencia: prNCh433 en consulta pública (INN, 2022), 4.2.2–4.2.3 y
+//  Tablas 2, 4–9. El espectro (Tabla 7), Ao, I, Cmáx y R* se mantienen iguales a DS61
+//  (confirmado en el seminario UANDES/AICE/ACHISINA/SOCHIGE 2026). La clasificación del
+//  sitio agrega el periodo predominante Tg (H/V, Nakamura). Ver docs/referencias/chile-2026.md.
+// =====================================================================
+// Tabla 2 (prNCh433): Vs30 mínimo y Tg máximo (exclusivo) por tipo A..D; E: Vs30 < 180 m/s, sin Tg
+const VS26 = [900, 500, 350, 180], TG26 = [0.15, 0.30, 0.40, 1.00];
+function vs30(v) { const x = math.isUnit(v) ? v.toNumber('m/s') : toNum(v); if (!(x > 0)) throw new Error('Vs30 debe ser positivo (m/s)'); return x; }
+function sueloVs26(V) { const k = VS26.findIndex(l => V >= l); return k < 0 ? 4 : k; }   // índice 0..4
+// Clasificación 4.2.3.1: primera clasificación por Vs30; si Tg no cumple el límite de esa clase,
+// se degrada UN nivel. Tg = 0 representa «H/V plano» (sin periodo predominante), que cumple.
+function suelo26(V, Tg) {
+  const k = sueloVs26(V);
+  if (!(Tg >= 0)) throw new Error('Tg debe ser ≥ 0 s (use 0 para H/V plano)');
+  if (k <= 3 && Tg > 0 && Tg >= TG26[k]) return k + 1;
+  return k;
+}
+const v26 = (name, desc) => ({ ...FN433[name], desc: desc + ' — NCh433:2026 (igual que DS61; ver chile-2026.md)' });
+
+
+defineFns({
+  sueloVsNCh433v26: { fn: (V) => sueloVs26(vs30(V)) + 1, tex: '\\mathrm{suelo}_{V_s}', desc: 'Primera clasificación del sitio solo por Vs30 (NCh433:2026, Tabla 2 del prNCh433): 1=A ≥ 900, 2=B ≥ 500, 3=C ≥ 350, 4=D ≥ 180, 5=E < 180 m/s', args: 'Vs30' },
+  sueloNCh433v26: { fn: (V, Tg) => suelo26(vs30(V), sec(Tg)) + 1, tex: '\\mathrm{suelo}', desc: 'Clasificación sísmica del sitio NCh433:2026 con Vs30 y Tg (H/V): si Tg ≥ límite de la clase (A 0,15; B 0,30; C 0,40; D 1,00 s) se degrada un nivel (4.2.3.1). Tg = 0 → H/V plano', args: 'Vs30, Tg' },
+  TgLimNCh433v26: { fn: (s) => { const k = soil433(s); if (k > 3) throw new Error('Suelo E: la Tabla 2 no limita Tg'); return mkUnit(TG26[k], 's'); }, tex: 'T_{g,lím}', desc: 'Periodo predominante máximo (exclusivo) de cada clase A–D (NCh433:2026, Tabla 2 del prNCh433)', args: 'suelo (1–4)' },
+  AoNCh433v26: v26('AoNCh433', 'Ao/g por zona 1, 2, 3'),
+  INCh433v26: v26('INCh433', 'Coeficiente I por categoría I–IV (0,6; 1,0; 1,2; 1,2)'),
+  SNCh433v26: v26('SNCh433', 'Parámetro S del suelo'),
+  ToNCh433v26: v26('ToNCh433', 'Periodo To del suelo'),
+  TpNCh433v26: v26('TpNCh433', "Periodo T' del suelo"),
+  nNCh433v26: v26('nNCh433', 'Exponente n del suelo'),
+  pNCh433v26: v26('pNCh433', 'Exponente p del suelo'),
+  alphaNCh433v26: v26('alphaNCh433', 'Factor de amplificación α(Tn)'),
+  SaNCh433v26: v26('SaNCh433', 'Espectro de diseño Sa/g = S·Ao·α/(R*/I)'),
+  RstarNCh433v26: v26('RstarNCh433', 'R* = 1 + T*/(0,10·To + T*/Ro)'),
+  CNCh433v26: v26('CNCh433', "C = 2,75·S·Ao/(g·R)·(T'/T*)^n"),
+  CmaxNCh433v26: v26('CmaxNCh433', 'Cmáx según R (0,90 … 0,35)·S·Ao/g'),
+  CminNCh433v26: v26('CminNCh433', 'Cmín = Ao·S/(6g)'),
+  fNCh433v26: v26('fNCh433', 'Factor f = 1,25 − 0,5q de muros de H.A.'),
+  AkNCh433v26: v26('AkNCh433', 'Factores Ak de distribución en altura'),
+  SdeNCh433v26: v26('SdeNCh433', 'Espectro elástico de desplazamientos Sde'),
 }, 'Sismo — Chile');
 
 // =====================================================================

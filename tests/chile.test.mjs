@@ -1,4 +1,4 @@
-// Pruebas de validación — módulo «chile» (NCh433+DS61, NCh2369, NCh432, DS60, NCh3171)
+// Pruebas de validación — módulo «chile» (NCh433+DS61, NCh433:2026, NCh2369, NCh432, DS60, NCh3171)
 // Valores de referencia: tablas de las normas (texto refundido NCh433+DS61, NCh2369.Of2003,
 // NCh2369:2023, ASCE 7-05 Tabla 6-3 / NCh432:2010, NCh432.Of71) y cálculos manuales independientes.
 import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES } from './helpers.mjs';
@@ -227,6 +227,59 @@ section('Bloques');
   truthy('fuerzasCL dibuja la elevación', /<svg/.test(f.html) && /V3 = 30/.test(f.html));
 }
 
+section('NCh433:2026 — clasificación del sitio (Vs30 + Tg) y parámetros');
+{
+  const g = calc(`ej = sueloNCh433v26(520 m/s, 0.51 s)
+ejVs = sueloVsNCh433v26(520 m/s)
+a1 = sueloNCh433v26(950 m/s, 0 s)
+a2 = sueloNCh433v26(900 m/s, 0.15 s)
+b1 = sueloNCh433v26(500 m/s, 0.29 s)
+c1 = sueloNCh433v26(420 m/s, 0.32 s)
+c2 = sueloNCh433v26(420 m/s, 0.45 s)
+c3 = sueloNCh433v26(420 m/s, 1.5 s)
+d1 = sueloNCh433v26(180 m/s, 0.99 s)
+d2 = sueloNCh433v26(250 m/s, 1.0 s)
+e1 = sueloNCh433v26(170 m/s, 2 s)
+e2 = sueloVsNCh433v26(179.9)
+tgA = TgLimNCh433v26(1)
+tgD = TgLimNCh433v26(4)
+ao = AoNCh433v26(3)
+i1 = INCh433v26(1)
+sD = SNCh433v26(4)
+toE = ToNCh433v26(5)
+tpC = TpNCh433v26(3)
+nB = nNCh433v26(2)
+pA = pNCh433v26(1)
+rs26 = RstarNCh433v26(0.5 s, 0.4 s, 11)
+rs09 = RstarNCh433(0.5 s, 0.4 s, 11)
+sa26 = SaNCh433v26(0.7 s, 1.2, 0.75 s, 1.0, 0.4, 6, 1.2)
+sa09 = SaNCh433(0.7 s, 1.2, 0.75 s, 1.0, 0.4, 6, 1.2)
+cm26 = CmaxNCh433v26(6.5, 1.2, 0.4)
+cmi = CminNCh433v26(1.2, 0.4)`);
+  near('prNCh433 C4.2.3.1 (ejemplo publicado): Vs30 = 520 m/s → primera clase B', g('ejVs'), 2);
+  near('prNCh433 C4.2.3.1: Tg = 0,51 s ≥ 0,30 s → se degrada a suelo C', g('ej'), 3);
+  near('Tabla 2: Vs30 = 950 m/s, H/V plano → A', g('a1'), 1);
+  near('Tabla 2: Vs30 = 900 m/s, Tg = 0,15 s (no < 0,15) → B', g('a2'), 2);
+  near('Tabla 2: Vs30 = 500 m/s, Tg = 0,29 s → B', g('b1'), 2);
+  near('Tabla 2: Vs30 = 420 m/s, Tg = 0,32 s → C', g('c1'), 3);
+  near('Tabla 2: Vs30 = 420 m/s, Tg = 0,45 s → D (degrada un nivel)', g('c2'), 4);
+  near('Tabla 2: degradación de un solo nivel (Tg = 1,5 s con clase C → D)', g('c3'), 4);
+  near('Tabla 2: Vs30 = 180 m/s, Tg = 0,99 s → D', g('d1'), 4);
+  near('Tabla 2: Vs30 = 250 m/s, Tg = 1,0 s → E', g('d2'), 5);
+  near('Tabla 2: Vs30 < 180 m/s → E (sin límite de Tg)', g('e1'), 5);
+  near('Tabla 2: Vs30 = 179,9 (número, m/s) → E', g('e2'), 5);
+  near('Tabla 2: Tg límite A = 0,15 s', g('tgA', 's'), 0.15); near('Tabla 2: Tg límite D = 1,00 s', g('tgD', 's'), 1.0);
+  near('Tabla 6: Ao zona 3 = 0,40 g', g('ao'), 0.40); near('Tabla 5: I cat. I = 0,6', g('i1'), 0.6);
+  near('Tabla 7 = DS61: S suelo D = 1,20', g('sD'), 1.20); near('Tabla 7: To suelo E = 1,20 s', g('toE', 's'), 1.20);
+  near("Tabla 7: T' suelo C = 0,45 s", g('tpC', 's'), 0.45); near('Tabla 7: n suelo B = 1,33', g('nB'), 1.33); near('Tabla 7: p suelo A = 2,0', g('pA'), 2.0);
+  near('R* 2026 = R* DS61 (ec. 12 = ec. 6-10)', g('rs26'), g('rs09'));
+  near('Sa 2026 = Sa DS61 (espectro sin cambios)', g('sa26'), g('sa09'));
+  near('Tabla 8: Cmáx(R = 6,5) = 0,35·S·Ao/g (interpolación entre R = 6 y 7)', g('cm26'), 0.35 * 1.2 * 0.4);
+  near('Cmín = Ao·S/6', g('cmi'), 0.4 * 1.2 / 6);
+  let err = ''; try { calc('x = sueloNCh433v26(-5 m/s, 0.3 s)'); } catch (e) { err = String(e.message || e); }
+  truthy('Vs30 negativo → error explícito', /Vs30/.test(err), err.slice(0, 80));
+}
+
 section('Plantillas «chile»: sin errores y todas las verificaciones cumplen');
 for (const t of TEMPLATES.filter(x => x.id.startsWith('cl-'))) {
   const r = runTemplate(t.id).res.ctx;
@@ -262,6 +315,18 @@ section('Plantillas: valores de control (cálculo manual independiente)');
     const Rup = (-wtb * B / 2 * 0.75 - wts * B / 2 * 0.25) + ((wmb - wms) * he * he / 2 + (wtb - wts) * r * (he + r / 2)) / B;
     near('Viento: levantamiento en base de barlovento por equilibrio global [tonf]', v('Rup', 'tonf'), Rup);
   }
+  {
+    // NCh433:2026: con el mismo suelo (C) el resultado debe coincidir con la plantilla DS61
+    const t = runTemplate('cl-nch433-2026'), e = runTemplate('cl-nch433-estatico');
+    near('2026: suelo clasificado C (Vs30 = 420, Tg = 0,32)', t('suelo'), 3);
+    near('2026: Qox igual a la plantilla DS61 con el mismo suelo', t('Qox', 'tonf'), e('Qox', 'tonf'));
+    near('2026: Qmín = I·S·Ao·P/6', t('Qmin', 'tonf'), 1.05 * 0.4 * 1520 / 6);
+    near('2026: Sa(T*x) = S·Ao·α/R*', t('Sax'), 1.05 * 0.4 * al(0.32, 0.4, 1.6) / (1 + 0.32 / (0.04 + 0.32 / 11)));
+    const k = runTemplate('cl-nch433-comparacion');
+    near('Comparación: DS61 suelo C → Qo = 0,75·0,35·1,05·0,4·P', k('Qo61', 'tonf'), 0.75 * 0.35 * 1.05 * 0.4 * 1520);
+    near('Comparación: 2026 suelo D (Tg = 0,45 s) → Qo = 0,75·0,35·1,20·0,4·P', k('Qo26', 'tonf'), 0.75 * 0.35 * 1.20 * 0.4 * 1520);
+    near('Comparación: razón de cortes = 1,20/1,05', k('rQ'), 1.20 / 1.05);
+  }
   const c = runTemplate('cl-nch3171');
   near('NCh3171: Pu máx = 1.2D + 1.4E + L', c('Pumax', 'tonf'), 1.2 * 85 + 1.4 * 32 + 28);
   near('NCh3171: Pu mín = 0.9D − 1.4E', c('Pumin', 'tonf'), 0.9 * 85 - 1.4 * 32);
@@ -276,6 +341,9 @@ section('Datos absurdos no producen «TODAS CUMPLEN» ni errores');
   truthy('NCh2369 con K = 50 tonf/m y R = 1: falla deformación 0,015h', cleanFail(muta('cl-nch2369', [['R = 5 //', 'R = 1 //'], ['K = 5200', 'K = 50']])));
   truthy('Muro con Tx = 1,3 s y Pu = 1300 tonf: exige elemento de borde y falla', cleanFail(muta('cl-muro-ds60', [['Pu = 520 tonf', 'Pu = 1300 tonf'], ['Tx = 0.75 s', 'Tx = 1.3 s']])));
   truthy('NCh3171 con E = 300 tonf: falla resistencia y tracción', cleanFail(muta('cl-nch3171', [['E = 32 tonf', 'E = 300 tonf']])));
+  truthy('NCh433:2026 con N = 8 pisos: falla 6.2.1 b) sin errores', cleanFail(muta('cl-nch433-2026', [['N = 5', 'N = 8'], ['dcmx = [0.08, 0.11, 0.12, 0.12, 0.11]', 'dcmx = [0.08, 0.11, 0.12, 0.12, 0.11, 0.1, 0.1, 0.1]'], ['dpx = [0.11, 0.15, 0.16, 0.16, 0.15]', 'dpx = [0.11, 0.15, 0.16, 0.16, 0.15, 0.1, 0.1, 0.1]'], ['dcmy = [0.06, 0.08, 0.09, 0.09, 0.08]', 'dcmy = [0.06, 0.08, 0.09, 0.09, 0.08, 0.1, 0.1, 0.1]'], ['dpy = [0.09, 0.12, 0.13, 0.13, 0.12]', 'dpy = [0.09, 0.12, 0.13, 0.13, 0.12, 0.1, 0.1, 0.1]']])));
+  truthy('NCh433:2026 con derivas 0,9 cm y suelo E (Vs30 = 150 m/s): falla 5.9 sin errores', cleanFail(muta('cl-nch433-2026', [['Vs30 = 420 m/s', 'Vs30 = 150 m/s'], ['dpx = [0.11, 0.15, 0.16, 0.16, 0.15]', 'dpx = [0.11, 0.15, 0.96, 0.16, 0.15]']])));
+  truthy('Comparación con derivas 10 veces mayores y Tg = 3 s: falla la deriva sin errores', cleanFail(muta('cl-nch433-comparacion', [['dcm61 = [0.08, 0.11, 0.12, 0.12, 0.11]', 'dcm61 = [0.8, 1.1, 1.2, 1.2, 1.1]'], ['Tg = 0.45 s', 'Tg = 3 s']])));
   const g = runTemplate('cl-nch433-estatico', d => { const b = d.blocks.find(x => /dcmx = /.test(x.src || '')); b.src = b.src.replace('dcmx = [0.08,', 'dcmx = [0.98,'); });
   truthy('Deriva excesiva → falla 5.9.2', g.res.ctx.checks.some(c => !c.ok) && !/TODAS LAS VERIFICACIONES CUMPLEN/.test(g.res.html));
   const w = runTemplate('cl-muro-ds60', d => { const b = d.blocks.find(x => /Pu = 520/.test(x.src || '')); b.src = b.src.replace('Pu = 520 tonf', 'Pu = 2000 tonf'); });

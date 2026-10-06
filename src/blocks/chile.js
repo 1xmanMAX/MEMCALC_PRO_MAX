@@ -1,6 +1,6 @@
 // =====================================================================
 //  Bloques gráficos — módulo «chile»
-//   spectrumCL : espectro de diseño NCh433+DS61 / NCh2369 (Of2003 y 2023/2025)
+//   spectrumCL : espectro de diseño NCh433+DS61 / NCh433:2026 / NCh2369 (Of2003 y 2023/2025)
 //   muroCL     : sección de muro de H.A., eje neutro y elementos de borde (DS60)
 // =====================================================================
 import { registerBlock, F } from '../blockreg.js';
@@ -25,7 +25,7 @@ function evalSoil(str, S, def) {
 registerBlock('spectrumCL', {
   name: 'Espectro NCh433 / NCh2369', icon: 'spectrum', group: 'Sismo',
   fields: [
-    F('norma', 'Norma', 'NCh433', 'select', ['NCh433', 'NCh2369', 'NCh2369:2023']),
+    F('norma', 'Norma', 'NCh433', 'select', ['NCh433', 'NCh433:2026', 'NCh2369', 'NCh2369:2023']),
     F('zona', 'Zona sísmica (1, 2, 3)', 'zona'), F('suelo', 'Suelo (NCh433: 1=A…5=E · NCh2369.Of2003: 1=I…4=IV)', 'suelo'),
     F('I', 'Coeficiente de importancia I', 'I'), F('R', 'Ro (NCh433) o R (NCh2369)', 'Ro'),
     F('xi', 'Amortiguamiento ξ (solo NCh2369)', '0.05'), F('T', 'Periodo de la estructura T* [s]', 'Tx'),
@@ -36,21 +36,21 @@ registerBlock('spectrumCL', {
   hint: 'Dibuja el espectro de diseño Sa/g. NCh433+DS61: Sa = S·Ao·α/(R*/I) con R* según T*; NCh2369.Of2003: Sa = 2.75·Ao·I/R·(T\'/T)^n·(0.05/ξ)^0.4 ≤ I·Cmax. Exporta <b>Sa_T</b> (Sa/g en T*), <b>alpha_T</b> y <b>Rs</b> (R* o R).',
   def: { norma: 'NCh433', zona: '3', suelo: '3', I: '1', R: '11', xi: '0.05', T: '0.5', tmax: '3', comparar: false, elastico: true },
   render(b, ctx) {
-    const S = ctx.scope, norma = b.norma || 'NCh433';
+    const S = ctx.scope, norma = b.norma || 'NCh433', is433 = norma === 'NCh433' || norma === 'NCh433:2026';
     const z = Math.round(evalParam(b.zona, S, '', 3)); const Ao = fn('AoNCh433', z);
-    const soil = evalSoil(b.suelo, S, 3), I = evalParam(b.I, S, '', 1), R = evalParam(b.R, S, '', norma === 'NCh433' ? 11 : 3);
+    const soil = evalSoil(b.suelo, S, 3), I = evalParam(b.I, S, '', 1), R = evalParam(b.R, S, '', is433 ? 11 : 3);
     const xi = evalParam(b.xi, S, '', 0.05), Ts = evalParam(b.T, S, 's', 0), Tmax = Math.max(0.5, evalParam(b.tmax, S, 's', 3));
     pos({ I, R });
     const ts = Array.from({ length: 361 }, (_, i) => Math.max(1e-4, Tmax * i / 360));
     const series = []; let Rs = R, sub = '';
-    if (norma === 'NCh433') {
+    if (is433) {
       const k = soil - 1; if (!(k >= 0 && k <= 4)) throw new Error('Suelo NCh433: 1 = A … 5 = E');
       Rs = Ts > 0 ? fn('RstarNCh433', math.unit(Ts, 's'), math.unit(S433.To[k], 's'), R) : R;
       const sa = (t, kk) => S433.S[kk] * Ao * I * alpha(t, S433.To[kk], S433.p[kk]);
       if (b.comparar) SOIL.forEach((s, kk) => { if (kk !== k) series.push({ n: 'Suelo ' + s + ' (diseño)', y: ts.map(t => sa(t, kk) / Rs), c: ['#8250df', '#0a7e8c', C.orange, '#6e7781', '#bf3989'][kk], w: 1.2, dash: '5 3' }); });
       if (b.elastico) series.push({ n: 'Elástico S·Ao·α·I', y: ts.map(t => sa(t, k)), c: C.axis, w: 1.4, dash: '6 3' });
       series.push({ n: `Diseño suelo ${SOIL[k]} (R* = ${f2(Rs)})`, y: ts.map(t => sa(t, k) / Rs), c: C.blue, w: 2.2, fill: true, main: true });
-      sub = `NCh433+DS61 · zona ${z} (Ao = ${f2(Ao)} g) · suelo ${SOIL[k]} · I = ${f2(I)} · Ro = ${f2(R)}`;
+      sub = `${norma === 'NCh433' ? 'NCh433+DS61' : 'NCh433:2026 (espectro igual al de DS61)'} · zona ${z} (Ao = ${f2(Ao)} g) · suelo ${SOIL[k]} · I = ${f2(I)} · Ro = ${f2(R)}`;
     } else if (norma === 'NCh2369') {
       const Tp = fn('TpNCh2369', soil), n = fn('nNCh2369', soil);
       const cap = I * fn('CmaxNCh2369', R, xi, Ao);
@@ -78,7 +78,7 @@ registerBlock('spectrumCL', {
     }
     let SaT = null;
     if (Ts > 0 && Ts <= Tmax * 1.5) {
-      if (norma === 'NCh433') { const k = soil - 1; SaT = S433.S[k] * Ao * I * alpha(Ts, S433.To[k], S433.p[k]) / Rs; setVar(ctx, 'alpha_T', alpha(Ts, S433.To[k], S433.p[k])); }
+      if (is433) { const k = soil - 1; SaT = S433.S[k] * Ao * I * alpha(Ts, S433.To[k], S433.p[k]) / Rs; setVar(ctx, 'alpha_T', alpha(Ts, S433.To[k], S433.p[k])); }
       else if (norma === 'NCh2369') SaT = fn('SaNCh2369', math.unit(Ts, 's'), fn('TpNCh2369', soil), fn('nNCh2369', soil), Ao, I, R, xi);
       else SaT = fn('SaNCh2369v23', math.unit(Ts, 's'), soil, Ao, I, R, xi);
       const xT = X(Math.min(Ts, Tmax));

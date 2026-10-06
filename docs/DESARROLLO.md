@@ -24,6 +24,8 @@ Módulos: `peru`, `chile`, `japan`, `concrete`, `geotech`, `walls`, `bridges`, `
 b = 30 cm // Ancho de la sección              ← dato de entrada (aparece en la pestaña Datos)
 fc = 210 kgf/cm^2 // f'c [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2]   ← lista desplegable
 bar = 5 // Varilla [4 : 1/2"|5 : 5/8"|6 : 3/4"]                     ← opciones con etiqueta
+fc = 210 kgf/cm^2 // Resistencia del concreto [175..420]              ← rango usual (aviso si sale del rango)
+Z = 0.45 // Factor de zona [0.10..0.45]   ·   hz = 60 cm // Peralte [0.5 m..1.5 m]   ← rango con unidades
 d = h - 6 cm // Peralte efectivo              ← fórmula: se muestra simbólica + sustitución + resultado
 Mn = As*fy*(d - a/2) -> tonf*m                ← convierte a unidad
 check Mu <= phiMn // Resistencia a flexión (E.060 9.3)   ← verificación con D/C
@@ -46,6 +48,12 @@ Reglas importantes:
 - `roundup(x, 5 cm)`, `rounddown(x, 2.5 cm)`.
 - Vectores: `[1, 2, 3]`, `1:5`, operaciones elemento a elemento `.*`, `./`, `.^`, `sum(v)`, `cumsum(v)`, `max(v)`.
 - **Ojo:** entre dos vectores `*` es producto matricial/escalar; para elemento a elemento use `.*`, `./`, `.^`.
+- **Rango usual** `[mín..máx]` al final del comentario de un dato de entrada. Sin unidad, el rango está en la
+  unidad del dato; con unidad (`[175..420 kgf/cm^2]` o `[0.5 m..1.5 m]`) se convierte. Si el valor sale del rango,
+  la pestaña Datos y la edición en la hoja muestran «⚠ Valor fuera del rango usual 175–420 kgf/cm²» y la línea se
+  resalta en pantalla; **no** impide el cálculo y **no** se imprime. Se combina con listas:
+  `fc = 210 kgf/cm^2 // f'c [175 kgf/cm^2|210 kgf/cm^2] [175..420]`. Úselo en datos con rango físico/normativo
+  conocido (f'c, fy, qa, Z, espesores, factores). Si no hay rango, la app usa una tabla interna de respaldo (`RANGES`).
 - `check` crea una verificación; su D/C se calcula automáticamente para `<, <=, >, >=`.
 - Tras un error en una línea, la variable asignada se elimina (los errores no se propagan en silencio).
 
@@ -93,6 +101,35 @@ export default [{
   blocks: [ text(`# Generalidades ...`), calc(`# Datos ...`), { type: 'beam', ... }, summary() ],
 }];
 ```
+### Ejemplo de validación (campo opcional `validacion`)
+
+Si los datos por defecto de la plantilla vienen de un ejemplo resuelto, declárelo para que la app muestre el botón
+**«Ejemplo de validación»** (pestaña Datos, Proyecto y Ctrl K) con la tabla *esperado vs. calculado* (✔/✘):
+
+```js
+{ id: 'din-1gdl', ...,
+  validacion: {
+    fuente: 'Chopra, Dinámica de estructuras, 4.ª ed., Ej. 6.4',      // obligatorio
+    nota: 'Datos por defecto = datos del ejemplo',                       // opcional
+    valores: [
+      { var: 'umax', unidad: 'in', esperado: 2.67, tol: 0.01 },          // tol relativa (0.01 = 1 %; por defecto 0.02)
+      { var: 'Vb', unidad: 'kip', esperado: 13.1, tolAbs: 0.1, desc: 'Cortante basal' },   // tolAbs: absoluta, en `unidad`
+      { var: 'Ki[2]', unidad: 'kip/in', esperado: 120 },                 // `var` puede ser una expresión
+    ],
+  },
+}
+```
+- `var` es una variable del documento (o expresión math.js evaluada en el scope final); `unidad` es la unidad en la
+  que está `esperado` (omítala si es adimensional).
+- Los valores esperados corresponden a los **datos por defecto**; si el usuario cambió la memoria, la ventana lo avisa y
+  ofrece «Restaurar datos del ejemplo». La app guarda el id de la plantilla en el documento (`doc.tpl`).
+- `tests/engine.test.mjs` comprueba automáticamente todas las plantillas con `validacion` (`node tests/run.mjs engine`).
+
+### Modo formulario (código bloqueado)
+
+En **Proyecto › Entrega › Bloquear código** se ocultan Editor y Variables y solo se editan los Datos (y en la hoja).
+Se guarda en `doc.settings.locked`; sirve para entregar una plantilla a un asistente. No es una protección de seguridad.
+
 Categorías válidas: `General`, `Cargas y combinaciones`, `Análisis estructural`, `Sismo — Perú`, `Sismo — Chile`,
 `Sismo — Japón`, `Sismo — Internacional`, `Concreto armado`, `Concreto — normas extranjeras`, `Cimentaciones`,
 `Geotecnia`, `Muros de contención`, `Puentes`, `Acero estructural`, `Albañilería`, `Madera y tierra`, `Estructuras especiales`.

@@ -213,7 +213,7 @@ function newDoc(tpl) {
   const today = new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' });
   const prev = doc && doc.meta ? doc.meta : loadMetaDefaults();
   return {
-    id: uid(), v: 1, created: Date.now(), updated: Date.now(),
+    id: uid(), v: 1, created: Date.now(), updated: Date.now(), tpl: t.id || '',
     meta: { titulo: t.titulo, proyecto: prev.proyecto || '', cliente: prev.cliente || '', ubicacion: prev.ubicacion || '', autor: prev.autor || '', cip: prev.cip || '', revisor: prev.revisor || '', aprobador: prev.aprobador || '', cipaprob: prev.cipaprob || '', empresa: prev.empresa || '', normas: t.normas || 'RNE — NTE E.020, E.060', fecha: today, rev: '0', logo: prev.logo || '' },
     settings: { ...DEF_SETTINGS, ...(t.settings || {}) },
     blocks: JSON.parse(JSON.stringify(t.blocks)).map(b => ({ ...b, id: uid() })),
@@ -270,6 +270,7 @@ function compute() {
   updatePrintStyle();
   updateStatus();
   updateInputs();
+  paintRanges();
   updateBlockErrors();
   if (tab === 'vars') renderVars();
   if (ied) iedSync();
@@ -338,7 +339,7 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* cuo
 const dcol = new Set(JSON.parse(lsGet('mc_dcol', '[]') || '[]'));
 function datosShell() {
   const pane = $('#p-datos');
-  if (!pane.querySelector(':scope > .dlay')) pane.innerHTML = '<div class="cstrip" hidden></div><div class="dlay"><div class="dins"></div><aside class="dfig" hidden aria-label="Esquema de la memoria"></aside></div>';
+  if (!pane.querySelector(':scope > .dlay')) pane.innerHTML = '<div class="vbar" hidden></div><div class="cstrip" hidden></div><div class="dlay"><div class="dins"></div><aside class="dfig" hidden aria-label="Esquema de la memoria"></aside></div>';
   return pane;
 }
 function updateInputs() {
@@ -346,6 +347,7 @@ function updateInputs() {
   const key = ins.map(i => i.block + ':' + i.line + ':' + i.name + ':' + (i.options ? i.options.join('|') : '')).join(',');
   const pane = datosShell(), box = pane.querySelector('.dins');
   renderSketch();
+  renderValBar();
   if (key === inputsKey && box.childElementCount) {
     // solo refrescar valores no enfocados
     ins.forEach(i => { const el = box.querySelector(`[data-k="${i.block}:${i.line}"]`); if (el && el !== document.activeElement) { if (el.tagName === 'SELECT') el.value = norm(i.num + ' ' + i.unit); else el.value = i.num; } });
@@ -392,7 +394,7 @@ function renderCheckStrip() {
   strip.hidden = false;
   const bad = ch.filter(c => !c.ok).length;
   const sorted = [...ch].sort((a, b) => (a.ok - b.ok) || ((dcRatio(b) ?? -1) - (dcRatio(a) ?? -1)));
-  const suspects = () => { const out = lastRes.ctx.inputs.filter(i => { const r = RANGES[i.name]; const x = parseFloat(i.num); return (r && (!r.u || r.u === i.unit.replace(/\s/g, '')) && (x < r.min || x > r.max)) || (x <= 0 && /^(b|h|d|L|B|t|fc|fy)/.test(i.name)); }); return out.length ? '<br><b>Posible causa:</b> ' + out.map(i => esc((i.label || i.name) + ' = ' + i.num + ' ' + prettyU(i.unit))).join(', ') : ''; };
+  const suspects = () => { const out = lastRes.ctx.inputs.filter(i => !!rangeMsg(i)); return out.length ? '<br><b>Posible causa:</b> ' + out.map(i => esc((i.label || i.name) + ' = ' + i.num + ' ' + prettyU(i.unit))).join(', ') : ''; };
   const where = (er) => { const inp = lastRes.ctx.inputs.find(i => i.block === er.block && i.line === er.line - 1); if (inp) return (inp.label || inp.name) + ': '; const bi = doc.blocks.findIndex(b => b.id === er.block); const b = doc.blocks[bi]; const ln = b && b.src ? (b.src.split('\n')[er.line - 1] || '').trim() : ''; return ln ? '«' + ln.slice(0, 40) + (ln.length > 40 ? '…' : '') + '» → ' : 'Bloque ' + (bi + 1) + ': '; };
   const lbl = (c) => esc(String(c.label || '').replace(/\$[^$]*\$/g, '').replace(/\s+/g, ' ').trim() || 'Verificación');
   const bar = (c) => { const r = dcRatio(c); return `<span class="cb" aria-hidden="true"><i class="dc-${dcCls(c)}" style="width:${r === null ? 100 : Math.max(2, Math.min(100, r * 100))}%"></i></span><b class="dc-${dcCls(c)}">${r === null ? (c.ok ? '✔' : '✘') : r.toFixed(2)}</b>`; };
@@ -408,6 +410,83 @@ function renderCheckStrip() {
   const html = errHtml + sumHtml;
   if (strip._h !== html) { strip.innerHTML = html; strip._h = html; }
 }
+// ---------- Ejemplo de validación (campo opcional `validacion` de la plantilla) ----------
+//  validacion: { fuente: 'Chopra Ej. 6.4', nota?: '…', valores: [{ var: 'umax', unidad: 'in', esperado: 2.67, tol: 0.01, desc?: '…' }, …] }
+//  `var` puede ser una variable o una expresión (p. ej. 'Ki[2]', 'max(V)'); `tol` es relativa (0.01 = 1 %, por defecto 0.02);
+//  `tolAbs` (opcional) es una tolerancia absoluta en `unidad`. Los valores esperados corresponden a los datos por defecto.
+const tplOf = (d = doc) => (d && d.tpl ? TEMPLATES.find(t => t.id === d.tpl) || null : null);
+const valOf = (d = doc) => { const t = tplOf(d); const v = t && t.validacion; return v && Array.isArray(v.valores) && v.valores.length ? v : null; };
+function valRows(v) {
+  const S = lastRes.ctx.scope;
+  return v.valores.map(r => {
+    const out = { r, calc: null, ok: false, dev: null, err: '' };
+    let x;
+    try { x = S.has(r.var) ? S.get(r.var) : math.evaluate(String(r.var), new Map(S)); } catch (e) { out.err = 'no definida'; return out; }
+    try {
+      if (math.isUnit(x)) out.calc = r.unidad ? x.toNumber(String(r.unidad).replace(/·/g, '*')) : x.toNumber(x.formatUnits());
+      else if (typeof x === 'number') out.calc = x;
+      else if (x && typeof x.valueOf === 'function' && typeof x.valueOf() === 'number') out.calc = x.valueOf();
+      else { out.err = 'no es un escalar'; return out; }
+    } catch (e) { out.err = 'unidad incompatible'; return out; }
+    if (!isFinite(out.calc)) { out.err = 'no válido'; return out; }
+    const e = +r.esperado, d = out.calc - e;
+    out.dev = e ? d / Math.abs(e) : d;
+    out.ok = r.tolAbs != null ? Math.abs(d) <= +r.tolAbs + 1e-12 : Math.abs(out.dev) <= (r.tol ?? 0.02) + 1e-12;
+    return out;
+  });
+}
+// ¿Los bloques de la memoria difieren de los de la plantilla? (datos cambiados → la comparación no aplica)
+function tplChanged() {
+  const t = tplOf(); if (!t) return false;
+  const a = doc.blocks, b = t.blocks;
+  if (a.length !== b.length) return true;
+  return a.some((x, i) => x.type !== b[i].type || (x.type === 'calc' ? (x.src || '') !== (b[i].src || '') : false));
+}
+function renderValBar() {
+  const bar = $('#p-datos .vbar'); if (!bar) return;
+  const v = valOf(), lock = !!doc.settings.locked;
+  let html = '';
+  if (lock) html += `<span class="vlock" title="El código está bloqueado: solo se editan los datos. Desbloquee en Proyecto.">${I.key}Modo formulario</span>`;
+  if (v) {
+    const rows = valRows(v), n = rows.filter(x => x.ok).length;
+    html += `<button class="btn sm vbtn ${n === rows.length ? 'ok' : 'bad'}" data-do="valid" title="Comparar con el ejemplo resuelto: ${esc(v.fuente || '')}">${I.book}<span>Ejemplo de validación</span><small>${esc(v.fuente || '')}</small><b>${n === rows.length ? '✔' : '✘'} ${n}/${rows.length}</b></button>`;
+  }
+  if (bar._h === html) return;
+  bar._h = html; bar.innerHTML = html; bar.hidden = !html;
+}
+function showValidation() {
+  const v = valOf(); if (!v) { toast('Esta memoria no tiene ejemplo de validación'); return; }
+  const rows = valRows(v), n = rows.filter(x => x.ok).length, ch = tplChanged();
+  const f = (x, d = 4) => (x === null || x === undefined ? '—' : fmtR(+(+x).toPrecision(d + 2)));
+  const body = `<div class="valid">
+    <p class="vsrc"><b>Fuente:</b> ${esc(v.fuente || '—')}${v.nota ? `<br><span class="mut">${esc(v.nota)}</span>` : ''}</p>
+    <div class="vsum ${n === rows.length ? 'ok' : 'bad'}">${n === rows.length ? I.check : I.x}<span><b>${n === rows.length ? 'Todos los valores coinciden con el ejemplo' : (rows.length - n) + ' de ' + rows.length + ' valores no coinciden'}</b><small>Comparación con los resultados calculados en esta memoria</small></span></div>
+    ${ch ? `<div class="vwarn">⚠ La memoria fue modificada respecto a la plantilla: los valores esperados corresponden a los datos del ejemplo. <button class="btn sm" data-vreset>Restaurar datos del ejemplo</button></div>` : ''}
+    <div class="vtw"><table class="vt"><thead><tr><th>Variable</th><th>Unidad</th><th>Esperado</th><th>Calculado</th><th>Desv.</th><th>Tol.</th><th></th></tr></thead><tbody>
+    ${rows.map(x => { const r = x.r; let sym = ''; try { sym = /^[A-Za-z_]\w*$/.test(r.var) ? Kc(symTex(r.var)) : '<code>' + esc(r.var) + '</code>'; } catch (e) { sym = esc(r.var); }
+      return `<tr class="${x.ok ? 'ok' : 'bad'}"><td><span class="vsy">${sym}</span>${r.desc ? `<small>${esc(r.desc)}</small>` : ''}</td><td>${esc(prettyU(r.unidad || ''))}</td><td>${f(r.esperado)}</td><td>${x.err ? `<span class="mut">${esc(x.err)}</span>` : f(x.calc)}</td><td>${x.dev === null ? '—' : r.tolAbs != null ? f(x.calc - r.esperado, 2) : (x.dev * 100).toFixed(2) + ' %'}</td><td>${r.tolAbs != null ? '±' + f(r.tolAbs, 2) : '±' + ((r.tol ?? 0.02) * 100).toFixed(1) + ' %'}</td><td class="vst">${x.ok ? '✔' : '✘'}</td></tr>`; }).join('')}
+    </tbody></table></div></div>`;
+  const m = modal(`${I.book}Ejemplo de validación`, body, false);
+  m.c.addEventListener('click', e => {
+    if (!e.target.closest('[data-vreset]')) return;
+    const t = tplOf(); if (!t) return;
+    const prev = JSON.stringify(doc.blocks);
+    doc.blocks = JSON.parse(JSON.stringify(t.blocks)).map(b => ({ ...b, id: uid() }));
+    selId = null; inputsKey = ''; renderBlocks(); compute(); changed(false);
+    m.close(); showValidation();
+    toast('Datos del ejemplo restaurados', 'Deshacer', () => { doc.blocks = JSON.parse(prev); inputsKey = ''; renderBlocks(); compute(); changed(false); });
+  });
+}
+
+// ---------- Modo formulario (código bloqueado) ----------
+const isLocked = () => !!(doc && doc.settings && doc.settings.locked);
+function applyLock() {
+  const on = isLocked();
+  document.body.classList.toggle('mc-locked', on);
+  if (on && (tab === 'bloques' || tab === 'vars')) setTab('datos');
+  if (lastRes) renderValBar();
+}
+
 // ---------- Esquema de referencia junto a los datos (clon de la primera figura de la memoria) ----------
 const SKETCH_SKIP = new Set(['plot', 'table', 'spectrum', 'summary']);
 let figOpen = lsGet('mc_figopen', window.matchMedia('(max-width:900px)').matches ? '0' : '1') === '1';
@@ -449,6 +528,54 @@ const RANGES = {
   qa: { u: 'kgf/cm^2', min: 0.3, max: 6, txt: 'qa usual 0.5 a 4 kgf/cm²' },
   Z: { min: 0.1, max: 0.45, txt: 'Z de E.030: 0.10 a 0.45' },
 };
+// Rango usual de un dato: la sintaxis «// Etiqueta [mín..máx]» del comentario (inp.range, ver
+// parseOptions en engine.js) tiene prioridad; si no hay, se usa la tabla RANGES como respaldo.
+function rangeOf(inp) {
+  if (inp.range) return { min: inp.range.min, max: inp.range.max, unit: inp.range.unit || '', own: true };
+  const r = RANGES[inp.name];
+  if (r && (!r.u || r.u === String(inp.unit || '').replace(/\s/g, ''))) return { min: r.min, max: r.max, unit: r.u ? inp.unit : '', txt: r.txt };
+  return null;
+}
+const fmtR = (x) => { const t = String(+(+x).toPrecision(6)); return doc && doc.settings.comma ? t.replace('.', ',') : t; };
+// Aviso (no bloqueante) si el valor de un dato está fuera de su rango usual; '' si está bien
+function rangeMsg(inp, num) {
+  const x = parseFloat(num ?? inp.num); if (!isFinite(x)) return '';
+  const r = rangeOf(inp);
+  if (r) {
+    let v = x;
+    const iu = String(inp.unit || '').trim(), ru = String(r.unit || '').trim();
+    if (ru && iu && norm(ru).replace(/\s/g, '') !== norm(iu).replace(/\s/g, '')) { try { v = math.unit(x, iu).toNumber(ru); } catch (e) { return ''; } }
+    if (v >= r.min && v <= r.max) return '';
+    if (!r.own) return '⚠ Valor poco usual: ' + r.txt;
+    const u = ru || iu;
+    return `⚠ Valor fuera del rango usual ${fmtR(r.min)}–${fmtR(r.max)}${u ? ' ' + prettyU(u) : ''}`;
+  }
+  if (x <= 0 && /^(b|h|d|L|B|t|fc|fy)/.test(inp.name)) return '⚠ Normalmente debe ser mayor que cero';
+  return '';
+}
+// Pinta los avisos de rango en la pestaña Datos (debajo de cada campo) y en la hoja (solo en pantalla)
+function paintRanges() {
+  const ins = lastRes.ctx.inputs;
+  const box = $('#p-datos .dins');
+  const marked = new Set();
+  for (const i of ins) {
+    const msg = rangeMsg(i);
+    if (box) {
+      const el = box.querySelector(`[data-k="${i.block}:${i.line}"]`), row = el && el.closest('.inp');
+      if (row && !row.classList.contains('bad')) {
+        row.classList.toggle('oor', !!msg);
+        let m = row.nextElementSibling;
+        if (msg && (!m || !m.classList.contains('imsg'))) { m = h('<div class="imsg"></div>'); row.after(m); }
+        if (m && m.classList.contains('imsg')) { if (m.textContent !== msg) m.textContent = msg; m.hidden = !msg; }
+      }
+    }
+    if (msg) {
+      const ln = document.querySelector(`#paper .ln.in[data-b="${i.block}"][data-l="${i.line}"]`);
+      if (ln) { ln.classList.add('oor'); ln.dataset.oor = msg.replace(/^⚠\s*/, ''); ln.title = msg.replace(/^⚠\s*/, ''); marked.add(ln); }
+    }
+  }
+  document.querySelectorAll('#paper .ln.oor').forEach(ln => { if (!marked.has(ln)) { ln.classList.remove('oor'); delete ln.dataset.oor; ln.removeAttribute('title'); } });
+}
 const norm = (s) => String(s).trim().replace(/\s+/g, ' ');
 let follow = null;
 function setInputLine(blockId, line, fn) {
@@ -882,10 +1009,17 @@ function openFile() {
   };
   inp.click();
 }
+// HTML de la hoja sin las marcas de pantalla (avisos de rango, edición en curso)
+function paperHTML() {
+  const c = $('#paper').cloneNode(true);
+  c.querySelectorAll('.ln.oor').forEach(ln => { ln.classList.remove('oor'); ln.removeAttribute('title'); delete ln.dataset.oor; });
+  c.querySelectorAll('.ln.editing').forEach(ln => ln.classList.remove('editing'));
+  return c.innerHTML;
+}
 function exportHTML() {
   compute();
   const css = $('#katexcss').textContent + '\n' + $('#papercss').textContent + '\n' + $('#printcss').textContent;
-  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(doc.meta.titulo || 'Memoria')}</title><style>body{background:#eef1f5;margin:0;padding:24px 8px}@media print{body{background:#fff;padding:0}}${css}</style></head><body><div class="paper">${$('#paper').innerHTML}</div></body></html>`;
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(doc.meta.titulo || 'Memoria')}</title><style>body{background:#eef1f5;margin:0;padding:24px 8px}@media print{body{background:#fff;padding:0}}${css}</style></head><body><div class="paper">${paperHTML()}</div></body></html>`;
   download((doc.meta.titulo || 'memoria').replace(/[\\/:*?"<>|]+/g, '') + '.html', html, 'text/html');
   toast('HTML exportado');
 }
@@ -1046,6 +1180,9 @@ function renderProject() {
     <label class="ck"><input type="checkbox" data-s="cover"${s.cover !== false ? ' checked' : ''}> Portada</label>
     <label class="ck"><input type="checkbox" data-s="toc"${s.toc !== false ? ' checked' : ''}> Índice de contenido</label>
     <label class="ck"><input type="checkbox" data-s="numbering"${s.numbering !== false ? ' checked' : ''}> Numerar títulos</label>
+    <div class="sec">Entrega</div>
+    <label class="ck w"><input type="checkbox" data-s="locked"${s.locked ? ' checked' : ''}> Bloquear código (modo formulario: oculta el Editor y las Variables; solo se editan los Datos)</label>
+    ${valOf() ? `<div class="w" style="grid-column:1/-1"><button class="btn" data-do="valid">${I.book}Ejemplo de validación — ${esc(valOf().fuente || '')}</button></div>` : ''}
     <div class="sec">Archivo</div>
     <div class="w" style="display:flex;flex-wrap:wrap;gap:6px;grid-column:1/-1"><button class="btn" data-do="save">${I.save}${EMBED ? 'Guardar archivo (.json)' : 'Guardar .mcalc'}</button><button class="btn" data-do="open">${I.open}Abrir</button>${EMBED ? '' : `<button class="btn" data-do="pdf">${I.pdf}Imprimir / PDF</button>`}<button class="btn" data-do="html">${I.html}Exportar HTML</button><button class="btn" data-do="word">${I.text}Exportar Word (.docx)</button></div>
     ${EMBED ? '<div class="w" style="grid-column:1/-1;font-size:12.5px;color:var(--tx);background:var(--acc-s);padding:10px;border-radius:8px">En esta versión web no se puede imprimir directamente. Para obtener el PDF: «Exportar HTML», abra el archivo en Chrome y use Compartir › Imprimir › Guardar como PDF. En Windows use MemoriaCalc.exe (PDF y Word directos).</div>' : ''}
@@ -1136,13 +1273,14 @@ function openIed(ln) {
   const f = el.querySelector('.ied-in');
   setTimeout(() => { f.focus(); if (f.select) f.select(); }, 10);
   const msg = el.querySelector('.ied-m');
+  { const m0 = inp.options ? '' : rangeMsg(inp); msg.textContent = m0; msg.hidden = !m0; }
   const apply = () => {
     if (f.tagName === 'SELECT') { const val = f.value; setInputLine(b, l, x => { const ci = x.indexOf('//'); const cm = ci >= 0 ? ' ' + x.slice(ci) : ''; const eq = x.indexOf('='); return x.slice(0, eq + 1) + ' ' + val + cm; }); follow = null; return; }
     const v = f.value.trim().replace(',', '.');
     const ok = /^-?\d*\.?\d+(e[-+]?\d+)?$/i.test(v);
     f.classList.toggle('bad', !ok);
     let m = ok ? '' : 'Ingrese solo un número.';
-    if (ok) { const rg = RANGES[inp.name], x = parseFloat(v); if (rg && (!rg.u || rg.u === inp.unit.replace(/\s/g, '')) && (x < rg.min || x > rg.max)) m = '⚠ Valor poco usual: ' + rg.txt; }
+    if (ok) m = rangeMsg(inp, v);
     msg.textContent = m; msg.hidden = !m;
     if (ok) { setInputLine(b, l, x => x.replace(/^(\s*[^=]+=\s*)(-?\d*\.?\d+(?:[eE][-+]?\d+)?)/, (q, a) => a + v)); follow = null; }
     iedPlace();
@@ -1219,7 +1357,9 @@ function showCmdK() {
   const tpls = TEMPLATES.map(t => ({ g: 'Plantillas', t: t.name, sub: t.normas || t.cat, ic: I[t.icon] || I.calc, k: paisOf(t), run: () => loadTemplate(t) }));
   const fns = allFns().map(f => ({ g: 'Funciones', t: f.name + '(' + f.args + ')', sub: f.desc, ic: I.fn, run: () => insertFn(f), key: f.name }));
   const vars = [...lastRes.ctx.scope].filter(([, v]) => typeof v !== 'function').map(([k, v]) => { let val = ''; try { val = valText(v); } catch (e) { /* */ } return { g: 'Variables', t: k + ' = ' + (val.length > 50 ? val.slice(0, 48) + '…' : val), ic: I.vars, run: () => { const d = defOf(k); if (d) goToLine(d.b, d.l); }, key: k }; });
-  const ALL = [...acts, ...secs, ...tpls, ...fns, ...blks, ...vars];
+  if (valOf()) acts.push(A('Ejemplo de validación', I.book, '', () => showValidation(), valOf().fuente || ''));
+  const L = isLocked();
+  const ALL = L ? [...acts.filter(a => !/Editor|Variables/.test(a.t)), ...secs, ...tpls] : [...acts, ...secs, ...tpls, ...fns, ...blks, ...vars];
   const ov = h(`<div class="cmdk-ov"><div class="cmdk" role="dialog" aria-label="Barra de comandos"><div class="sbox lg">${I.search}<input placeholder="Buscar plantillas, acciones, funciones, secciones, variables…" autocomplete="off" spellcheck="false"><kbd>Esc</kbd></div><div class="cl"></div><div class="cf"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> ejecutar</span><span><kbd>Esc</kbd> cerrar</span></div></div></div>`);
   const q = ov.querySelector('input'), list = ov.querySelector('.cl');
   let shown = [], sel = 0;
@@ -1272,6 +1412,7 @@ function toggleFocus(on) {
 }
 const isMobile = () => window.matchMedia('(max-width:900px)').matches;
 function setTab(t) {
+  if (isLocked() && (t === 'bloques' || t === 'vars')) t = 'datos';
   tab = t; try { localStorage.setItem('mc_tab', t); } catch (e) { /* */ }
   document.querySelectorAll('.tab').forEach(b => { const on = b.dataset.tab === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + t));
@@ -1281,6 +1422,7 @@ function setTab(t) {
 }
 function setView(v) { mview = v; $('.main').dataset.v = v; setTab(tab); }
 function goToLine(bid, line) {
+  if (isLocked()) { toast('Código bloqueado (modo formulario). Desbloquéelo en Proyecto.'); return; }
   selId = bid;
   if (isMobile()) setView('edit');
   setTab('bloques');
@@ -1301,7 +1443,7 @@ function loadUI() {
   closeIed(); lastTA = null;
   if (!hist.lock) resetHistory();
   $('#dtitle').value = doc.meta.titulo || '';
-  renderBlocks(); renderProject(); setTab(tab);
+  renderBlocks(); renderProject(); applyLock(); setTab(tab);
 }
 
 // ---------------- Construcción de la interfaz ----------------
@@ -1363,6 +1505,7 @@ export function start() {
       else if (a === 'theme') { const cur = document.documentElement.dataset.theme; const nx = cur === 'dark' ? 'light' : cur === 'light' ? '' : 'dark'; if (nx) document.documentElement.dataset.theme = nx; else delete document.documentElement.dataset.theme; try { localStorage.setItem('mc_theme', nx); } catch (er) { /* */ } toast('Tema: ' + (nx === 'dark' ? 'oscuro' : nx === 'light' ? 'claro' : 'automático')); }
       else if (a === 'undo') undoRedo(-1); else if (a === 'redo') undoRedo(1);
       else if (a === 'go-editor') { setView('edit'); setTab('bloques'); }
+      else if (a === 'valid') showValidation();
       else if (a === 'focus') toggleFocus();
       else if (a === 'new') { doc = newDoc(); inputsKey = ''; loadUI(); compute(); autosave(); }
       else if (a === 'dupdoc') { const c = JSON.parse(JSON.stringify(doc)); c.id = uid(); c.meta.titulo += ' (copia)'; doc = c; loadUI(); compute(); autosave(); toast('Copia creada'); }
@@ -1420,11 +1563,8 @@ export function start() {
     const ok = /^-?\d*\.?\d+(e[-+]?\d+)?$/i.test(v);
     const row = e.target.closest('.inp'); row.classList.toggle('bad', !ok);
     let msg = ok ? '' : 'Ingrese solo un número (punto o coma decimal); se mantiene el valor anterior.';
-    if (ok) {
-      const name = row.dataset.name, unit = (row.querySelector('.iu')?.title || '').replace(/\s/g, ''), x = parseFloat(v);
-      const rg = RANGES[name]; if (rg && (!rg.u || rg.u === unit) && (x < rg.min || x > rg.max)) msg = '⚠ Valor poco usual: ' + rg.txt;
-      if (!rg && x <= 0 && /^(b|h|d|L|B|t|fc|fy)/.test(name)) msg = '⚠ Normalmente debe ser mayor que cero';
-    }
+    if (ok) { const inp = lastRes.ctx.inputs.find(i => i.block === bid && i.line === +ln); if (inp) msg = rangeMsg(inp, v); }
+    row.classList.toggle('oor', ok && !!msg);
     let m = row.nextElementSibling; if (!m || !m.classList.contains('imsg')) { m = h('<div class="imsg"></div>'); row.after(m); }
     m.textContent = msg; m.hidden = !msg;
     if (ok) setInputLine(bid, +ln, l => l.replace(/^(\s*[^=]+=\s*)(-?\d*\.?\d+(?:[eE][-+]?\d+)?)/, (m, a) => a + v));
@@ -1511,6 +1651,7 @@ export function start() {
     if (f && f.type.startsWith('image/')) loadImage(f, url => { b.data = url; renderBlocks(); changed(); });
   });
   document.addEventListener('paste', e => {
+    if (isLocked()) return;
     const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/')); if (!item) return;
     const sel = doc.blocks.find(x => x.id === selId);
     const f = item.getAsFile(); e.preventDefault();
@@ -1524,7 +1665,7 @@ export function start() {
   const pp = $('#p-proyecto');
   pp.addEventListener('input', e => {
     if (e.target.dataset.m) { doc.meta[e.target.dataset.m] = e.target.value; if (e.target.dataset.m === 'titulo') $('#dtitle').value = e.target.value; saveMetaDefaults(); changed(); }
-    if (e.target.dataset.s) { const k = e.target.dataset.s; doc.settings[k] = e.target.type === 'checkbox' ? e.target.checked : (k === 'dec' ? +e.target.value : e.target.value); changed(); }
+    if (e.target.dataset.s) { const k = e.target.dataset.s; doc.settings[k] = e.target.type === 'checkbox' ? e.target.checked : (k === 'dec' ? +e.target.value : e.target.value); if (k === 'locked') { applyLock(); toast(doc.settings.locked ? 'Código bloqueado: solo se editan los datos' : 'Código desbloqueado'); } changed(); }
   });
   pp.addEventListener('change', e => { if (e.target.dataset.s) e.target.dispatchEvent(new Event('input', { bubbles: true })); });
   pp.addEventListener('click', e => {

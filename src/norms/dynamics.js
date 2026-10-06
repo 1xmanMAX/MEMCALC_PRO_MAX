@@ -63,16 +63,16 @@ export function newmarkLin(ag, dt, w, z, beta = 0.25, gamma = 0.5) {
   const a1 = 1 / (beta * h * h) + gamma * c / (beta * h), a2 = 1 / (beta * h) + (gamma / beta - 1) * c, a3 = (1 / (2 * beta) - 1) + h * (gamma / (2 * beta) - 1) * c;
   const kh = k + a1;
   const n = ag.length, u = new Float64Array(n), v = new Float64Array(n), at = new Float64Array(n);
-  let uu = 0, vv = 0, aa = -a0[0];
+  let uu = 0, vv = 0, aa = -a0[0], upk = 0;
   for (let i = 0; i < N - 1; i++) {
     const ph = -a0[i + 1] + a1 * uu + a2 * vv + a3 * aa;
-    const un = ph / kh;
+    const un = ph / kh; if (Math.abs(un) > upk) upk = Math.abs(un);
     const vn = gamma / (beta * h) * (un - uu) + (1 - gamma / beta) * vv + h * (1 - gamma / (2 * beta)) * aa;
     const an = (un - uu) / (beta * h * h) - vv / (beta * h) - (1 / (2 * beta) - 1) * aa;
     uu = un; vv = vn; aa = an;
     if ((i + 1) % sd.ns === 0) { const j = (i + 1) / sd.ns; u[j] = uu; v[j] = vv; at[j] = aa + a0[i + 1]; }
   }
-  return { u, v, at, a1, kh, ns: sd.ns };
+  return { u, v, at, a1, kh, ns: sd.ns, upk };
 }
 // Newmark-β genérico (Chopra Tabla 5.4.2) con m, c, k y carga p arbitraria — para pruebas
 export function newmarkP({ m, c, k, p, dt, gamma = 0.5, beta = 0.25 }) {
@@ -119,12 +119,13 @@ export function newmarkNL(ag, dt, w, z, fy, alpha = 0, beta = 0.25, gamma = 0.5)
   const k = w * w, c = 2 * z * w, sp = bilinearSpring(k, fy, alpha);
   const a1 = 1 / (beta * h * h) + gamma * c / (beta * h), a2 = 1 / (beta * h) + (gamma / beta - 1) * c, a3 = (1 / (2 * beta) - 1) + h * (gamma / (2 * beta) - 1) * c;
   const n = ag.length, u = new Float64Array(n), v = new Float64Array(n), at = new Float64Array(n), fs = new Float64Array(n);
-  let uu = 0, vv = 0, aa = -a0[0], itMax = 0, Eh = 0, fprev = 0;
+  let uu = 0, vv = 0, aa = -a0[0], itMax = 0, Eh = 0, fprev = 0, upk = 0, nfail = 0;
   for (let i = 0; i < N - 1; i++) {
     const ph = -a0[i + 1] + a1 * uu + a2 * vv + a3 * aa;
-    let uj = uu, it = 0;
-    for (; it < 60; it++) { const R = ph - sp.trial(uj) - a1 * uj; if (Math.abs(R) < 1e-11 * fy) break; uj += R / (sp.kt + a1); }
-    itMax = Math.max(itMax, it);
+    let uj = uu, it = 0, conv = false;
+    for (; it < 60; it++) { const R = ph - sp.trial(uj) - a1 * uj; if (Math.abs(R) < 1e-11 * fy) { conv = true; break; } uj += R / (sp.kt + a1); }
+    itMax = Math.max(itMax, it); if (!conv) nfail++;
+    if (Math.abs(uj) > upk) upk = Math.abs(uj);
     sp.commit(uj);
     const vn = gamma / (beta * h) * (uj - uu) + (1 - gamma / beta) * vv + h * (1 - gamma / (2 * beta)) * aa;
     const an = (uj - uu) / (beta * h * h) - vv / (beta * h) - (1 / (2 * beta) - 1) * aa;
@@ -132,7 +133,7 @@ export function newmarkNL(ag, dt, w, z, fy, alpha = 0, beta = 0.25, gamma = 0.5)
     uu = uj; vv = vn; aa = an;
     if ((i + 1) % sd.ns === 0) { const j = (i + 1) / sd.ns; u[j] = uu; v[j] = vv; at[j] = aa + a0[i + 1]; fs[j] = sp.f; }
   }
-  return { u, v, at, fs, itMax, ns: sd.ns, Es: Eh };
+  return { u, v, at, fs, itMax, ns: sd.ns, Es: Eh, upk, nfail };
 }
 // ---------------------------------------------------------------------
 //  Espectro de respuesta (Nigam-Jennings) — ag en m/s²
@@ -298,14 +299,17 @@ export function n2Method(cap, Se, Tc) {
   const c = tab(cap); let dm = Math.min(c.xmax, Se(0.5) * (0.5 / PI2) ** 2), out = null;
   for (let it = 0; it < 100; it++) {
     const dmc = Math.min(dm, c.xmax);
-    const Fy = c.at(dmc), Em = c.area(dmc);
+    // F*y = resistencia del mecanismo; con rama descendente (P-Δ, degradación) se toma el máximo hasta d*m
+    let Fy = c.at(dmc); for (const q of c.P) if (q[0] <= dmc && q[1] > Fy) Fy = q[1];
+    const Em = c.area(dmc);
     const dy = Math.min(Math.max(2 * (dmc - Em / Fy), 1e-9), dmc);                         // EC8 B.3
     const Ts = PI2 * Math.sqrt(dy / Fy);                                                   // B.7
     const det = Se(Ts) * (Ts / PI2) ** 2;                                                  // B.8
     const qu = Se(Ts) / Fy;
     let dt;
     if (Ts >= Tc || qu <= 1) dt = det; else dt = Math.max(det / qu * (1 + (qu - 1) * Tc / Ts), det);   // B.9–B.12
-    out = { Fy, dy, Ts, det, dt, qu, Se: Se(Ts), it: it + 1, regla: Ts >= Tc ? 'igual desplazamiento (T* ≥ TC)' : qu <= 1 ? 'respuesta elástica (qu ≤ 1)' : 'T* < TC: dt* = (det*/qu)[1 + (qu − 1)TC/T*]' };
+    const cap3 = dt > 3 * det; if (cap3) dt = 3 * det;                                     // B.5: d*t ≤ 3d*et
+    out = { Fy, dy, Ts, det, dt, qu, Se: Se(Ts), it: it + 1, cap3, regla: (Ts >= Tc ? 'igual desplazamiento (T* ≥ TC)' : qu <= 1 ? 'respuesta elástica (qu ≤ 1)' : 'T* < TC: dt* = (det*/qu)[1 + (qu − 1)TC/T*]') + (cap3 ? '; limitado a 3d*et' : '') };
     if (Math.abs(dt - dm) <= 1e-6 * dt) break;
     dm = dt;
   }
@@ -414,6 +418,36 @@ export function coefMethod(curve, W, Sa, Te, C0, a = 130, Cm = 1) {
 //  Materiales para fibras (compresión positiva; MPa, mm/mm)
 // ---------------------------------------------------------------------
 export function manderFcc(fco, fl) { return fco * (-1.254 + 2.254 * Math.sqrt(1 + 7.94 * fl / fco) - 2 * fl / fco); }
+// Superficie de falla de 5 parámetros (William-Warnke; calibración de Elwi-Murray con los ensayos de Schickert-Winkler)
+// usada por Mander, Priestley y Park (1988, Apéndice) para el ábaco de confinamiento triaxial (Fig. 4).
+// so = σoct/f'co (negativo en compresión); cth = cos θ (ángulo de Lode). Devuelve τoct/f'co sobre la superficie.
+export function manderTauOct(so, cth) {
+  const T = 0.069232 - 0.661091 * so - 0.049350 * so * so, Cm = 0.122965 - 1.150502 * so - 0.315545 * so * so;
+  const D = 4 * (Cm * Cm - T * T) * cth * cth;
+  return Cm * (0.5 * D / cth + (2 * T - Cm) * Math.sqrt(Math.max(D + 5 * T * T - 4 * T * Cm, 0))) / (D + (2 * T - Cm) ** 2);
+}
+// f'cc con presiones laterales efectivas distintas f'l1 ≠ f'l2 (solución de la superficie: equivale al ábaco de la
+// Fig. 4 de Mander 1988). Con f'l1 = f'l2 reproduce la fórmula cerrada a 4 cifras.
+export function manderFccBiaxial(fco, fl1, fl2) {
+  const a = Math.max(Math.min(fl1, fl2), 0) / fco, b = Math.max(fl1, fl2, 0) / fco;
+  if (b <= 0) return fco;
+  const F = (x) => {
+    const s1 = -a, s2 = -b, s3 = -x, so = (s1 + s2 + s3) / 3;
+    const to = Math.sqrt((s1 - s2) ** 2 + (s2 - s3) ** 2 + (s3 - s1) ** 2) / 3;
+    return to - manderTauOct(so, (s1 - so) / (Math.SQRT2 * to));
+  };
+  let lo = 1, hi = 1 + 8 * b + 1; while (F(hi) < 0 && hi < 50) hi *= 1.5;
+  for (let i = 0; i < 70; i++) { const mid = (lo + hi) / 2; if (F(mid) < 0) lo = mid; else hi = mid; }
+  return fco * (lo + hi) / 2;
+}
+// Aproximación explícita de Chang y Mander (1994, NCEER-94-0006) del mismo ábaco (error ≲ 1 %)
+export function changManderFcc(fco, fl1, fl2) {
+  const x1 = Math.min(fl1, fl2) / fco, x2 = Math.max(fl1, fl2) / fco; if (!(x2 > 0)) return fco;
+  const r = x1 / x2, xb = (x1 + x2) / 2;
+  const A = 6.8886 - (0.6069 + 17.275 * r) * Math.exp(-4.989 * r);
+  const B = 4.5 / (5 / A * (0.9849 - 0.6306 * Math.exp(-3.8939 * r)) - 0.1) - 5;
+  return fco * (1 + A * (0.1 + 0.9 / (1 + B * xb)) * xb);
+}
 export function manderCurve(fco, fcc, eco = 0.002, Ec = 5000 * Math.sqrt(fco)) {
   const ecc = eco * (1 + 5 * (fcc / fco - 1)), Esec = fcc / ecc, r = Ec / (Ec - Esec);
   return { ecc, r, Ec, sig: (e) => { if (e <= 0) return 0; const x = e / ecc; return fcc * x * r / (r - 1 + Math.pow(x, r)); } };
@@ -452,10 +486,13 @@ export function confinementRect(p) {
   const ke = Math.max(0, (1 - w2 / (6 * bc * dc)) * (1 - sp / (2 * bc)) * (1 - sp / (2 * dc)) / (1 - rcc));
   const rb = p.nlb * Ash / (p.s * dc), rh = p.nlh * Ash / (p.s * bc);    // ramas paralelas a b y a h
   const flb = ke * rb * p.fyh, flh = ke * rh * p.fyh, fl = (flb + flh) / 2;
-  const fcc = manderFcc(p.fc, fl);
+  // confinamiento triaxial con f'lx ≠ f'ly (ábaco de Mander 1988); 'promedio' = simplificación con f'l medio
+  const fccAvg = manderFcc(p.fc, fl), fccMin = manderFcc(p.fc, Math.min(flb, flh));
+  const mode = p.confMode || 'triaxial';
+  const fcc = mode === 'promedio' ? fccAvg : mode === 'minimo' ? fccMin : manderFccBiaxial(p.fc, flb, flh);
   const rs = rb + rh;
   const ecu = 0.004 + 1.4 * rs * p.fyh * (p.esuh || 0.09) / fcc;
-  return { bc, dc, ke, rb, rh, rs, flb, flh, fl, fcc, ecu, w2, rcc, sp };
+  return { bc, dc, ke, rb, rh, rs, flb, flh, fl, fcc, fccAvg, fccMin, mode, ecu, w2, rcc, sp };
 }
 export function momentCurvature(p) {
   const { b, h } = p, nf = p.nf || 120, dy = h / nf;
