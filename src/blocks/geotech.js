@@ -444,7 +444,7 @@ export function slopeCircle(m, xc, yc, R, n = 30) {
   // Bishop simplificado (iterativo)
   let FS = Math.max(0.3, FSf), it = 0;
   for (; it < 100; it++) {
-    const num = sl.reduce((s, q) => { const ma = Math.max(0.2, q.ca + q.sa * q.tf / FS); return s + (q.c * q.b + Math.max(0, q.W - q.u * q.b) * q.tf) / ma; }, 0);
+    const num = sl.reduce((s, q) => { const ma = Math.max(0.2, q.ca + q.sa * q.tf / FS); const bl = q.L * q.ca; return s + (q.c * bl + Math.max(0, q.W - q.u * bl) * q.tf) / ma; }, 0); // b = l·cosα (longitud exacta del arco)
     const nF = num / drive; if (Math.abs(nF - FS) < 1e-6) { FS = nF; break; } FS = nF;
   }
   sl.forEach(q => { q.ma = q.ca + q.sa * q.tf / FS; });
@@ -567,7 +567,7 @@ registerBlock('slope', {
     out += `<div class="kv">${K('FS_{req} = ' + f2(FSreq))} ${K('k_h = ' + f2(kh, 3))} ${K('\\Sigma M_{mot}/R = ' + f2(crit.drive) + '\\,\\mathrm{' + uW.replace('/', '/') + '}')}</div>`;
     if (b.tabla) {
       out += `<table class="tbl"><thead><tr><th>#</th><th>x [m]</th><th>b [m]</th><th>h [m]</th><th>W [${uW}]</th><th>α [°]</th><th>c [${uStr}]</th><th>φ [°]</th><th>u [${uStr}]</th><th>W sinα</th><th>m<sub>α</sub></th><th>[c b + (W−u b)tanφ]/m<sub>α</sub></th></tr></thead><tbody>` +
-        crit.sl.map((q, i) => `<tr><td>${i + 1}</td><td>${f2(q.x)}</td><td>${f2(q.b)}</td><td>${f2(q.h)}</td><td>${f2(q.W)}</td><td>${f2(Math.asin(q.sa) * 180 / Math.PI, 1)}</td><td>${f2(q.c)}</td><td>${f2(q.lay.phi * 180 / Math.PI, 1)}</td><td>${f2(q.u)}</td><td>${f2(q.W * q.sa)}</td><td>${f2(q.ma, 3)}</td><td>${f2((q.c * q.b + Math.max(0, q.W - q.u * q.b) * q.tf) / Math.max(0.2, q.ma))}</td></tr>`).join('') + '</tbody></table>';
+        crit.sl.map((q, i) => `<tr><td>${i + 1}</td><td>${f2(q.x)}</td><td>${f2(q.b)}</td><td>${f2(q.h)}</td><td>${f2(q.W)}</td><td>${f2(Math.asin(q.sa) * 180 / Math.PI, 1)}</td><td>${f2(q.c)}</td><td>${f2(q.lay.phi * 180 / Math.PI, 1)}</td><td>${f2(q.u)}</td><td>${f2(q.W * q.sa)}</td><td>${f2(q.ma, 3)}</td><td>${f2((q.c * q.L * q.ca + Math.max(0, q.W - q.u * q.L * q.ca) * q.tf) / Math.max(0.2, q.ma))}</td></tr>`).join('') + '</tbody></table>';
     }
     return `<div class="figure">${out}${caption(ctx, b.titulo || `Análisis de estabilidad del talud — círculo crítico (${useF ? 'Fellenius' : 'Bishop simplificado'})`)}</div>`;
   },
