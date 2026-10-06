@@ -584,8 +584,8 @@ dv = 1.15*5*(wD + wLr)*st*Lt^4/(384*E*Ieq) -> cm // Incremento de 15 % por defor
 check dv <= Lt/240 // Flecha admisible L/240`),
       { type: 'armadura', L: 'Lt', h: 'ht', np: 'np', w: 'wu', tipo: 'pratt', titulo: 'Fuerzas axiales en la vigueta bajo 1.2D + 1.6Lr — método de los nudos [t]' },
       calc(`## Comprobación: método de las secciones frente al método de los nudos
-check abs(Ncs - Fcs) <= 0.001*Fcs // Cuerda superior: ambos métodos coinciden
-check abs(Ndt - Fd) <= 0.001*Fd // Diagonal extrema: ambos métodos coinciden
+check round(abs(Ncs - Fcs)/Fcs, 9) <= 0.001 // Cuerda superior: ambos métodos coinciden (diferencia relativa)
+check round(abs(Ndt - Fd)/Fd, 9) <= 0.001 // Diagonal extrema: ambos métodos coinciden (diferencia relativa)
 check abs(Nv - Fv0) <= 0.001*Fv0 // Montante extremo: ambos métodos coinciden`),
       { type: 'plot', expr: 'Mt(x m)/ht/(1 tonf); -Mt(x m)/ht/(1 tonf)', var: 'x', desde: '0', hasta: 'Lt/(1 m)', puntos: '100', xlabel: 'x [m]', ylabel: 'Fuerza en cuerdas [t]', nombres: 'Cuerda inferior (tracción, +); Cuerda superior (compresión, −)', leyenda: true, titulo: 'Fuerza axial en las cuerdas F = M(x)/h bajo 1.2D + 1.6Lr' },
       { type: 'table', titulo: 'Resumen de barras críticas (fuerza última y resistencia de diseño)', columnas: 'Barra = ["Cuerda superior", "Cuerda inferior", "Cuerda inferior (levante)", "Diagonal extrema", "Diagonal (levante)", "Montante extremo"]\nPu [tonf] = [Fcs, Fci, Fciu, Fd, Fdu, Fv0]\nφPn [tonf] = [phiPcs, phiPti, phiPci, min(phiPdy, phiPdr), phiPdc, phiPv]\nD/C = [Fcs/phiPcs, Fci/phiPti, Fciu/phiPci, Fd/min(phiPdy, phiPdr), Fdu/phiPdc, Fv0/phiPv]', dec: '2' },
@@ -817,7 +817,7 @@ check tc >= 5 cm // Concreto sobre la placa ≥ 2 in (I3.2c)
 Rg = 1.0 // Un conector por nervio, placa perpendicular (Tabla I8.1)
 Rp = 0.6 // Conector en posición débil, placa perpendicular (Tabla I8.1)
 Qn = min(0.5*Asa*sqrt(fc*Ec), Rg*Rp*Asa*Fusa) -> tonf // Resistencia de un conector (I8-1)
-nq = floor((Lv/2)/ss) // Conectores entre el apoyo y el centro de luz
+nq = floor(Lv/(2*ss)) // Conectores entre el apoyo y el centro de luz
 SQn = nq*Qn -> tonf // Fuerza de corte horizontal transferida
 Cc = 0.85*fc*beff*tc -> tonf // Compresión máxima del concreto sobre la placa (I3-1b)
 AsFy = A*Fy -> tonf // Tracción máxima del acero (I3-1a)

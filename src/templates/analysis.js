@@ -486,8 +486,8 @@ R4x = -comp(Q3, 2) // Reacción horizontal en 4
 R1y = comp(Q1, 1) // Reacción vertical en 1
 R4y = comp(Q3, 1) // Reacción vertical en 4
 M1 = comp(Q1, 3) // Momento de empotramiento en 1 [t·m]
-check abs(R1x + R4x + H) <= 0.001 // Equilibrio horizontal ΣFx = 0
-check abs(R1y + R4y - w*L) <= 0.001 // Equilibrio vertical ΣFy = 0
+check round(abs(R1x + R4x + H), 9) <= 0.001 // Equilibrio horizontal ΣFx = 0 (residuo redondeado a 1e-9)
+check round(abs(R1y + R4y - w*L), 9) <= 0.001 // Equilibrio vertical ΣFy = 0 (residuo redondeado a 1e-9)
 @dec 2`),
       text(`# Comprobación con el bloque «Pórtico 2D»
 El mismo modelo se resuelve con el bloque automático; los desplazamientos deben coincidir con los obtenidos paso a paso.`),
@@ -495,8 +495,8 @@ El mismo modelo se resuelve con el bloque automático; los desplazamientos deben
         type: 'frame2d', tipo: 'portico', nudos: '1 0 0\n2 0 h\n3 L h\n4 L 0', secciones: 'C E Ac Ic\nV E Av Iv', barras: '1 1 2 C\n2 2 3 V\n3 4 3 C', apoyos: '1,4 E',
         cargas: 'CM: N 2 H 0\nCM: U 2 w', graficos: 'C M V N D', titulo: 'Pórtico del ejemplo (bloque automático)',
       },
-      calc(`check abs(u2*1000 - deltax_2/(1 mm)) <= 0.001 // Coincidencia de u₂ (paso a paso vs. bloque) [mm]
-check abs(t2 - theta_2) <= 1e-7 // Coincidencia del giro θ₂`),
+      calc(`check round(abs(u2*1000 - deltax_2/(1 mm)), 9) <= 0.001 // Coincidencia de u₂ (paso a paso vs. bloque) [mm]
+check round(abs(t2 - theta_2), 12) <= 1e-7 // Coincidencia del giro θ₂`),
       summary(),
     ],
   },

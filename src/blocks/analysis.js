@@ -1476,16 +1476,21 @@ function renderFrame(b, ctx) {
     md.nodes.map((n, i) => `<tr><td>${esc(n.id)}</td><td>${fx(n.x)}</td><td>${fx(n.y)}</td><td>${fx(serv.u[3 * i] * 1000, 3)}</td><td>${fx(serv.u[3 * i + 1] * 1000, 3)}</td><td>${sol.auto.includes(3 * i + 2) ? '—' : fx(serv.u[3 * i + 2], 6)}</td></tr>`).join('') + '</tbody></table>';
   // reacciones
   const rset = [...md.cases.map(c => sets.get(c.name)), ...combSets];
-  html += `<div class="dt">Reacciones en los apoyos [${lu}, ${lu}·m]</div><table class="tbl"><thead><tr><th>Nudo</th>${rset.map(s => `<th>${esc(dn(s.name))}</th>`).join('')}</tr></thead><tbody>`;
-  for (const i of supN) {
-    for (let d = 0; d < 3; d++) {
-      if (!md.sup[i].r[d] && !md.sup[i].k[d] && !(md.sup[i].ang !== null && d < 2)) continue;
-      html += `<tr><td>${esc(md.nodes[i].id)} · ${['Rx', 'Ry', 'Mz'][d]}</td>${rset.map(s => `<td>${fx(s.R[3 * i + d])}</td>`).join('')}</tr>`;
+  // con muchas combinaciones la tabla se divide en grupos de columnas para no desbordar la hoja
+  const RCOLS = 8;
+  for (let c0 = 0; c0 < rset.length; c0 += RCOLS) {
+    const rs = rset.slice(c0, c0 + RCOLS);
+    html += `<div class="dt">Reacciones en los apoyos [${lu}, ${lu}·m]${rset.length > RCOLS ? ` (${c0 / RCOLS + 1}/${Math.ceil(rset.length / RCOLS)})` : ''}</div><table class="tbl"><thead><tr><th>Nudo</th>${rs.map(s => `<th>${esc(dn(s.name))}</th>`).join('')}</tr></thead><tbody>`;
+    for (const i of supN) {
+      for (let d = 0; d < 3; d++) {
+        if (!md.sup[i].r[d] && !md.sup[i].k[d] && !(md.sup[i].ang !== null && d < 2)) continue;
+        html += `<tr><td>${esc(md.nodes[i].id)} · ${['Rx', 'Ry', 'Mz'][d]}</td>${rs.map(s => `<td>${fx(s.R[3 * i + d])}</td>`).join('')}</tr>`;
+      }
     }
+    // equilibrio: residuo máximo de (ΣFx; ΣFy; ΣMz,O) = Σ cargas + Σ reacciones
+    html += `<tr class="tot"><td>Residuo de equilibrio máx. |ΣF|, |ΣM|</td>${rs.map(s => { const r = Math.max(...s.eq.filter(Number.isFinite).map(Math.abs)); return `<td>${Math.abs(r) < 1e-9 ? '0' : fx(r, 3)}</td>`; }).join('')}</tr>`;
+    html += '</tbody></table>';
   }
-  // equilibrio
-  html += `<tr class="tot"><td>Σ cargas + Σ reacciones (Fx; Fy; Mz,O)</td>${rset.map(s => `<td>${fx(s.eq[0], 3)}; ${fx(s.eq[1], 3)}; ${Number.isFinite(s.eq[2]) ? fx(s.eq[2], 3) : '—'}</td>`).join('')}</tr>`;
-  html += '</tbody></table>';
   // esfuerzos por barra
   const envName = verSet ? verSet.name : (envSets.length > 1 ? 'envolvente' : envSets[0].name);
   if (md.truss) {

@@ -385,7 +385,7 @@ Lz = roundup(P/(qn*Bz), 0.05 m) // Lado paralelo al lindero
 ec = Bz/2 - t/2 -> m // Excentricidad de la carga
 Mt = si(caso == 2, P*ec, 0 tonf*m) // Par equilibrado por el tensor
 T = Mt/hs -> tonf // Fuerza en el tensor (losa / viga del primer techo)
-er = max(ec - Mt/P, 0 m) -> m // Excentricidad remanente sobre el suelo
+er = si(caso == 2, 0 m, ec) -> m // Excentricidad remanente sobre el suelo: e − Mt/P (nula si el tensor toma todo el par)
 q1 = si(er <= Bz/6, P/(Bz*Lz)*(1 + 6*er/Bz), 2*P/(3*Lz*(Bz/2 - er))) -> tonf/m^2 // Presión máxima (Art. 28; triangular si e > B/6)
 check q1 <= qn // Presión máxima ≤ presión neta admisible
 check muf*P >= 1.5*T // Deslizamiento: fricción en la base ≥ 1.5 T

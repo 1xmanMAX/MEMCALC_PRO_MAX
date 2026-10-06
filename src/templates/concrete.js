@@ -723,7 +723,7 @@ dc = 4 cm + db(3) + db(8)/2 // Recubrimiento al centro de la barra extrema
 Act = 2*dc*b/3 // Área efectiva en tracción por barra (3 barras)
 Z = fs*(dc*Act)^(1/3) -> kgf/cm // Parámetro Z (ec. 9-18)
 check Z <= 26000 kgf/cm // Z ≤ 26 kN/mm (Anexo II: 26 000 kgf/cm)
-"Por el criterio del ACI 318-19 (24.3.2), el espaciamiento máximo con $f_s = 2/3 f_y$ y $c_c$ = 5 cm resulta {min(38*(2800 kgf/cm^2/(2/3*fy)) - 2.5*5 cm, 30*(2800 kgf/cm^2/(2/3*fy)))} (en cm).`),
+"Por el criterio del ACI 318-19 (24.3.2), el espaciamiento máximo con $f_s = 2/3 f_y$ y $c_c$ = 5 cm resulta $s_{max}$ = {min(38 cm*(2800 kgf/cm^2/(2/3*fy)) - 2.5*5 cm, 30 cm*(2800 kgf/cm^2/(2/3*fy)))}.`),
     { type: 'beam', tramos: 'L', apoyos: 'A A', E: 'Ec', I: 'IeDL', cargas: 'U 1 wD + wL', titulo: 'Viga en servicio (CM + CV) con EcIe: comprobación de la deflexión inmediata', sufijo: 's' },
     calc(`check abs(deltamax_s - dDL) <= 0.02*dDL // El análisis por rigidez reproduce 5wL⁴/384EIe`),
     summary(),

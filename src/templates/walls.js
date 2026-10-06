@@ -502,7 +502,7 @@ Kae = KaeMO(phi, phi/2, kh, kv, beta, theta) // Mononobe–Okabe activo, δ = φ
 Kpe = KpeMO(phi, 0 deg, kh, kv, beta, theta) // Mononobe–Okabe pasivo, δ = 0
 DKMO = Kae - KaC1 // Incremento dinámico exacto (M-O)
 DKSW = DKaeSW(kh) // Seed–Whitman ¾kh
-check abs(KaC0 - KaR) <= 0.001 // Coulomb con δ = β = θ = 0 coincide con Rankine
+check round(abs(KaC0 - KaR), 9) <= 0.001 // Coulomb con δ = β = θ = 0 coincide con Rankine
 check KaC2 <= KaR // La fricción en el trasdós reduce el empuje activo (Das 7.6)
 check abs(DKSW - DKMO)/DKMO <= 0.20 // Seed–Whitman aproxima al incremento M-O dentro del 20 %
 check Kpe <= KpR // El sismo reduce la resistencia pasiva`),
