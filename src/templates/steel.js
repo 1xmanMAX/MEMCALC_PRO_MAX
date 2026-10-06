@@ -425,6 +425,11 @@ check Nua <= phiNcbg // Arrancamiento del concreto (si no cumple: refuerzo de an
 Abrg = 0.866*(1.5*da + 3.175 mm)^2 - pi*da^2/4 -> cm^2 // Área de apoyo de tuerca hexagonal pesada (F = 1.5d + 1/8 in; DG1 Tabla 3.2)
 phiNpn = 0.70*1.0*8*Abrg*fc -> tonf // Extracción por deslizamiento Np = 8·Abrg·f′c, ψc,P = 1.0 fisurado (17.6.3.2.2)
 check Nua1 <= phiNpn // Extracción (pullout) del anclaje
+sis = 1 // ¿Nua proviene de una combinación con sismo? (Perú, zonas 2–4 ≈ SDC C–F) [1 : Sí|0 : No]
+fsis = si(sis == 1, 0.75, 1) // Factor 0.75 sobre las resistencias de tracción gobernadas por el concreto (ACI 318-19 17.10.5.4)
+check Nua <= fsis*phiNcbg // Arrancamiento del concreto con sismo (17.10.5.4)
+check Nua1 <= fsis*phiNpn // Extracción con sismo (17.10.5.4)
+"Con sismo, la ACI 318-19 17.10.5.3 exige además una falla dúctil (fluencia del acero del anclaje con alargamiento sobre ≥ 8da, o de la placa/conexión) o diseñar para Ω0·E; F1554 Gr. 36 con tramo libre de adherencia cumple la primera opción.
 check min(ca1, ca2) >= 0.4*hef // ca,min ≥ 0.4hef: no se requiere verificar el desprendimiento lateral (17.6.4)
 phiVsa = 0.65*0.8*0.6*Ase*futa*na -> tonf // Corte en el acero con mortero de nivelación (17.7.1.2b y 17.7.1.2.1), respaldo si no hay fricción
 check Vu <= phiVsa // Corte en los anclajes (respaldo de la fricción)
@@ -1039,18 +1044,20 @@ check dT <= Lv/240 // L/240`),
   {
     id: 'st-casa', pais: 'PE', cat: CAT, icon: 'steel', settings: TEC,
     name: 'Casa / vivienda de dos pisos en estructura metálica (HSS, losa colaborante, pórticos y arriostres)',
-    normas: 'NTE E.020 · NTE E.030-2018 (Tabla N° 7: OMF R0 = 4, OCBF R0 = 4) · NTE E.090 1.4 · ANSI/AISC 360-16/22 · AISC 341-16 (OCBF) · ANSI/SDI C-2017 (losa colaborante)',
-    desc: 'Vivienda de 2 pisos: losa sobre placa colaborante (etapas constructiva y compuesta), pórtico resistente a momentos en X (análisis matricial frame2d con CM, CV, viento y sismo), columnas HSS (E3, F7, H1), vigas W (F2) y arriostres concéntricos HSS en cruz en Y, derivas E.030.',
+    normas: 'NTE E.020 · NTE E.030-2018 (Tabla N° 7: OMF R0 = 4, OCBF R0 = 4) · NTE E.090 1.4 · ANSI/AISC 360-16/22 (B, D, J, K) · AISC 341-16 (E1, F1, A3) · ASCE 7-16 (Tabla 12.2-1, 12.4.3: Ω0) · ANSI/SDI C-2017 (losa colaborante)',
+    desc: 'Vivienda de 2 pisos: losa sobre placa colaborante (etapas constructiva y compuesta), pórtico resistente a momentos en X (análisis matricial frame2d con CM, CV, viento y sismo), columnas HSS (E3, F7, H1), vigas W (F2), arriostres concéntricos HSS en cruz en Y, derivas E.030 y conexiones sísmicas con sobrerresistencia Ω0 (BFP empernada del OMF; arriostre ranurado soldado a cartela con Whitmore, pandeo y bloque de cortante).',
     titulo: 'Memoria de cálculo — vivienda de dos pisos en estructura metálica',
     validacion: {
       fuente: 'Control: ANSI/SDI C-2017 (losa colaborante), AISC 360-16 y NTE E.030 (V = ZUCS·P/R)',
-      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). V = 0.45·1·2.5·1.05/4·P y la fracción del pórtico de borde 1/4 + 0.05·9·4.5/45 = 0.295 se comprueban a mano.',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). V = 0.45·1·2.5·1.05/4·P y la fracción del pórtico de borde 1/4 + 0.05·9·4.5/45 = 0.295 se comprueban a mano. Conexiones (añadidas en octubre de 2026, no cambian los valores anteriores): RyFyAg = 1.4·3235·15.74 cm² = 71.3 t y Tu = mín(2·4.499, 71.3) = 9.00 t se comprueban a mano.',
       valores: [
         { var: 'Psis', unidad: 'tonf', esperado: 40.5, tol: 0.002, desc: 'Peso sísmico' },
         { var: 'Vx', unidad: 'tonf', esperado: 11.96, tol: 0.002, desc: 'Cortante basal ZUCS·P/R' },
         { var: 'ft', esperado: 0.295, tol: 0.0005, desc: 'Fracción de cortante del pórtico de borde' },
         { var: 'phiMs', unidad: 'kgf*m', esperado: 1316, tol: 0.002, desc: 'Resistencia de la losa compuesta por metro' },
         { var: 'Fbr', unidad: 'tonf', esperado: 4.499, tol: 0.002, desc: 'Fuerza en el arriostre en cruz' },
+        { var: 'Tye', unidad: 'tonf', esperado: 71.30, tol: 0.002, desc: 'Resistencia esperada del arriostre RyFyAg (AISC 341 F1.6a)' },
+        { var: 'Tu_b', unidad: 'tonf', esperado: 8.998, tol: 0.002, desc: 'Tracción requerida de la conexión del arriostre: mín(Ω0·E, RyFyAg)' },
       ],
     },
     blocks: [
@@ -1059,7 +1066,7 @@ Vivienda unifamiliar de **dos pisos** en estructura metálica liviana: columnas 
 
 - **Sistema sismorresistente:** dirección X, **pórticos ordinarios resistentes a momentos (OMF)**; dirección Y, **pórticos ordinarios concéntricamente arriostrados (OCBF)** con arriostres HSS en cruz en las fachadas. E.030-2018, Tabla N° 7: OMF R0 = 4, OCBF R0 = 4; estructura regular (Ia = Ip = 1). Diafragma rígido en el entrepiso (losa colaborante) y techo con arriostres horizontales.
 - **Análisis:** cargas de gravedad y laterales (sismo estático E.030 Art. 28 y viento E.020) sobre el pórtico X más cargado, resuelto por el **método de rigidez** (bloque *Pórtico 2D*); arriostres en Y por equilibrio de entrepiso. Combinaciones LRFD de la NTE E.090 Art. 1.4.1.
-- **Diseño:** AISC 360-16/22 (E3, F2, F7, G, H1), con los requisitos de detallado de AISC 341-16 para OCBF/OMF a cumplir en los planos (conexiones, relación ancho/espesor de arriostres, Lc/r).
+- **Diseño:** AISC 360-16/22 (E3, F2, F7, G, H1). **Conexiones sísmicas** con AISC 341-16: viga–columna del OMF para $\\min(1.1R_yM_p,\\ M_{\\Omega_0})$ (E1.6b) y arriostres del OCBF para $\\min(\\Omega_0 E,\\ R_yF_yA_g)$ (F1.6a), con $\\Omega_0$ de ASCE 7-16 Tabla 12.2-1 (OMF 3, OCBF 2); pernos, soldaduras, sección neta, sección de Whitmore, pandeo y bloque de cortante (AISC 360 D, J, K).
 - **Planta (datos por defecto):** 8 m × 9 m, con 2 vanos de 4 m en X y 3 vanos de 3 m en Y; alturas de entrepiso 2.80 m y 2.60 m.`),
       { type: 'steelsec', perfil: 'HSS7X7X1/4', sufijo: 'c', tabla: false, titulo: 'Columnas: HSS 7×7×1/4 (ASTM A500 Gr. B, Fy = 46 ksi)' },
       { type: 'steelsec', perfil: 'W8X18', sufijo: 'v', tabla: false, titulo: 'Vigas de pórtico (entrepiso y techo): W8×18 (ASTM A572 Gr. 50)' },
@@ -1179,7 +1186,7 @@ phiMnc = 0.90*MnHSS(perfil_c, Fyc, E) -> tonf*m // Flexión del tubo (F7)
 ratioc = H1(Nc_COL, phiPnc, Mmax_COL, phiMnc) // Interacción H1-1 con la envolvente (conservador)
 check ratioc <= 1.0 // Columnas: flexocompresión (H1-1)
 check Vmax_COL <= 0.9*VnG2(perfil_c, Fyc, E) // Cortante en las columnas (G4)
-"Columna fuerte–viga débil: no es exigido en OMF (AISC 341-16 E1); las conexiones viga–columna se diseñan para 1.1RyMp de la viga o para la combinación con sobrerresistencia Ω0 = 3 (AISC 341-16 E1.6b).
+"Columna fuerte–viga débil: no es exigido en OMF (AISC 341-16 E1); las conexiones viga–columna se diseñan para 1.1RyMp de la viga o para la combinación con sobrerresistencia Ω0 = 3 (AISC 341-16 E1.6b), en la sección «Conexiones sísmicas».
 # Arriostres concéntricos en cruz — dirección Y (OCBF)
 nby = 2 // Paños arriostrados en Y (uno en cada fachada) [1..4]
 ba = by // Ancho del paño arriostrado
@@ -1198,6 +1205,134 @@ check Fbr <= phiTb // Arriostre en tracción
 Kb = 2*E*A_b*cos(thb)^2/Ld -> tonf/cm // Rigidez lateral del paño (dos diagonales activas)
 Dy = VY1/Kb -> cm // Desplazamiento elástico del 1.er piso
 check 0.75*Ry*Dy/h1 <= 0.010 // Distorsión máxima de acero 0.010 (E.030 Art. 31, Tabla N° 11)
+# Conexiones sísmicas con sobrerresistencia (AISC 341-16, ASCE 7-16)
+"La E.030 no define el factor de sobrerresistencia $\\Omega_0$; se toma de ASCE 7-16 Tabla 12.2-1 para los mismos sistemas (OMF: $\\Omega_0 = 3$; OCBF: $\\Omega_0 = 2$) y se aplica al sismo de la E.030, que ya está a nivel de resistencia. La sobrerresistencia **no** se usa para los miembros, solo para sus conexiones, que no deben fallar antes que el miembro. **Arriostres del OCBF** (AISC 341-16 F1.6a): efecto de la carga sísmica con sobrerresistencia $\\Omega_0 E$, sin exceder la resistencia esperada del arriostre: $R_yF_yA_g$ en tracción y $\\min(R_yF_yA_g,\\ 1.14F_{cre}A_g)$ en compresión. **Viga–columna del OMF** (AISC 341-16 E1.6b): $\\min(1.1R_yM_p,\\ M_{\\Omega_0})$, con $M_{\\Omega_0}$ del pórtico resuelto con $1.2CM + 0.5CV \\pm \\Omega_0 CS$ y $0.9CM \\pm \\Omega_0 CS$ (ASCE 7-16 12.4.3, sin el término $0.2S_{DS}D$, que la E.030 no define).
+Omegax = 3.0 // Ω0 del OMF, dirección X (ASCE 7-16 Tabla 12.2-1) [2.5..3.0]
+Omegay = 2.0 // Ω0 del OCBF, dirección Y (ASCE 7-16 Tabla 12.2-1) [2.0..2.5]
+Ryc = 1.4 // Ry del HSS ASTM A500 Gr. B (AISC 341-16 Tabla A3.1) [1.1..1.6]
+Ryv = 1.1 // Ry del perfil W ASTM A572 Gr. 50 (AISC 341-16 Tabla A3.1) [1.1..1.3]
+Fuc = 4080 kgf/cm^2 // Fu del HSS ASTM A500 Gr. B (58 ksi) [4080..4570]
+Fuv = 4570 kgf/cm^2 // Fu del perfil W ASTM A572 Gr. 50 (65 ksi) [4080..4570]
+Fyp = 2530 kgf/cm^2 // Fy de planchas y cartelas ASTM A36 [2530..3515]
+Fup = 4080 kgf/cm^2 // Fu de planchas y cartelas ASTM A36 [4080..4570]
+FEXX = 4920 kgf/cm^2 // Electrodo E70XX (70 ksi) [4200..5700]`),
+      {
+        type: 'frame2d', tipo: 'portico', unidades: 't',
+        nudos: '1 0 0\n2 bx 0\n3 2*bx 0\n4 0 h1\n5 bx h1\n6 2*bx h1\n7 0 hn\n8 bx hn\n9 2*bx hn',
+        secciones: 'C E A_c Ix_c\nV E A_v Ix_v',
+        barras: '1 1 4 C\n2 2 5 C\n3 3 6 C\n4 4 7 C\n5 5 8 C\n6 6 9 C\n7 4 5 V\n8 5 6 V\n9 7 8 V\n10 8 9 V',
+        apoyos: '1,2,3 E',
+        cargas: 'CM: U 7,8 wD1\nCM: U 9,10 wD2\nCV: U 7,8 wL1\nCV: U 9,10 wL2\nCS: N 4 F1x 0\nCS: N 7 F2x 0',
+        pp: 'CM 7.85 tonf/m^3',
+        combinaciones: 'UO1 = 1.2 CM + 0.5 CV ± Omegax*CS\nUO2 = 0.9 CM ± Omegax*CS',
+        casos: 'CM Carga muerta (incluye peso propio)\nCV Carga viva (entrepiso y techo)\nCS Sismo E.030 (pórtico de borde, con torsión accidental)',
+        grupos: 'VIG 7-10', graficos: 'M', sufijo: 'o',
+        titulo: 'Pórtico X (OMF) con la carga sísmica con sobrerresistencia Ω0·CS: momentos para las conexiones viga–columna',
+      },
+      calc(`## Conexión viga–columna del OMF: planchas de ala empernadas (BFP) a diafragmas pasantes
+"Las planchas de ala se sueldan en taller (penetración completa) a **diafragmas pasantes** que atraviesan la columna HSS, de modo que la fuerza de ala no flexiona la pared del tubo (se evita la plastificación de la pared, AISC 360 Cap. K); el alma se une con una placa simple empernada. Pernos ASTM F3125 Gr. A325, roscas incluidas (N), agujeros estándar.
+Mpv = Zx_v*Fyv -> tonf*m // Momento plástico de la viga
+Muc = min(1.1*Ryv*Mpv, Mmax_VIG_o) -> tonf*m // Momento requerido de la conexión (AISC 341-16 E1.6b)
+Vuc = Vmax_VIG_o // Cortante requerido: combinación con Ω0
+dbo = 19.05 mm // Diámetro de los pernos [15.88 mm : 5/8"|19.05 mm : 3/4"|22.23 mm : 7/8"]
+tpf = 15.9 mm // Espesor de las planchas de ala [12.7 mm : 1/2"|15.9 mm : 5/8"|19.0 mm : 3/4"|22.2 mm : 7/8"|25.4 mm : 1"]
+bpf = 15 cm // Ancho de las planchas de ala [10..30]
+nbf = 6 // Pernos por ala, en dos filas [4..12]
+gf = 8 cm // Gramil entre las dos filas de pernos [5..12]
+spf = 7.5 cm // Separación longitudinal de los pernos [5..10]
+lef = 4 cm // Distancia del perno extremo al borde, en la dirección de la fuerza [2.5..6]
+Lcp = 5 cm // Distancia libre del diafragma al primer perno (plancha comprimida) [2.5..10]
+Ffu = Muc/(d_v + tpf) -> tonf // Fuerza en cada plancha: par con brazo d + tp
+dho = dhJ3(dbo) // Agujero estándar (Tabla J3.3)
+dhn = dho + 1.6 mm // Diámetro de cálculo del agujero (B4.3b)
+lemin = si(dbo <= 16 mm, 22.2 mm, si(dbo <= 19.1 mm, 25.4 mm, 28.6 mm)) // Distancia mínima al borde (Tabla J3.4M)
+check min(lef, (bf_v - gf)/2, (bpf - gf)/2) >= lemin // Distancias al borde del ala y de la plancha (J3.4)
+check min(spf, gf) >= 3*dbo // Separación preferente 3d (J3.3)
+### Pernos del ala (J3.6, J3.10)
+Fnvo = FnvJ3("A325", "N") // Esfuerzo nominal de corte (Tabla J3.2)
+phiRb = 0.75*Fnvo*pi*dbo^2/4 -> tonf // Corte simple de un perno (J3-1)
+phiRbf = 0.75*min(2.4*dbo*tf_v*Fuv, 1.2*(lef - dho/2)*tf_v*Fuv) -> tonf // Aplastamiento o desgarramiento en el ala (perno extremo, conservador para todos)
+phiRpl = 0.75*min(2.4*dbo*tpf*Fup, 1.2*(lef - dho/2)*tpf*Fup) -> tonf // Aplastamiento o desgarramiento en la plancha
+check Ffu <= nbf*min(phiRb, phiRbf, phiRpl) // Resistencia del grupo de pernos del ala
+### Plancha de ala (J4)
+phiTyp = 0.90*Fyp*bpf*tpf -> tonf // Fluencia en el área bruta (J4-1)
+check Ffu <= phiTyp // Fluencia de la plancha en tracción
+Anp = min((bpf - 2*dhn)*tpf, 0.85*bpf*tpf) // Área neta, An ≤ 0.85Ag (J4.1b)
+check Ffu <= 0.75*Fup*Anp // Rotura de la plancha en tracción (J4-2)
+lamp = 0.65*Lcp/(tpf/sqrt(12)) // Esbeltez de la plancha comprimida entre el diafragma y el primer perno (K = 0.65)
+check lamp <= 25 // Plancha comprimida con KL/r ≤ 25: resiste Fy·Ag sin pandeo (J4.4)
+Lsh = (nbf/2 - 1)*spf + lef // Longitud de cada línea de corte del bloque
+phiRbp = 0.75*RnBloque(2*Lsh*tpf, 2*(Lsh - (nbf/2 - 0.5)*dhn)*tpf, (gf - dhn)*tpf, Fyp, Fup, 1) -> tonf // Bloque interior de la plancha (J4-5)
+check Ffu <= phiRbp // Bloque de cortante de la plancha
+phiRbf = 0.75*RnBloque(2*Lsh*tf_v, 2*(Lsh - (nbf/2 - 0.5)*dhn)*tf_v, (bf_v - gf - dhn)*tf_v, Fyv, Fuv, 1) -> tonf // Bloques exteriores del ala de la viga (J4-5)
+check Ffu <= phiRbf // Bloque de cortante del ala de la viga
+### Viga con agujeros en el ala (F13.1)
+Afg = bf_v*tf_v // Área bruta del ala traccionada
+Afn = (bf_v - 2*dhn)*tf_v // Área neta del ala
+Mnf = si(Fuv*Afn >= Fyv*Afg, Mpv, Fuv*Afn/Afg*Sx_v) -> tonf*m // Mn limitado por la rotura del ala, Yt = 1.0 (F13-1)
+check Mmax_VIG <= 0.90*Mnf // Flexión de la viga en la sección de los pernos
+### Placa de alma (corte)
+nbw = 2 // Pernos en el alma [2..6]
+spw = 7.5 cm // Separación vertical de los pernos del alma [5..10]
+tpw = 7.9 mm // Espesor de la placa de alma [6.35 mm : 1/4"|7.9 mm : 5/16"|9.5 mm : 3/8"]
+wpw = 5 mm // Filetes de la placa de alma a la columna, a ambos lados [3..10]
+Lpw = (nbw - 1)*spw + 2*lef // Altura de la placa de alma
+check Lpw <= d_v - 2*kdes_v // La placa cabe en la altura plana del alma
+check Vuc <= nbw*min(phiRb, 0.75*2.4*dbo*tw_v*Fuv, 0.75*min(2.4*dbo, 1.2*(lef - dho/2))*tpw*Fup) // Pernos del alma: corte y aplastamiento (J3)
+check Vuc <= 1.00*0.6*Fyp*Lpw*tpw // Fluencia por cortante de la placa (J4-3)
+check Vuc <= 0.75*2*RnFilete(wpw, Lpw, FEXX, 0 deg) // Filetes de la placa a la columna (J2-4)
+check wpw >= wminJ2(min(tpw, t_c)) // Tamaño mínimo del filete (Tabla J2.4)
+check tpw <= Fuc*t_c/Fyp // Pared del HSS: tp ≤ Fu·t/Fyp, la pared no se punzona antes que la placa fluya (Manual AISC Parte 9)
+## Conexión de los arriostres del OCBF: HSS ranurado soldado a una cartela
+"Cada diagonal HSS se ranura en sus extremos y se suelda con cuatro filetes a una cartela (plancha de nudo) concéntrica, soldada a su vez al ala inferior de la viga y a la cara de la columna. La cartela se dimensiona con la sección de **Whitmore** (dispersión a 30°) y su pandeo con la longitud de Thornton.
+Tuo = Omegay*Fbr // Efecto sísmico con sobrerresistencia Ω0·E (las diagonales no reciben gravedad)
+Tye = Ryc*Fyc*A_b -> tonf // Resistencia esperada en tracción RyFyAg
+Cye = min(Tye, 1.14*PnE3(perfil_b, Ryc*Fyc, Lcb, Lcb, E)) -> tonf // Resistencia esperada en compresión mín(RyFyAg, 1.14FcreAg)
+Tu_b = min(Tuo, Tye) -> tonf // Tracción requerida de la conexión (AISC 341-16 F1.6a)
+Cu_b = min(Tuo, Cye) -> tonf // Compresión requerida de la conexión
+check lambdaf_b <= 0.76*sqrt(E/(Ryc*Fyc)) // Arriostre de ductilidad moderada: b/t ≤ 0.76√(E/RyFy) (AISC 341-16 Tabla D1.1)
+tg = 7.9 mm // Espesor de la cartela [6.35 mm : 1/4"|7.9 mm : 5/16"|9.5 mm : 3/8"|12.7 mm : 1/2"]
+lw = 10 cm // Longitud de cada uno de los 4 filetes HSS–cartela [5..40]
+wb = 5 mm // Tamaño de los filetes HSS–cartela [3..8]
+Lg = 15 cm // Longitud libre de la cartela en la línea del arriostre (Thornton) [5..40]
+Kg = 0.65 // Factor de longitud efectiva de la cartela de esquina (Manual AISC Parte 9) [0.5..1.2]
+### Soldaduras y metal base (J2, J4)
+check wb >= wminJ2(min(t_b, tg)) // Tamaño mínimo del filete (Tabla J2.4)
+check wb <= t_b // Tamaño máximo en el borde del tubo (J2.2b)
+phiRwb = 0.75*4*RnFilete(wb, lw, FEXX, 0 deg) -> tonf // Cuatro filetes longitudinales (J2-4)
+check Tu_b <= phiRwb // Soldadura HSS–cartela
+phiRhs = 0.75*0.6*Fuc*t_b*4*lw -> tonf // Rotura por cortante de la pared del HSS junto a los filetes (J4-4)
+check Tu_b <= phiRhs // Metal base del HSS
+phiVgs = 1.00*0.6*Fyp*tg*2*lw -> tonf // Fluencia por cortante de la cartela en las dos líneas de filetes (J4-3)
+check Tu_b <= phiVgs // Metal base de la cartela
+### Sección neta del arriostre en la ranura (D2, D3)
+check lw >= Ht_b // Tabla D3.1, caso 6: l ≥ H
+Anb = A_b - 2*t_b*(tg + 3.2 mm) // Área neta: se descuenta la ranura (tg + 1/8")
+xbb = B_b*(B_b + 2*Ht_b)/(4*(B_b + Ht_b)) // x̄ del HSS rectangular con cartela concéntrica (Tabla D3.1, caso 6)
+Ub = UD3(xbb, lw) // U = 1 − x̄/l
+phiTnb = 0.75*Fuc*Ub*Anb -> tonf // Rotura en el área neta efectiva (D2-2)
+check Tu_b <= phiTnb // Rotura del arriostre en la ranura
+### Cartela: Whitmore, pandeo y bloque de cortante (J4)
+bwh = B_b + 2*lw*tan(30 deg) // Ancho de la sección de Whitmore
+phiTwg = 0.90*Fyp*bwh*tg -> tonf // Fluencia en tracción en la sección de Whitmore (J4-1)
+check Tu_b <= phiTwg // Cartela en tracción
+lamg = Kg*Lg/(tg/sqrt(12)) // Esbeltez KL/r de la cartela
+Fcrg = si(lamg <= 25, Fyp, FcrE3(Fyp, lamg, E)) // J4.4: Fy si KL/r ≤ 25; si no, Fcr del Cap. E
+phiCwg = 0.90*Fcrg*bwh*tg -> tonf // Compresión de la cartela en la sección de Whitmore
+check Cu_b <= phiCwg // Pandeo de la cartela (Whitmore + Thornton)
+phiRbg = 0.75*RnBloque(2*lw*tg, 2*lw*tg, B_b*tg, Fyp, Fup, 1) -> tonf // Corte en las dos líneas de filetes + tracción en el extremo del arriostre
+check Tu_b <= phiRbg // Bloque de cortante de la cartela (J4-5)
+### Soldadura de la cartela a la viga y a la columna
+Hgu = Tu_b*cos(thb) // Componente horizontal: borde soldado a la viga
+Vgu = Tu_b*sin(thb) // Componente vertical: borde soldado a la columna
+Lgb = 25 cm // Longitud del borde de la cartela soldado a la viga [10..60]
+Lgc = 25 cm // Longitud del borde de la cartela soldado a la columna [10..60]
+wg = 5 mm // Filetes a ambos lados de la cartela [3..10]
+check wg >= wminJ2(min(tg, t_c)) // Tamaño mínimo del filete (Tabla J2.4)
+check 1.25*Hgu <= 0.75*2*RnFilete(wg, Lgb, FEXX, 0 deg) // Filetes cartela–viga, con 1.25 por distribución no uniforme (Manual AISC Parte 13)
+check 1.25*Vgu <= 0.75*2*RnFilete(wg, Lgc, FEXX, 0 deg) // Filetes cartela–columna
+check tg <= Fuc*t_c/Fyp // Pared del HSS de la columna frente a la cartela (Manual AISC Parte 9)
+"Conexiones: OMF con planchas de ala {bpf} × {tpf} y {nbf} pernos Ø {dbo} A325-N por ala, placa de alma de {tpw} con {nbw} pernos; arriostres con cartela de {tg}, filetes de {wb} × {lw} (4) al HSS ranurado y de {wg} a la viga y la columna. Los diafragmas pasantes y las soldaduras de penetración completa se indican en los planos con inspección según AISC 341-16 J.
 # Resumen de cargas en la base
 "Reacciones máximas de las columnas del pórtico X (envolvente): R1y, R2y, R3y y momentos R1m, R2m, R3m, para el diseño de las placas base (plantilla «Placa base», AISC DG1) y de las zapatas.`),
       summary(),

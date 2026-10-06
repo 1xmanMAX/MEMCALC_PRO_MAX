@@ -92,6 +92,18 @@ function parseFLoads(text, S) {
   }
   return { pts, mom, dist };
 }
+// Varios estados de carga: una línea «CASO nombre» inicia un caso nuevo (sin ella, un único caso)
+function parseFCases(text, S) {
+  const cases = []; let cur = null;
+  for (const raw of String(text || '').split('\n')) {
+    const l = raw.split('//')[0].trim(); if (!l) continue;
+    const m = /^CASO\b\s*(.*)$/i.exec(l);
+    if (m) { cur = { name: m[1].trim() || 'Caso ' + (cases.length + 1), lines: [] }; cases.push(cur); continue; }
+    if (!cur) { cur = { name: '', lines: [] }; cases.push(cur); }
+    cur.lines.push(l);
+  }
+  return cases.map(c => ({ name: c.name, loads: parseFLoads(c.lines.join('\n'), S) }));
+}
 const wlAt = (dist, x) => dist.reduce((s, d) => s + (x > d.x1 + 1e-12 && x < d.x2 - 1e-12 ? d.w : 0), 0);
 
 // Resuelve la viga libre-libre sobre resortes (k = ks·B por unidad de longitud)
@@ -184,17 +196,58 @@ function statics(X, P, loads) {
   }
   return { xs, V, M };
 }
+// Valor de V en x (fuera de los saltos: interpolación lineal en el tramo que contiene x)
+function vAt(st, x) {
+  for (let i = 0; i < st.xs.length - 1; i++) {
+    const a = st.xs[i], b = st.xs[i + 1];
+    if (b - a > 1e-12 && x >= a - 1e-12 && x <= b + 1e-12) return st.V[i] + (st.V[i + 1] - st.V[i]) * (x - a) / (b - a);
+  }
+  return 0;
+}
+// Varios diagramas superpuestos (uno por caso de carga); se rotulan los extremos de la envolvente
+function xMulti(W, padL, padR, px, series, o) {
+  const H = o.H || 150, top = 18, bot = 18;
+  const all = series.flatMap(s => s.ys);
+  let ymin = Math.min(0, ...all, ...(o.ref || [])), ymax = Math.max(0, ...all, ...(o.ref || []));
+  if (ymax - ymin < 1e-12) { ymax += 1; ymin -= 1; }
+  const sy = (H - top - bot) / (ymax - ymin);
+  const py = (y) => (o.invert ? top + (y - ymin) * sy : top + (ymax - y) * sy);
+  let g = '';
+  niceTicks(ymin, ymax, 4).forEach(t => { g += Lne(padL, py(t), W - padR, py(t), C.grid, 0.7) + T(padL - 6, py(t) + 3.5, f2(t, 1), { fs: 9, c: C.axis, a: 'end' }); });
+  (o.vlines || []).forEach(x => { g += Lne(px(x), top - 4, px(x), H - bot + 4, C.grid, 0.7, '3 3'); });
+  series.forEach((s, j) => {
+    const d = s.xs.map((x, i) => (i ? 'L' : 'M') + px(x).toFixed(1) + ',' + py(s.ys[i]).toFixed(1)).join(' ');
+    g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${j ? 1.3 : 1.8}"${s.dash ? ` stroke-dasharray="${s.dash}"` : ''} stroke-linejoin="round"/>`;
+  });
+  g += Lne(padL, py(0), W - padR, py(0), C.ink, 1);
+  (o.ref || []).forEach((r, i) => { g += Lne(padL, py(r), W - padR, py(r), C.red, 1.2, '6 4') + lab(W - padR - 4, py(r) - 4, (o.refLab || [])[i] || '', { a: 'end', c: C.red }); });
+  const ext = (f) => { let best = null; series.forEach(s => s.ys.forEach((y, i) => { if (best === null || f(y, best.y)) best = { x: s.xs[i], y, c: s.color }; })); return best; };
+  const placed = [];
+  for (const e of [ext((a, b) => a > b), ext((a, b) => a < b)]) {
+    if (!e || Math.abs(e.y) < 1e-9 * Math.max(Math.abs(ymax), Math.abs(ymin))) continue;
+    const x = px(e.x), y = py(e.y), up = o.invert ? e.y < 0 : e.y > 0;
+    let tx = Math.max(x, padL + 20), ty = y + (up ? -6 : 13);
+    if (placed.some(q => Math.abs(q.x - tx) < 46 && Math.abs(q.y - ty) < 11)) tx += 40;
+    placed.push({ x: tx, y: ty }); ty = Math.max(10, Math.min(H - 3, ty));
+    g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="${e.c}"/>` + lab(tx, ty, f2(e.y), { b: 1, c: e.c });
+  }
+  g += T(10, H / 2, o.title, { fs: 10, r: -90, c: C.axis });
+  return svgWrap(W, H, g);
+}
+const CASECOL = ['#1f6feb', '#d1242f', '#1a7f37', '#d4730c', '#8250df', '#0a7ea4', '#6e7781', '#bf3989'];
 
 registerBlock('winkler', {
   name: 'Viga de cimentación (Winkler)', icon: 'footing', group: 'Cimentaciones',
   fields: [
     F('L', 'Longitud total L', '8 m'), F('B', 'Ancho de contacto B', '1.2 m'), F('E', 'Módulo de elasticidad E', '2.17e6 tonf/m^2'), F('I', 'Inercia I', '1.2 m*(0.8 m)^3/12'),
-    F('ks', 'Coeficiente de balasto ks', '2500 tonf/m^3'), F('cargas', 'Cargas (una por línea)', 'P 0.6 80 tonf\nP 7.4 95 tonf\nM 0.6 4 tonf*m', 'area'),
+    F('ks', 'Coeficiente de balasto ks', '2500 tonf/m^3'), F('cargas', 'Cargas (una por línea; «CASO nombre» inicia otro estado de carga)', 'P 0.6 80 tonf\nP 7.4 95 tonf\nM 0.6 4 tonf*m', 'area'),
     F('metodo', 'Método', '', 'select', [['winkler', 'Lecho elástico (Winkler, FEM)'], ['rigido', 'Método rígido convencional']]),
     F('sintraccion', 'Suelo sin tracción (iterativo)', '', 'check'), F('qadm', 'Presión admisible qadm (verificación)', '25 tonf/m^2'),
+    F('dcrit', 'Sección crítica de cortante: distancia al eje de cada carga P (opcional)', ''),
+    F('solopresion', 'Dibujar solo la presión de contacto', '', 'check'),
     F('nel', 'Número de elementos', '160'), F('sufijo', 'Sufijo de resultados', ''), F('titulo', 'Título de la figura', ''),
   ],
-  hint: 'Cargas hacia abajo positivas: <code>P x P</code> puntual (columna), <code>M x M</code> momento horario, <code>U x1 x2 w</code> repartida. Unidades por defecto t, m. Reacción del suelo <i>p = k<sub>s</sub>·B·w</i>, presión <i>q = k<sub>s</sub>·w</i>. Exporta <code>qmax qmin wmax wmin Mpos Mneg Vmax</code> y verifica <i>q<sub>max</sub> ≤ q<sub>adm</sub></i>. Momento positivo = tracción en la fibra inferior.',
+  hint: 'Cargas hacia abajo positivas: <code>P x P</code> puntual (columna), <code>M x M</code> momento horario, <code>U x1 x2 w</code> repartida. Unidades por defecto t, m. Reacción del suelo <i>p = k<sub>s</sub>·B·w</i>, presión <i>q = k<sub>s</sub>·w</i>. Exporta <code>qmax qmin wmax wmin Mpos Mneg Vmax</code> y verifica <i>q<sub>max</sub> ≤ q<sub>adm</sub></i>. Momento positivo = tracción en la fibra inferior. Varios estados de carga (combinaciones): cada línea <code>CASO nombre</code> inicia un caso; se exporta la <b>envolvente</b> y se tabula cada caso. Con la distancia de la sección crítica se exporta <code>Vd</code> = |V| máximo a esa distancia de cada carga puntual.',
   def: { L: '8 m', B: '1.2 m', E: '2.17e6 tonf/m^2', I: '1.2 m*(0.8 m)^3/12', ks: '2500 tonf/m^3', cargas: 'P 0.6 80 tonf\nP 7.4 95 tonf', metodo: 'winkler', qadm: '25 tonf/m^2', nel: '160' },
   render(b, ctx) {
     const S = ctx.scope;
@@ -202,39 +255,57 @@ registerBlock('winkler', {
     const ks = evalParam(b.ks, S, 'tonf/m^3', 0), qadm = evalParam(b.qadm, S, 'tonf/m^2', 0);
     const rig = b.metodo === 'rigido';
     pos({ L, B, E, I }); if (!rig) pos({ ks });
-    const loads = parseFLoads(b.cargas, S);
-    if (!loads.pts.length && !loads.dist.length) throw new Error('Defina al menos una carga');
+    const cases = parseFCases(b.cargas, S), multi = cases.length > 1;
+    if (!cases.length || cases.some(c => !c.loads.pts.length && !c.loads.dist.length)) throw new Error('Defina al menos una carga' + (multi ? ' en cada caso' : ''));
+    const dcr = String(b.dcrit || '').trim() ? evalParam(b.dcrit, S, 'm', 0) : null;
+    if (dcr !== null && !(dcr >= 0)) throw new Error('La distancia de la sección crítica debe ser ≥ 0');
     const kb = ks * B;
-    let X, Wd, P, info = '';
-    if (rig) {
-      const r = rigidPressure(L, loads);
-      const n = 240; X = []; for (let i = 0; i <= n; i++) X.push(L * i / n);
-      for (const p of [...loads.pts, ...loads.mom]) X.push(p.x); for (const d of loads.dist) X.push(d.x1, d.x2);
-      X = [...new Set(X.map(x => +Math.min(L, Math.max(0, x)).toFixed(9)))].sort((a, c) => a - c);
-      P = X.map(r.pf); Wd = X.map(x => (ks > 0 ? r.pf(x) / kb : 0));
-      info = K('R = ' + f2(r.R) + '\\,\\mathrm{t}') + ' ' + K('e = ' + f2(r.e, 3) + '\\,\\mathrm{m}\\;(L/6 = ' + f2(L / 6, 3) + '\\,\\mathrm{m})');
-      setVar(ctx, 'e_R' + (b.sufijo ? '_' + b.sufijo.replace(/\W/g, '') : ''), U(r.e, 'm'));
-    } else {
-      const s = solveWinkler(L, E * I, kb, loads, { nel: parseInt(b.nel) || 160, noTension: !!b.sintraccion });
-      X = s.X; Wd = s.W; P = s.P;
-      const lam = Math.pow(kb / (4 * E * I), 0.25);
-      info = K('\\lambda = \\sqrt[4]{k_s B/(4EI)} = ' + f2(lam, 4) + '\\,\\mathrm{m^{-1}}') + ' ' + K('\\lambda L = ' + f2(lam * L) + (lam * L < Math.PI / 4 ? '\\;(\\text{viga rígida})' : lam * L > Math.PI ? '\\;(\\text{viga flexible})' : '\\;(\\text{rigidez intermedia})'));
-    }
-    const st = statics(X, P, loads);
-    const q = P.map(p => p / B);
-    const sfx = b.sufijo ? '_' + b.sufijo.replace(/\W/g, '') : '';
-    const qmax = Math.max(...q), qmin = Math.min(...q), wmax = Math.max(...Wd), wmin = Math.min(...Wd);
     const cl = (v) => (Math.abs(v) < 1e-9 ? 0 : v);
-    const Mpos = cl(Math.max(0, ...st.M)), Mneg = cl(Math.min(0, ...st.M)), Vmax = Math.max(...st.V.map(Math.abs));
-    const sumR = P.reduce((s, p, i) => (i ? s + (p + P[i - 1]) / 2 * (X[i] - X[i - 1]) : s), 0);
+    const solve = (c) => {
+      const loads = c.loads; let X, Wd, P, e = null, R = null;
+      if (rig) {
+        let r; try { r = rigidPressure(L, loads); } catch (err) { throw new Error((multi ? 'Caso «' + c.name + '»: ' : '') + err.message); }
+        const n = 240; X = []; for (let i = 0; i <= n; i++) X.push(L * i / n);
+        for (const p of [...loads.pts, ...loads.mom]) X.push(p.x); for (const d of loads.dist) X.push(d.x1, d.x2);
+        X = [...new Set(X.map(x => +Math.min(L, Math.max(0, x)).toFixed(9)))].sort((a, c2) => a - c2);
+        P = X.map(r.pf); Wd = X.map(x => (ks > 0 ? r.pf(x) / kb : 0)); e = r.e; R = r.R;
+      } else {
+        let s; try { s = solveWinkler(L, E * I, kb, loads, { nel: parseInt(b.nel) || 160, noTension: !!b.sintraccion }); } catch (err) { throw new Error((multi ? 'Caso «' + c.name + '»: ' : '') + err.message); }
+        X = s.X; Wd = s.W; P = s.P;
+      }
+      const st = statics(X, P, loads), q = P.map(p => p / B);
+      let Vd = null;
+      if (dcr !== null) { Vd = 0; for (const p of loads.pts) for (const x of [p.x - dcr, p.x + dcr]) if (x > 1e-9 && x < L - 1e-9) Vd = Math.max(Vd, Math.abs(vAt(st, x))); }
+      return { name: c.name, loads, X, Wd, P, q, st, e, R,
+        qmax: Math.max(...q), qmin: Math.min(...q), wmax: Math.max(...Wd), wmin: Math.min(...Wd),
+        Mpos: cl(Math.max(0, ...st.M)), Mneg: cl(Math.min(0, ...st.M)), Vmax: Math.max(...st.V.map(Math.abs)), Vd,
+        sumR: P.reduce((s2, p, i) => (i ? s2 + (p + P[i - 1]) / 2 * (X[i] - X[i - 1]) : s2), 0) };
+    };
+    const rs = cases.map(solve);
+    const env = (k, f) => rs.reduce((a, r) => f(a, r[k]), rs[0][k]);
+    const qmax = env('qmax', Math.max), qmin = env('qmin', Math.min), wmax = env('wmax', Math.max), wmin = env('wmin', Math.min);
+    const Mpos = env('Mpos', Math.max), Mneg = env('Mneg', Math.min), Vmax = env('Vmax', Math.max), Vd = dcr !== null ? env('Vd', Math.max) : null;
+    const sfx = b.sufijo ? '_' + b.sufijo.replace(/\W/g, '') : '';
+    let info = '';
+    if (rig) {
+      const eg = rs.reduce((a, r) => (Math.abs(r.e) > Math.abs(a.e) ? r : a), rs[0]);
+      setVar(ctx, 'e_R' + sfx, U(eg.e, 'm'));
+      if (!multi) info = K('R = ' + f2(eg.R) + '\\,\\mathrm{t}') + ' ' + K('e = ' + f2(eg.e, 3) + '\\,\\mathrm{m}\;(L/6 = ' + f2(L / 6, 3) + '\\,\\mathrm{m})');
+    } else {
+      const lam = Math.pow(kb / (4 * E * I), 0.25);
+      info = K('\\lambda = \\sqrt[4]{k_s B/(4EI)} = ' + f2(lam, 4) + '\\,\\mathrm{m^{-1}}') + ' ' + K('\\lambda L = ' + f2(lam * L) + (lam * L < Math.PI / 4 ? '\;(\\text{viga rígida})' : lam * L > Math.PI ? '\;(\\text{viga flexible})' : '\;(\\text{rigidez intermedia})'));
+    }
     setVar(ctx, 'qmax' + sfx, U(qmax, 'tonf/m^2')); setVar(ctx, 'qmin' + sfx, U(qmin, 'tonf/m^2'));
     setVar(ctx, 'wmax' + sfx, U(wmax * 1000, 'mm')); setVar(ctx, 'wmin' + sfx, U(wmin * 1000, 'mm'));
     setVar(ctx, 'Mpos' + sfx, U(Mpos, 'tonf*m')); setVar(ctx, 'Mneg' + sfx, U(Mneg, 'tonf*m')); setVar(ctx, 'Vmax' + sfx, U(Vmax, 'tonf'));
-    if (qadm > 0) ctx.checks.push({ ok: qmax <= qadm, label: 'Presión máxima de contacto ≤ qadm (' + (rig ? 'método rígido' : 'Winkler') + ', E.050 Art. 22)', ratio: qmax / qadm, block: ctx.blockId });
+    if (Vd !== null) setVar(ctx, 'Vd' + sfx, U(Vd, 'tonf'));
+    const met = rig ? 'método rígido' : 'Winkler';
+    if (qadm > 0) ctx.checks.push({ ok: qmax <= qadm, label: 'Presión máxima de contacto ≤ qadm (' + (multi ? 'envolvente de ' + rs.length + ' casos, ' : '') + met + ', E.050 Art. 22)', ratio: qmax / qadm, block: ctx.blockId });
     if (qmin < -1e-6 && !rig) ctx.checks.push({ ok: false, label: 'Tracción en el contacto suelo–cimiento (active «suelo sin tracción»)', ratio: null, block: ctx.blockId });
     // ----- dibujo -----
+    const r0 = rs[0], loads = r0.loads;
     const W = 720, padL = 60, padR = 30, sc = (W - padL - padR) / L, px = (x) => padL + x * sc;
-    const vl = [...new Set(loads.pts.map(p => p.x))];
+    const vl = [...new Set(rs.flatMap(r => r.loads.pts.map(p => p.x)))];
     let g = arrowDefs; const yb = 96, hb = 16;
     g += `<rect x="${padL - 10}" y="${yb + hb}" width="${W - padL - padR + 20}" height="${rig ? 26 : 44}" fill="url(#soilp)" opacity=".55"/>`;
     if (!rig) for (let i = 0; i <= 20; i++) { const x = px(L * i / 20), y1 = yb + hb, y2 = y1 + 30; let d = `M${x},${y1} l0,4`; for (let k = 0; k < 5; k++) d += ` l${k % 2 ? -4 : 4},4.4`; d += ` L${x},${y2}`; g += `<path d="${d}" fill="none" stroke="${C.ink}" stroke-width="0.8"/>` + Lne(x - 5, y2, x + 5, y2, C.ink, 0.8); }
@@ -243,19 +314,44 @@ registerBlock('winkler', {
     loads.pts.forEach(p => { const x = px(p.x), h = 28 + 34 * Math.abs(p.P) / maxP; g += `<rect x="${x - 7}" y="${yb - 26}" width="14" height="26" fill="#9aa5b1" stroke="${C.ink}" stroke-width="0.8"/>`; g += `<line x1="${x}" y1="${yb - 26 - h + 26}" x2="${x}" y2="${yb - 2}" stroke="${C.red}" stroke-width="2" marker-end="url(#arr)"/>` + lab(x + 5, yb - h + 2, f2(p.P) + ' t', { a: 'start', c: C.red, b: 1 }); });
     loads.mom.forEach(m => { const x = px(m.x); g += `<path d="M${x - 13},${yb - 30} A13,13 0 1,1 ${x + 13},${yb - 30}" fill="none" stroke="${C.orange}" stroke-width="1.5" marker-end="url(#arr)"/>` + lab(x - 16, yb - 40, f2(m.M) + ' t·m', { a: 'end', c: C.orange }); });
     loads.dist.forEach(d => { const x1 = px(Math.max(0, d.x1)), x2 = px(Math.min(L, d.x2)); g += `<rect x="${x1}" y="${yb - 14}" width="${x2 - x1}" height="12" fill="${C.blueF}" stroke="${C.blue}" stroke-width="0.8"/>` + lab((x1 + x2) / 2, yb - 18, f2(d.w) + ' t/m', { c: C.blue }); });
+    if (multi) g += lab(padL - 10, 14, 'Cargas dibujadas: caso «' + r0.name + '»', { a: 'start', c: C.axis });
     g += dimH(px(0), px(L), yb + hb + (rig ? 40 : 58), 'L = ' + f2(L) + ' m');
     vl.forEach(x => { g += T(px(x), yb + hb + (rig ? 52 : 70) + 2, 'x = ' + f2(x), { fs: 9, c: C.axis }); });
     let out = svgWrap(W, yb + hb + (rig ? 60 : 78), g);
-    const qp = q.map(v => v); // presiones (positivas = compresión) dibujadas hacia abajo
-    out += '<div class="dt">Presión de contacto q [t/m²]' + (qadm > 0 ? ' — línea discontinua: q<sub>adm</sub>' : '') + '</div>';
-    out += xDiagram(W, padL, padR, px, X, qp, { color: C.red, fill: C.redF, title: 'q [t/m²]', invert: true, vlines: vl, ref: qadm > 0 ? [qadm] : [], refLab: ['qadm = ' + f2(qadm)] });
-    if (!rig || ks > 0) { out += '<div class="dt">Asentamiento w [mm]</div>'; out += xDiagram(W, padL, padR, px, X, Wd.map(w => w * 1000), { color: C.orange, fill: 'rgba(212,115,12,.12)', title: 'w [mm]', invert: true, vlines: vl, H: 120 }); }
-    out += '<div class="dt">Fuerza cortante V [t]</div>';
-    out += xDiagram(W, padL, padR, px, st.xs, st.V, { color: C.green, fill: C.greenF, title: 'V [t]', vlines: vl });
-    out += '<div class="dt">Momento flector M [t·m] — positivo hacia abajo (tracción en fibra inferior)</div>';
-    const atCols = vl.map(x => { let k = 0; st.xs.forEach((xx, i) => { if (Math.abs(xx - x) <= Math.abs(st.xs[k] - x) + 1e-12) k = i; }); return k; });
-    out += xDiagram(W, padL, padR, px, st.xs, st.M, { color: C.blue, fill: C.blueF, title: 'M [t·m]', invert: true, vlines: vl, extra: atCols });
-    const res = `<div class="kv">${info}</div>` + kv([['qmax' + sfx, U(qmax, 'tonf/m^2')], ['qmin' + sfx, U(qmin, 'tonf/m^2')], ...(rig && !(ks > 0) ? [] : [['wmax' + sfx, U(wmax * 1000, 'mm')]]), ['Mpos' + sfx, U(Mpos, 'tonf*m')], ['Mneg' + sfx, U(Mneg, 'tonf*m')], ['Vmax' + sfx, U(Vmax, 'tonf')]]) + `<div class="kv">${K('\\Sigma\\,\\text{reacción del suelo} = ' + f2(sumR) + '\\,\\mathrm{t}')}</div>`;
+    const solo = !!b.solopresion;
+    out += '<div class="dt">Presión de contacto q [t/m²]' + (multi ? ' — un trazo por caso' : '') + (qadm > 0 ? ' — línea discontinua: q<sub>adm</sub>' : '') + '</div>';
+    const ser = (k, ys) => rs.map((r, j) => ({ xs: k === 'st' ? r.st.xs : r.X, ys: ys(r), color: CASECOL[j % CASECOL.length] }));
+    if (!multi) {
+      const st = r0.st;
+      out += xDiagram(W, padL, padR, px, r0.X, r0.q, { color: C.red, fill: C.redF, title: 'q [t/m²]', invert: true, vlines: vl, ref: qadm > 0 ? [qadm] : [], refLab: ['qadm = ' + f2(qadm)] });
+      if (!solo) {
+        if (!rig || ks > 0) { out += '<div class="dt">Asentamiento w [mm]</div>'; out += xDiagram(W, padL, padR, px, r0.X, r0.Wd.map(w => w * 1000), { color: C.orange, fill: 'rgba(212,115,12,.12)', title: 'w [mm]', invert: true, vlines: vl, H: 120 }); }
+        out += '<div class="dt">Fuerza cortante V [t]</div>';
+        out += xDiagram(W, padL, padR, px, st.xs, st.V, { color: C.green, fill: C.greenF, title: 'V [t]', vlines: vl });
+        out += '<div class="dt">Momento flector M [t·m] — positivo hacia abajo (tracción en fibra inferior)</div>';
+        const atCols = vl.map(x => { let k = 0; st.xs.forEach((xx, i) => { if (Math.abs(xx - x) <= Math.abs(st.xs[k] - x) + 1e-12) k = i; }); return k; });
+        out += xDiagram(W, padL, padR, px, st.xs, st.M, { color: C.blue, fill: C.blueF, title: 'M [t·m]', invert: true, vlines: vl, extra: atCols });
+      }
+    } else {
+      out += xMulti(W, padL, padR, px, ser('X', r => r.q), { title: 'q [t/m²]', invert: true, vlines: vl, ref: qadm > 0 ? [qadm] : [], refLab: ['qadm = ' + f2(qadm)] });
+      if (!solo) {
+        if (!rig) { out += '<div class="dt">Asentamiento w [mm] — un trazo por caso</div>'; out += xMulti(W, padL, padR, px, ser('X', r => r.Wd.map(w => w * 1000)), { title: 'w [mm]', invert: true, vlines: vl, H: 120 }); }
+        out += '<div class="dt">Fuerza cortante V [t] — un trazo por caso (se rotulan los extremos de la envolvente)</div>';
+        out += xMulti(W, padL, padR, px, ser('st', r => r.st.V), { title: 'V [t]', vlines: vl });
+        out += '<div class="dt">Momento flector M [t·m] — positivo hacia abajo (tracción en fibra inferior); envolvente de los casos</div>';
+        out += xMulti(W, padL, padR, px, ser('st', r => r.st.M), { title: 'M [t·m]', invert: true, vlines: vl });
+      }
+      out += legend(rs.map((r, j) => [CASECOL[j % CASECOL.length], r.name]));
+    }
+    let res = '';
+    if (multi) {
+      const bold = (v, ref) => (Math.abs(v - ref) < 1e-9 * Math.max(1, Math.abs(ref)) ? `<b>${f2(v)}</b>` : f2(v));
+      res = `<table class="tbl"><thead><tr><th>Caso</th>${rig ? '<th>R [t]</th><th>e [m]</th>' : ''}<th>q<sub>max</sub> [t/m²]</th><th>q<sub>min</sub> [t/m²]</th><th>M<sup>+</sup> [t·m]</th><th>M<sup>−</sup> [t·m]</th><th>|V|<sub>max</sub> [t]</th>${dcr !== null ? '<th>|V| a d<sub>crit</sub> [t]</th>' : ''}</tr></thead><tbody>` +
+        rs.map((r, j) => `<tr><td><i style="display:inline-block;width:12px;height:3px;margin-right:5px;vertical-align:middle;background:${CASECOL[j % CASECOL.length]}"></i>${esc(r.name)}</td>${rig ? `<td>${f2(r.R)}</td><td>${f2(Math.round(r.e * 1000) / 1000, 3)}${Math.abs(r.e) > L / 6 + 1e-9 ? ' (&gt; L/6)' : ''}</td>` : ''}<td>${bold(r.qmax, qmax)}</td><td>${bold(r.qmin, qmin)}</td><td>${bold(r.Mpos, Mpos)}</td><td>${bold(r.Mneg, Mneg)}</td><td>${bold(r.Vmax, Vmax)}</td>${dcr !== null ? `<td>${bold(r.Vd, Vd)}</td>` : ''}</tr>`).join('') +
+        `</tbody></table>` + (rig ? `<div class="kv">${K('L/6 = ' + f2(L / 6, 3) + '\\,\\mathrm{m}')} — con e &gt; L/6 la presión es triangular sobre 3(L/2 − |e|) (sin tracción)</div>` : '');
+    }
+    res += (info ? `<div class="kv">${info}</div>` : '') + kv([['qmax' + sfx, U(qmax, 'tonf/m^2')], ['qmin' + sfx, U(qmin, 'tonf/m^2')], ...(rig && !(ks > 0) ? [] : [['wmax' + sfx, U(wmax * 1000, 'mm')]]), ...(solo ? [] : [['Mpos' + sfx, U(Mpos, 'tonf*m')], ['Mneg' + sfx, U(Mneg, 'tonf*m')], ['Vmax' + sfx, U(Vmax, 'tonf')]]), ...(Vd !== null ? [['Vd' + sfx, U(Vd, 'tonf')]] : [])]);
+    if (!multi) res += `<div class="kv">${K('\\Sigma\\,\\text{reacción del suelo} = ' + f2(r0.sumR) + '\\,\\mathrm{t}')}</div>`;
     return `<div class="figure">${out}${res}${caption(ctx, b.titulo || (rig ? 'Viga de cimentación — método rígido convencional' : 'Viga de cimentación sobre lecho elástico de Winkler (elementos finitos)'))}</div>`;
   },
 });

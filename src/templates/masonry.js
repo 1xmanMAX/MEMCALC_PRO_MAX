@@ -361,7 +361,7 @@ qadm = 1.0 kgf/cm^2 // Capacidad admisible del suelo (E.050) [0.5..4.0]
 Pmur = gm*esp*ha*1 m -> tonf // Peso del muro por metro
 Pcim = gcc*(Bc*hc + esp*hsob)*1 m -> tonf // Cimiento y sobrecimiento
 Ptot = Pmur + Pcim // Carga vertical total
-cs = 0.8*Z*U*C1 // Coeficiente sísmico para muro y cimentación
+cs = max(0.8*Z*U*C1, 0.8*0.5*Z*U*S) // Coeficiente sísmico para muro y cimentación, coherente con w (el mayor de E.070 Art. 29.6 y E.030 Art. 60)
 Hm = cs*Pmur // Fuerza sísmica del muro
 Hcim = cs*Pcim // Fuerza sísmica de cimiento y sobrecimiento
 Kp = tan(45 deg + phis/2)^2 // Coeficiente de empuje pasivo (Rankine)
@@ -371,10 +371,11 @@ Mr = Ptot*Bc/2 + Ep*hc/3 -> tonf*m // Momento resistente
 check Mr/Mv >= 2.0 // Factor de seguridad al volteo ≥ 2 (Art. 31.6)
 mus = tan(phis) // Coeficiente de fricción suelo–concreto
 check (mus*Ptot + Ep)/(Hm + Hcim) >= 1.5 // Factor de seguridad al deslizamiento ≥ 1.5 (Art. 31.6)
-ecc = Bc/2 - (Mr - Mv)/Ptot -> cm // Excentricidad de la resultante en la base (incluye el empuje pasivo)
-qmax = Ptot/(Bc*1 m)*(1 + 6*abs(ecc)/Bc) -> kgf/cm^2 // Presión máxima en el suelo
-ecc_lim = Bc/6 -> cm // Excentricidad límite (tercio central)
-check abs(ecc) <= ecc_lim // Resultante en el tercio central
+Mpas = min(0.5*Ep*hc/3, Mv) // Momento del pasivo movilizado para ubicar la resultante: 50 % de Ep (AASHTO Tabla 11.5.7-1, φep = 0.50) y nunca mayor que el volteo (el pasivo es una reacción)
+ecc = (Mv - Mpas)/Ptot -> cm // Excentricidad de la resultante en la base, desde el centro del cimiento
+qmax = si(ecc <= Bc/6, Ptot/(Bc*1 m)*(1 + 6*ecc/Bc), 2*Ptot/(3*(Bc/2 - ecc)*1 m)) -> kgf/cm^2 // Presión máxima: trapecial o triangular sin tracciones
+ecc_lim = Bc/3 -> cm // Excentricidad límite con sismo: resultante en los 2/3 centrales (AASHTO 11.6.3.3, criterio de wa-*)
+check ecc <= ecc_lim // Resultante en los 2/3 centrales de la base
 check qmax <= 1.33*qadm // Presión en el suelo con sismo (E.050: +33 %)`),
       summary(),
     ],

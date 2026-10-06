@@ -331,6 +331,32 @@ for (const t of TEMPLATES.filter(t => t.id.startsWith('ge-'))) {
   truthy('Portante: qadm = min(qadm1, qadm2) (E.050 Art. 22.2)', Math.abs(g('qadm', 'kPa') - Math.min(g('qadm1', 'kPa'), g('qadm2', 'kPa'))) < 1e-9);
   const gc = runTemplate('ge-combinada');
   near('Combinada: presión de servicio uniforme = R/(B·L)', gc('q', 'tonf/m^2'), 185 / (gc('Bz', 'm') * gc('Lz', 'm')), 0.001);
+  {
+    // Servicio con sismo −X a mano: P1 = 80, P2 = 105, M = −(Mb1 + Mb2) con Mb = MS + VS·hz
+    const Lz = gc('Lz', 'm'), Bz = gc('Bz', 'm'), Mb = 4 + 3 * 0.8 + 6 + 4 * 0.8;
+    const Mc = 80 * (0.6 - Lz / 2) + 105 * (5.6 - Lz / 2) - Mb, e = Mc / 185;
+    near('Combinada: e de servicio con sismo −X = ΣP(x − L/2)/R (método rígido)', gc('e_R_s', 'm'), e, 0.001);
+    near('Combinada: qmax con sismo = R/(BL)·(1 + 6|e|/L)', gc('qmax_s', 'tonf/m^2'), 185 / (Bz * Lz) * (1 + 6 * Math.abs(e) / Lz), 0.001);
+    near('Combinada: qns = 1.20 qa − γm Df − s/c (E.050 Art. 21)', gc('qns', 'tonf/m^2'), 1.2 * 20 - 3 - 0.4, 0.001);
+    // Envolvente: la del bloque coincide con el caso gobernante calculado por separado
+    const one = (cargas) => block('winkler', { metodo: 'rigido', L: Lz + ' m', B: Bz + ' m', E: '2.17e6 tonf/m^2', I: '0.07 m^4', ks: '', cargas, dcrit: '0.906 m' });
+    const P = (k) => gc(k, 'tonf'), M1 = gc('Mb1', 'tonf*m'), M2 = gc('Mb2', 'tonf*m');
+    const u1 = one(`P 0.6 ${P('Pu1')}\nP 5.6 ${P('Pu2')}`), u3 = one(`P 0.6 ${P('P1_3')}\nP 5.6 ${P('P2_3')}\nM 0.6 ${-M1}\nM 5.6 ${-M2}`), u4 = one(`P 0.6 ${P('P1_4')}\nP 5.6 ${P('P2_4')}\nM 0.6 ${M1}\nM 5.6 ${M2}`);
+    near('Combinada: Mneg de la envolvente = Mneg de U1 (gobierna gravedad)', gc('Mneg_u', 'tonf*m'), Math.min(u1('Mneg', 'tonf*m'), u3('Mneg', 'tonf*m')), 0.0005);
+    const u5 = one(`P 0.6 ${P('P1_5')}\nP 5.6 ${P('P2_5')}\nM 0.6 ${-M1}\nM 5.6 ${-M2}`);
+    near('Combinada: qmin de la envolvente = mín(U4, U5) (0.9CM ± CS)', gc('qmin_u', 'tonf/m^2'), Math.min(u4('qmin', 'tonf/m^2'), u5('qmin', 'tonf/m^2')), 0.0005);
+    truthy('Combinada: Vd (a d de la cara) ≤ Vmax de la envolvente', gc('Vd_u', 'tonf') <= gc('Vmax_u', 'tonf') && gc('Vd_u', 'tonf') > 0);
+    const w = block('winkler', { metodo: 'rigido', L: '6 m', B: '1 m', E: '2.17e6 tonf/m^2', I: '0.05 m^4', ks: '', cargas: 'CASO A\nP 1 50\nP 5 50\nCASO B\nP 1 30\nP 5 70\nM 5 20', qadm: '100 tonf/m^2' });
+    const wa = block('winkler', { metodo: 'rigido', L: '6 m', B: '1 m', E: '2.17e6 tonf/m^2', I: '0.05 m^4', ks: '', cargas: 'P 1 30\nP 5 70\nM 5 20' });
+    near('Bloque winkler con CASO: qmax = máx. de los casos (caso B: R = 100, e = (−60 + 140 + 20)/100 = 1 m)', w('qmax', 'tonf/m^2'), 100 / 6 * (1 + 6 * 1 / 6), 0.0001);
+    near('Bloque winkler con CASO: e_R del caso más excéntrico', w('e_R', 'm'), wa('e_R', 'm'), 1e-9);
+    truthy('Bloque winkler con CASO: tabla por caso y una sola verificación de qadm', /<table class="tbl">/.test(w.html) && w.ctx.checks.length === 1);
+    // sismo fuerte: la presión de servicio con sismo y la excentricidad no cumplen
+    const gs = runTemplate('ge-combinada', (d) => d.blocks.forEach(b => { if (typeof b.src === 'string') b.src = b.src.replace(/^MS2 = 6 tonf\*m/m, 'MS2 = 60 tonf*m').replace(/^PS2 = 5 tonf/m, 'PS2 = 40 tonf'); }));
+    const lab = (re) => gs.res.ctx.checks.filter(x => re.test(x.label));
+    truthy('Combinada con MS2 = 60 t·m y PS2 = 40 t: presión con sismo > 1.20 qa → NO CUMPLE, sin errores', gs.res.ctx.errors.length === 0 && lab(/envolvente de 2 casos/).some(x => !x.ok));
+    truthy('Combinada con sismo fuerte: la envolvente sísmica gobierna la flexión (|M−| y M+ mayores que con U1)', gs('Mneg_u', 'tonf*m') < u1('Mneg', 'tonf*m') - 5 && gs('Mpos_u', 'tonf*m') > u1('Mpos', 'tonf*m') + 5, `${gs('Mneg_u', 'tonf*m').toFixed(1)} / ${gs('Mpos_u', 'tonf*m').toFixed(1)} t·m`);
+  }
   const gp = runTemplate('ge-pilote');
   near('Pilote: Qu = Qp + ΣQs', gp('Qu', 'tonf'), gp('Qp', 'tonf') + gp('Qs', 'tonf'), 0.0001);
   const gl = runTemplate('ge-licuacion', (d) => { d.blocks[2].src = d.blocks[2].src.replace('amax = 0.30', 'amax = 0.45'); });
@@ -350,7 +376,7 @@ section('Plantillas con datos extremos: NO CUMPLE, sin errores ni NaN');
     ['ge-portante', /^P = 110 tonf/m, 'P = 400 tonf'], ['ge-portante', /^ML = 6 tonf\*m/m, 'ML = 120 tonf*m'],
     ['ge-combinada', /^PD2 = 80 tonf/m, 'PD2 = 400 tonf'], ['ge-combinada', /^qa = 2.0 kgf\/cm\^2/m, 'qa = 0.5 kgf/cm^2'],
     ['ge-conectada', /^PD1 = 40 tonf/m, 'PD1 = 200 tonf'], ['ge-medianera', /^caso = 2/m, 'caso = 1'],
-    ['ge-platea', /^qa = 1.2 kgf\/cm\^2/m, 'qa = 0.4 kgf/cm^2'], ['ge-winkler', /^PD2 = 75 tonf/m, 'PD2 = 400 tonf'],
+    ['ge-platea', /^qa = 1.4 kgf\/cm\^2/m, 'qa = 0.4 kgf/cm^2'], ['ge-platea', /^ks = 2.0 kgf\/cm\^3/m, 'ks = 12 kgf/cm^3'], ['ge-winkler', /^PD2 = 75 tonf/m, 'PD2 = 400 tonf'],
     ['ge-corrido', /^wD = 8.5 tonf\/m/m, 'wD = 40 tonf/m'], ['ge-pilote', /^P = 45 tonf/m, 'P = 200 tonf'],
     ['ge-grupo', /^PD = 180 tonf/m, 'PD = 900 tonf'], ['ge-licuacion', /^amax = 0.30/m, 'amax = 0.60'],
     ['ge-talud', /^c1 = 3.5 tonf\/m\^2/m, 'c1 = 0.3 tonf/m^2'], ['ge-spt', /^pexp = 10.0 m/m, 'pexp = 3 m'],
@@ -377,4 +403,17 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('ge-'))) {
 }
 truthy('Listas desplegables intactas con rango (φ, f\'c, FS de licuación)', (() => { const f = (id, n) => runTemplate(id).res.ctx.inputs.find(i => i.name === n); return f('ge-portante', 'phi').options.length === 5 && f('ge-portante', 'phi').range.max === 45 && f('ge-combinada', 'fc').options.length === 3 && f('ge-licuacion', 'FSreq').options.length === 3; })());
 truthy('Capacidad portante: validacion con los factores publicados de Das (φ = 30°)', TEMPLATES.find(x => x.id === 'ge-portante').validacion.valores.some(v => v.var === 'Nq' && v.esperado === 18.40));
+section('Segunda opinión — segunda tanda (ge-platea, ge-medianera)');
+{ const sub2 = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const g = runTemplate('ge-platea');
+  near('Platea: qn = qa − γm·Df = 14 − 2 = 12 t/m² (peso de losa y relleno, como en zapatas)', g('qn', 'tonf/m^2'), 12, 1e-9);
+  near('Platea: 1.75/β con β = (ks·B1/(4EcI))^¼ (ACI 336.2R)', g('Lrig', 'm'), 1.75 / Math.pow(2000 * 6 / (4 * g('Ecp', 'tonf/m^2') * 6 * 0.9 ** 3 / 12), 0.25), 1e-6);
+  const g2 = runTemplate('ge-platea', sub2([['qa = 1.4 kgf/cm^2', 'qa = 1.2 kgf/cm^2']]));
+  truthy('Platea con qa = 1.2 kg/cm² y Df = 1 m: NO CUMPLE la presión neta (antes cumplía sin el peso de la losa)', g2.res.ctx.checks.some(c => !c.ok && /presión neta/.test(c.label)));
+  const m = runTemplate('ge-medianera');
+  const b1 = m('b1p', 'm'), b2 = m('b2p', 'm'), d = m('d', 'm'), c = b1 * b1 / (2 * b1 + b2);
+  const Jc = 2 * (b1 * d ** 3 / 12 + d * b1 ** 3 / 12 + b1 * d * (b1 / 2 - c) ** 2) + b2 * d * c * c;
+  near('Medianera: Jc de columna de borde (ACI R8.4.4.2.3)', m('Jcb', 'm^4'), Jc, 1e-9);
+  near('Medianera: vu = Vu/(bo d) + γv·|Mtu − Vu·eg|·cAB/Jc', m('vub', 'tonf/m^2'), m('Vu', 'tonf') / (m('bo', 'm') * d) + m('gvb') * Math.abs(m('Mtu', 'tonf*m') - m('Vu', 'tonf') * m('eg', 'm')) * c / Jc, 1e-9);
+}
 done();

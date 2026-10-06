@@ -176,6 +176,22 @@ H4 = HbminLRFD(4)`);
   // estribo: el momento de las fuerzas de inercia = Σ kh·Wi·yi (error corregido: EQw multiplicaba por kh)
   const t = runTemplate('br-estribo');
   near('Estribo: Fi·EQw = kh·Σ Wi·yi', t('Fi', 'tonf') * t('EQw', 'm'), t('kh') * (t('W1', 'tonf') * t('hz', 'm') / 2 + t('W2', 'tonf') * (t('hz', 'm') + (t('hp', 'm') - t('hb', 'm')) / 2) + t('W3', 'tonf') * (t('H', 'm') - t('hb', 'm') / 2) + t('W4', 'tonf') * (t('hz', 'm') + t('hp', 'm') / 2)), 1e-6);
+  // parapeto (muro espaldar): Resistencia I con EH a hb/3, LS (heq de un muro de altura hb) a hb/2 y BR a hb + 1.80 m
+  {
+    const hb = t('hb', 'm'), Ka = t('Ka'), g = 1.9, heqp = t('heqp', 'm');
+    near('Estribo: heq del parapeto (hb = 1.65 m) interpolado en la Tabla 3.11.6.4-1 (1.5 m → 1.20 m; 3.0 m → 0.90 m)', heqp, 1.2 - 0.3 * (hb - 1.5) / 1.5, 0.001);
+    const Mup = 1.5 * 0.5 * Ka * g * hb ** 2 * hb / 3 + 1.75 * (Ka * g * heqp * hb * hb / 2 + t('PBR', 'tonf') * (hb + 1.8));
+    near('Estribo: Mup = 1.50·EH·hb/3 + 1.75·(LS·hb/2 + BR·(hb + 1.80))', t('Mup', 'tonf*m'), Mup, 1e-6);
+    truthy('Estribo: en el parapeto gobierna Resistencia I sobre Evento Extremo I (BR con γ = 1.75)', t('Mup_R', 'tonf*m') > t('Mup_E', 'tonf*m'));
+    // cajuela: neopreno y aplastamiento
+    const P = (t('RDC', 'tonf/m') + t('RDW', 'tonf/m')) * 8 / 4 + 0.75 * t('RLL', 'tonf/m') * 8 / 2;
+    near('Estribo: σs del neopreno = (PDC + PDW + gV·Rcarril)/(Lb·Wb)', t('ssb', 'MPa'), P * 9.80665 / (300 * 450) * 1000, 1e-6);
+    near('Estribo: N requerido = 1.5·(200 + 0.0017·20000 + 0.0067·7000) mm (zona 4)', t('Nreq', 'mm'), 1.5 * (200 + 0.0017 * 20000 + 0.0067 * 7000), 1e-6);
+    near('Estribo: φPn de aplastamiento = 0.70·0.85·f\'c·A1·m, m = √(A2/A1) ≤ 2', t('Prb', 'tonf'), 0.7 * 0.85 * 280 * 30 * 45 * Math.min(Math.sqrt(60 * 75 / (30 * 45)), 2) / 1000, 1e-6);
+    near('Estribo: Nuc = máx(0.2·Pu, kh·RDC·Ba/Nv)', t('Nuc', 'tonf'), Math.max(0.2 * t('Pub', 'tonf'), 0.22 * t('RDC', 'tonf/m') * 2), 1e-6);
+    near('Estribo: acero de temperatura de la pantalla = 0.75·b·h/[2(b + h)·fy] (5.10.6)', t('Atpt', 'cm^2'), 0.75 * 8000 * 900 / (2 * 8900 * 4200 * 0.0980665) * 10, 1e-4);
+    truthy('Estribo: incluye las secciones «Parapeto» y «Cajuela»', t.res.ctx.toc.some(x => /Parapeto/.test(x.text || x.t || JSON.stringify(x))) && t.res.ctx.toc.some(x => /Cajuela/.test(x.text || x.t || JSON.stringify(x))));
+  }
   const v1 = runTemplate('br-vigalosa');
   near('Viga-losa: Δ = DF·máx[(1+IM)Δcamión, 0.25(1+IM)Δcamión + Δcarril]', v1('DeltaLL', 'mm'), v1('DFd') * Math.max(1.33 * v1('d1', 'mm'), 0.25 * 1.33 * v1('d1', 'mm') + v1('dln', 'mm')), 1e-6);
   truthy('Viga-losa: M⁻ de diseño en la cara de las almas ≤ suma de máximos en el eje (4.6.2.1.6)', v1('Muneg', 'tonf*m/m') <= 1.25 * Math.abs(v1('MDCnL1', 'tonf*m')) + 1.5 * Math.abs(v1('MDWnL1', 'tonf*m')) + 1.75 * Math.abs(v1('MLLneg', 'tonf*m/m')), 'Mu⁻ = ' + v1('Muneg', 'tonf*m/m').toFixed(3) + ' t·m/m');
@@ -185,7 +201,7 @@ section('Revisión — datos extremos: verificaciones NO CUMPLE sin errores ni N
 {
   const setIn = (d, name, val) => { let hit = 0; d.blocks.forEach(b => { if (b.type === 'calc') { const re = new RegExp('^' + name + ' = .*?( //|$)', 'm'); if (re.test(b.src)) { b.src = b.src.replace(re, name + ' = ' + val + '$1'); hit++; } } }); if (!hit) throw new Error('Dato inexistente: ' + name); };
   const cases = [['br-vigalosa', { L: '40.00 m' }], ['br-vigalosa', { S: '3.20 m' }], ['br-vigalosa', { TL: '5' }], ['br-presforzada', { L: '140 ft' }], ['br-presforzada', { S: '14 ft' }],
-    ['br-acero', { L: '160 ft' }], ['br-estribo', { H: '12.00 m' }], ['br-estribo', { qn: '15 tonf/m^2' }], ['br-pilar', { Hc: '30.00 m' }], ['br-pilar', { bcol: '0.60 m' }],
+    ['br-acero', { L: '160 ft' }], ['br-estribo', { H: '12.00 m' }], ['br-estribo', { qn: '15 tonf/m^2' }], ['br-estribo', { hb: '2.40 m', t1: '0.25 m' }], ['br-estribo', { Lb: '550 mm' }], ['br-estribo', { jta: '15 cm' }], ['br-pilar', { Hc: '30.00 m' }], ['br-pilar', { bcol: '0.60 m' }],
     ['br-neopreno', { PLL: '1500 kN' }], ['br-sismo', { bseat: '0.30 m' }], ['br-alcantarilla', { Hf: '6.00 m' }], ['br-peatonal', { L: '60.0 m' }]];
   for (const [id, c] of cases) {
     const r = runTemplate(id, d => { for (const [k, v] of Object.entries(c)) setIn(d, k, v); }).res;

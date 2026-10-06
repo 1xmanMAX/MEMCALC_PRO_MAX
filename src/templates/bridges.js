@@ -734,11 +734,11 @@ const estribo = {
   id: 'br-estribo', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
   name: 'Estribo de concreto armado en voladizo (AASHTO LRFD / MTC)',
   normas: NORMAS_PE,
-  desc: 'Estribo en voladizo H = 7.0 m: cargas DC, DW, LL, BR, EH, EV, LS y sismo (Mononobe–Okabe + inercia), Resistencia Ia/Ib y Evento Extremo I, excentricidad, deslizamiento, capacidad portante, longitud de apoyo N y diseño de pantalla, punta y talón.',
+  desc: 'Estribo en voladizo H = 7.0 m: cargas DC, DW, LL, BR, EH, EV, LS y sismo (Mononobe–Okabe + inercia), Resistencia Ia/Ib y Evento Extremo I, excentricidad, deslizamiento, capacidad portante y diseño de pantalla, punta, talón, parapeto (EH + LS + BR + EQ) y cajuela (longitud N, neopreno, aplastamiento, refuerzo del asiento), con acero de temperatura.',
   titulo: 'Diseño de estribo de concreto armado en voladizo H = 7.00 m — AASHTO LRFD / MTC 2018',
   validacion: {
     fuente: 'Control: AASHTO LRFD 3.11, 11.6 y Apéndice A11 (M-O); Manual de Puentes MTC 2018',
-    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Ka = 1/3 (φ = 30°) y kh = 0.5·Fpga·PGA = 0.5·1.1·0.40 se comprueban a mano; Fi·EQw = kh·ΣWi·yi lo comprueba tests/bridges.test.mjs.',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Ka = 1/3 (φ = 30°) y kh = 0.5·Fpga·PGA = 0.5·1.1·0.40 se comprueban a mano; Fi·EQw = kh·ΣWi·yi lo comprueba tests/bridges.test.mjs. Parapeto y cajuela (añadidos en octubre de 2026, no cambian los valores anteriores): Mup = 1.50·EH·hb/3 + 1.75·(LS·hb/2 + BR·(hb + 1.80)) y el esfuerzo del neopreno σs = (PDC + PDW + PLL)/(Lb·Wb) por apoyo se comprueban a mano en tests/bridges.test.mjs.',
     valores: [
       { var: 'Ka', esperado: 0.33333, tol: 0.0005, desc: 'Ka de Rankine, φ = 30°' },
       { var: 'kh', esperado: 0.22, tol: 0.0005, desc: 'kh = 0.5·Fpga·PGA' },
@@ -746,6 +746,8 @@ const estribo = {
       { var: 'KAE', esperado: 0.4907, tol: 0.002, desc: 'Kae de Mononobe–Okabe' },
       { var: 'Mus', unidad: 'tonf*m', esperado: 79.1, tol: 0.002, desc: 'Momento último en la base de la pantalla' },
       { var: 'qb', unidad: 'tonf/m^2', esperado: 32.36, tol: 0.002, desc: 'Presión de contacto, Resistencia I' },
+      { var: 'Mup', unidad: 'tonf*m', esperado: 14.804, tol: 0.002, desc: 'Momento último en la base del parapeto (Resistencia I)' },
+      { var: 'ssb', unidad: 'MPa', esperado: 4.540, tol: 0.002, desc: 'Esfuerzo de compresión de servicio en el neopreno' },
     ],
   },
   blocks: [
@@ -754,14 +756,15 @@ const estribo = {
 Estribo de concreto armado tipo **voladizo** (pantalla, cajuela y parapeto sobre zapata corrida) que soporta un extremo del puente viga-losa de 20 m de luz y contiene el relleno de acceso. El análisis se hace por **metro lineal** de estribo, repartiendo las reacciones de la superestructura en el ancho del estribo.
 
 ## Normas y referencias
-- AASHTO LRFD 9.ª ed.: 3.4.1 (combinaciones y factores, Tablas 3.4.1-1/-2), 3.6.4 (frenado BR), 3.11.5 (empuje EH), 3.11.6.4 (sobrecarga LS, Tabla 3.11.6.4-1), 3.10 y 11.6.5 (sismo, $k_h = 0.5\\,A_s$, Mononobe–Okabe), 10.6.3 (cimentaciones superficiales), 11.6.3 (estabilidad de estribos), 4.7.4.4 (longitud de apoyo $N$), 5 (concreto).
+- AASHTO LRFD 9.ª ed.: 3.4.1 (combinaciones y factores, Tablas 3.4.1-1/-2), 3.6.4 (frenado BR), 3.11.5 (empuje EH), 3.11.6.4 (sobrecarga LS, Tabla 3.11.6.4-1), 3.10 y 11.6.5 (sismo, $k_h = 0.5\\,A_s$, Mononobe–Okabe), 10.6.3 (cimentaciones superficiales), 11.6.3 (estabilidad de estribos), 4.7.4.4 (longitud de apoyo $N$), 5 (concreto: 5.6.5 aplastamiento, 5.10.6 temperatura), 14.7.6 (apoyos elastoméricos, Método A).
 - Manual de Puentes MTC (2018): cap. 2 (cargas, mapas de isoaceleraciones con 1000 años de periodo de retorno).
 - Rodríguez Serquén, *Puentes con AASHTO-LRFD*, cap. X (estribos); Das, *Principios de ingeniería de cimentaciones*.
 
 ## Criterios
 - Estados límite: **Resistencia Ia** (cargas verticales mínimas, para deslizamiento y excentricidad), **Resistencia Ib** (máximas, para presiones y diseño) y **Evento Extremo I** con $\\gamma_{EQ} = 0.5$ para la carga viva (práctica MTC).
 - Excentricidad: $e \\le B/3$ en Resistencia (10.6.3.3) y, en Evento Extremo, interpolando entre $B/3$ ($\\gamma_{EQ}=0$) y $0.40B$ ($\\gamma_{EQ}=1$) (11.6.5.1).
-- Presión de contacto uniforme de Meyerhof sobre $B' = B - 2e$ (10.6.3.1.5).`),
+- Presión de contacto uniforme de Meyerhof sobre $B' = B - 2e$ (10.6.3.1.5).
+- Elementos del cuerpo: pantalla en su base, punta y talón; **parapeto** (muro espaldar) como voladizo con EH, LS, frenado BR y sismo; **cajuela** como asiento de las vigas (longitud $N$, neopreno, aplastamiento y refuerzo del borde).`),
     calc(`# Datos
 ## Superestructura (puente viga-losa L = 20 m)
 L = 20.00 m // Luz del puente [10..40]
@@ -777,6 +780,7 @@ Lp = 1.40 m // Longitud de la punta [0.8..2.5]
 t2 = 0.90 m // Espesor de la pantalla (cuerpo) bajo la cajuela [0.6..1.5]
 t1 = 0.30 m // Espesor del parapeto (muro espaldar) [0.25..0.50]
 hb = 1.65 m // Altura del parapeto: viga + apoyo + losa (1.50 + 0.15) [1..2.5]
+jta = 5 cm // Junta entre el extremo de las vigas y el parapeto [2.5..15]
 Df = 1.50 m // Profundidad de desplante (relleno sobre la punta) [1..3]
 hp = H - hz // Altura de la pantalla
 Lt = B - Lp - t2 // Longitud del talón
@@ -796,11 +800,6 @@ Fpga = FpgaLRFD(PGA, sitio) // Factor de sitio (Tabla 3.10.3.2-1)
 As = Fpga*PGA // Coeficiente de aceleración As = Fpga·PGA (3.10.4.2-2)
 kh = 0.5*As // Coeficiente sísmico horizontal: el estribo puede desplazarse 25–50 mm (11.6.5.2.2)
 gEQ = 0.50 // Factor de carga viva en Evento Extremo I (Tabla 3.4.1-1, práctica MTC) [0..1.0]
-# Longitud de apoyo en la cajuela (4.7.4.4)
-Nap = NapLRFD(L, H, 0 deg) // N = (200 + 0.0017L + 0.0067H)(1 + 0.000125S²)
-zona = zonaLRFD(FvLRFD(0.40, sitio)*0.40) // Zona sísmica (Tabla 3.10.6-1) con S1 = 0.40 g
-Nreq = NpctLRFD(zona, As)*Nap // Porcentaje de N según la zona (Tabla 4.7.4.4-1)
-check Nreq <= bc // Ancho de la cajuela suficiente
 # Cargas
 ## Reacciones de la superestructura (por metro de estribo)
 IM = IMLRFD(1) // La pantalla está sobre el terreno: se aplica IM (3.6.2.1)
@@ -935,8 +934,99 @@ phiMh = phif1*Ab(barP)*100 cm/sph*fy*(dz - Ab(barP)*100 cm/sph*fy/(2*0.85*fc*100
 check Muh <= phiMh // Flexión en el talón
 Vuh = (1.35*gammas*hp + 1.25*gammac*hz + 1.75*gammas*heq)*(Lt - dz)*1 m -> tonf
 check Vuh <= phiv*0.083*2*sqrtMPa(fc)*100 cm*0.9*dz // Cortante en el talón
-check min(sps, spt, sph) >= db(barP) + max(1.5*db(barP), 3.8 cm) // Separación libre mínima entre barras (5.10.3.1.1)
-"Refuerzo: pantalla #{barP} @ {sps} (cara del relleno); punta #{barP} @ {spt} (inferior); talón #{barP} @ {sph} (superior). Refuerzo de temperatura y contracción en ambas caras según 5.10.6.`),
+check min(sps, spt, sph) >= db(barP) + max(1.5*db(barP), 3.8 cm) // Separación libre mínima entre barras (5.10.3.1.1)`),
+    calc(`# Parapeto (muro espaldar)
+"El parapeto es un voladizo de altura $h_b$ empotrado en la cajuela. Por metro de estribo recibe el empuje del relleno EH (3.11.5), la sobrecarga viva LS con la altura equivalente de un muro de altura $h_b$ (Tabla 3.11.6.4-1), el frenado BR aplicado a 1.80 m sobre la rasante (3.6.4) y repartido en el ancho del estribo y, en Evento Extremo I, el incremento de Mononobe–Okabe (a $0.6\\,h_b$) y su propia inercia $k_h W_3$.
+heqp = heqLRFD(hb) // Altura equivalente de sobrecarga para un muro de altura hb (Tabla 3.11.6.4-1, interpolada)
+EHp = 0.5*Ka*gammas*hb^2*1 m // Empuje del relleno sobre el parapeto (a hb/3)
+LSp = Ka*gammas*heqp*hb*1 m // Empuje por sobrecarga viva (a hb/2)
+ybr = hb + 1.80 m // Brazo del frenado sobre la base del parapeto (3.6.4)
+Mlb_p = LSp*hb/2 + PBR*ybr -> tonf*m // Momento de la sobrecarga LS y del frenado BR en la base
+Mae_p = EHp*(KAE/Ka - 1)*0.6*hb -> tonf*m // Momento del incremento de Mononobe–Okabe (a 0.6 hb)
+Mup_R = 1.50*EHp*hb/3 + 1.75*Mlb_p -> tonf*m // Resistencia I (γEH = 1.50, γLS = γBR = 1.75)
+Mup_E = EHp*hb/3 + Mae_p + kh*W3*hb/2 + gEQ*Mlb_p -> tonf*m // Evento Extremo I
+Mup = max(Mup_R, Mup_E) -> tonf*m // Momento de diseño en la base del parapeto
+Vup_R = 1.50*EHp + 1.75*(LSp + PBR) -> tonf // Resistencia I
+Vup_E = EHp*KAE/Ka + kh*W3 + gEQ*(LSp + PBR) -> tonf // Evento Extremo I
+Vup = max(Vup_R, Vup_E) -> tonf
+barPa = 6 // Varilla vertical del parapeto (cara del relleno) [5 : 5/8"|6 : 3/4"|8 : 1"]
+dpa = t1 - 7.5 cm - db(barPa)/2 // Peralte efectivo (recubrimiento 75 mm, Tabla 5.10.1-1)
+Aspa = 0.85*fc*100 cm/fy*(dpa - sqrt(max(dpa^2 - 2*Mup/(0.85*phif1*fc*100 cm), 0 cm^2))) // Acero requerido por metro
+spa = max(rounddown(min(Ab(barPa)*100 cm/Aspa, 1.5*t1, 45 cm), 2.5 cm), 5 cm) // Espaciamiento (≤ 1.5 t y ≤ 450 mm, 5.10.3.2)
+Aspp = Ab(barPa)*100 cm/spa // Acero colocado por metro
+phiMpa = phif1*Aspp*fy*(dpa - Aspp*fy/(2*0.85*fc*100 cm)) -> tonf*m
+check Mup <= phiMpa // Flexión en la base del parapeto (5.6.3.2)
+cpa = Aspp*fy/(0.85*beta1LRFD(fc)*fc*100 cm) // Profundidad del eje neutro
+check cpa/dpa <= 0.375 // Sección controlada por tracción, φ = 0.90 (εt ≥ 0.005, 5.6.2.1)
+Mcrpa = 1.6*0.67*frLRFD(fc)*100 cm*t1^2/6 -> tonf*m // γ3·γ1·fr·S (5.6.3.3)
+check phiMpa >= min(Mcrpa, 1.33*Mup) // Acero mínimo (5.6.3.3)
+Vcpa = 0.083*2*sqrtMPa(fc)*100 cm*max(0.9*dpa, 0.72*t1) -> tonf // Vc con β = 2 (5.7.3.3), dv = máx(0.9de, 0.72h)
+check Vup <= phiv*Vcpa // Cortante en la base del parapeto, sin estribos
+check spa >= db(barPa) + max(1.5*db(barPa), 3.8 cm) // Separación libre mínima (5.10.3.1.1)
+# Cajuela (asiento de las vigas)
+"La cajuela es un **asiento** sobre la pantalla de espesor completo $t_2$: la reacción de cada viga baja directamente al cuerpo del estribo, sin voladizo, por lo que no trabaja como ménsula; de la ménsula (5.8.4.2.2) se toma solo la fuerza horizontal mínima $N_{uc} \\ge 0.2\\,V_u$ para el refuerzo del borde. Se verifican la longitud de apoyo $N$ (4.7.4.4), el apoyo de neopreno por el Método A (14.7.6) y el aplastamiento del concreto (5.6.5). El diseño completo del elastómero (Método B, estabilidad, zunchos) está en la plantilla *br-neopreno*.
+## Longitud mínima de apoyo N (4.7.4.4)
+Nap = NapLRFD(L, H, 0 deg) // N = (200 + 0.0017L + 0.0067H)(1 + 0.000125S²)
+zona = zonaLRFD(FvLRFD(0.40, sitio)*0.40) // Zona sísmica (Tabla 3.10.6-1) con S1 = 0.40 g
+Nreq = NpctLRFD(zona, As)*Nap // Porcentaje de N según la zona (Tabla 4.7.4.4-1)
+Ndis = bc - jta // Longitud de apoyo disponible: del extremo de la viga al borde de la cajuela
+check Nreq <= Ndis // Longitud de apoyo N (4.7.4.4)
+## Reacciones por apoyo (viga interior)
+Nv = 4 // Número de vigas (apoyos) sobre el estribo [2..8]
+gV = 0.75 // Factor de distribución de cortante de la viga interior (de la superestructura, 4.6.2.2.3) [0.3..1.5]
+PDC_b = RDC*Ba/Nv -> tonf // DC por apoyo
+PDW_b = RDW*Ba/Nv -> tonf // DW por apoyo
+PLL_b = gV*RLL*Ba/(NL*mp) -> tonf // LL+IM por apoyo: reacción de un carril × factor de distribución
+## Apoyo de neopreno zunchado — Método A (14.7.6)
+Lb = 300 mm // Dimensión del apoyo paralela al eje del puente [150..600]
+Wb = 450 mm // Dimensión transversal del apoyo [200..900]
+hri = 12 mm // Espesor de cada capa interior de elastómero [8..20]
+nint = 4 // Número de capas interiores [2..12]
+hrc = 6 mm // Espesor de las capas exteriores (≤ 0.7 hri) [3..10]
+hs = 3 mm // Espesor de los zunchos de acero [2..5]
+dur = 60 // Dureza Shore A [50 : 50|60 : 60|70 : 70]
+DT = 35 // Rango de temperatura de diseño (°C, MTC costa) [20..60]
+Gmin = si(dur == 50, 0.66 MPa, si(dur == 60, 0.90 MPa, 1.38 MPa)) // Módulo de corte mínimo (14.7.6.2)
+check hrc <= 0.7*hri // Capas exteriores ≤ 70 % de las interiores (14.7.5.1)
+Si = SbearLRFD(Lb, Wb, hri) // Factor de forma de la capa interior (14.7.5.1-1)
+check Si^2/nint < 22 // Aplicabilidad del Método A, apoyo rectangular (14.7.6.1)
+ssb = (PDC_b + PDW_b + PLL_b)/(Lb*Wb) -> MPa // Esfuerzo de compresión de servicio
+check ssb <= min(1.25*Gmin*Si, 8.6 MPa) // σs ≤ 1.25 G S y ≤ 8.6 MPa (14.7.6.3.2)
+hrt = nint*hri + 2*hrc // Espesor total de elastómero
+Dsb = 1.2*10.8e-6*DT*L/2 + 0.0002*L/2 -> mm // Δs: TU (γ = 1.2, α = 10.8×10⁻⁶/°C) + contracción y flujo plástico, punto fijo al centro de la luz
+check hrt >= 2*Dsb // Deformación por corte hrt ≥ 2Δs (14.7.6.3.4)
+Hbt = hrt + (nint + 1)*hs // Altura total del apoyo
+check Hbt <= min(Lb, Wb)/3 // Estabilidad (14.7.6.3.6)
+## Ubicación del apoyo y aplastamiento del concreto (5.6.5)
+ebor = (bc - Lb)/2 // Distancia del apoyo (centrado en la cajuela) al borde del asiento
+check ebor >= 7.5 cm // Distancia mínima al borde (recubrimiento del refuerzo del borde, práctica)
+check (bc - Lb)/2 >= jta + 5 cm // La viga se prolonga al menos 5 cm detrás del apoyo
+Pub = 1.25*PDC_b + 1.50*PDW_b + 1.75*PLL_b // Reacción última por apoyo (Resistencia I)
+A1b = Lb*Wb -> cm^2 // Área cargada
+A2b = (Lb + 2*ebor)*(Wb + 2*ebor) -> cm^2 // Área de apoyo del tronco de pirámide (limitada por el borde)
+mb = min(sqrt(A2b/A1b), 2) // Factor de confinamiento m (5.6.5-3)
+Prb = 0.70*0.85*fc*A1b*mb -> tonf // φPn con φb = 0.70 (5.5.4.2)
+check Pub <= Prb // Aplastamiento bajo el apoyo (5.6.5)
+## Refuerzo horizontal del borde de la cajuela
+Huq = kh*RDC*Ba/Nv -> tonf // Fuerza sísmica de la superestructura por apoyo (Evento Extremo I)
+Nuc = max(0.2*Pub, Huq) -> tonf // Fuerza horizontal de diseño: Nuc ≥ 0.2 Vu (5.8.4.2.2, por analogía) o la sísmica
+barc = 4 // Varilla de las horquillas del borde [4 : 1/2"|5 : 5/8"]
+Ash = Nuc/(0.90*fy) -> cm^2 // Acero horizontal requerido por apoyo (φ = 0.90)
+nh = ceil(Ash/Ab(barc)) // Número de horquillas por apoyo
+sh = rounddown((Wb + 2*ebor)/nh, 2.5 cm) // Separación en el ancho de influencia del apoyo
+check sh >= 10 cm // Separación práctica de las horquillas
+EQsup = kh*RDC*Ba -> tonf // Fuerza sísmica total de la superestructura sobre el estribo
+"La fuerza sísmica longitudinal y transversal de la superestructura ($k_h\\,R_{DC}\\,B_a$ = {EQsup} en total) se transmite a la subestructura con topes sísmicos (llaves de corte) en la cajuela; el apoyo de neopreno no se considera para esa fuerza.
+# Refuerzo de temperatura y contracción (5.10.6)
+bart = 4 // Varilla horizontal de temperatura [4 : 1/2"|5 : 5/8"]
+Atpa = min(max(0.75 MPa*Ba*t1/(2*(Ba + t1)*fy), 0.233 mm), 1.27 mm)*1 m -> cm^2 // Parapeto, por cara y por metro: 0.75bh/[2(b + h)fy], 0.233 ≤ As ≤ 1.27 mm²/mm (5.10.6-1, -2)
+Atpt = min(max(0.75 MPa*Ba*t2/(2*(Ba + t2)*fy), 0.233 mm), 1.27 mm)*1 m -> cm^2 // Pantalla, por cara y por metro
+smpa = si(t1 > 45 cm, 30 cm, min(3*t1, 45 cm)) // Separación máxima: 3h y 450 mm; 300 mm en muros de más de 450 mm (5.10.6)
+smpt = si(t2 > 45 cm, 30 cm, min(3*t2, 45 cm))
+stpa = rounddown(min(Ab(bart)*100 cm/Atpa, smpa), 2.5 cm) // Separación en el parapeto
+stpt = rounddown(min(Ab(bart)*100 cm/Atpt, smpt), 2.5 cm) // Separación en la pantalla
+check min(stpa, stpt) >= 10 cm // Separación práctica del acero de temperatura
+"Refuerzo: pantalla #{barP} @ {sps} (cara del relleno); punta #{barP} @ {spt} (inferior); talón #{barP} @ {sph} (superior); parapeto #{barPa} @ {spa} (cara del relleno). Temperatura (horizontal, ambas caras): parapeto #{bart} @ {stpa}, pantalla #{bart} @ {stpt}. Cajuela: neopreno {Lb} × {Wb} con {nint} capas de {hri}, y {nh} horquillas #{barc} @ {sh} por apoyo.`),
     summary(),
   ],
 };

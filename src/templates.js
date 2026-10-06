@@ -133,7 +133,7 @@ phif = 0.9 // Factor de reducción por flexión
 Asreq(M) = 0.85*fc*b*d/fy*(1 - sqrt(max(1 - 2*M/(0.85*phif*fc*b*d^2), 0)))
 check max(Mpos, abs(Mneg)) <= 0.85*phif*fc*b*d^2/2 // Sección suficiente como simplemente reforzada
 Asmin = 0.7*sqrtfc(fc)/fy*b*d // Acero mínimo (E.060 10.5.2)
-Asmax = 0.75*0.85*0.85*fc/fy*6000 kgf/cm^2/(6000 kgf/cm^2 + fy)*b*d -> cm^2 // 0.75 Asb con β1 = 0.85 (E.060 10.3.4)
+Asmax = 0.75*rhobE060(fc, fy)*b*d -> cm^2 // 0.75 Asb con β1 según f'c (E.060 10.2.7.3 y 10.3.4)
 As_pos = max(Asreq(Mpos), Asmin) // Acero positivo (máximo de tramos)
 As_neg = max(Asreq(abs(Mneg)), Asmin) // Acero negativo (apoyo crítico)
 n_pos = ceil(As_pos/Ab(5)) // Varillas de 5/8" (positivo)
@@ -143,6 +143,7 @@ phiMn_neg = phif*n_neg*Ab(5)*fy*(d - n_neg*Ab(5)*fy/(1.7*fc*b)) -> tonf*m
 check Mpos <= phiMn_pos // Flexión positiva
 check abs(Mneg) <= phiMn_neg // Flexión negativa
 check max(n_pos, n_neg)*Ab(5) <= Asmax // Falla dúctil: As ≤ 0.75 Asb (E.060 10.3.4)
+check (b - 2*(4 cm + db(3)) - max(n_pos, n_neg)*db(5))/max(max(n_pos, n_neg) - 1, 1) >= 2.5 cm // Separación libre entre barras de una capa ≥ máx(db, 25 mm) (E.060 7.6.1); si no, use dos capas y recalcule d
 ## Control de cortante (E.060 11.3 y 11.5)
 phiVc = 0.85*0.53*sqrtfc(fc)*b*d -> tonf // Resistencia del concreto
 Vsr = max(Vmax/0.85 - 0.53*sqrtfc(fc)*b*d, 0 tonf) // Resistencia requerida del refuerzo (Vmax en el eje, conservador)
@@ -687,7 +688,26 @@ phiVc = 0.85*1.1*0.53*sqrtfc(fc)*bw*d -> tonf // Incremento 10 % para viguetas
 check Vmax <= phiVc // Sin ensanche de vigueta (Vmax en el eje del apoyo, conservador)
 ## Peralte para no verificar deflexiones (E.060 9.6.2.1, Tabla 9.1)
 hmin = max(La1, La3)/18.5 -> cm // Tramos extremos (un extremo continuo); interiores Ln/21
-"El peralte adoptado h = {h} se compara con $h_{min}$ = {hmin}. Si $h < h_{min}$ —caso usual con la práctica $h \\approx L_n/25$— debe calcularse la deflexión (E.060 9.6.2.2 a 9.6.2.6), por ejemplo con la plantilla *co-deflexion*; para aligerados en dos direcciones vea *co-aligerado2d*.
+"El peralte adoptado h = {h} se compara con $h_{min}$ = {hmin}. Si $h < h_{min}$ —caso usual con la práctica $h \\approx L_n/25$— la E.060 9.6.2.1 exige calcular la deflexión: se hace a continuación con la inercia efectiva de la vigueta (9.6.2.3–9.6.2.5); para aligerados en dos direcciones vea *co-aligerado2d*.
+## Inercia efectiva de la vigueta (E.060 9.6.2.3 y 9.6.2.4)
+ybg = (bv*hf*(h - hf/2) + bw*(h - hf)^2/2)/(bv*hf + bw*(h - hf)) // Centroide de la sección T bruta, desde la fibra inferior
+Igf = bv*hf^3/12 + bv*hf*(h - hf/2 - ybg)^2 // Aporte del ala (Steiner)
+Igw = bw*(h - hf)^3/12 + bw*(h - hf)*((h - hf)/2 - ybg)^2 // Aporte del alma bajo el ala
+Igt = Igf + Igw // Inercia bruta de la sección T
+Mcrv = 2*sqrtfc(fc)*Igt/ybg -> tonf*m // Momento de agrietamiento, fibra inferior en tracción (ec. 9-11)
+nmod = 2000000 kgf/cm^2/Ec // Relación modular Es/Ec
+Icrv = icrT(bv, hf, bw, d, Ab(4) + Ab(3), nmod) // Inercia agrietada con 1 #4 + 1 #3 inferiores
+Mav = Mpos*(wD + wL)/(1.4*wD + 1.7*wL) -> tonf*m // Momento positivo máximo en servicio (proporcional a la carga)
+Iev = ieBranson(Mcrv, Mav, Igt, Icrv) // Ie del centro del tramo (elementos continuos, E.060 9.6.2.4)`),
+      { type: 'beam', tramos: 'La1, La2, La3', apoyos: 'A, A, A, A', E: 'Ec', I: 'Iev', cargas: 'U * wD + wL', alternancia: false, sufijo: 's', titulo: 'Vigueta en servicio (CM + CV) con la inercia efectiva: deflexión inmediata' },
+      calc(`## Deflexiones inmediata y diferida (E.060 9.6.2.5, Tabla 9.2)
+dDv = deltamax_s*wD/(wD + wL) -> mm // Inmediata por carga muerta
+dLv = deltamax_s*wL/(wD + wL) -> mm // Inmediata por carga viva
+lamv = lambdaDef(2.0, 0) // ξ = 2 (5 años o más), sin acero en compresión (ρ' = 0)
+limv = 480 // Límite de la Tabla 9.2 [480 : soporta tabiques susceptibles de daño|240 : no susceptibles de daño] [240..480]
+Lcv = max(La1, La2, La3) // Luz para los límites
+check dLv <= Lcv/360 // Deflexión inmediata por carga viva ≤ ℓ/360 (Tabla 9.2)
+check lamv*dDv + dLv <= Lcv/limv // Deflexión posterior a la tabiquería: diferida por CM + inmediata por CV (Tabla 9.2)
 ## Acero de temperatura
 Ast = 0.0025*100 cm*hf -> cm^2 // Por metro de losa (barras lisas, E.060 9.7.2)
 st = min(5*hf, 40 cm) // Espaciamiento máximo
@@ -1308,17 +1328,17 @@ Mu = factor*Me // Momento último
   // ------------------------------------------------------------------
   {
     id: 'escalera', normas: 'RNE — NTE E.020, E.060, A.010', cat: 'Concreto armado', name: 'Escalera de un tramo', icon: 'slab',
-    desc: 'Garganta, metrado con peso de pasos, momento de diseño y refuerzo longitudinal y de temperatura (E.060 / E.020).',
+    desc: 'Garganta, metrado con peso de pasos, momento de diseño, refuerzo longitudinal, negativo y de temperatura, y deflexiones con Ie (E.060 / E.020).',
     titulo: 'Diseño de escalera de concreto armado',
     validacion: {
       fuente: 'Control: NTE E.020, E.060 y RNE A.010 (escalera de un tramo, losa inclinada)',
-      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). θ = atan(17.5/25) y hm = t/cosθ + cp/2 se comprueban a mano.',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). θ = atan(17.5/25) y hm = t/cosθ + cp/2 se comprueban a mano. La garganta por defecto pasó de 15 a 17 cm (segunda opinión, 2026): con 15 cm y ℓ = 4.39 m la deflexión diferida + viva excede ℓ/240 (E.060 9.6.2, Tabla 9.2).',
       valores: [
         { var: 'theta', unidad: 'deg', esperado: 34.992, tol: 0.0005, desc: 'Inclinación atan(cp/p)' },
-        { var: 'hm', unidad: 'cm', esperado: 27.0598, tol: 0.0005, desc: 'Espesor medio t/cosθ + cp/2' },
-        { var: 'Mu', unidad: 'tonf*m/m', esperado: 2.251, tol: 0.002, desc: 'Momento último' },
-        { var: 'As', unidad: 'cm^2', esperado: 5.061, tol: 0.002, desc: 'Acero requerido en el ancho B' },
-        { var: 'phiVc', unidad: 'tonf/m', esperado: 8.069, tol: 0.002, desc: 'Resistencia a cortante' },
+        { var: 'hm', unidad: 'cm', esperado: 29.5011, tol: 0.0005, desc: 'Espesor medio t/cosθ + cp/2 (t = 17 cm)' },
+        { var: 'Mu', unidad: 'tonf*m/m', esperado: 2.3834, tol: 0.002, desc: 'Momento último' },
+        { var: 'As', unidad: 'cm^2', esperado: 4.5613, tol: 0.002, desc: 'Acero requerido por metro' },
+        { var: 'phiVc', unidad: 'tonf/m', esperado: 9.3747, tol: 0.002, desc: 'Resistencia a cortante' },
       ],
     },
     blocks: [
@@ -1326,14 +1346,14 @@ Mu = factor*Me // Momento último
 Ln = 3.60 m // Luz horizontal del tramo (entre apoyos) [2..6]
 p = 25 cm // Paso [25..30]
 cp = 17.5 cm // Contrapaso [15..18]
-t = 15 cm // Espesor de la garganta [10..25]
+t = 17 cm // Espesor de la garganta [10..25]
 B = 1.20 m // Ancho de la escalera [0.9..2.4]
 fc = 210 kgf/cm^2 // Resistencia del concreto [175..420]
 fy = 4200 kgf/cm^2 // Acero ASTM A615 Grado 60 [2800..4200]
 gammac = 2.4 tonf/m^3 // Peso específico del concreto [2.2..2.5]
 wac = 0.10 tonf/m^2 // Acabados [0.05..0.15]
 sc = 0.20 tonf/m^2 // Sobrecarga (E.020: viviendas) [0.20 tonf/m^2|0.40 tonf/m^2|0.50 tonf/m^2]
-alfa = 1.0 // Coef. de momento (1.0 apoyos simples; 0.8 semiempotrado) [1.0|0.9|0.8]
+alpha = 1.0 // Coeficiente del momento positivo: 1.0 apoyos simples; 0.9–0.8 apoyos monolíticos (semiempotrado) [1.0|0.9|0.8]
 ## Verificación de geometría
 check 2*cp + p >= 60 cm // Regla 2cp + p ≥ 60 cm (RNE A.010)
 check 2*cp + p <= 64 cm // Regla 2cp + p ≤ 64 cm (RNE A.010)
@@ -1345,7 +1365,7 @@ theta = atan(cp/p) -> deg // Inclinación
 hm = t/cos(theta) + cp/2 // Altura media equivalente
 wD = gammac*hm + wac -> tonf/m^2 // Carga muerta
 wu = 1.4*wD + 1.7*sc -> tonf/m^2 // Carga última (E.060 9.2.1)
-Mu = alfa*wu*Ln^2/8 -> tonf*m/m // Momento último
+Mu = alpha*wu*Ln^2/8 -> tonf*m/m // Momento último positivo
 ## Diseño del refuerzo longitudinal
 d = t - 2 cm - 0.64 cm // Peralte efectivo (varilla 1/2")
 Rn = Mu*1 m/(0.9*100 cm*d^2)
@@ -1359,8 +1379,24 @@ st = rounddown(min(Ab(3)/Ast*100 cm, 5*t, 40 cm), 2.5 cm) // Espaciamiento con 3
 phiVc = 0.85*0.53*sqrtfc(fc)*100 cm*d/(1 m) -> tonf/m // Resistencia al corte por metro
 Vu = wu*(Ln/2 - d)*cos(theta) -> tonf/m // Cortante último a "d"
 check Vu <= phiVc // Cortante
-Asneg = As/3 // Acero negativo en los apoyos (práctica: As/3)
-"Refuerzo longitudinal: varilla de 1/2\" @ {s}; negativo en apoyos {Asneg} por metro; refuerzo transversal: 3/8\" @ {st}.`),
+Mneg = max(1/3, 1 - alpha)*wu*Ln^2/8 -> tonf*m/m // Negativo en apoyos monolíticos: wu·Ln²/24 o el momento descontado al positivo, (1 − α)·wu·Ln²/8
+Asneg = max(As/3, asFlex(Mneg*1 m, 100 cm, d, fc, fy)) // Acero negativo por metro (≥ As/3, práctica)
+"Refuerzo longitudinal: varilla de 1/2\" @ {s}; negativo en apoyos {Asneg} por metro; refuerzo transversal: 3/8\" @ {st}.
+# Control de deflexiones (E.060 9.6.2, Tablas 9.1 y 9.2)
+Lin = Ln/cos(theta) -> m // Longitud inclinada del tramo ℓ
+hmin = Lin/si(alpha >= 1, 20, 24) -> cm // Peralte mínimo de losa maciza sin calcular deflexiones: ℓ/20 simplemente apoyada, ℓ/24 un extremo continuo (Tabla 9.1)
+"Si $t < h_{min}$ la E.060 9.6.2.1 exige calcular la deflexión. Se calcula como losa inclinada simplemente apoyada con la sección de la garganta (los pasos se desprecian, conservador): carga perpendicular $w\\cos^2\\theta$ sobre la luz inclinada ℓ.
+Ec = 15000*sqrtfc(fc) // Módulo de elasticidad (E.060 8.5)
+Igs = 100 cm*t^3/12 // Inercia bruta de la garganta por metro
+Mcrs = 2*sqrtfc(fc)*Igs/(t/2) -> tonf*m // Momento de agrietamiento (ec. 9-11)
+Icrs = icrRect(100 cm, d, Ab(4)/s*100 cm, 2000000 kgf/cm^2/Ec) // Inercia agrietada con el acero colocado
+Mas = (wD + sc)*1 m*Ln^2/8 -> tonf*m // Momento de servicio (apoyos simples)
+Ies = ieBranson(Mcrs, Mas, Igs, Icrs) // Inercia efectiva (E.060 9.6.2.3)
+dTs = 5*(wD + sc)*1 m*cos(theta)^2*Lin^4/(384*Ec*Ies) -> mm // Deflexión inmediata total, perpendicular a la losa
+dDs = dTs*wD/(wD + sc) // Por carga muerta
+dLs = dTs*sc/(wD + sc) // Por carga viva
+check dLs <= Lin/360 // Deflexión inmediata por carga viva ≤ ℓ/360 (Tabla 9.2)
+check 2*dDs + dLs <= Lin/240 // Diferida por CM (ξ = 2, ρ' = 0, 9.6.2.5) + inmediata por CV ≤ ℓ/240 (Tabla 9.2, sin elementos susceptibles de daño)`),
       { type: 'summary' },
     ],
   },

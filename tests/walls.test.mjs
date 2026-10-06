@@ -223,6 +223,18 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('wa-'))) {
   const v = runTemplate('wa-voladizo');
   near('Voladizo: kh = 0.5·Z·S = 0.5·0.45·1.05', v('kh'), 0.23625);
   truthy('Voladizo: FS volteo estático ≥ 2 y sísmico ≥ 1.5', v('FSv') >= 2 && v('FSvs') >= 1.5);
+  { // S por Vs30 (E.030-2026 Tabla N° 4), como las plantillas «peru»; kh = 0.5·Z·S coherente
+    const sub = (re, to) => (d) => d.blocks.forEach(bl => { if (bl.src) bl.src = bl.src.replace(re, to); });
+    near('Voladizo: S = SE030(4, 450 m/s) = 1.05 (E.030-2026)', v('S'), 1.05, 1e-9);
+    const v3 = runTemplate('wa-voladizo', sub('Vs30 = 450 m/s', 'Vs30 = 250 m/s'));
+    near('Voladizo: Vs30 = 250 m/s (S3, zona 4): S = 1.10 + (350 − 250)/150·0.10', v3('S'), 1.10 + 100 / 150 * 0.10, 1e-9);
+    near('Voladizo: kh = 0.5·Z·S con S por Vs30', v3('kh'), 0.5 * 0.45 * (1.10 + 100 / 150 * 0.10), 1e-9);
+    const vz = runTemplate('wa-voladizo', d => sub(/^zona = 4 \/\//m, 'zona = 3 //')(d) || sub('Vs30 = 450 m/s', 'Vs30 = 900 m/s')(d));
+    near('Voladizo: zona 3 con roca (Vs30 = 900 m/s): kh = 0.5·0.35·0.80', vz('kh'), 0.5 * 0.35 * 0.80, 1e-9);
+    const v4 = runTemplate('wa-voladizo', sub('Vs30 = 450 m/s', 'Vs30 = 150 m/s')).res;
+    truthy('Voladizo: perfil S4 en zona 4 → «se requiere análisis de respuesta de sitio» NO CUMPLE, sin errores', v4.ctx.errors.length === 0 && v4.ctx.checks.some(c => !c.ok && /respuesta de sitio/.test(c.label)), v4.ctx.errors.map(e => e.msg).join('; '));
+    truthy('Voladizo: ya no usa la Tabla N° 3 de la E.030-2018 (sin dato «perfil»)', !v.res.ctx.inputs.some(i => i.name === 'perfil') && v.res.ctx.inputs.some(i => i.name === 'Vs30'));
+  }
   const bad = runTemplate('wa-voladizo', d => { d.blocks[1].src = d.blocks[1].src.replace('B = 4.50 m', 'B = 2.20 m'); });
   truthy('Voladizo con base insuficiente (B = 2.2 m) no cumple', bad.res.ctx.checks.some(c => !c.ok));
   const gr = runTemplate('wa-gravedad');

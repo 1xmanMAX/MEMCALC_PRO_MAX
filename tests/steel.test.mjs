@@ -311,6 +311,17 @@ section('Revisión 2026 — plantilla «Casa de dos pisos en estructura metálic
   near('Casa: Vx = ZUCS·P/R con C = 2.5, R = 4', g('Vx', 'tonf'), 0.45 * 1.05 * 2.5 / 4 * g('Psis', 'tonf'), 1e-9);
   near('Casa: fracción del pórtico de borde 1/4 + 0.05·9·4.5/45 = 0.295', g('ft'), 0.295, 1e-9);
   near('Casa: Fbr = V/(2 cos θ) en la cruz', g('Fbr', 'tonf'), g('VY1', 'tonf') / (2 * 3 / Math.hypot(3, 2.8)), 1e-9);
+  // Conexiones con sobrerresistencia (AISC 341-16 F1.6a, E1.6b; ASCE 7-16 Tabla 12.2-1)
+  near('Casa: RyFyAg del arriostre = 1.4·3235·A', g('Tye', 'tonf'), 1.4 * 3235 * g('A_b', 'cm^2') / 1000, 1e-9);
+  near('Casa: Tu de la conexión del arriostre = mín(Ω0·Fbr, RyFyAg) con Ω0 = 2', g('Tu_b', 'tonf'), Math.min(2 * g('Fbr', 'tonf'), g('Tye', 'tonf')), 1e-9);
+  truthy('Casa: M con Ω0·CS > M de la envolvente E.090 y Muc = mín(1.1RyMp, MΩ0)', g('Mmax_VIG_o', 'tonf*m') > g('Mmax_VIG', 'tonf*m') && Math.abs(g('Muc', 'tonf*m') - Math.min(1.1 * 1.1 * g('Zx_v', 'cm^3') * 3515 / 1e5, g('Mmax_VIG_o', 'tonf*m'))) < 1e-9);
+  near('Casa: fuerza de ala Ffu = Muc/(d + tp)', g('Ffu', 'tonf'), g('Muc', 'tonf*m') * 100 / (g('d_v', 'cm') + 1.59), 1e-9);
+  near('Casa: ancho de Whitmore = B + 2·lw·tan 30°', g('bwh', 'cm'), 7.62 + 2 * 10 * Math.tan(Math.PI / 6), 1e-6);
+  near('Casa: U = 1 − x̄/l con x̄ = 3B/8 (HSS cuadrado, Tabla D3.1 caso 6)', g('Ub'), 1 - 3 * 7.62 / 8 / 10, 1e-6);
+  near('Casa: KL/r de la cartela = 0.65·15/(t/√12)', g('lamg'), 0.65 * 15 / (0.79 / Math.sqrt(12)), 1e-6);
+  // Con Ω0 = 1 la demanda de la conexión del OMF baja a la envolvente sísmica sin sobrerresistencia
+  const g1 = runTemplate('st-casa', (d) => d.blocks.forEach(b => { if (b.type === 'calc') b.src = b.src.replace('Omegax = 3.0 //', 'Omegax = 1.0 //'); }));
+  truthy('Casa: con Ω0 = 1 el momento «con sobrerresistencia» baja y no supera la envolvente E.090', g1('Mmax_VIG_o', 'tonf*m') < g('Mmax_VIG_o', 'tonf*m') && g1('Mmax_VIG_o', 'tonf*m') <= g1('Mmax_VIG', 'tonf*m') + 1e-6);
 }
 
 section('Revisión 2026 — datos extremos: NO CUMPLE sin errores ni NaN');
@@ -320,6 +331,7 @@ section('Revisión 2026 — datos extremos: NO CUMPLE sin errores ni NaN');
     ['st-shear-tab', 'Vu = 18 tonf', 'Vu = 60 tonf'], ['st-placa-base', 'P_L = 40 tonf', 'P_L = 400 tonf'], ['st-correas', 'Lc = 6 m', 'Lc = 11 m'],
     ['st-armadura', 'Lt = 12 m', 'Lt = 30 m'], ['st-nave', 'Lf = 10 m', 'Lf = 30 m'], ['st-compuesta', 'Lv = 9 m', 'Lv = 16 m'],
     ['st-viga-ipe', 'wLs = 1.0 tonf/m', 'wLs = 6 tonf/m'], ['st-casa', 'h1 = 2.8 m', 'h1 = 6 m'],
+    ['st-casa', 'nbf = 6 //', 'nbf = 2 //'], ['st-casa', 'lw = 10 cm', 'lw = 5 cm'], ['st-casa', 'Lg = 15 cm', 'Lg = 80 cm'],
   ];
   for (const [id, a, b] of ext) {
     const r = runTemplate(id, (d) => { const bl = d.blocks.find(x => x.type === 'calc' && x.src.includes(a)); bl.src = bl.src.replace(a, b); }).res.ctx;
@@ -337,5 +349,12 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('st-'))) {
   truthy(`${t.id}: ${ins.length} datos con rango usual, valores por defecto dentro del rango`, ins.length >= 3 && fuera.length === 0, fuera.map(i => i.name + ' = ' + i.num).join(', '));
   const sinEtq = r.ctx.inputs.filter(i => !i.label);
   truthy(`${t.id}: todos los datos tienen etiqueta`, sinEtq.length === 0, sinEtq.map(i => i.name).join(', '));
+}
+section('Segunda opinión — segunda tanda (st-placa-base)');
+{ const sub2 = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const g = runTemplate('st-placa-base');
+  near('Placa base: con sismo las resistencias del concreto se multiplican por 0.75 (ACI 318-19 17.10.5.4)', g('fsis'), 0.75, 1e-9);
+  const g2 = runTemplate('st-placa-base', sub2([['Nua = 4 tonf', 'Nua = 7.5 tonf']]));
+  truthy('Placa base: Nua = 7.5 t ≤ φNcbg (9.14 t) pero > 0.75·φNcbg → NO CUMPLE con sismo', g2.res.ctx.checks.some(c => !c.ok && /con sismo/.test(c.label)) && g2.res.ctx.checks.filter(c => /^Arrancamiento del concreto \(si no/.test(c.label)).every(c => c.ok));
 }
 done();

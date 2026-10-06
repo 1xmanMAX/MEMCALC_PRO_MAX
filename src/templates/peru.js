@@ -338,7 +338,9 @@ CV_t = sum(CV) // Carga viva total
 P = sum(P_i) // Peso sísmico total (E.030 Art. 31)
 q = P/(n*A) -> tonf/m^2 // Peso sísmico por m² de área techada
 qmax = 1.2 tonf/m^2 // Valor usual máximo del peso por m² de edificaciones de C°A° aporticadas [0.8..1.5]
-check q <= qmax // Control del orden de magnitud del metrado (usual 0.8–1.2 tonf/m²)`),
+check q <= qmax // Control del orden de magnitud del metrado (usual 0.8–1.2 tonf/m²)
+qmin = 0.6 tonf/m^2 // Valor mínimo plausible del peso sísmico por m² (subestimar P es lo no conservador) [0.5..0.9]
+check q >= qmin // Control inferior del orden de magnitud: si no cumple, revise tabiquería, acabados, vigas y columnas omitidos`),
   { type: 'stackbar', etiquetas: 'Piso 1; Piso 2; Piso 3; Azotea', series: 'Losa = [1,1,1,1]*wlosa*A\nAcabados = [1,1,1,1]*wa*A\nTabiquería = [1,1,1,0]*wteq*A\nVigas = [1,1,1,1]*Dvig\nColumnas = [Dcol, Dcol, Dcol, Dcol/2]\nParapeto = [0,0,0,1]*Dpar\nCarga viva = CV', unidad: 'tonf', titulo: 'Metrado de cargas por nivel: carga muerta por componente y carga viva' },
   { type: 'table', columnas: 'Nivel = ["Piso 1", "Piso 2", "Piso 3", "Azotea"]\nCM [tonf] = CM\nCV [tonf] = CV\nFracción CV = fCV\nPeso sísmico $P_i$ [tonf] = P_i', total: true, dec: '2', titulo: 'Resumen del metrado por nivel' },
   calc(`# Cargas sobre una columna interior

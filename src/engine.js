@@ -238,7 +238,8 @@ function displayUnit0(u) {
     const t = { tec: 'cm^2/m', si: 'mm^2/m', us: 'in^2/ft' }[settings.sys];
     try { return { v: u.toNumber(t), u: t }; } catch (e) { /* sigue */ }
   }
-  if (names.every(n => n === names[0]) && !(mixedPow && PREF[settings.sys][dims] && !rest)) {
+  const energy = /^[kMm]?J$/.test(names[0]) && PREF[settings.sys][dims];
+  if (names.every(n => n === names[0]) && !energy && !(mixedPow && PREF[settings.sys][dims] && !rest)) {
     const p = u.units.reduce((t, x) => t + x.power, 0);
     const us = p === 1 ? names[0] : names[0] + '^' + p;
     try { return { v: u.toNumber(us), u: us }; } catch (e) { /* sigue */ }

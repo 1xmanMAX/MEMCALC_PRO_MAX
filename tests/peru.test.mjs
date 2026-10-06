@@ -378,4 +378,9 @@ truthy('Listas desplegables intactas con rango (zona, categoría, sistema; hl y 
   truthy('Dinámico: Ia = 0.75 con «irr = Regular» → NO CUMPLE la coherencia (0.85R y 90 %)', dy.res.ctx.checks.some(c => !c.ok && /Coherencia/.test(c.label)));
 }
 truthy('Plantilla dinámica: validacion con T1 y Vdin del cálculo independiente (numpy)', TEMPLATES.find(x => x.id === 'pe-e030-dinamico').validacion.valores.some(v => v.var === 'T1' && v.esperado === 0.44102));
+section('Segunda opinión — segunda tanda (pe-e020-metrado)');
+{ const sub2 = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const g = runTemplate('pe-e020-metrado', sub2([['Ltab = 42 m', 'Ltab = 0 m'], ['wa = 100 kgf/m^2', 'wa = 0 kgf/m^2']]));
+  truthy('Metrado sin tabiquería ni acabados: q < 0.6 t/m² → NO CUMPLE el control inferior del orden de magnitud', g.res.ctx.checks.some(c => !c.ok && /Control inferior/.test(c.label)));
+}
 done();

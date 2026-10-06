@@ -159,7 +159,8 @@ const EXTREMOS = [
   ['puente', [['fc = 280 kgf/cm^2', 'fc = 100 kgf/cm^2'], ['L = 10.0 m', 'L = 10.0 m'], ['h = roundup(hmin, 0.05 m)', 'h = 0.30 m']], 'Resistencia a flexión'],
   ['acero', [['Lb = 10 ft', 'Lb = 60 ft']], 'Resistencia a flexión'],
   ['albanileria', [['Pm = 22 tonf', 'Pm = 220 tonf']], 'Esfuerzo axial'],
-  ['escalera', [['Ln = 3.60 m', 'Ln = 9.00 m']], 'Garganta suficiente'],
+  ['escalera', [['Ln = 3.60 m', 'Ln = 9.00 m']], 'Diferida por CM'],
+  ['escalera', [['t = 17 cm', 't = 10 cm'], ['Ln = 3.60 m', 'Ln = 6.00 m']], 'Garganta suficiente'],
 ];
 for (const [id, reps, esperado] of EXTREMOS) {
   const r = runT(id, reps);
@@ -201,6 +202,23 @@ console.log('Segunda opinión (docs/referencias/segunda-opinion.md)');
   near('Zapata: aplastamiento φPnb = 0.70·0.85·f\'c·A1·2 (A2/A1 ≥ 4)', z0.v('phiPnb', 'tonf'), 0.70 * 0.85 * 210 * 50 * 40 * 2 / 1000, 1e-6);
   const sh = runT('sismo', [['hn = 12.0 m', 'hn = 15.0 m']]);
   ok('Sismo: hn incoherente con hi → NO CUMPLE «Coherencia de datos»', sh.fails.some(l => l.includes('Coherencia de datos')));
+}
+console.log('Segunda opinión — segunda tanda (vigacont, aligerado, escalera)');
+{
+  const ok = (name, c) => { c ? pass++ : fail++; console.log((c ? '  ✔ ' : '  ✘ ') + name); };
+  const vc = runT('vigacont', [['fc = 210 kgf/cm^2', 'fc = 420 kgf/cm^2']]);
+  const b1 = 0.85 - 0.05 * (420 - 280) / 70;
+  near('Viga continua: Asmax = 0.75·ρb·b·d con β1(420) = 0.75 (E.060 10.2.7.3)', vc.v('Asmax', 'cm^2'), 0.75 * 0.85 * b1 * 420 / 4200 * 6000 / 10200 * 30 * 54, 1e-6);
+  const al = runT('aligerado');
+  near('Aligerado: Ig de la T 40/10 × 20 con losa de 5 cm = 11 801 cm⁴', al.v('Igt', 'cm^4'), 11801, 0.001);
+  near('Aligerado: Mcr = 2√f\'c·Ig/yb (ec. 9-11)', al.v('Mcrv', 'kgf*cm'), 2 * Math.sqrt(210) * al.v('Igt', 'cm^4') / al.v('ybg', 'cm'), 1e-6);
+  ok('Aligerado: deflexión diferida + viva calculada y ≤ ℓ/480 con los datos por defecto', al.ctx.errors.length === 0 && al.fails.length === 0 && al.v('dDv', 'mm') > 0);
+  const al2 = runT('aligerado', [['La2 = 4.50 m', 'La2 = 6.00 m']]);
+  ok('Aligerado con luz de 6.0 m y h = 20 cm: NO CUMPLE la deflexión (Tabla 9.2)', al2.fails.some(l => l.includes('Deflexión posterior')));
+  const es = runT('escalera', [['t = 17 cm', 't = 15 cm']]);
+  ok('Escalera con garganta de 15 cm y ℓ = 4.39 m: NO CUMPLE ℓ/240 (antes no se calculaba la deflexión)', es.fails.some(l => l.includes('Diferida por CM')));
+  const em = runT('escalera', [['alpha = 1.0 //', 'alpha = 0.8 //']]);
+  near('Escalera semiempotrada (α = 0.8): M⁻ = (1/3)·wu·Ln²/8 ≥ (1 − α)·wu·Ln²/8', em.v('Mneg', 'tonf*m/m'), em.v('wu', 'tonf/m^2') * 3.6 ** 2 / 24, 1e-6);
 }
 console.log(`\nResultado: ${pass} correctas, ${fail} fallidas`);
 process.exit(fail ? 1 : 0);

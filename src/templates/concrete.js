@@ -856,17 +856,18 @@ const voladizo = {
   id: 'co-voladizo', pais: 'PE', cat: CAT, icon: 'beam', normas: E060 + ' — Art. 9, 10, 11 y 9.6',
   validacion: {
     fuente: 'NTE E.060-2009 Art. 9, 10, 11 y 9.6 — valores de control calculados a mano',
-    nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Mu = 1.4(1.6·2.5²/2 + 1.2·2.5) + 1.7·0.8·2.5²/2 = 15.45 tonf·m.',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. U1 = 1.4(1.6·2.5²/2 + 1.2·2.5) + 1.7·0.8·2.5²/2 = 15.45 tonf·m; con el sismo vertical de la E.030 (Art. 28.4 y 38.1, 2/3·Z·U·S = 0.34) gobierna U2 = 1.25(8.0 + 2.5) + 0.34·(8.0 + 0.25·2.5) = 16.06 tonf·m (segunda opinión, 2026).',
     valores: [
-      { var: 'Mu', unidad: 'tonf*m', esperado: 15.45, tol: 0.001, desc: 'Control: Mu en el empotramiento = 15.45' },
-      { var: 'As_req', unidad: 'cm^2', esperado: 8.0224, tol: 0.002, desc: 'Control: acero requerido' },
+      { var: 'Mu1', unidad: 'tonf*m', esperado: 15.45, tol: 0.001, desc: 'Control: U1 = 1.4CM + 1.7CV en el empotramiento = 15.45' },
+      { var: 'Mu', unidad: 'tonf*m', esperado: 16.06, tol: 0.002, desc: 'Control: Mu = U2 con sismo vertical (E.030 Art. 38.1)' },
+      { var: 'As_req', unidad: 'cm^2', esperado: 8.3596, tol: 0.002, desc: 'Control: acero requerido (gobierna U2)' },
       { var: 'phiMn', unidad: 'tonf*m', esperado: 16.345, tol: 0.002, desc: 'Control: φMn con 3 barras de 3/4"' },
       { var: 'phiVn', unidad: 'tonf', esperado: 21.564, tol: 0.002, desc: 'Control: φVn' },
       { var: 'dDL', unidad: 'cm', esperado: 0.4041, tol: 0.002, desc: 'Control: deflexión inmediata D + L' },
     ],
   },
   name: 'Viga en voladizo — análisis, diseño y deflexión',
-  desc: 'Análisis del voladizo con carga repartida y carga en la punta (parapeto), flexión con acero superior, cortante a "d", anclaje en el apoyo, deflexión inmediata y diferida con Ie en el empotramiento.',
+  desc: 'Análisis del voladizo con carga repartida y carga en la punta (parapeto), sismo vertical 2/3·ZUS (E.030), flexión con acero superior, cortante a "d", anclaje en el apoyo, deflexión inmediata y diferida con Ie en el empotramiento.',
   titulo: 'Diseño de viga en voladizo',
   blocks: [
     text(`# Generalidades
@@ -881,6 +882,10 @@ Lv = 2.50 m // Longitud del voladizo [0.5..5.0]
 wD = 1.6 tonf/m // Carga muerta repartida (incluye peso propio) [0..20]
 wL = 0.8 tonf/m // Carga viva repartida [0..10]
 PD = 1.2 tonf // Parapeto en la punta (carga muerta) [0..10]
+zona = 4 // Zona sísmica (E.030 Tabla N° 1) [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
+U = 1.0 // Factor de uso (E.030 Tabla N° 7) [1.0|1.3|1.5]
+Vs30 = 300 m/s // Velocidad de ondas de corte del sitio (E.030 Tabla N° 3) [100..1500]
+Fv = 2/3*ZE030(zona)*U*SE030(zona, Vs30) // Fuerza sísmica vertical como fracción del peso: 2/3·Z·U·S (E.030 Art. 38.1; obligatoria en voladizos, Art. 28.4)
 rec = 4 cm // Recubrimiento libre [2..10]
 bar = 6 // Barra superior [5 : 5/8"|6 : 3/4"|8 : 1"]
 est = 3 // Estribo [3 : 3/8"|4 : 1/2"]
@@ -889,7 +894,11 @@ d = h - rec - db(est) - db(bar)/2 // Peralte efectivo
 check h >= Lv/8 // No se requiere calcular deflexiones (se calculan como verificación)`),
     { type: 'beam', tramos: 'Lv', apoyos: 'E L', E: '2.17e6 tonf/m^2', I: '0.0054 m^4', cargas: 'U 1 1.4*wD + 1.7*wL\nP Lv 1.4*PD', deflexion: false, titulo: 'Voladizo con cargas amplificadas (1.4 CM + 1.7 CV)' },
     calc(`# Diseño por flexión (E.060 10)
-Mu = abs(Mneg) // Momento último en el empotramiento
+MDs = wD*Lv^2/2 + PD*Lv -> tonf*m // Momento de servicio por carga muerta
+MLs = wL*Lv^2/2 -> tonf*m // Momento de servicio por carga viva
+Mu1 = abs(Mneg) // U1 = 1.4 CM + 1.7 CV (análisis anterior, E.060 9.2.1)
+Mu2 = 1.25*(MDs + MLs) + Fv*(MDs + 0.25*MLs) // U2 = 1.25(CM + CV) + CSv, con CSv sobre el peso sísmico CM + 25 % CV (E.060 9.2.3; E.030 Art. 31 y 38.1)
+Mu = max(Mu1, Mu2) // Momento último en el empotramiento
 As_req = asFlex(Mu, b, d, fc, fy) // Acero superior requerido
 As_min = 0.7*sqrtfc(fc)/fy*b*d // Acero mínimo (10.5.2)
 n = min(max(2, ceil(max(As_req, As_min)/Ab(bar))), 10) // Número de barras (máximo 10 en dos capas)
@@ -904,7 +913,9 @@ check epsilont >= 0.004 // Ductilidad (E.060 10.3.5)
 ldg = ldgE060(bar, fc, fy) // Desarrollo con gancho estándar en el elemento de apoyo
 "Las {n} barras #{bar} superiores se anclan en el apoyo con gancho de 90°: ℓdg = {ldg}; en el voladizo se prolongan hasta el extremo (barras superiores, ψt = 1.3: ℓd = {ldE060(bar, fc, fy, 1.3)}).
 # Diseño por cortante (E.060 11)
-Vud = Vmax - (1.4*wD + 1.7*wL)*d // Cortante a "d" de la cara (11.1.3.1)
+Vud1 = Vmax - (1.4*wD + 1.7*wL)*d // U1: cortante a "d" de la cara (11.1.3.1)
+Vud2 = 1.25*((wD + wL)*(Lv - d) + PD) + Fv*(wD*(Lv - d) + PD + 0.25*wL*(Lv - d)) -> tonf // U2 con sismo vertical, a "d" de la cara
+Vud = max(Vud1, Vud2) // Cortante de diseño
 phiVc = 0.85*0.53*sqrtfc(fc)*b*d -> tonf // Resistencia del concreto
 Av = 2*Ab(est) // Estribo de dos ramas
 Vs = max(Vud/0.85 - phiVc/0.85, 0 tonf) // Resistencia requerida del acero
@@ -1013,10 +1024,10 @@ check Vub*1 m <= phiVc // Cortante en la dirección larga
 };
 
 // ---------------------------------------------------------------------
-// 13) LOSA MACIZA EN UNA DIRECCIÓN (E.060 8.3.4, 9.6, 9.7, 10.5)
+// 13) LOSA MACIZA EN UNA DIRECCIÓN (E.060 8.3.3, 9.6, 9.7, 10.5)
 // ---------------------------------------------------------------------
 const losa1d = {
-  id: 'co-losa1d', pais: 'PE', cat: CAT, icon: 'slab', normas: E060 + ' — Art. 8.3.4, 9.6, 9.7 y 10.5',
+  id: 'co-losa1d', pais: 'PE', cat: CAT, icon: 'slab', normas: E060 + ' — Art. 8.3.3, 9.6, 9.7 y 10.5',
   validacion: {
     fuente: 'NTE E.060-2009 Art. 8.3.3 (coeficientes): wu·ln²/24, /14, /10, /16 y cortante 1.15·wu·ln/2',
     nota: 'Las relaciones wu·ln²/M reproducen exactamente los coeficientes de la norma (24, 14, 10 y 16); los aceros son valores de control.',
@@ -1030,11 +1041,11 @@ const losa1d = {
     ],
   },
   name: 'Losa maciza en una dirección',
-  desc: 'Franja de 1 m de losa continua: espesor mínimo (Tabla 9.1), coeficientes de 8.3.4 contrastados con análisis con alternancia de CV, acero principal, mínimo y de temperatura, cortante.',
+  desc: 'Franja de 1 m de losa continua: espesor mínimo (Tabla 9.1), coeficientes de 8.3.3 contrastados con análisis con alternancia de CV, acero principal, mínimo y de temperatura, cortante.',
   titulo: 'Diseño de losa maciza armada en una dirección',
   blocks: [
     text(`# Generalidades
-Losa maciza continua de tres tramos apoyada en vigas, armada en una dirección (relación de lados del paño mayor que 2). Se diseña una franja de 1.00 m de ancho. Los momentos se obtienen con los **coeficientes aproximados de E.060 8.3.4** y se contrastan con un análisis elástico con alternancia de carga viva (E.060 8.9).`),
+Losa maciza continua de tres tramos apoyada en vigas, armada en una dirección (relación de lados del paño mayor que 2). Se diseña una franja de 1.00 m de ancho. Los momentos se obtienen con los **coeficientes aproximados de E.060 8.3.3** y se contrastan con un análisis elástico con alternancia de carga viva (E.060 8.9).`),
     calc(`# Datos
 fc = 210 kgf/cm^2 // Concreto [175..420]
 fy = 4200 kgf/cm^2 // Acero [2800..5000]
@@ -1052,20 +1063,21 @@ check h >= ln/24 // Losa maciza con un extremo continuo (tramo extremo)
 wD = (2.4 tonf/m^3*h + wpt + wtab)*1 m -> tonf/m // Carga muerta
 wL = sc*1 m -> tonf/m // Carga viva
 wu = 1.4*wD + 1.7*wL // Carga amplificada (E.060 9.2.1)
-check wL <= 3*wD // Condición (d) de 8.3.4
-## Momentos con los coeficientes de E.060 8.3.4 (apoyo exterior: viga de borde)
+check wL <= 3*wD // Condición (d) de 8.3.3
+## Momentos con los coeficientes de E.060 8.3.3 (apoyo exterior: viga de borde)
 Mext = wu*ln^2/24 -> tonf*m // Negativo en apoyo exterior
 Mp1 = wu*ln^2/14 -> tonf*m // Positivo en tramo extremo (monolítico)
 Mi1 = wu*ln^2/10 -> tonf*m // Negativo en primer apoyo interior (más de dos tramos)
 Mp2 = wu*ln^2/16 -> tonf*m // Positivo en tramo interior
 Vu1 = 1.15*wu*ln/2 -> tonf // Cortante en la cara exterior del primer apoyo interior`),
     { type: 'beam', tramos: 'ln, ln, ln', apoyos: 'A, A, A, A', E: '2.17e6 tonf/m^2', I: 'bm*h^3/12', cargas: 'CM: U * 1.4*wD\nCV: U * 1.7*wL', alternancia: true, deflexion: false, titulo: 'Análisis elástico con alternancia de carga viva (franja de 1 m)' },
-    calc(`"El análisis con apoyos simples da M⁺ máx = {Mpos} y M⁻ = {abs(Mneg)}; los coeficientes de 8.3.4 dan {Mp1} y {Mi1}. Se diseña con el mayor valor de cada sección.
+    calc(`"El análisis con apoyos simples da M⁺ máx = {Mpos} y M⁻ = {abs(Mneg)}; los coeficientes de 8.3.3 dan {Mp1} y {Mi1}. Se diseña con el mayor valor de cada sección.
 # Diseño por flexión
 d = h - rec - db(bar)/2 // Peralte efectivo
 Mup = max(Mp1, Mpos) // Momento positivo de diseño
 Mun = max(Mi1, abs(Mneg)) // Momento negativo de diseño
-Asmin = 0.0018*bm*h // Acero mínimo (E.060 10.5.4, 9.7.2)
+rhot = si(fy < 4200 kgf/cm^2, 0.0020, max(0.0018*4200 kgf/cm^2/fy, 0.0014)) // Cuantía de contracción y temperatura: 0.0020 (fy < 4200), 0.0018 (fy = 4200), 0.0018·4200/fy ≥ 0.0014 (E.060 9.7.2; ACI 318-19 24.4.3.2)
+Asmin = rhot*bm*h // Acero mínimo (E.060 10.5.4, 9.7.2)
 Asp = max(asFlex(Mup, bm, d, fc, fy), Asmin) // Acero positivo
 Asn = max(asFlex(Mun, bm, d, fc, fy), Asmin) // Acero negativo interior
 Ase = max(asFlex(Mext, bm, d, fc, fy), Asmin) // Acero negativo exterior
@@ -1079,7 +1091,7 @@ check Ab(bar)/se*bm >= Ase // Acero negativo exterior colocado
 a = Asn*fy/(0.85*fc*bm) // Bloque de compresión
 check 0.003*(d - a/0.85)/(a/0.85) >= 0.004 // Ductilidad εt ≥ 0.004 (E.060 10.3.5)
 ## Acero de temperatura (E.060 9.7)
-Ast = 0.0018*bm*h // Cuantía 0.0018 (fy = 4200)
+Ast = rhot*bm*h // Acero de temperatura con la cuantía ρt
 st = rounddown(max(min(Ab(3)/Ast*bm, 3*h, 40 cm), 2.5 cm), 2.5 cm) // Espaciamiento ≤ 3h y 400 mm (9.7.3; 5h solo en aligerados)
 "**Refuerzo:** inferior #{bar} @ {sp}; superior en apoyos interiores #{bar} @ {sn}; en apoyos exteriores #{bar} @ {se}; temperatura #3 @ {st} (perpendicular).
 # Cortante (E.060 11.3)
@@ -1223,6 +1235,13 @@ vc = min(vc1, vc2, vc3) // Esfuerzo resistente del concreto
 phi = 0.85 // Cortante (E.060 9.3.2.3) [0.65..0.90]
 check vu <= phi*vc // Punzonamiento con transferencia de momento (ec. 11-40)
 check Vu <= phi*vc*Ac // Punzonamiento por cortante directo
+## Compatibilidad de deriva de la conexión losa–columna (ACI 318-08 21.13.6; ACI 318-19 18.14.5.1)
+"La losa plana no forma parte del sistema sismorresistente (los muros toman el cortante sísmico), pero acompaña su deriva. Si la deriva de diseño del entrepiso supera $0.035 - \\tfrac{1}{20}\\,v_{ug}/(\\phi v_c)$ (y en todo caso 0.005), la conexión requiere refuerzo por cortante (estribos o pernos de cortante) que cumpla $v_s \\ge 0.93\\sqrt{f'_c}$ extendido 4h desde la cara de la columna.
+Vug = 60 tonf // Cortante de gravedad de la conexión 1.25(CM + CV) (E.060 9.2.3, sin sismo) [0..300]
+deriva = 0.004 // Deriva inelástica de diseño del entrepiso (E.030 Art. 50) [0..0.010]
+vug = Vug/Ac -> kgf/cm^2 // Esfuerzo de cortante por gravedad
+derivalim = max(0.035 - vug/(20*phi*vc), 0.005) // Deriva límite sin refuerzo por cortante
+check deriva <= derivalim // Conexión sin refuerzo por cortante por compatibilidad de deriva
 "Según ACI 318-19 (22.6.5.2) el esfuerzo $v_c$ se afecta además por el factor de tamaño $\\lambda_s$ = {lambdasACI(d)} cuando no hay refuerzo mínimo por cortante (aquí $d$ ≤ 25 cm, efecto despreciable).
 # Transferencia de momento por flexión (E.060 13.5.3)
 bt = c2 + 3*h // Ancho efectivo para γf Mu

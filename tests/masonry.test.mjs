@@ -391,4 +391,11 @@ truthy('Listas desplegables intactas con rango (Z, Tp, f\'c del edificio)', (() 
   near('San Bartolomé (2006): Fa = 93.8 t/m² en los muros de soga de la plantilla (t = 13 cm, h = 2.40 m)', math.evaluate('min(FaX)', new Map(r.res.ctx.scope)).toNumber('tonf/m^2'), 93.8, 0.001); }
 near('JUNAC Tabla 9.2: Ck grupo B = 18.34 en la plantilla de columna', runTemplate('ma-colmadera')('Ck'), 18.34, 0.001);
 truthy('Plantillas con validacion: edificio, cerco, columna de madera y reservorio', ['ma-edificio', 'ma-cerco', 'ma-colmadera', 'ma-reservorio'].every(id => TEMPLATES.find(x => x.id === id).validacion));
+section('Segunda opinión — segunda tanda (ma-cerco)');
+{ const sub2 = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const r = runTemplate('ma-cerco');
+  near('Cerco: e = (Mv − mín(½Ep·hc/3, Mv))/P (el pasivo es una reacción, φep = 0.5)', r('ecc', 'm'), (r('Mv', 'tonf*m') - Math.min(0.5 * r('Ep', 'tonf') * 0.8 / 3, r('Mv', 'tonf*m'))) / r('Ptot', 'tonf'), 1e-9);
+  const r1 = runTemplate('ma-cerco', sub2([['Z = 0.45 //', 'Z = 0.10 //'], ['S = 1.05 //', 'S = 2.00 //']]));
+  truthy('Cerco en zona 1 con S = 2.0: cs usa 0.8·0.5·ZUS (gobierna) y no hay falsas fallas de excentricidad', Math.abs(r1('cs') - 0.08) < 1e-9 && r1.res.ctx.checks.every(c => c.ok));
+}
 done();

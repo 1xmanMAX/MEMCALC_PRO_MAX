@@ -16,19 +16,34 @@ PGA = Z*S // Aceleración máxima del terreno en la superficie (AASHTO 11.6.5.2:
 kh = khWall(PGA) // kh = 0.5·kh0: el muro puede desplazarse 25–50 mm (AASHTO 11.6.5.2.2)
 kv = 0 // Coeficiente vertical: se desprecia (AASHTO 11.6.5.2.2) [0..0.15]`;
 
+// Peligro sísmico con la E.030-2026: S interpolado por Vs30 (Tabla N° 4), igual que las plantillas «peru».
+// En zona 4 con Vs30 < 200 m/s (perfil S4) la norma exige un análisis de respuesta de sitio: la verificación
+// no cumple y S se evalúa con 200 m/s para que la memoria no se interrumpa.
+const SISMO26 = `## Coeficientes sísmicos (método pseudoestático, E.030-2026)
+zona = 4 // Zona sísmica (E.030 Art. 10, Anexo II) [4 : Zona 4|3 : Zona 3|2 : Zona 2|1 : Zona 1]
+Z = ZE030(zona) // Aceleración máxima en roca, en g (E.030 Art. 11, Tabla N° 1)
+Vs30 = 450 m/s // Velocidad promedio de ondas de corte en los 30 m superiores (E.030 Art. 15.2, del EMS) [100..1500]
+check zona < 4 or Vs30 >= 200 m/s // Perfil S4 en zona 4: se requiere análisis de respuesta de sitio (E.030-2026 Tabla N° 4)
+S = SE030(zona, si(zona == 4, max(Vs30, 200 m/s), Vs30)) // Factor de suelo interpolado por Vs30 (E.030-2026 Art. 17, Tabla N° 4)
+"Perfil de suelo **S{si(Vs30 >= 800 m/s, 0, si(Vs30 >= 550 m/s, 1, si(Vs30 >= 350 m/s, 2, si(Vs30 >= 200 m/s, 3, 4))))}** según la Tabla N° 3 (S0 ≥ 800 m/s; S1 550–800; S2 350–550; S3 200–350; S4 < 200 m/s). El factor $S$ de la E.030-2026 reemplaza al de la Tabla N° 3 de la E.030-2018 (perfiles S1–S3), con el mismo criterio que las memorias sísmicas de edificios.
+PGA = Z*S // Aceleración máxima del terreno en la superficie, en g (equivale a kh0 = Fpga·PGA de AASHTO 11.6.5.2)
+kh = khWall(PGA) // kh = 0.5·kh0: el muro puede desplazarse 25–50 mm (AASHTO 11.6.5.2.2)
+kv = 0 // Coeficiente vertical: se desprecia (AASHTO 11.6.5.2.2) [0..0.15]`;
+
 // =====================================================================
 //  1) MURO EN VOLADIZO CON SISMO
 // =====================================================================
 const voladizo = {
   id: 'wa-voladizo', pais: 'PE', cat: CAT, icon: 'wall', settings: {},
   name: 'Muro en voladizo con sismo (M-O) — diseño completo',
-  normas: 'RNE — NTE E.020, E.030, E.050 (39.13), E.060; AASHTO LRFD 11.6',
+  normas: 'RNE — NTE E.020, E.030-2026 (S por Vs30), E.050 (39.13), E.060; AASHTO LRFD 11.6',
   desc: 'Estabilidad estática y sísmica (Mononobe–Okabe + inercia) con dentellón, diseño de pantalla, punta y talón por flexión y cortante (E.060), corte de barras y refuerzo de temperatura.',
   titulo: 'Diseño de muro de contención en voladizo H = 5.00 m con sismo',
   validacion: {
     fuente: 'Control: Rankine (Das, Principios de Ing. de Cimentaciones, cap. 7) + AASHTO 11.6.5 + E.060; motor validado con Das Ej. 8.1 y Sağlam P1 (tests/walls.test.mjs)',
-    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Comprobados a mano: kh = 0.5·0.45·1.05, Ka = tan²(45° − 32°/2) y Pa = ½Ka·γ·H² + Ka·ws·H.',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Comprobados a mano: S = 1.00 + (550 − 450)/(550 − 350)·(1.10 − 1.00) = 1.05 (E.030-2026 Tabla N° 4, zona 4, Vs30 = 450 m/s), kh = 0.5·0.45·1.05, Ka = tan²(45° − 32°/2) y Pa = ½Ka·γ·H² + Ka·ws·H. Al pasar de la Tabla N° 3 de 2018 (S2 → 1.05) a S por Vs30 (octubre de 2026) se eligió Vs30 = 450 m/s, que da el mismo S: los valores de control no cambian.',
     valores: [
+      { var: 'S', esperado: 1.05, tol: 0.0005, desc: 'S por Vs30 = 450 m/s, zona 4 (E.030-2026 Tabla N° 4)' },
       { var: 'kh', esperado: 0.23625, tol: 0.0005, desc: 'kh = 0.5·Z·S (AASHTO 11.6.5.2.2)' },
       { var: 'Ka', esperado: 0.30726, tol: 0.0005, desc: 'Ka de Rankine, φ = 32°' },
       { var: 'Pa', unidad: 'tonf/m', esperado: 8.834, tol: 0.002, desc: 'Empuje activo estático' },
@@ -45,7 +60,7 @@ const voladizo = {
 Muro de contención de concreto armado en voladizo (T invertida) que sostiene un relleno granular compactado de 4.40 m sobre la zapata. Incluye un **dentellón** (llave de corte) bajo la pantalla para movilizar empuje pasivo adicional frente al deslizamiento. Se analiza por metro lineal de muro.
 
 ## Normas y referencias
-- RNE **NTE E.020** Cargas (sobrecarga sobre el relleno); **NTE E.030** Diseño Sismorresistente (factor de zona $Z$ y de suelo $S$).
+- RNE **NTE E.020** Cargas (sobrecarga sobre el relleno); **NTE E.030-2026** Diseño Sismorresistente (factor de zona $Z$, Tabla N° 1, y factor de suelo $S$ interpolado por $V_{s30}$, Tabla N° 4).
 - RNE **NTE E.050** Suelos y Cimentaciones: Art. 39.13 (muros de contención, FS mínimos 1.50 estático y 1.25 pseudodinámico) y Art. 21 (FS de capacidad portante 3.0 / 2.5).
 - RNE **NTE E.060** Concreto Armado: 9.2.5 (combinación con empuje lateral $U = 1.4CM + 1.7CV + 1.7CE$; $U = 0.9CM + 1.7CE$), 9.2.3 (sismo $U = 1.25(CM+CV) \\pm CS$), 9.3 (factores $\\phi$), 10.5 (acero mínimo), 11.3 (cortante), 12.5 y 12.10 (anclaje y corte de barras), 14.3 (refuerzo de muros).
 - AASHTO LRFD *Bridge Design Specifications*, Secc. 3.11 y 11.6 (método pseudoestático, $k_h = 0.5\\,k_{h0}$, inercia del muro y del suelo sobre el talón).
@@ -86,7 +101,7 @@ fy = 4200 kgf/cm^2 // Acero ASTM A615 Grado 60 [2800..4200]
 gammac = 2.40 tonf/m^3 // Peso unitario del concreto armado (E.020 Anexo 1) [2.2..2.5]
 rec = 5 cm // Recubrimiento de la pantalla, concreto expuesto al suelo (E.060 7.7.1 b) [2..7.5]
 recz = 7.5 cm // Recubrimiento de la zapata vaciada contra el suelo (E.060 7.7.1 a) [5..10]
-${SISMO}
+${SISMO26}
 ## Coeficientes de empuje
 Ka = KaRankine(phis, beta) // Activo de Rankine (Das, Principios, cap. 7, relleno inclinado; β = 0 → tan²(45° − φ/2))
 Kae = KaeMO(phis, beta, kh, kv, beta) // Activo sísmico de Mononobe–Okabe, δ = β en el plano virtual (AASHTO 11.6.5.3)
@@ -528,7 +543,8 @@ Ru = max(R1, R1_s)/(1 m) -> tonf/m // Reacción última en la losa
 Avf = Ru/(0.85*fy*0.6) -> cm^2/m // μ = 0.6 (junta no rugosa), φ = 0.85
 sd = rounddown(max(Ab(3)/Avf, 2.5 cm), 2.5 cm) // Pasadores de 3/8"
 check sd <= 40 cm // Espaciamiento de pasadores
-"Refuerzo: vertical 1/2\\" @ {sb} (cara del suelo, en la base y hasta $h_s/3$), 1/2\\" @ {sp} (cara interior), horizontal 3/8\\" @ {sh} en ambas caras; pasadores 3/8\\" @ {sd} a la losa. Impermeabilizar la cara del suelo y colocar drenaje perimetral.`),
+"Refuerzo: vertical 1/2\\" @ {sb} (cara del suelo, en la base y hasta $h_s/3$), 1/2\\" @ {sp} (cara interior), horizontal 3/8\\" @ {sh} en ambas caras; pasadores 3/8\\" @ {sd} a la losa. Impermeabilizar la cara del suelo y colocar drenaje perimetral.
+"**Hipótesis que deben figurar en los planos:** (1) no hay nivel freático detrás del muro (drenaje perimetral efectivo); si el EMS reporta NF sobre el cimiento, sume la presión hidrostática $\\gamma_w h_w$ y use $\\gamma'$ para el suelo sumergido (E.060 9.2.4 y 9.2.5); (2) el relleno se coloca **después** de vaciar la losa del primer piso; si se rellena o se excava al lado antes, el muro trabaja en voladizo durante la construcción y debe apuntalarse o verificarse como tal (*wa-voladizo*); (3) el muro no recibe carga axial significativa; si soporta columnas o losas, verifíquelo a flexocompresión (E.060 14.2).`),
     summary(),
   ],
 };

@@ -204,3 +204,214 @@ conservador y está declarado. Con Z = 0.25 la densidad mínima baja a 0.021, lo
 
 Validaciones modificadas, con su justificación arriba: `columna.DCpm` 0.7096 → 0.72544 (E.060 9.3.2.2) y
 `ge-conectada.Vup` 112.27 → 115.66 t (zapata interior sin alivio).
+
+---
+
+# Segunda tanda: otras 20 plantillas de uso frecuente
+
+Revisor: ingeniero jefe (misma metodología). Fecha: octubre de 2026. Cada plantilla se ejecutó con los datos por defecto
+(`runTemplate`) y con cambios realistas: otra zona sísmica, suelo blando, más carga viva, luces mayores, nivel de agua
+y garganta o peralte menor. Se revisaron renderizadas (`build.mjs` + `shot.mjs --paper`) *aligerado*, *escalera*,
+*ma-armada*, *co-voladizo*, *ge-medianera*, *ge-platea* y *st-placa-base*.
+
+Solo se editaron `src/templates.js` (*vigacont*, *aligerado*, *escalera*) y `src/templates/{concrete,geotech,walls,steel,masonry,peru}.js`.
+En los archivos compartidos con el otro agente (`geotech.js`, `walls.js`, `steel.js`) solo se tocaron *ge-medianera*, *ge-platea*,
+*ge-licuacion*, *wa-sotano* y *st-placa-base*, con reemplazos puntuales. Pruebas: `tests/verify.mjs` y
+`tests/{concrete,geotech,masonry,steel,peru}.test.mjs`. Al final, `node tests/run.mjs` pasa completo.
+
+## Resumen
+
+| # | Plantilla | Veredicto | Hallazgo principal | Corregido |
+|---|---|---|---|---|
+| 1 | vigacont | Apta, con corrección | Asmax con β1 = 0.85 fijo (no conservador con f'c > 280) | Sí |
+| 2 | aligerado | **Corregida (Media)** | h = 20 < hmín = 22.7 cm y no se calculaba la deflexión | Sí |
+| 3 | escalera | **Corregida (Media)** | Sin cálculo de deflexiones; con t = 15 cm y ℓ = 4.39 m excede ℓ/240 | Sí (t = 17 cm) |
+| 4 | co-losa1d | Apta, con corrección | ρ de temperatura fija en 0.0018 para cualquier fy; cita 8.3.4/8.3.3 | Sí |
+| 5 | co-punzonamiento | **Corregida (Media)** | Faltaba la compatibilidad de deriva de la conexión losa–columna | Sí |
+| 6 | co-torsion | Apta | — | — |
+| 7 | co-voladizo | **Corregida (Media)** | Sin sismo vertical en el voladizo (E.030 Art. 28.4 y 38.1) | Sí |
+| 8 | ge-medianera | **Corregida (Media)** | Punzonamiento de borde sin transferencia de momento | Sí |
+| 9 | ge-platea | **Corregida (Alta)** | Presión sin el peso de la platea; sin validar el método rígido | Sí |
+| 10 | ge-pilote | Apta | — | — |
+| 11 | ge-licuacion | Apta, con advertencia | amáx = 0.30 g por defecto es bajo para la costa | Nota en la memoria |
+| 12 | wa-gravedad | Apta | — | — |
+| 13 | wa-sotano | Apta, con observación | No considera NF ni la etapa constructiva | Nota en la memoria |
+| 14 | br-pilar | Apta | Recomendaciones menores | No |
+| 15 | br-neopreno | Apta | — | — |
+| 16 | st-placa-base | **Corregida (Media)** | Sin el factor 0.75 de anclajes con sismo (ACI 318-19 17.10) | Sí |
+| 17 | ma-armada | Apta | — | — |
+| 18 | ma-cerco | **Corregida (Media)** | La excentricidad del cimiento usaba el 100 % del pasivo como fuerza activa | Sí |
+| 19 | pe-e020-metrado | Apta, con corrección | Solo se controlaba q ≤ 1.2 t/m²; el riesgo real es q bajo | Sí |
+| 20 | pe-e030-noestructurales | Apta | — | — |
+
+## Detalle por plantilla
+
+### 1. vigacont
+**Veredicto: apta, con corrección.** Los valores por defecto son razonables: viga de 30×60 con luces de 5, 6 y 5 m,
+M⁻ = 13.4 t·m, 4Ø5/8" y D/C de 0.87. El cortante se toma en el eje (conservador) y la deflexión con Ig se declara
+como control rápido.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| `Asmax` usaba β1 = 0.85 fijo. Con f'c = 350–420, el límite 0.75ρb quedaba sobrestimado hasta 12 % (β1 = 0.75 frente a 0.85 con f'c = 420). | Media (solo f'c > 280) | E.060 10.2.7.3 y 10.3.4 | `Asmax = 0.75·rhobE060(fc, fy)·b·d`. |
+| No se verificaba que las barras cupieran en una capa. | Baja | E.060 7.6.1 | Check de separación libre ≥ 2.5 cm (D/C 0.55). |
+
+### 2. aligerado
+**Veredicto: corregida.** La memoria calculaba hmín = ℓ/18.5 = 22.7 cm y luego solo decía que, si no se cumplía, «debe
+calcularse la deflexión», sin calcularla. Con h = 20 cm, que es el caso usual, la memoria salía firmada sin el requisito
+de la E.060 9.6.2.1.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| No se calculaba la deflexión aunque h < hmín. | **Media** | E.060 9.6.2.1–9.6.2.5, Tablas 9.1 y 9.2 | Ig de la sección T (11 801 cm⁴), Mcr, Icr (`icrT`, 1#4 + 1#3), Ie de Branson al centro del tramo, bloque `beam` en servicio con EcIe, Δ_L ≤ ℓ/360 y λΔ_D + Δ_L ≤ ℓ/480 (tabiques). Con los datos por defecto: 7.4 mm frente a 9.4 mm (D/C 0.79). Con una luz de 6 m da NO CUMPLE (prueba). |
+| La deflexión se compara con la luz mayor; la flecha máxima puede estar en el tramo extremo, más corto. | Baja | — | Aproximación declarada; con la luz menor el D/C sería 0.93. |
+
+### 3. escalera
+**Veredicto: corregida.** La única «verificación» de rigidez era t ≥ Ln/25, que es una regla práctica. La Tabla 9.1 de la
+E.060 pide ℓ/20 = 22 cm, con ℓ medida en la inclinación (4.39 m), para no calcular deflexiones.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| No se calculaban deflexiones. Con la garganta por defecto de 15 cm, la deflexión diferida más la viva es 19.3 mm frente a ℓ/240 = 18.3 mm, es decir, **no cumple**. Los pasos se desprecian, que es lo conservador. | **Media** | E.060 9.6.2.1, 9.6.2.3–9.6.2.5, Tablas 9.1 y 9.2 | Sección de deflexiones: ℓ inclinada, hmín, Ig, Mcr, Icr con el acero colocado, Ie y carga perpendicular w·cos²θ. **Dato por defecto t = 15 → 17 cm** (D/C 0.53). Validación: hm 27.06 → 29.50 cm, Mu 2.251 → 2.383 t·m/m, As 5.061 → 4.561 cm², φVc 8.069 → 9.375 t/m. |
+| Con α = 0.8 (semiempotrado) el positivo baja 20 %, pero el negativo seguía en As/3, sin relación con el momento descontado. | Baja | Equilibrio; E.060 8.4 | `Mneg = máx(1/3, 1 − α)·wu·Ln²/8` y `Asneg = máx(As/3, As(Mneg))`. |
+| La variable `alfa` se imprimía como «a_lfa». | Baja (presentación) | — | Renombrada a `alpha` (α); no la usaba ninguna prueba. |
+| El dato B (ancho) no se usa; el diseño es por metro. | Baja | — | Se dejó; la descripción de la validación ya dice «por metro». |
+
+### 4. co-losa1d
+**Veredicto: apta, con corrección.** Los coeficientes y la envolvente con alternancia están bien.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| ρ de temperatura y mínimo fija en 0.0018 aunque el rango de fy admite 2800 (0.0020) y hasta 5000 (0.0018·4200/fy ≥ 0.0014). | Baja | E.060 9.7.2; ACI 318-19 24.4.3.2 | `rhot` según fy en `Asmin` y `Ast`. |
+| El texto citaba 8.3.4 y la validación 8.3.3 para el método de coeficientes. | Baja | E.060 8.3.3 | Unificado a 8.3.3. |
+
+### 5. co-punzonamiento
+**Veredicto: corregida.** γv, Jc, vc (11-33/34/35) y el ancho c2 + 3h coinciden con StructurePoint.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La losa plana acompaña la deriva de los muros (E.060 21.8.2 la permite con muros que tomen el 80 %). No se verificaba la compatibilidad de deriva de la conexión: con vug/φvc = 0.67 y deriva 0.007 la conexión requiere estribos o pernos de cortante. | **Media** | ACI 318-08 21.13.6; ACI 318-19 18.14.5.1 | Datos `Vug` (1.25(CM+CV)) y `deriva`; `derivalim = máx(0.035 − vug/(20φvc), 0.005)` y check (D/C 0.80 con 0.004). La prueba con 0.007 da NO CUMPLE. |
+
+### 6. co-torsion
+**Veredicto: apta.** Tth, la sección (11-18) en MKS, At/s con Ao = 0.85Aoh, Aℓ y Aℓ,mín (11-24), s ≤ Ph/8 y 30 cm y el
+mínimo (Av + 2At) son correctos y están validados con StructurePoint. Con Tu = 7 t·m da NO CUMPLE la sección y las barras
+laterales, lo que es coherente. Observación (Baja): no se verifica la separación ≤ 30 cm del acero longitudinal alrededor
+del perímetro (11.6.6.2). Con h = 60 cm cumple con la barra lateral dibujada.
+
+### 7. co-voladizo
+**Veredicto: corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| El voladizo se diseñaba solo con 1.4CM + 1.7CV. La E.030 exige la fuerza sísmica vertical en voladizos (2/3·Z·U·S del peso). En la costa, U2 = 1.25(CM+CV) + CSv gobierna: 16.06 frente a 15.45 t·m. | **Media** | E.030-2026 Art. 28.4 y 38.1; E.060 9.2.3 | Datos `zona`, `U`, `Vs30`; `Fv = 2/3·ZE030·U·SE030`; `Mu = máx(Mu1, Mu2)` y `Vud = máx(Vud1, Vud2)` con el peso CM + 25 % CV. Validación: `Mu` 15.45 → 16.06 t·m (se agregó `Mu1` = 15.45) y `As_req` 8.022 → 8.360 cm². φMn = 16.35 t·m (D/C 0.98). |
+
+### 8. ge-medianera
+**Veredicto: corregida.** Dimensionamiento, tensor T = P·e/h y fricción ≥ 1.5T son correctos.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| El punzonamiento de la columna de borde solo verificaba el cortante directo. En el caso 2 (tensor), la columna transmite a la zapata Mtu = Pu·e = 22.6 t·m. | **Media** | E.060 11.12.6; ACI 318-19 R8.4.4.2.3 (Jc de borde) | Sección de 3 lados: `cAB`, `Jcb`, `eg`, `Mug = |Mtu − Vu·eg|` respecto al centroide, γv y `vub ≤ φvc` (D/C 0.42). |
+| `Mtu` se imprimía en kJ. | Baja | — | `-> tonf*m`. |
+| Igual que en la zapata y en *ge-combinada*: no se evalúa 1.25(CM+CV) ± CS. | Media | E.060 9.2.3 | Recomendación. No se corrigió para no reescribir el esquema del tensor. |
+
+### 9. ge-platea
+**Veredicto: corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| Se comparaba q = ΣPcol/A ± M·c/I directamente con qa, sin el peso de la losa de 0.90 m (2.16 t/m²) ni del relleno. Es inconsistente con las zapatas, que usan qn = qa − γm·Df. Con qa = 1.2 kg/cm² la platea pasaba (11.3 ≤ 12); con su peso, la presión es 13.5 t/m². | **Alta** | E.050 Art. 22; criterio de las plantillas de zapatas | Datos `Df = 1.0 m` y `γm = 2.0 t/m³`; `qn = qa − γm·Df`; check `qmx ≤ qn`. **Dato por defecto qa = 1.2 → 1.4 kg/cm²** (no hay validación sobre qa; qmx no cambia). La prueba con qa = 1.2 da NO CUMPLE. |
+| No se comprobaba si la losa puede tratarse como rígida. | Media | ACI 336.2R §6.1.2 (separación ≤ 1.75/β) | Dato `ks`, β = (ks·B1/4EcI)^¼, `Lrig` = 7.31 m frente a 6.0 m (D/C 0.82). Con ks = 12 kg/cm³ da NO CUMPLE y remite a *winkler*. |
+
+### 10. ge-pilote
+**Veredicto: apta.** Qp con el límite ql de Meyerhof (400 t/m²) y la correlación SPT, α de API, β y fricción negativa como
+carga, FS = 2, Vesic y Broms. Con fricción negativa activada la carga da NO CUMPLE (D/C 1.14), lo que es coherente.
+
+### 11. ge-licuacion
+**Veredicto: apta, con advertencia.** El procedimiento NCEER, MSF, Kσ y PL de Cetin está bien implementado.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| amáx = 0.30 g por defecto es inferior a Z·S de cualquier sitio de la costa (≈ 0.47 g). Con 0.45 g el mismo perfil da FS_L = 0.92 a 4 m y PL = 52 %. | Media (dato) | E.050 Art. 38.5.4; E.030 | Advertencia en la memoria con los valores numéricos. No se cambió el dato porque es el de la validación y de las pruebas. |
+
+### 12. wa-gravedad
+**Veredicto: apta.** Coulomb y M-O con δ = 2φ/3, FS de la E.050 39.13 y esfuerzos del cuerpo con E.060 Cap. 22
+(1.3√f'c S, 0.35√f'c bh). Con zona 2 cumple; con ws = 2 t/m² da NO CUMPLE el deslizamiento sísmico. Nota (Baja): la E.060 Cap. 22
+es para concreto simple; aplicarla al ciclópeo (30 % de piedra) con f'c = 140 de la matriz es práctica aceptada, pero
+conviene declararlo en las especificaciones.
+
+### 13. wa-sotano
+**Veredicto: apta, con observación.** K0, Wood (kh = PGA), viga apoyada-empotrada, 1.7CE + 1.0CS, mínimos de muro y
+pasadores por cortante-fricción.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| No considera NF detrás del muro, la etapa constructiva (relleno antes de la losa = voladizo) ni la carga axial. | Media | E.060 9.2.4–9.2.5, 14.2 | Párrafo de hipótesis que deben figurar en los planos. |
+
+### 14. br-pilar
+**Veredicto: apta.** R por categoría (Tabla 3.10.7.1-1), 100 %–30 %, PEQ por volteo = 2MTc/s, φ de Evento Extremo, P–Δ
+(4.7.4.5), Vc = 0 en la rótula y Ash (5.10.11.4.1d). El cortante elástico (212.8 t) es menor que el de la rótula con
+sobrerresistencia (≈ 217 t), por lo que el mínimo de 3.10.9.4.3 está bien tomado. Recomendaciones (Baja): diseño por
+capacidad del cabezal y de la cimentación con 1.3Mn, y combinaciones de viento sobre la subestructura.
+
+### 15. br-neopreno
+**Veredicto: apta.** Métodos A y B de la Secc. 14 con G mínimo para compresión y máximo para fuerzas, rotación más
+0.005 de tolerancia, estabilidad, zunchos (servicio y fatiga) y Hbu ≤ 0.2P. Con PLL = 700 kN sigue cumpliendo
+(σs = 7.2 MPa < 8.4 MPa). Recomendación (Baja): en zona 4, topes sísmicos o restrictores (AASHTO 3.10.9.2) en el plano.
+
+### 16. st-placa-base
+**Veredicto: corregida.** Thornton/DG1, J8, Cap. 17 (Ncbg con h′ef, pullout, desprendimiento lateral) y fricción con 0.9D.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| Nua puede venir del sismo (el propio dato lo sugiere), pero no se aplicaba el factor 0.75 a las resistencias gobernadas por el concreto ni se exigía un mecanismo dúctil. | **Media** | ACI 318-19 17.10.5.3 y 17.10.5.4 | Dato `sis`, `fsis = 0.75`, checks de arrancamiento y extracción con sismo, y nota sobre 17.10.5.3 (tramo libre ≥ 8da u Ω0). La prueba con Nua = 7.5 t pasa sin sismo y da NO CUMPLE con sismo. |
+| Solo compresión concéntrica; las columnas de pórticos con momento en la base requieren DG1 §3.3–3.4. | Baja | AISC DG1 | El alcance ya está declarado. |
+
+### 17. ma-armada
+**Veredicto: apta.** Mu = 1.25Me, φ = 0.85 − 0.2Pu/Po, As = (Mu/φ − Pu·L/2)/(fy·D), σu < 0.3f'm, Vuf = 1.25Vu·Mn1/Mu ≥ Vm y
+vi ≤ 0.1f'm coinciden con la E.070 Art. 28. En la memoria renderizada, Mu sale en t·m. Con Me = 150 t·m da NO CUMPLE.
+
+### 18. ma-cerco
+**Veredicto: corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La excentricidad del cimiento se calculaba con Mr, que incluye el 100 % del pasivo como momento estabilizante: e = (Mv − Ep·hc/3)/P. El pasivo es una reacción, no una fuerza aplicada. Con sismo pequeño (zona 1) daba excentricidades negativas grandes y una falsa falla (D/C 1.48). Con sismo grande ocultaba la excentricidad real. | **Media** | Equilibrio; AASHTO Tabla 11.5.7-1 (φep = 0.5) y 11.6.3.3 | `Mpas = mín(½Ep·hc/3, Mv)`, `e = (Mv − Mpas)/P`, presión trapecial o triangular y e ≤ B/3 (criterio sísmico de *wa-*). Por defecto: e = 12.7 cm, qmáx = 0.74 kg/cm² ≤ 1.33qa. |
+| `cs` del cimiento usaba solo 0.8·Z·U·C1, mientras la carga del paño w toma el mayor entre E.070 y E.030 Art. 60. En zonas 1–2 con S alto era no conservador. | Baja | E.030 Art. 60; E.070 Art. 29.6 | `cs = máx(0.8ZUC1, 0.8·0.5·ZUS)`. |
+| El volteo con FS ≥ 2 solo cumple contando el 100 % del pasivo. Sin él, FS = 1.22. Es el método de San Bartolomé y se mantiene. | Observación | E.070 Art. 31.6 | Exigir en obra el cimiento vaciado contra terreno natural, sin sobreexcavación. |
+
+### 19. pe-e020-metrado
+**Veredicto: apta, con corrección.** Pesos del Anexo 1, tabiquería real, reducción del Art. 10 y fracciones de la
+E.030 Art. 31 correctos.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| El «control del orden de magnitud» solo verificaba q ≤ 1.2 t/m². Lo no conservador es subestimar P. El ejemplo da 0.72 t/m², bajo el rango usual que la propia memoria declara (0.8–1.2). | Baja | E.030 Art. 31 | Check `q ≥ qmin = 0.6 t/m²`. Sin tabiquería ni acabados da NO CUMPLE (prueba). |
+
+### 20. pe-e030-noestructurales
+**Veredicto: apta.** Fi/Pi·C1 ≥ 0.5ZUS, vertical 2/3, ×0.8 en esfuerzos admisibles y junta del Art. 52.4. Con Vs30 = 180 m/s
+en zona 4 aparece el problema M3 del motor: la excepción de `SE030` produce 20 errores en cascada. Es el mismo caso de la
+primera tanda, ahora también en *co-voladizo* (usa `SE030`).
+
+## Hallazgos en el motor y en los bloques (no editables por este revisor)
+
+| # | Dónde | Hallazgo | Gravedad | Propuesta |
+|---|---|---|---|---|
+| M2 (bis) | Motor: formato de unidades | Persiste en `cAB = b1²/(2b1 + b2)`, que salía como «1931.48 cm²/m», y en momentos sin `->`, que salían como «kJ». | Media (presentación) | Igual que en M2. Se forzaron las unidades en *ge-medianera*. |
+| M3 (bis) | `SE030` | Además de *pe-e030-estatico*, la excepción con Vs30 < 200 m/s en zona 4 rompe *pe-e030-noestructurales* y *co-voladizo*. | Baja | Ver M3. |
+| M4 | Render de sustituciones | Las sustituciones largas (inercias con Steiner, `max(…, fórmula de As)`) se desbordan a la derecha de la hoja en lugar de partirse. | Baja | Partir las líneas en operadores + y ·. Se mitigó en las plantillas dividiendo las fórmulas (`Igf + Igw`, `Jl + Jp`, `asFlex`). |
+
+## Pruebas añadidas (segunda tanda)
+
+- `tests/verify.mjs`: Asmax con β1(420); Ig y Mcr del aligerado; deflexión del aligerado y NO CUMPLE con luz de 6 m;
+  escalera con t = 15 cm y NO CUMPLE ℓ/240; negativo de la escalera semiempotrada; datos extremos de la escalera.
+- `tests/concrete.test.mjs`: U2 del voladizo con Fv = 0.34 y zona 1; deriva límite del punzonamiento y NO CUMPLE con 0.007;
+  ρt según fy en la losa 1D.
+- `tests/geotech.test.mjs`: qn y 1.75/β de la platea, NO CUMPLE con qa = 1.2; Jc y vu de la medianera; dato extremo ks = 12.
+- `tests/masonry.test.mjs`: excentricidad del cerco con pasivo movilizado; zona 1 sin falsas fallas.
+- `tests/steel.test.mjs`: factor 0.75 y NO CUMPLE con sismo en la placa base.
+- `tests/peru.test.mjs`: control inferior de q en el metrado.
+
+Validaciones modificadas, con su justificación arriba:
+
+- `escalera`: hm, Mu, As y φVc, porque t pasó de 15 a 17 cm (E.060 9.6.2, Tabla 9.2).
+- `co-voladizo`: Mu 15.45 → 16.06 t·m y As_req 8.022 → 8.360 cm² (E.030 Art. 28.4 y 38.1). Se agregó `Mu1` = 15.45 t·m.

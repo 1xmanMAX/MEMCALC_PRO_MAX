@@ -316,4 +316,20 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('co-'))) {
 }
 truthy('Listas desplegables intactas con rango (f\'c, espesor de losa, estribo del voladizo)', (() => { const f = (id, n) => runTemplate(id).res.ctx.inputs.find(i => i.name === n); return f('co-placa', 'fc').options.length === 3 && f('co-placa', 'fc').range.max === 420 && f('co-losa2d', 'h').options.length === 4 && f('co-voladizo', 'est').options.length === 2; })());
 truthy('Losas: validacion con los coeficientes de la E.060 (Tabla 13.1 y Art. 8.3.3)', ['co-losa2d', 'co-losa1d'].every(id => /Tabla 13\.1|8\.3\.3/.test(TEMPLATES.find(x => x.id === id).validacion.fuente)));
+section('Segunda opinión — segunda tanda (co-voladizo, co-punzonamiento, co-losa1d)');
+{ const sub2 = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const v = runTemplate('co-voladizo');
+  near('Voladizo: U2 = 1.25(MD + ML) + 2/3·Z·U·S·(MD + 0.25 ML) (E.030 Art. 38.1)', v('Mu2', 'tonf*m'), 1.25 * (8 + 2.5) + v('Fv') * (8 + 0.25 * 2.5), 1e-6);
+  near('Voladizo: Fv = 2/3·0.45·1.0·S(300 m/s) = 0.34', v('Fv'), 0.34, 0.001);
+  truthy('Voladizo: gobierna la combinación con sismo vertical (Mu = Mu2 > Mu1)', v('Mu', 'tonf*m') === v('Mu2', 'tonf*m') && v('Mu2', 'tonf*m') > v('Mu1', 'tonf*m'));
+  const v1 = runTemplate('co-voladizo', sub2([['zona = 4 //', 'zona = 1 //']]));
+  near('Voladizo en zona 1: gobierna 1.4CM + 1.7CV', v1('Mu', 'tonf*m'), 15.45, 0.001);
+  const p = runTemplate('co-punzonamiento');
+  near('Punzonamiento: deriva límite = máx(0.035 − vug/(20φvc), 0.005) (ACI 318-19 18.14.5.1)', p('derivalim'), Math.max(0.035 - p('vug', 'kgf/cm^2') / (20 * 0.85 * p('vc', 'kgf/cm^2')), 0.005), 1e-9);
+  const p2 = runTemplate('co-punzonamiento', sub2([['deriva = 0.004', 'deriva = 0.007']]));
+  truthy('Punzonamiento: deriva 0.007 con vug/φvc = 0.67 → requiere refuerzo por cortante (NO CUMPLE)', p2.res.ctx.checks.some(c => !c.ok && /deriva/.test(c.label)));
+  const l = runTemplate('co-losa1d', sub2([['fy = 4200 kgf/cm^2 // Acero', 'fy = 2800 kgf/cm^2 // Acero']]));
+  near('Losa 1D: ρt = 0.0020 con fy = 2800 (E.060 9.7.2)', l('rhot'), 0.0020, 1e-9);
+  near('Losa 1D: ρt = 0.0018 con fy = 4200', runTemplate('co-losa1d')('rhot'), 0.0018, 1e-9);
+}
 done();
