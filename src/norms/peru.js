@@ -7,7 +7,10 @@
 //  Las funciones SE030, TpE030, TlE030, CE030 y CE030d ya existen en
 //  src/engine.js (no se redefinen aquí).
 // =====================================================================
-import { defineFns, math, toNum, mkUnit, interp1 } from '../engine.js';
+import { defineFns, math, toNum, mkUnit as mkU, interp1, fixedUnits } from '../engine.js';
+// unidad fija para que la memoria muestre el resultado en la unidad normativa (p. ej. kgf/m²)
+const mkUnit = (v, u) => { const x = mkU(v, u); fixedUnits.set(x, u); return x; };
+const fixU = (x, u) => { try { if (math.isUnit(x)) { const y = x.to(u); fixedUnits.set(y, u); return y; } } catch (e) { /* */ } return x; };
 
 const G = 9.80665; // m/s²
 const n0 = (x, u) => toNum(x, u);
@@ -137,11 +140,11 @@ defineFns({
   },
   PhE020: { fn: (Cf, Vh) => mkUnit(0.005 * n0(Cf) * n0(Vh, 'km/h') ** 2, 'kgf/m^2'), tex: 'P_h', desc: 'Presión de viento Ph = 0.005·C·Vh² [kgf/m², Vh en km/h] (E.020 Art. 12.4)', args: 'C, Vh' },
   LrE020: {
-    fn: (Lo, At, k) => { const Ai = n0(k) * n0(At, 'm^2'); if (Ai <= 40) return Lo; return math.multiply(Math.max(0.25 + 4.6 / Math.sqrt(Ai), 0.5), Lo); },
+    fn: (Lo, At, k) => { const Ai = n0(k) * n0(At, 'm^2'); if (Ai <= 40) return Lo; return fixU(math.multiply(Math.max(0.25 + 4.6 / Math.sqrt(Ai), 0.5), Lo), 'kgf/m^2'); },
     tex: 'L_r', desc: 'Carga viva reducida Lr = Lo·(0.25 + 4.6/√Ai) ≥ 0.5·Lo, Ai = k·At > 40 m² (E.020 Art. 10)', args: 'Lo, At, k',
   },
   QtE020: {
-    fn: (Qs, th) => { const t = math.isUnit(th) ? th.toNumber('deg') : n0(th); const f = t <= 15 ? 1 : t <= 30 ? 0.8 : 0.8 * Math.max(0, 1 - 0.025 * (t - 30)); return math.multiply(f, Qs); },
+    fn: (Qs, th) => { const t = math.isUnit(th) ? th.toNumber('deg') : n0(th); const f = t <= 15 ? 1 : t <= 30 ? 0.8 : 0.8 * Math.max(0, 1 - 0.025 * (t - 30)); return fixU(math.multiply(f, Qs), 'kgf/m^2'); },
     tex: 'Q_t', desc: 'Carga de nieve en techos Qt = Qs (θ ≤ 15°), 0.8 Qs (15°–30°), Cs·0.8 Qs con Cs = 1 − 0.025(θ − 30°) (E.020 Art. 11.3)', args: 'Qs, θ',
   },
   pAligE020: {

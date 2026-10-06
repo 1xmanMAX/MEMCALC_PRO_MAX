@@ -239,7 +239,7 @@ registerBlock('modal', {
     let fesc = 1;
     if (Vest > 0) { fesc = Math.max(1, pmin * Vest / r.Vb); setVar(ctx, 'fesc' + sf, fesc); }
     // ---- figura: formas modales | cortantes | derivas ----
-    const W = 720, Hh = 330, top = 34, ph = 240;
+    const W = 720, Hh = 360, top = 34, ph = 240;
     const Hmax = r.H[n - 1];
     let g = '';
     const nshow = Math.min(3, n);
@@ -251,7 +251,7 @@ registerBlock('modal', {
         const pts = [[0, 0], ...md.phi.map((p, i) => [p / mx, r.H[i]])];
         g += `<path d="${pts.map((p, i) => (i ? 'L' : 'M') + fr.X(p[0]).toFixed(1) + ',' + fr.Y(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="${COLS[k]}" stroke-width="2"/>`;
         pts.slice(1).forEach(p => { g += `<circle cx="${fr.X(p[0]).toFixed(1)}" cy="${fr.Y(p[1]).toFixed(1)}" r="2.8" fill="${COLS[k]}"/>`; });
-        g += `<rect x="${58}" y="${top + 6 + k * 14}" width="10" height="3" fill="${COLS[k]}"/>` + T(72, top + 10 + k * 14, `Modo ${k + 1}: T = ${f2(md.T, 3)} s`, { fs: 9, a: 'start', c: COLS[k] });
+        g += `<rect x="${20 + k * 90}" y="${top + ph + 40}" width="12" height="3" fill="${COLS[k]}"/>` + T(35 + k * 90, top + ph + 44, `Modo ${k + 1}: ${f2(md.T, 3)} s`, { fs: 9, a: 'start', c: COLS[k] });
       }
     }
     // cortantes
@@ -277,10 +277,10 @@ registerBlock('modal', {
     let h = `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || `Análisis modal espectral: formas modales, cortantes (${comb}) y derivas inelásticas`)}</div>`;
     // ---- tabla de modos ----
     let acc = 0;
-    const rows1 = r.modes.map((md, i) => { acc += md.ratio; return [String(i + 1) + (i < nmod ? '' : ' *'), f2(md.T, 4), f2(md.w, 3), f2(md.Gam, 4), f2(md.ratio * 100, 2), f2(acc * 100, 2), f2(md.Sa / G, 4), f2(nf(md.Vb), 2)]; });
+    const rows1 = r.modes.map((md, i) => { acc += md.ratio; return [String(i + 1) + (i < nmod ? '' : ' *'), f2(md.T, 3), f2(md.w, 2), f2(md.Gam, 3), f2(md.ratio * 100, 2), f2(acc * 100, 2), f2(md.Sa / G, 4), f2(nf(md.Vb), 2)]; });
     h += tableHtml(ctx, 'Periodos, factores de participación y masas efectivas', ['Modo', kx('T_n') + ' [s]', kx('\\omega_n') + ' [rad/s]', kx('\\Gamma_n'), kx('M^*_n/M') + ' [%]', kx('\\Sigma') + ' [%]', kx('S_a/g'), kx('V_{b,n}') + ` [${lblF()}]`], rows1);
     const rows2 = [];
-    for (let i = n - 1; i >= 0; i--) rows2.push([String(i + 1), f2(r.H[i], 2), f2(nf(m[i] * G), 2), f2(nf(r.F[i]), 2), f2(nf(r.V[i]), 2), f2(nm(r.Mo[i]), 2), f2(nl(uin[i]), 3), f2(drift[i], 5), dlim > 0 ? okMark(drift[i] <= dlim) : '—']);
+    for (let i = n - 1; i >= 0; i--) rows2.push([String(i + 1), f2(r.H[i], 2), f2(nf(m[i] * G), 2), f2(nf(r.F[i]), 2), f2(nf(r.V[i]), 2), f2(nm(r.Mo[i]), 2), f2(nl(uin[i]), 3), f2(drift[i], 3), dlim > 0 ? okMark(drift[i] <= dlim) : '—']);
     h += tableHtml(ctx, `Respuesta combinada (${comb}) por nivel; desplazamientos y derivas inelásticos (× ${f2(fd, 3)})`, ['Nivel', kx('h_i') + ' [m]', kx('P_i') + ` [${lblF()}]`, kx('F_i') + ` [${lblF()}]`, kx('V_i') + ` [${lblF()}]`, kx('M_i') + ` [${lblM()}]`, kx('u_i') + ` [${lblL()}]`, kx('\\Delta_i/h_i'), 'Estado'], rows2);
     // ---- verificaciones ----
     h += chkLine(ctx, r.Mpart >= 0.9 - 1e-9, `\\sum M^*_n/M = ${f2(r.Mpart * 100, 2)}\\,\\% \\;\\ge\\; 90\\,\\%`, `Masa participativa de los ${nmod} modos combinados (E.030 Art. 40.2)`, 0.9 / r.Mpart);
@@ -439,7 +439,7 @@ registerBlock('irregE030', {
       const cv = Vr ? (i < n - 1 ? f2(Vr[i] / Vr[i + 1], 3) + ' ' + okMark(Vr[i] / Vr[i + 1] >= 0.8) : '—') : '';
       const cp = P ? (i < n - 1 ? f2(Math.max(i > 0 ? P[i] / P[i - 1] : 0, i < n - 2 ? P[i] / P[i + 1] : 0), 3) : 'azotea') : '';
       const ct = rt ? f2(rt[i], 3) + ' ' + okMark(rt[i] <= 1.3 || (dr && !(dr[i] > 0.5 * dlim))) : '';
-      rows.push([String(i + 1), f2(Kv[i] / math.unit(1, prefK()).toNumber('N/m'), 0), c1, c3, ...(Vr ? [cv] : []), ...(P ? [cp] : []), ...(rt ? [ct] : []), ...(dr ? [f2(dr[i], 5) + (dr[i] > 0.5 * dlim ? ' (> 50 %)' : '')] : [])]);
+      rows.push([String(i + 1), f2(Kv[i] / math.unit(1, prefK()).toNumber('N/m'), 0), c1, c3, ...(Vr ? [cv] : []), ...(P ? [cp] : []), ...(rt ? [ct] : []), ...(dr ? [f2(dr[i], 3) + (dr[i] > 0.5 * dlim ? ' (> 50 %)' : '')] : [])]);
     }
     const heads = ['Entrepiso', kx('K_i') + ` [${prefK().replace('*', '·')}]`, kx('K_i/K_{i+1}'), kx('K_i/\\bar K_{i+1..i+3}'), ...(Vr ? [kx('V_{r,i}/V_{r,i+1}')] : []), ...(P ? [kx('P_i/P_{ady}')] : []), ...(rt ? [kx('\\Delta_{max}/\\Delta_{prom}')] : []), ...(dr ? [kx('\\Delta_i/h_i')] : [])];
     let h = tableHtml(ctx, 'Indicadores de irregularidad por entrepiso', heads, rows);
@@ -477,7 +477,7 @@ registerBlock('lrb', {
     F('titulo', 'Título', ''),
   ],
   def: { N: '20', Qd: 'Qd', kd: 'kd', Dy: 'Dy', W: 'P', SaM: 'SaME031(T, Z, S, Tp, Tl)', lQmax: '1.5', lQmin: '0.8', lkmax: '1.3', lkmin: '0.8' },
-  hint: 'Itera DM = SaM(TM)·TM²/(4π²·BM) con keff = Qd/D + kd, βeff = 4Qd(D − Dy)/(2π·keff·D²) y TM = 2π√(P/(keff·g)) para las propiedades de límite inferior, nominal y superior (E.031 Art. 13, 20). Exporta <code>DM_inf, DM_nom, DM_sup, kM_*, betaM_*, TM_*, BM_*, Vb_*</code>.',
+  hint: 'Itera DM = SaM(TM)·TM²/(4π²·BM) con keff = Qd/D + kd, βeff = 4Qd(D − Dy)/(2π·keff·D²) y TM = 2π√(P/(keff·g)) para las propiedades de límite inferior, nominal y superior (E.031 Art. 13, 20). Exporta <code>D_M_inf, D_M_nom, D_M_sup, kM_*, beta_M_*, T_M_*, B_M_*, Sa_M_*, Vb_*, Qd_*, kd_*</code>.',
   render(b, ctx) {
     const S = ctx.scope;
     const N = scal(b.N, S, 1), Qd = scal(b.Qd, S, 0), kd = scal(b.kd, S, 0), Dy = evalParam(b.Dy, S, 'm', 0.01), Wt = scal(b.W, S, 0);
@@ -501,9 +501,9 @@ registerBlock('lrb', {
       const Dc = Math.max(D, Dy * 1.0001), ke = Q / Dc + kk, be = Math.max(0, 4 * Q * (Dc - Dy) / (2 * Math.PI * ke * Dc * Dc));
       const Tm = 2 * Math.PI * Math.sqrt(Wt / (ke * G)), Bm = BME031num(be * 100), Sa = SaFn(Tm);
       res[key] = { Q, kk, D: Dc, ke, be, Tm, Bm, Sa, Vb: ke * Dc, hist, lq, lk };
-      setVar(ctx, 'DM_' + key, uL(Dc)); setVar(ctx, 'kM_' + key, math.unit(ke, 'N/m').to(prefK()));
-      setVar(ctx, 'betaM_' + key, be); setVar(ctx, 'TM_' + key, math.unit(Tm, 's')); setVar(ctx, 'BM_' + key, Bm);
-      setVar(ctx, 'SaM_' + key, Sa / G); setVar(ctx, 'Vb_' + key, uF(ke * Dc)); setVar(ctx, 'Qd_' + key, uF(Q)); setVar(ctx, 'kd_' + key, math.unit(kk, 'N/m').to(prefK()));
+      setVar(ctx, 'D_M_' + key, uL(Dc)); setVar(ctx, 'kM_' + key, math.unit(ke, 'N/m').to(prefK()));
+      setVar(ctx, 'beta_M_' + key, be); setVar(ctx, 'T_M_' + key, math.unit(Tm, 's')); setVar(ctx, 'B_M_' + key, Bm);
+      setVar(ctx, 'Sa_M_' + key, Sa / G); setVar(ctx, 'Vb_' + key, uF(ke * Dc)); setVar(ctx, 'Qd_' + key, uF(Q)); setVar(ctx, 'kd_' + key, math.unit(kk, 'N/m').to(prefK()));
     }
     // ---- figura: lazos histeréticos de un aislador + espectro de desplazamientos ----
     const W = 720, H = 320, top = 30, ph = 240;
@@ -519,7 +519,7 @@ registerBlock('lrb', {
         const col = ci ? C.red : C.blue;
         g += `<path d="${pts.map((p, i) => (i ? 'L' : 'M') + fr.X(nl(p[0])).toFixed(1) + ',' + fr.Y(nf(p[1])).toFixed(1)).join(' ')} Z" fill="${ci ? C.redF : C.blueF}" stroke="${col}" stroke-width="1.6"/>`;
         g += Lne(fr.X(-nl(Dmx)), fr.Y(-nf(Fmx)), fr.X(nl(Dmx)), fr.Y(nf(Fmx)), col, 1, '4 3');
-        g += T(fr.X(nl(Dmx)) + 3, fr.Y(nf(Fmx)) - 4 - ci * 11, `${k === 'inf' ? 'inferior' : 'superior'}: DM = ${f2(nl(Dmx), 1)}`, { fs: 9, a: 'end', c: col });
+        g += `<rect x="${fr.X(-nl(Dm)) + 8}" y="${top + 9 + ci * 13}" width="12" height="3" fill="${col}"/>` + T(fr.X(-nl(Dm)) + 24, top + 13 + ci * 13, `${k === 'inf' ? 'Límite inferior' : 'Límite superior'}: DM = ${f2(nl(Dmx), 1)} ${lblL()}`, { fs: 9, a: 'start', c: col });
         void Fy;
       });
     }
@@ -528,11 +528,11 @@ registerBlock('lrb', {
       const ymx = Math.max(...Ds.map(d => d[1])) * 1.1;
       const fr = frame(430, top, 270, ph, [0, Tmax], [0, nl(ymx)], { title: 'Espectro de desplazamientos SMC (5 %) y DM', xl: 'T [s]', xf: (t) => f2(t, 1), yf: (t) => f2(t, 0) });
       g += fr.g + `<path d="${Ds.map((d, i) => (i ? 'L' : 'M') + fr.X(d[0]).toFixed(1) + ',' + fr.Y(nl(d[1])).toFixed(1)).join(' ')}" fill="none" stroke="${C.ink}" stroke-width="1.6"/>`;
-      ['inf', 'nom', 'sup'].forEach((k, ci) => { const r = res[k], col = [C.blue, C.green, C.red][ci]; g += `<circle cx="${fr.X(r.Tm).toFixed(1)}" cy="${fr.Y(nl(r.D)).toFixed(1)}" r="4" fill="${col}"/>` + T(fr.X(r.Tm) + 6, fr.Y(nl(r.D)) + 3 + (ci - 1) * 10, `${k}: TM = ${f2(r.Tm, 2)} s`, { fs: 9, a: 'start', c: col }); });
-      g += T(fr.X(Tmax) - 4, top + 14, 'Sd = SaM·T²/4π²  (puntos: DM = Sd/BM)', { fs: 9, a: 'end', c: C.axis });
+      ['inf', 'nom', 'sup'].forEach((k, ci) => { const r = res[k], col = [C.blue, C.green, C.red][ci]; g += `<circle cx="${fr.X(r.Tm).toFixed(1)}" cy="${fr.Y(nl(r.D)).toFixed(1)}" r="4" fill="${col}" stroke="#fff"/>` + `<circle cx="${fr.X(0) + 12}" cy="${top + 30 + ci * 13}" r="3.5" fill="${col}"/>` + T(fr.X(0) + 20, top + 33 + ci * 13, `${{ inf: 'Inferior', nom: 'Nominal', sup: 'Superior' }[k]}: TM = ${f2(r.Tm, 2)} s, DM = ${f2(nl(r.D), 1)} ${lblL()}`, { fs: 9, a: 'start', c: col }); });
+      g += T(fr.X(0) + 8, top + 14, 'Curva: Sd = SaM·T²/4π² (5 %); puntos: DM = Sd/BM', { fs: 9, a: 'start', c: C.axis });
     }
     let h = `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || 'Sistema de aislamiento: lazos histeréticos y desplazamiento traslacional DM')}</div>`;
-    const rows = ['inf', 'nom', 'sup'].map(k => { const r = res[k]; return [{ inf: 'Inferior', nom: 'Nominal', sup: 'Superior' }[k], f2(r.lq, 2) + ' / ' + f2(r.lk, 2), f2(nf(r.Q), 2), f2(r.kk / math.unit(1, prefK()).toNumber('N/m'), 1), f2(nl(r.D), 2), f2(r.ke / math.unit(1, prefK()).toNumber('N/m'), 1), f2(r.be * 100, 2), f2(r.Tm, 3), f2(r.Bm, 3), f2(r.Sa / G, 4), f2(nf(r.Vb), 2), String(r.hist.length)]; });
+    const rows = ['inf', 'nom', 'sup'].map(k => { const r = res[k]; return [{ inf: 'Inferior', nom: 'Nominal', sup: 'Superior' }[k], f2(r.lq, 2) + ' / ' + f2(r.lk, 2), f2(nf(r.Q), 2), f2(r.kk / math.unit(1, prefK()).toNumber('N/m'), 1), f2(nl(r.D), 2), f2(r.ke / math.unit(1, prefK()).toNumber('N/m'), 1), f2(r.be * 100, 2), f2(r.Tm, 3), f2(r.Bm, 3), f2(r.Sa / G, 3), f2(nf(r.Vb), 1), String(r.hist.length)]; });
     h += tableHtml(ctx, 'Propiedades del sistema de aislamiento por límite (iteración hasta convergencia de DM)', ['Límite', kx('\\lambda_{Q}/\\lambda_{k}'), kx('\\Sigma Q_d') + ` [${lblF()}]`, kx('\\Sigma k_d') + ` [${prefK().replace('*', '·')}]`, kx('D_M') + ` [${lblL()}]`, kx('k_M') + ` [${prefK().replace('*', '·')}]`, kx('\\beta_M') + ' [%]', kx('T_M') + ' [s]', kx('B_M'), kx('S_{aM}/g'), kx('V_b=k_M D_M') + ` [${lblF()}]`, 'Iter.'], rows);
     return h;
   },
@@ -558,7 +558,7 @@ registerBlock('windgable', {
     const P = ['p1', 'p2', 'p3', 'p4'].map(k => evalParam(b[k], S, 'kgf/m^2', 0));
     const pu = settings.sys === 'tec' ? 'kgf/m²' : settings.sys === 'si' ? 'kPa' : 'psf';
     const pc = (v) => settings.sys === 'tec' ? v : settings.sys === 'si' ? v * G / 1000 : v * 0.204816;
-    const W = 720, H = 330, x0 = 150, wB = 420, sc = wB / B, yb = 285;
+    const W = 720, H = 330, x0 = 220, wB = 300, sc = wB / B, yb = 285;
     const hr = B / 2 * Math.tan(th), Ht = Hh + hr;
     const scy = Math.min(sc, 200 / Ht);
     const X = (x) => x0 + x * sc, Y = (z) => yb - z * scy;
@@ -566,8 +566,8 @@ registerBlock('windgable', {
     g += `<rect x="${x0 - 40}" y="${yb}" width="${wB + 80}" height="10" fill="url(#hatch)"/>` + Lne(x0 - 40, yb, x0 + wB + 40, yb, C.ink, 1.4);
     g += `<path d="M${X(0)},${Y(0)} L${X(0)},${Y(Hh)} L${X(B / 2)},${Y(Ht)} L${X(B)},${Y(Hh)} L${X(B)},${Y(0)}" fill="${C.conc}" stroke="${C.ink}" stroke-width="2.2"/>`;
     // viento
-    for (let k = 0; k < 4; k++) { const y = Y(Hh * (0.2 + 0.25 * k)); g += `<line x1="${x0 - 125}" y1="${y}" x2="${x0 - 80}" y2="${y}" stroke="${C.axis}" stroke-width="1.6" marker-end="url(#ar)"/>`; }
-    g += T(x0 - 105, Y(Hh) - 10, 'VIENTO', { fs: 10, b: 1, c: C.axis });
+    for (let k = 0; k < 3; k++) { const y = Y(Ht * 1.05) + 8 + k * 12; g += `<line x1="20" y1="${y}" x2="70" y2="${y}" stroke="${C.axis}" stroke-width="1.6" marker-end="url(#ar)"/>`; }
+    g += T(45, Y(Ht * 1.05) - 2, 'VIENTO', { fs: 10, b: 1, c: C.axis });
     const arrows = (xa, ya, xb, yb2, nx, ny, p, lbl) => {
       // superficie de (xa,ya) a (xb,yb2) en px; normal exterior (nx, ny); p > 0 presión (hacia la superficie)
       let s = ''; const L = 14 + 26 * Math.min(1, Math.abs(p) / Math.max(...P.map(Math.abs), 1e-9)); const col = p >= 0 ? C.red : C.blue;

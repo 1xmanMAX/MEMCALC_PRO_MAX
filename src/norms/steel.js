@@ -19,7 +19,7 @@ for (const fam of Object.keys(RAW)) {
   }
 }
 export const SHAPES = DB;
-const TIPOS = { I: 'Perfil I (AISC)', C: 'Canal C/MC', L: 'Ángulo L', R: 'Tubo HSS rectangular/cuadrado', O: 'Tubo HSS redondo / Pipe', E: 'Perfil I europeo' };
+const TIPOS = { K: 'Canal atiesado conformado en frío', I: 'Perfil I (AISC)', C: 'Canal C/MC', L: 'Ángulo L', R: 'Tubo HSS rectangular/cuadrado', O: 'Tubo HSS redondo / Pipe', E: 'Perfil I europeo' };
 
 function normName(s) {
   let n = String(s).toUpperCase().replace(/[\s×*]/g, 'X').replace(/X+/g, 'X').replace(/^([A-Z]+)X(?=\d)/, '$1');
@@ -41,13 +41,33 @@ export function getShape(name) {
     const r = /^HSS([\d.]+)X([\d.]+)$/.exec(n);
     if (!s && r) for (const v of DB.values()) if (v.fam === 'O' && Math.abs(v.p.OD - r[1]) < 6e-3 && Math.abs(v.p.tnom - r[2]) < 2e-3 && v.name.startsWith('HSS')) { s = v; break; }
   }
+  if (!s) s = coldFormed(n);
   if (!s) throw new Error('Perfil no encontrado en la base de datos: ' + name + ' (ejemplos: "W12X26", "HSS6X6X3/8", "L4X4X1/2", "C10X15.3", "IPE300", "HEB200")');
   return s;
+}
+// Canal atiesado conformado en frío "CF H x B x D x t" (mm), método lineal con esquinas rectas
+// (AISI Cold-Formed Steel Design Manual, Parte I). Ej.: CF150X50X15X2
+const CFC = new Map();
+function coldFormed(n) {
+  const m = /^CF([\d.]+)X([\d.]+)X([\d.]+)X([\d.]+)$/.exec(n);
+  if (!m) return null;
+  if (CFC.has(n)) return CFC.get(n);
+  const [H, B, D, t] = m.slice(1).map(Number);
+  if (!(H > 4 * t && B > 3 * t && D >= 0 && t > 0)) throw new Error('Dimensiones de perfil conformado inválidas: ' + n);
+  const a = H - t, bb = B - t, c = D > 0 ? D - t / 2 : 0, Ls = a + 2 * bb + 2 * c;
+  const A = t * Ls;
+  const Ix = t * (a ** 3 / 12 + 2 * bb * (a / 2) ** 2 + 2 * (c ** 3 / 12 + c * (a / 2 - c / 2) ** 2));
+  const xw = t * bb * (bb + 2 * c) / A; // centroide desde el eje del alma
+  const Iy = t * (a * xw * xw + 2 * (bb ** 3 / 12 + bb * (bb / 2 - xw) ** 2) + 2 * c * (bb - xw) ** 2);
+  const J = t ** 3 * Ls / 3;
+  const p = { W: A * 7.85e-3, A, d: H, bf: B, D, t, tdes: t, x: xw + t / 2, Ix, Sx: Ix / (H / 2), rx: Math.sqrt(Ix / A), Iy, Sy: Iy / (bb - xw + t / 2), ry: Math.sqrt(Iy / A), J, 'h/t': (H - 2 * t) / t, 'b/t': (B - 2 * t) / t, 'D/t': D > 0 ? (D - t) / t : 0 };
+  const s = { fam: 'K', name: n, p };
+  CFC.set(n, s); return s;
 }
 export function shapeList(fam) { return [...DB.values()].filter(v => !fam || v.fam === fam).map(v => v.name); }
 
 const DIM = {
-  1: ['d', 'bf', 'tw', 'tf', 'kdes', 'kdet', 'k1', 'x', 'y', 'eo', 'xp', 'yp', 'ro', 'rts', 'ho', 'Ht', 'B', 'tnom', 'tdes', 'h', 'b2', 'OD', 'ID', 't', 'r', 'rx', 'ry', 'rz'],
+  1: ['D', 'd', 'bf', 'tw', 'tf', 'kdes', 'kdet', 'k1', 'x', 'y', 'eo', 'xp', 'yp', 'ro', 'rts', 'ho', 'Ht', 'B', 'tnom', 'tdes', 'h', 'b2', 'OD', 'ID', 't', 'r', 'rx', 'ry', 'rz'],
   2: ['A'], 3: ['Zx', 'Sx', 'Zy', 'Sy', 'Sz', 'C'], 4: ['Ix', 'Iy', 'Iz', 'J'], 6: ['Cw'],
 };
 const POW = {}; for (const [p, ks] of Object.entries(DIM)) for (const k of ks) POW[k] = +p;
@@ -76,8 +96,8 @@ function raw(s, prop) {
 export function prop(s, propName, unitSys) {
   s = getShape(s);
   const { v, k } = raw(s, propName);
-  const fu = FAMUNIT[s.fam];
-  if (k === 'W') return s.fam === 'E' ? mkUnit(v, 'kgf/m') : mkUnit(v, 'lbf/ft');
+  const fu = FAMUNIT[s.fam] || 'mm';
+  if (k === 'W') return s.fam === 'E' || s.fam === 'K' ? mkUnit(v, 'kgf/m') : mkUnit(v, 'lbf/ft');
   const pw = POW[k];
   if (!pw) return v;
   const u = mkUnit(v, pw === 1 ? fu : fu + '^' + pw);

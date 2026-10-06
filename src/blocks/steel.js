@@ -45,6 +45,13 @@ function shapeSvg(s, X, Y, sc) {
     g += `<path ${st} d="M${X(0)},${Y(0)} H${X(t)} V${Y(d - t - r)} A${rs},${rs} 0 0 0 ${X(t + r)},${Y(d - t)} H${X(b)} V${Y(d)} H${X(0)} Z"/>`;
     return { g, w: b, h: d, cx: p.x, cy: d - p.y };
   }
+  if (s.fam === 'K') {
+    const H = p.d, B = p.bf, D = p.D, t = p.t;
+    let d = `M${X(B)},${Y(D)} V${Y(0)} H${X(0)} V${Y(H)} H${X(B)} V${Y(H - D)} H${X(B - t)} V${Y(H - t)} H${X(t)} V${Y(t)} H${X(B - t)} V${Y(D)} Z`;
+    if (!(D > 0)) d = `M${X(B)},${Y(0)} H${X(0)} V${Y(H)} H${X(B)} V${Y(H - t)} H${X(t)} V${Y(t)} H${X(B)} Z`;
+    g += `<path ${st} d="${d}"/>`;
+    return { g, w: B, h: H, cx: p.x, cy: H / 2 };
+  }
   if (s.fam === 'R') {
     const H = p.Ht, B = p.B, t = p.tdes, ro = 2 * t, ri = t;
     g += `<rect x="${X(0)}" y="${Y(0)}" width="${B * sc}" height="${H * sc}" rx="${ro * sc}" ${st}/>`;
@@ -71,7 +78,9 @@ const EXP = {
   O: [['A', 'A', 'Área'], ['D', 'OD', 'Diámetro exterior'], ['t', 'tdes', 'Espesor de diseño'], ['Ix', 'Ix', 'Inercia'], ['Sx', 'Sx', 'Módulo elástico'], ['Zx', 'Zx', 'Módulo plástico'], ['rx', 'rx', 'Radio de giro'], ['J', 'J', 'Constante de torsión'], ['Ct', 'C', 'Constante torsional C'], ['lambdaD', 'D/t', 'Esbeltez D/t'], ['peso', 'W', 'Peso por unidad de longitud']],
 };
 EXP.E = EXP.I.map(e => e);
-const NAMEF = { I: 'Perfil laminado I (W/HP/M/S) — AISC', C: 'Canal laminado C/MC — AISC', L: 'Ángulo laminado L — AISC', R: 'Tubo estructural HSS rectangular — AISC', O: 'Tubo circular HSS / Pipe — AISC', E: 'Perfil europeo (EN 10365 / ArcelorMittal)' };
+EXP.K = [['A', 'A', 'Área'], ['d', 'd', 'Peralte H'], ['bf', 'bf', 'Ancho del ala B'], ['D', 'D', 'Altura del labio D'], ['t', 't', 'Espesor'], ['xc', 'x', 'Centroide desde el dorso del alma'], ['Ix', 'Ix', 'Inercia eje x'], ['Sx', 'Sx', 'Módulo elástico x'], ['rx', 'rx', 'Radio de giro x'],
+  ['Iy', 'Iy', 'Inercia eje y'], ['Sy', 'Sy', 'Módulo elástico y (fibra del labio)'], ['ry', 'ry', 'Radio de giro y'], ['J', 'J', 'Constante de torsión'], ['lambdaw', 'h/t', 'Esbeltez del alma h/t'], ['lambdaf', 'b/t', 'Esbeltez del ala b/t'], ['peso', 'W', 'Peso por unidad de longitud']];
+const NAMEF = { K: 'Canal atiesado conformado en frío (método lineal, esquinas rectas)', I: 'Perfil laminado I (W/HP/M/S) — AISC', C: 'Canal laminado C/MC — AISC', L: 'Ángulo laminado L — AISC', R: 'Tubo estructural HSS rectangular — AISC', O: 'Tubo circular HSS / Pipe — AISC', E: 'Perfil europeo (EN 10365 / ArcelorMittal)' };
 
 registerBlock('steelsec', {
   name: 'Perfil de acero', icon: 'steel', group: 'Acero',
@@ -87,13 +96,13 @@ registerBlock('steelsec', {
     const rows = [];
     for (const [n, k, lab] of EXP[s.fam]) {
       let v; try { v = prop(s, k); } catch (e) { continue; }
-      if (k === 'W' && settings.sys !== 'us') v = v.to('kgf/m');
+      if (k === 'W' && settings.sys !== 'us') v = v.to('kgf/m'); else if (k === 'W') v = v.to('lbf/ft');
       setVar(ctx, n + sfx, v); rows.push([n + sfx, lab, v]);
     }
     // ---- dibujo ----
-    const p = s.p, nat = s.fam === 'E' ? 'cm' : 'in';
+    const p = s.p, nat = s.fam === 'E' ? 'cm' : s.fam === 'K' ? 'mm' : 'in';
     const W = 400, H = 330;
-    const dims = s.fam === 'R' ? [p.B, p.Ht] : s.fam === 'O' ? [p.OD, p.OD] : s.fam === 'L' ? [p.b2, p.d] : [p.bf, p.d];
+    const dims = s.fam === 'K' ? [p.bf, p.d] : s.fam === 'R' ? [p.B, p.Ht] : s.fam === 'O' ? [p.OD, p.OD] : s.fam === 'L' ? [p.b2, p.d] : [p.bf, p.d];
     const sc = Math.min(230 / dims[0], 240 / dims[1]);
     const ox = (W - dims[0] * sc) / 2 + 10, oy = (H - dims[1] * sc) / 2 + 5;
     const X = (x) => ox + x * sc, Y = (y) => oy + y * sc;
@@ -113,6 +122,10 @@ registerBlock('steelsec', {
       g += lead(X(p.bf * 0.85), Y(p.tf / 2), W - 8, Y(0) - 10, 'tf = ' + fl(p.tf), 'end');
       g += lead(X(xw), Y(p.d * 0.62), W - 8, Y(p.d * 0.62) + 26, 'tw = ' + fl(p.tw), 'end');
       if (s.fam === 'C') g += `<circle cx="${X(p.x)}" cy="${Y(p.d / 2)}" r="3" fill="${C.red}"/>` + T(X(p.x) + 6, Y(p.d / 2) - 6, 'x̄ = ' + fl(p.x), { fs: 10, a: 'start', c: C.red });
+    } else if (s.fam === 'K') {
+      g += lead(X(p.t / 2), Y(p.d * 0.62), X(p.bf) + 30, Y(p.d * 0.62), 't = ' + fl(p.t));
+      if (p.D > 0) g += dimV(X(p.bf) + 14, Y(p.d - p.D), Y(p.d), 'D = ' + fl(p.D), C.ink, 1);
+      g += `<circle cx="${X(p.x)}" cy="${Y(p.d / 2)}" r="3" fill="${C.red}"/>` + T(X(p.x) + 6, Y(p.d / 2) - 6, 'x̄ = ' + fl(p.x), { fs: 10, a: 'start', c: C.red });
     } else if (s.fam === 'L') {
       g += lead(X(p.t / 2), Y(p.d * 0.3), X(p.t) + 30, Y(p.d * 0.3), 't = ' + fl(p.t));
       g += `<circle cx="${X(p.x)}" cy="${Y(p.d - p.y)}" r="3" fill="${C.red}"/>` + T(X(p.x) + 6, Y(p.d - p.y) - 6, 'x̄ = ' + fl(p.x) + ', ȳ = ' + fl(p.y), { fs: 10, a: 'start', c: C.red });
@@ -127,7 +140,7 @@ registerBlock('steelsec', {
       for (let i = 0; i < cells.length; i += 2) tb += '<tr>' + cells[i] + (cells[i + 1] || '<td></td><td></td>') + '</tr>';
       tb += '</tbody></table>';
     }
-    const src = s.fam === 'E' ? 'Fuente: tablas ArcelorMittal / EN 10365 (It e Iw calculados con las fórmulas del fabricante).' : 'Fuente: AISC Shapes Database (Steel Construction Manual, Parte 1).';
+    const src = s.fam === 'K' ? 'Propiedades calculadas por el método lineal con esquinas rectas (AISI Cold-Formed Steel Design Manual); dimensiones exteriores H × B × D × t en mm.' : s.fam === 'E' ? 'Fuente: tablas ArcelorMittal / EN 10365 (It e Iw calculados con las fórmulas del fabricante).' : 'Fuente: AISC Shapes Database (Steel Construction Manual, Parte 1).';
     return `<div class="figure">${head}${svgWrap(W, H, g)}${tb}<div class="txt muted" style="font-size:.85em">${src}</div>${caption(ctx, b.titulo || 'Sección ' + s.name)}</div>`;
   },
 });
@@ -159,7 +172,8 @@ registerBlock('basepl', {
     pos({ N, B, d, bf });
     if (N < d || B < bf) throw new Error('La placa debe ser mayor que la columna (N ≥ d, B ≥ bf)');
     if (N2 && (N2 < N || B2 < B)) throw new Error('El pedestal debe ser mayor o igual que la placa');
-    const na = parseInt(b.na) || 4;
+    const na = Math.round(evalParam(b.na, S, '', 4));
+    if (![4, 6, 8].includes(na)) throw new Error('Número de pernos de anclaje: 4, 6 u 8');
     const mpl = (N - 0.95 * d) / 2, npl = (B - 0.8 * bf) / 2, lnp = Math.sqrt(d * bf) / 4;
     const L = (v) => math.unit(v, 'm').to(lenU());
     setVar(ctx, 'm_pl', L(mpl)); setVar(ctx, 'n_pl', L(npl)); setVar(ctx, 'lambdanp', L(lnp));

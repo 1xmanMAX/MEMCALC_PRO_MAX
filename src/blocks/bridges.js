@@ -40,7 +40,7 @@ function parseAxles(text, S) {
     const s = it.trim(); if (!s) continue;
     const tk = s.split(/\s+/);
     if (tk.length < 2) throw new Error('Eje sin posición: "' + s + '" (formato: P x)');
-    ax.push({ p: evalParam(tk[0], S, 'tonf'), x: evalParam(tk.slice(1).join(' '), 'm') });
+    ax.push({ p: evalParam(tk[0], S, 'tonf'), x: evalParam(tk.slice(1).join(' '), S, 'm') });
   }
   if (!ax.length) throw new Error('Defina al menos un eje (formato: P x; P x)');
   ax.sort((a, b) => a.x - b.x);
@@ -225,6 +225,9 @@ function renderHL93(b, ctx) {
     o.Vup = eta * comb(o.VDC, o.VDW, o.Vp, true); o.Vun = eta * comb(o.VDC, o.VDW, o.Vn, false);
     return o;
   });
+  // limpia el ruido numérico (|v| < 1e-7 t, t·m)
+  const KEYS = ['trP', 'taP', 'lnP', 'trN', 'taN', 'lnN', 'Mp', 'Mn', 'Vp', 'Vn', 'MDC', 'VDC', 'MDW', 'VDW', 'Mup', 'Mun', 'Vup', 'Vun'];
+  res.forEach(o => KEYS.forEach(kk => { if (Math.abs(o[kk]) < 1e-7) o[kk] = 0; }));
   // ----- exportación -----
   const sfx = b.sufijo ? String(b.sufijo).replace(/\W/g, '') : '';
   const set = (n, v, u) => setVar(ctx, n + sfx, U(v, u));
@@ -309,7 +312,8 @@ function renderHL93(b, ctx) {
   out += diag(res.map(o => o.Vp), res.map(o => o.Vn), hasPerm ? res.map(o => o.Vup) : null, hasPerm ? res.map(o => o.Vun) : null, 'V', 't', cV);
   // ----- tabla en décimos de luz -----
   const rows = [];
-  for (let i = 0; i < Ls.length; i++) for (let t = 0; t <= 10; t++) {
+  const tpts = Ls.length <= 2 ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [0, 5, 10];
+  for (let i = 0; i < Ls.length; i++) for (const t of tpts) {
     const x = X[i] + Ls[i] * t / 10, side = t === 10 ? 'L' : 'R';
     const o = res.find(q => Math.abs(q.x - x) < 1e-7 && q.side === side); if (o) rows.push({ o, lab: (Ls.length > 1 ? 'T' + (i + 1) + ' ' : '') + (t / 10).toFixed(1) + 'L' });
   }
@@ -359,7 +363,7 @@ function renderSec(b, ctx) {
   if (!(wc > 0)) throw new Error('El ancho de calzada resulta no positivo');
   const NL = b.NL ? Math.round(evalParam(b.NL, S, '', 2)) : Math.max(1, Math.floor(wc / 3.6 + 1e-9));
   const hTot = ts + (tipo === 'losa' ? 0 : hv);
-  const Wd = 720, pad = 50, sc = (Wd - 2 * pad) / B;
+  const Wd = 720, pad = 50, padR = 70, sc = (Wd - pad - padR) / B;
   const topY = 150; const H = topY + hTot * sc + 80;
   const X = (x) => pad + x * sc, Y = (y) => topY + y * sc;                       // y hacia abajo desde la rasante de la losa
   let g = arrowDefs;
@@ -430,10 +434,8 @@ function renderSec(b, ctx) {
     g += dimV(X(0) - 14, Y(0), Y(hTot), 'h = ' + f2(hTot), C.ink, -1);
     g += T(X(xg[0] + bw / 2) + 4, Y(ts + hv / 2), 'bw = ' + f2(bw), { fs: 9, a: 'start', c: C.axis });
   }
-  g += dimV(X(B) + 14, Y(0), Y(ts), 'ts=' + f2(ts), C.ink, 1);
-  g += T(X(B / 2), Y(-tasf) - 4 + (tasf * sc < 3 ? 0 : 0), '', {});
-  if (tasf > 0) g += T(X(B / 2), Y(ts) + 12 + (tipo === 'losa' ? 0 : 0) - ts * sc - 8, '', {});
-  g += T(X(xc0) + 4, Y(-tasf) - 4, 'asfalto e = ' + f2(tasf * 100, 1) + ' cm', { fs: 9, a: 'start', c: C.axis });
+  g += Lne(X(B) + 6, Y(0), X(B) + 16, Y(0), C.ink, 0.8) + Lne(X(B) + 6, Y(ts), X(B) + 16, Y(ts), C.ink, 0.8) + Lne(X(B) + 12, Y(0), X(B) + 12, Y(ts), C.ink, 0.8) + T(X(B) + 18, Y(ts / 2) + 4, 'ts = ' + f2(ts), { fs: 10, a: 'start' });
+  if (tasf > 0) g += T(X(tipo === 'losa' || nv < 2 ? B / 2 : xg[0] + Sg / 2), Y(ts) + (tipo === 'losa' ? 14 : 14), 'asfalto e = ' + f2(tasf * 100, 1) + ' cm', { fs: 9, c: C.axis });
   const de = vol - bar - ver;
   const tipTxt = { t: 'vigas T de concreto armado', i: 'vigas I de concreto presforzado', cajon: 'vigas cajón', acero: 'vigas de acero compuestas', losa: 'losa maciza' }[tipo] || 'vigas';
   const info = `<div class="kv">${K('B = ' + f2(B) + '\\,\\mathrm{m}')} ${K('w_{calzada} = ' + f2(wc) + '\\,\\mathrm{m}')} ${K('N_L = ' + NL)} ${tipo !== 'losa' ? K('N_b = ' + nv) + ' ' + K('S = ' + f2(Sg) + '\\,\\mathrm{m}') + ' ' + K('voladizo = ' + f2(vol) + '\\,\\mathrm{m}') + ' ' + K('d_e = ' + f2(de) + '\\,\\mathrm{m}') : ''}</div>`;

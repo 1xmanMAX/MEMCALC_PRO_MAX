@@ -33,7 +33,7 @@ Tp = TpNCh433(suelo) // Periodo T' del suelo (Tabla 6.3)
 n = nNCh433(suelo) // Exponente n (Tabla 6.3)
 uso = 2 // Categoría de ocupación (NCh433 Tabla 4.3) [1 : I — bajo riesgo|2 : II — habitación, oficinas|3 : III — aglomeración de personas|4 : IV — esenciales]
 I = INCh433(uso) // Coeficiente de importancia (Tabla 6.1)
-R = 7 // Factor de modificación de la respuesta (Tabla 5.1) [7 : Muros o pórticos de H.A.|6 : H.A. y albañilería confinada (cumple criterio A)|4 : Albañilería confinada / armada con huecos llenos|5.5 : Madera|7 : Acero, marcos especiales (SMF)|5.5 : Acero, marcos concéntricos especiales (SCBF)|6 : Acero, marcos excéntricos (EBF)]
+R = 7 // Factor de modificación de la respuesta (Tabla 5.1) [7 : Muros o pórticos de H.A. · acero SMF|6 : H.A. y albañilería (criterio A) · acero EBF o STMF|5.5 : Madera · acero SCBF|5 : Acero, marcos intermedios (IMF)|4 : Albañilería confinada o armada llena · acero OMF|3 : Albañilería armada sin llenar · acero OCBF|2 : Otros sistemas]
 ## Geometría y peso sísmico
 N = 5 // Número de pisos sobre el nivel basal
 hp = 2.6 m // Altura de entrepiso
@@ -81,7 +81,7 @@ Mtx = Fkx .* ekx // Momento de torsión accidental por nivel, sismo X (mismo sig
 Mty = Fky .* eky // Momento de torsión accidental por nivel, sismo Y`),
       { type: 'table', columnas: 'Nivel = 1:5\n$Z_k$ [m] = Zk\n$P_k$ [tonf] = Pk\n$A_k$ = Ak\n$F_{kx}$ [tonf] = Fkx\n$V_{kx}$ [tonf] = Vkx\n$M_{tx}$ [tonf·m] = Mtx\n$F_{ky}$ [tonf] = Fky\n$V_{ky}$ [tonf] = Vky', dec: '3', total: false, titulo: 'Distribución de las fuerzas sísmicas en altura y torsión accidental (NCh433 6.2.5 y 6.2.8)' },
       { type: 'fuerzasCL', Z: 'Zk', F: 'Fkx', V: 'Vkx', u: 'tonf', titulo: 'Fuerzas sísmicas estáticas y corte de entrepiso, sismo según X' },
-      { type: 'plot', expr: 'CNCh433(x s, S, Tp, n, Ao, R); Cmax + 0*x; Cmin + 0*x', var: 'x', desde: '0.05', hasta: '2', puntos: '300', xlabel: 'Periodo T* [s]', ylabel: 'C', leyenda: true, nombres: "C = 2.75·S·Ao/(gR)·(T'/T*)^n; Cmáx (Tabla 6.4 × f); Cmín = Ao·S/(6g)", titulo: 'Coeficiente sísmico en función del periodo (NCh433 6.2.3.1)' },
+      { type: 'plot', expr: 'CNCh433(x s, S, Tp, n, Ao, R); Cmax + 0*x; Cmin + 0*x; min(max(CNCh433(x s, S, Tp, n, Ao, R), Cmin), Cmax)', var: 'x', desde: '0.2', hasta: '2', puntos: '300', xlabel: 'Periodo T* [s]', ylabel: 'C', leyenda: true, nombres: "C = 2.75·S·Ao/(gR)·(T'/T*)^n; Cmáx (Tabla 6.4 × f); Cmín = Ao·S/(6g); C de diseño", titulo: 'Coeficiente sísmico en función del periodo (NCh433 6.2.3.1)' },
       calc(`# Deformaciones sísmicas (5.9)
 "Desplazamientos relativos de entrepiso obtenidos del modelo con las fuerzas estáticas de diseño, **incluyendo la torsión accidental** (5.9.1).
 dcmx = [0.08, 0.11, 0.12, 0.12, 0.11] cm // Desplazamiento relativo de entrepiso en el centro de masas, sismo X
@@ -120,7 +120,7 @@ To = ToNCh433(suelo) // Periodo To (Tabla 6.3)
 p = pNCh433(suelo) // Exponente p (Tabla 6.3)
 uso = 2 // Categoría de ocupación (Tabla 4.3) [1 : I|2 : II|3 : III|4 : IV]
 I = INCh433(uso) // Coeficiente de importancia (Tabla 6.1)
-Ro = 11 // Factor Ro para el espectro (Tabla 5.1) [11 : H.A. muros o pórticos / acero SMF|9 : H.A. y albañilería (criterio A)|4 : Albañilería|7 : Madera|8 : Acero SCBF|10 : Acero EBF]
+Ro = 11 // Factor Ro para el espectro (Tabla 5.1) [11 : Muros o pórticos de H.A. · acero SMF|10 : Acero EBF o STMF|9 : H.A. y albañilería (criterio A)|8 : Acero SCBF|7 : Madera|6 : Acero IMF|5 : Acero OMF u OCBF|4 : Albañilería confinada o armada llena|3 : Albañilería armada sin llenar]
 R = 7 // Factor R asociado, para Cmáx (Tabla 5.1)
 # Análisis modal
 Pk = [380, 380, 380, 380, 380, 300] tonf // Peso sísmico por nivel, D + 25 % SC (5.5.1)
@@ -153,7 +153,7 @@ Um = UmodalCL(Pk, kx, Sa) // Desplazamientos modales (niveles × modos)
 dm = cqcNCh433(entrepisoCL(Um), Tn) // Desplazamiento relativo de entrepiso, CQC
 d = fs*dm // Desplazamiento de diseño (incluye el factor por corte mínimo; 6.3.7.2 no reduce desplazamientos)
 check max(d)/hp <= 0.002 // Deriva en el centro de masas (5.9.2)`),
-      { type: 'spectrumCL', norma: 'NCh433', zona: 'zona', suelo: 'suelo', I: 'I', R: 'Ro', T: 'Ts', tmax: '3', comparar: true, elastico: true, titulo: 'Espectro de diseño NCh433 + DS61 (suelo del proyecto en azul; otros suelos con el mismo R* en trazos)' },
+      { type: 'spectrumCL', norma: 'NCh433', zona: 'zona', suelo: 'suelo', I: 'I', R: 'Ro', T: 'Ts', tmax: '3', comparar: true, elastico: false, titulo: 'Espectro de diseño NCh433 + DS61 (suelo del proyecto en azul; otros suelos con el mismo R* en trazos)' },
       { type: 'table', columnas: 'Modo = 1:6\n$T_n$ [s] = Tn\n$M_n^*/M$ = Mn\n$\\alpha$ = alfa\n$S_a/g$ = Sa', dec: '4', titulo: 'Periodos, masas equivalentes y pseudo-aceleraciones de diseño' },
       { type: 'table', columnas: 'Piso = 1:6\n$P_k$ [tonf] = Pk\n$V$ CQC [tonf] = V\n$V$ diseño [tonf] = Vd\n$\\Delta$ [cm] = d\nDeriva = d/hp', dec: '4', titulo: 'Cortes de entrepiso (CQC) y deformaciones de diseño' },
       { type: 'fuerzasCL', Z: 'hp*(1:6)', F: 'Vd - concat(Vd[2:6], [0] tonf)', V: 'Vd', u: 'tonf', titulo: 'Fuerzas equivalentes de piso y corte de entrepiso de diseño (análisis modal espectral)' },
@@ -180,20 +180,20 @@ Ao = AoNCh433(zona) // Aceleración efectiva máxima Ao/g (Tabla 5.2)
 suelo = 2 // Tipo de suelo (Tabla 5.3) [1 : I — roca|2 : II — grava/arena densa, suelo cohesivo duro|3 : III — arena no saturada medianamente densa|4 : IV — suelo cohesivo saturado blando]
 Tp = TpNCh2369(suelo) // Periodo T' (Tabla 5.4)
 n = nNCh2369(suelo) // Exponente n (Tabla 5.4)
-cat = 2 // Categoría de la instalación (4.3.1) [1 : C1 — crítica|2 : C2 — normal|3 : C3 — menor]
-I = INCh2369(cat) // Coeficiente de importancia (4.3.2)
-R = 5 // Factor de modificación de la respuesta (Tabla 5.6) [5 : 3.4 Edificio industrial de un piso con arriostramiento continuo de techo|3 : 3.5 Un piso sin arriostramiento continuo de techo (11.1.2)|4 : 3.6 Nave liviana (11.2.1)|5 : 3.3 Marcos arriostrados con anclajes dúctiles|3 : 3.7 Péndulo invertido|1 : Estructura elástica]
+uso = 2 // Categoría de la instalación (4.3.1) [1 : C1 — crítica|2 : C2 — normal|3 : C3 — menor]
+I = INCh2369(uso) // Coeficiente de importancia (4.3.2)
+R = 5 // Factor de modificación de la respuesta (Tabla 5.6) [5 : Un piso con arriostramiento continuo de techo (3.4)|4 : Nave liviana (3.6)|3 : Un piso sin arriostramiento continuo (3.5)|2 : Otras estructuras|1 : Estructura elástica]
 xi = 0.03 // Razón de amortiguamiento (Tabla 5.5) [0.02 : Marcos de acero soldados|0.03 : Marcos de acero con uniones de terreno apernadas|0.05 : Hormigón armado y albañilería]
 ## Peso sísmico (5.1.3)
 L = 60 m // Largo de la nave
 B = 24 m // Luz de los marcos
 H = 10 m // Altura de alero
 check H <= 20 m // Método estático solo para estructuras de hasta 20 m (5.2.2 a)
-qtecho = 0.040 tonf/m^2 // Cubierta, costaneras, vigas y arriostramientos de techo
+qtec = 0.040 tonf/m^2 // Cubierta, costaneras, vigas y arriostramientos de techo
 qinst = 0.015 tonf/m^2 // Instalaciones colgadas permanentes
 qmuro = 0.030 tonf/m^2 // Revestimiento lateral y costaneras de muros
 qsc = 0.030 tonf/m^2 // Sobrecarga de techo (no se incluye: factor 0 en techos, 5.1.3)
-Pt = (qtecho + qinst)*L*B + 0*qsc*L*B // Peso del techo (sobrecarga de techo con coeficiente 0)
+Pt = (qtec + qinst)*L*B + 0*qsc*L*B // Peso del techo (sobrecarga de techo con coeficiente 0)
 Pm = qmuro*2*(L + B)*H/2 // Mitad superior de los muros perimetrales
 Pc = 12 tonf // Mitad superior del peso de columnas y arriostramientos verticales
 P = Pt + Pm + Pc // Peso sísmico sobre el nivel basal
@@ -217,7 +217,7 @@ d = R1*dd // Deformación sísmica d = d0 + R1·dd con d0 = 0 (ec. 6-1)
 check d <= 0.015*H // Deformación máxima, otras estructuras (6.3 d)
 "Como $d \\le 0{,}015\\,h$ no es necesario considerar el efecto P-Delta (6.4).
 sep = max(R1*dd, 0.002*H, 30 mm) // Separación mínima a una estructura vecina rígida (6.2.1)`),
-      { type: 'spectrumCL', norma: 'NCh2369', zona: 'zona', suelo: 'suelo', I: 'I', R: 'R', xi: 'xi', T: 'Ts', tmax: '2.5', elastico: true, titulo: 'Espectro de diseño NCh2369.Of2003 con amortiguamiento ξ y límite I·Cmáx (ec. 5-5)' },
+      { type: 'spectrumCL', norma: 'NCh2369', zona: 'zona', suelo: 'suelo', I: 'I', R: 'R', xi: 'xi', T: 'Ts', tmax: '2.5', elastico: false, titulo: 'Espectro de diseño NCh2369.Of2003 con amortiguamiento ξ y límite I·Cmáx (ec. 5-5)' },
       { type: 'plot', expr: 'SaNCh2369(x s, Tp, n, Ao, I, R, xi); SaNCh2369v23(x s, 2, Ao, I, R, xi)', var: 'x', desde: '0.02', hasta: '2.5', puntos: '300', xlabel: 'Periodo T [s]', ylabel: 'Sa / g', leyenda: true, nombres: 'NCh2369.Of2003, suelo II; NCh2369:2023/2025, suelo B (mismos R, ξ, I)', titulo: 'Comparación referencial de espectros de diseño NCh2369 2003 vs. 2023 (en la versión 2023, R y ξ deben tomarse de su Tabla 6)' },
       summary(),
     ],
@@ -277,10 +277,10 @@ phiu = 2*deltau/(Ht*lw) -> m^-1 // Demanda de curvatura (ec. 21-7a)
 epsilonc = phiu*c // Deformación unitaria en la fibra más comprimida εc = φu·c
 check epsilonc <= 0.008 // Deformación unitaria máxima del hormigón (DS60 21.9.5.4)
 # Elementos de borde (DS60 21.9.6)
-climite = lw/(600*du) // Profundidad límite del eje neutro (ec. 21-8)
-ccreq = max(c - climite, 0 cm) // Longitud a confinar cc = c − lw/(600·δu/hw) (ec. 21-8a)
-ewmin = si(c >= climite, 300 mm, 0 mm) // Espesor mínimo del elemento de borde si se requiere (21.9.6.4 f)
-check lb >= ccreq // Largo del elemento de borde ≥ longitud a confinar (21.9.6.4 a)
+clim = lw/(600*du) // Profundidad límite del eje neutro (ec. 21-8)
+lconf = max(c - clim, 0 cm) // Longitud a confinar cc = c − lw/(600·δu/hw) (ec. 21-8a)
+ewmin = si(c >= clim, 300 mm, 0 mm) // Espesor mínimo del elemento de borde si se requiere (21.9.6.4 f)
+check lb >= lconf // Largo del elemento de borde ≥ longitud a confinar (21.9.6.4 a)
 check ew >= ewmin // Espesor del elemento de borde (21.9.6.4 f)
 ## Armadura de borde (DS60 21.9.2.4 y 21.9.6.5)
 check dbb <= min(ew, lb)/9 // Diámetro longitudinal ≤ 1/9 de la menor dimensión del borde (21.9.2.4 a)
@@ -335,8 +335,8 @@ h = (he + hc)/2 // Altura media del techo
 s = 6.0 m // Separación entre marcos
 # Presión por velocidad
 Kh = KzNCh432(h, expo) // Coeficiente de exposición a la altura media h
-qh = qzNCh432(h, V, expo, Iw, Kzt, Kd) -> kgf/m^2 // Presión por velocidad a la altura h
-qe = qzNCh432(he, V, expo, Iw, Kzt, Kd) -> kgf/m^2 // Presión por velocidad a la altura de alero (muro de barlovento)
+qh = qzNCh432(h, V, expo, Iw, Kzt, Kd) // Presión por velocidad a la altura h
+qe = qzNCh432(he, V, expo, Iw, Kzt, Kd) // Presión por velocidad a la altura de alero (muro de barlovento)
 # Coeficientes de presión externa (viento normal a la cumbrera)
 Cpb = 0.8 // Muro de barlovento
 Cps = CpMuroSotNCh432(B/L) // Muro de sotavento según L/B (L en la dirección del viento)
@@ -348,26 +348,28 @@ pms = qh*G*Cps - qh*GCpi -> kgf/m^2 // Muro de sotavento con presión interna
 ptb = qh*G*Cptb - qh*GCpi -> kgf/m^2 // Techo de barlovento con presión interna (máxima succión)
 pts = qh*G*Cpts - qh*GCpi -> kgf/m^2 // Techo de sotavento con presión interna
 pnet = qe*G*Cpb - qh*G*Cps -> kgf/m^2 // Presión horizontal neta sobre los muros (barlovento + sotavento)
-check pnet >= 48.9 kgf/m^2 // Carga de viento mínima 0,48 kN/m² sobre el área proyectada (ASCE 7-05 6.1.4.1)
+pmin = 48.9 kgf/m^2 // Carga mínima de diseño 0,48 kN/m² (ASCE 7-05 6.1.4.1)
+check pnet >= pmin // Carga de viento mínima 0,48 kN/m² sobre el área proyectada (ASCE 7-05 6.1.4.1)
 ## Cargas sobre el marco interior
 wmb = pmb*s -> tonf/m // Muro de barlovento (empuje)
 wms = pms*s -> tonf/m // Muro de sotavento (succión)
 wtb = ptb*s -> tonf/m // Techo de barlovento (succión, normal al techo)
 wts = pts*s -> tonf/m // Techo de sotavento (succión, normal al techo)
 # Levantamiento en anclajes (NCh3171: 0,9D + 1,6W)
-qDtecho = 0.045 tonf/m^2 // Peso propio de la cubierta, costaneras y marco
+qDt = 0.045 tonf/m^2 // Peso propio de la cubierta, costaneras y marco
 Rup = -(wtb + wts)*B/4 + (wmb - wms)*he^2/(2*B) -> tonf // Levantamiento en la columna de barlovento: techo (p·B/2 por faldón, mitad a cada columna) + volcamiento por cargas en muros
-Rd = qDtecho*s*B/2 -> tonf // Reacción por peso propio por columna
+Rd = qDt*s*B/2 -> tonf // Reacción por peso propio por columna
 Tu = 1.6*Rup - 0.9*Rd -> tonf // Tracción mayorada en los pernos de una columna
 phiRn = 4*0.75*0.75*400 MPa*285 mm^2 -> tonf // 4 pernos φ3/4" ASTM F1554 Gr.36: φ·0.75·Fu·Ab (AISC 360 J3.6)
 check Tu <= phiRn // Tracción en pernos de anclaje
 # Comparación con NCh432.Of71
-qOf71 = qNCh432Of71(hc, 2) // Presión básica a la altura de cumbrera, campo abierto (Tabla 1)
+qof = qNCh432Of71(hc, 2) // Presión básica a la altura de cumbrera, campo abierto (Tabla 1)
 Cof = 1.2*sin(theta) - 0.4 // Factor de forma del techo de barlovento (Of71, Fig. A.9)
-pOf_muro = (0.8 + 0.4)*qOf71 // Presión horizontal neta en muros, Of71 (barlovento 0,8 + sotavento 0,4)
-pOf_techo = Cof*qOf71 // Techo de barlovento, Of71`),
+pOf_muro = (0.8 + 0.4)*qof -> kgf/m^2 // Presión horizontal neta en muros, Of71 (barlovento 0,8 + sotavento 0,4)
+pOf_techo = Cof*qof -> kgf/m^2 // Techo de barlovento, Of71`),
+      { type: 'galponCL', B: 'B', he: 'he', theta: 'theta', pmb: 'pmb', pms: 'pms', ptb: 'ptb', pts: 'pts', u: 'kgf/m^2', titulo: 'Presiones de diseño NCh432:2010 sobre el marco interior, viento normal a la cumbrera [kgf/m²] (azul: presión, rojo: succión)' },
       { type: 'table', columnas: 'Superficie = ["Muro barlovento", "Muro sotavento", "Techo barlovento", "Techo sotavento"]\n$C_p$ = [Cpb, Cps, Cptb, Cpts]\n$p$ [kgf/m²] = [pmb, pms, ptb, pts]\n$w$ marco [tonf/m] = [wmb, wms, wtb, wts]', dec: '3', titulo: 'Presiones de diseño NCh432:2010 (positivo: hacia la superficie) y cargas sobre el marco interior' },
-      { type: 'plot', expr: 'qzNCh432(x m, V, 1, Iw)/(9.80665 N/kgf); qzNCh432(x m, V, 2, Iw)/(9.80665 N/kgf); qzNCh432(x m, V, 3, Iw)/(9.80665 N/kgf); qNCh432Of71(x m, 2)', var: 'x', desde: '0', hasta: '30', puntos: '200', xlabel: 'Altura z [m]', ylabel: 'q [kgf/m²]', leyenda: true, nombres: 'qz NCh432:2010 exposición B; qz exposición C; qz exposición D; Presión básica NCh432.Of71 (campo abierto)', titulo: 'Presión por velocidad en altura (V = 35 m/s, Kd = 0,85) y presión básica de NCh432.Of71' },
+      { type: 'plot', expr: 'qzNCh432(x m, V, 1, Iw)/(1 kgf/m^2); qzNCh432(x m, V, 2, Iw)/(1 kgf/m^2); qzNCh432(x m, V, 3, Iw)/(1 kgf/m^2); qNCh432Of71(x m, 2)/(1 kgf/m^2)', var: 'x', desde: '0', hasta: '30', puntos: '200', xlabel: 'Altura z [m]', ylabel: 'q [kgf/m²]', leyenda: true, nombres: 'qz NCh432:2010 exposición B; qz exposición C; qz exposición D; Presión básica NCh432.Of71 (campo abierto)', titulo: 'Presión por velocidad en altura (V = 35 m/s, Kd = 0,85) y presión básica de NCh432.Of71' },
       summary(),
     ],
   },

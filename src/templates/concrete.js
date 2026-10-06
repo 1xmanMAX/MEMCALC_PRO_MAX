@@ -1,4 +1,637 @@
-// Plantillas — módulo «concrete»
+// =====================================================================
+//  Plantillas — módulo «concrete» (NTE E.060-2009 · ACI 318-19)
+//  Unidades técnicas (kgf/cm², tonf, cm) en las plantillas peruanas.
+//  Ejemplos validados en tests/concrete.test.mjs · fuentes en docs/referencias/concrete.md
+// =====================================================================
 import { calc, text, summary } from './_h.js';
-void calc; void text; void summary;
-export default [];
+
+const E060 = 'RNE — NTE E.060 Concreto Armado (2009)';
+const CAT = 'Concreto armado';
+
+// ---------------------------------------------------------------------
+// 1) PLACA (MURO ESTRUCTURAL) — E.060 Cap. 11.10 y 21.9
+// ---------------------------------------------------------------------
+const placa = {
+  id: 'co-placa', pais: 'PE', cat: CAT, icon: 'wall', normas: E060 + ' — Art. 11.10 y 21.9 · NTE E.030',
+  name: 'Placa (muro estructural) — flexocompresión, cortante y bordes',
+  desc: 'Diagrama P–M por compatibilidad (fibras) con núcleos de borde y refuerzo distribuido, cortante amplificado Vu ≥ Vua·Mn/Mua, cuantías, elementos de borde por desplazamientos y esfuerzos, confinamiento y corte por fricción.',
+  titulo: 'Diseño de placa de concreto armado (muro estructural)',
+  blocks: [
+    text(`# Generalidades
+La presente memoria desarrolla el diseño del primer piso (sección crítica en la base) de una **placa de concreto armado** que forma parte del sistema sismorresistente de muros estructurales de una edificación de 7 pisos, de acuerdo con la **NTE E.060 Concreto Armado** (Cap. 10, 11.10 y 21.9) y la **NTE E.030 Diseño Sismorresistente**.
+
+Se verifica: (1) flexocompresión mediante el diagrama de interacción obtenido por compatibilidad de deformaciones con todo el refuerzo de núcleos y alma (E.060 21.9.6.1), (2) la resistencia a cortante con la fuerza amplificada por capacidad (E.060 21.9.5.3), (3) las cuantías y espaciamientos mínimos (E.060 11.10 y 21.9.4), (4) la necesidad de elementos de borde confinados (E.060 21.9.7.4 y 21.9.7.5) y su detallado, y (5) el corte por fricción en la junta de construcción (E.060 21.9.8).
+
+**Convención:** la placa se orienta en la dirección X (sismo X–X); el momento positivo comprime el extremo derecho.`),
+    calc(`# Datos
+## Materiales
+fc = 210 kgf/cm^2 // Resistencia del concreto (E.060 21.3.2.1: f'c ≥ 21 MPa) [210 kgf/cm^2|280 kgf/cm^2|350 kgf/cm^2]
+fy = 4200 kgf/cm^2 // Fluencia del acero ASTM A615 Gr. 60 (E.060 21.3.3)
+## Geometría
+lm = 350 cm // Longitud de la placa en planta
+tw = 25 cm // Espesor del alma [20 cm|25 cm|30 cm]
+lbe = 60 cm // Longitud de cada núcleo de borde
+hm = 21 m // Altura total de la placa (7 pisos)
+hlib = 2.70 m // Altura libre entre losas (apoyo lateral)
+rec = 4 cm // Recubrimiento al centro del estribo
+## Refuerzo
+barb = 6 // Barra de los núcleos [5 : 5/8"|6 : 3/4"|8 : 1"]
+nbe = 6 // Barras por núcleo (2 filas)
+barw = 3 // Barra del refuerzo distribuido [3 : 3/8"|4 : 1/2"]
+sv = 20 cm // Espaciamiento del refuerzo vertical del alma (dos capas)
+sh = 20 cm // Espaciamiento del refuerzo horizontal (dos capas)
+## Fuerzas del análisis (base del muro, E.060 9.2.3)
+PD = 190 tonf // Carga muerta de servicio
+Pu1 = 270 tonf // 1.25(CM+CV) + CS
+Mua1 = 480 tonf*m // Momento con 1.25(CM+CV) ± CS
+Pu2 = 170 tonf // 0.9 CM ± CS
+Mua2 = 440 tonf*m // Momento con 0.9 CM ± CS
+Pu3 = 330 tonf // 1.4 CM + 1.7 CV
+Mu3 = 25 tonf*m // Momento de gravedad
+Vua = 72 tonf // Cortante del análisis con 1.25(CM+CV) + CS
+R = 6 // Coeficiente de reducción sísmica empleado (E.030, muros estructurales)
+du = 16 cm // Desplazamiento inelástico en el nivel superior (E.030 Art. 5.1: 0.75·R·Δelástico)
+## Comprobaciones geométricas (E.060 21.9.3)
+check tw >= max(hlib/25, 15 cm) // Espesor mínimo del alma (E.060 21.9.3.2)
+Acw = lm*tw // Área de corte del alma
+Ag = lm*tw // Área bruta
+xb = lm - lbe + rec // Inicio del núcleo derecho`),
+    text(`## Sección transversal y diagrama de interacción
+El diagrama se calcula por compatibilidad de deformaciones ($\\varepsilon_{cu} = 0.003$, bloque rectangular equivalente con $\\beta_1$, E.060 10.2), integrando el concreto por fibras e incluyendo **todas** las barras de los núcleos y del alma (E.060 21.9.6.1). El factor $\\phi$ varía de 0.70 a 0.90 según E.060 9.3.2.2 y $\\phi P_{n,max} = 0.80\\,\\phi P_0$ (E.060 10.3.6.2).`),
+    { type: 'pmgen', geom: '0 0 lm tw', barras: 'R rec rec lbe-rec tw-rec 3 2 barb\nR xb rec lm-rec tw-rec 3 2 barb\nM lbe+sv rec lm-lbe-sv rec sv barw\nM lbe+sv tw-rec lm-lbe-sv tw-rec sv barw', nucleos: '0 0 lbe tw // núcleo\nlm-lbe 0 lbe tw // núcleo', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'X', demandas: 'Pu1, Mua1 // 1.25(CM+CV)+CS\nPu1, -Mua1 // 1.25(CM+CV)−CS\nPu2, Mua2 // 0.9CM+CS\nPu2, -Mua2 // 0.9CM−CS\nPu3, Mu3 // 1.4CM+1.7CV', titulo: 'Placa {lm} × {tw}: sección y diagrama de interacción (dirección X)' },
+    calc(`## Verificación de flexocompresión
+check DCpmg <= 1.0 // Todas las combinaciones dentro del diagrama φPn–φMn (E.060 21.9.6.1)
+rhoBE = nbe*Ab(barb)/(lbe*tw) // Cuantía de los núcleos
+check rhoBE <= 0.06 // Cuantía máxima en núcleos (E.060 10.9.1)
+Sm = tw*lm^2/6 // Módulo de sección bruta
+fr = 2*sqrtfc(fc) // Módulo de rotura (E.060 9.6.2.3, ec. 9-12 MKS)
+Mcr = (fr + Pu2/Ag)*Sm -> tonf*m // Momento de agrietamiento con la carga axial mínima (E.060 21.9.6.5)
+check phiMn_X(Pu2) >= Mcr // Resistencia a flexión ≥ momento de agrietamiento (E.060 21.9.6.5)`),
+    calc(`# Diseño por cortante (E.060 21.9.5 y 11.10)
+## Cortante de diseño por capacidad (E.060 21.9.5.3)
+Mn1 = Mn_X(Pu1) // Momento nominal asociado a Pu (aceros realmente colocados)
+fa = min(Mn1/Mua1, R) // Factor de amplificación Mn/Mua ≤ R (E.060 21.9.5.3)
+Vu = fa*Vua // Cortante de diseño (ec. 21-5)
+hcrit = max(lm, Mua1/(4*Vua), 2*3 m) // Altura en la que se aplica la amplificación (E.060 21.9.5.3)
+## Resistencia nominal
+rm = hm/lm // Relación de aspecto del muro
+alphac = si(rm <= 1.5, 0.80, si(rm >= 2.0, 0.53, 0.80 - 0.54*(rm - 1.5))) // Coeficiente αc (E.060 11.10.5, Anexo II)
+Vc = alphac*sqrtfc(fc)*Acw -> tonf // Aporte del concreto (ec. 11-30)
+rhoh = 2*Ab(barw)/(tw*sh) // Cuantía horizontal colocada (dos capas)
+Vs = Acw*rhoh*fy -> tonf // Aporte del refuerzo horizontal (ec. 11-31)
+Vnmax = 2.6*sqrtfc(fc)*Acw -> tonf // Límite (E.060 11.10.4, Anexo II)
+Vn = min(Vc + Vs, Vnmax) // Resistencia nominal
+phiv = 0.85 // Factor de reducción por cortante (E.060 9.3.2.3)
+phiVn = phiv*Vn // Resistencia de diseño
+check Vu <= phiVn // Resistencia a cortante en el plano del muro (E.060 11.10)
+## Cuantías y espaciamientos
+rhoh_req = max((Vu/phiv - Vc)/(Acw*fy), 0.0025) // Cuantía horizontal requerida (E.060 11.10.10.2)
+check rhoh >= rhoh_req // Cuantía horizontal
+rhov = 2*Ab(barw)/(tw*sv) // Cuantía vertical del alma colocada
+rhov_min = min(max(0.0025 + 0.5*(2.5 - rm)*(rhoh - 0.0025), 0.0025), rhoh) // ec. 11-32
+check rhov >= rhov_min // Cuantía vertical mínima (E.060 11.10.10.3)
+check max(sv, sh) <= min(3*tw, 40 cm) // Espaciamiento máximo 3t y 400 mm (E.060 11.10.10.2 y 11.10.10.4)
+dos_capas = si(tw >= 20 cm or Vu > 0.53*sqrtfc(fc)*Acw, 1, 0) // ¿Se requieren dos capas? (E.060 21.9.4.3)
+"Se requieren dos capas de refuerzo (1 = sí): **{dos_capas}** — se colocan dos capas de #{barw} @ {sv} (vertical) y #{barw} @ {sh} (horizontal).`),
+    calc(`# Elementos de borde (E.060 21.9.7)
+## Método de desplazamientos (E.060 21.9.7.4) — muro continuo con una sección crítica
+dr = max(du/hm, 0.005) // δu/hm (no menor que 0.005)
+clim = lm/(600*dr) -> cm // Profundidad límite del eje neutro (ec. 21-6)
+cmax = c_X(Pu1) // Mayor profundidad del eje neutro para Pu y Mn (compresión en cada extremo)
+req_be = si(cmax >= clim, 1, 0) // ¿Se requiere confinar los bordes? (1 = sí)
+## Método de esfuerzos (E.060 21.9.7.5) — referencial
+Ig = tw*lm^3/12 // Inercia bruta
+sigma = Pu1/Ag + Mua1*(lm/2)/Ig -> kgf/cm^2 // Esfuerzo máximo en la fibra extrema (modelo elástico)
+"Esfuerzo de compresión máximo: {sigma} frente a 0.2 f'c = {0.2*fc}. Para muros continuos rige el método de desplazamientos (21.9.7.4); se confinan los bordes cuando c ≥ c_lím: **requiere = {req_be}**.
+## Dimensiones del elemento de borde (E.060 21.9.7.6)
+lbe_req = max(cmax - 0.1*lm, cmax/2) -> cm // Extensión horizontal mínima (21.9.7.6 a)
+check lbe >= lbe_req // Longitud de núcleo suficiente
+check tw >= 15 cm // Espesor mínimo del elemento de borde (E.060 21.9.7.2)
+hbe = max(lm, Mua1/(4*Vua)) -> m // Altura mínima del confinamiento desde la base (21.9.7.4 b)
+## Refuerzo transversal de confinamiento
+este = 3 // Estribo de confinamiento [3 : 3/8"|4 : 1/2"]
+check db(este) >= si(barb <= 5, 0.8 cm, si(barb <= 8, db(3), db(4))) - 0.01 cm // Diámetro mínimo del estribo (21.9.7.6 d)
+smax_be = min(10*db(barb), min(lbe, tw), 25 cm) // Espaciamiento máximo (21.9.7.6 e)
+sbe = rounddown(smax_be, 2.5 cm) // Espaciamiento adoptado
+bc = tw - 2*rec // Núcleo confinado normal a las ramas (c. a c.)
+Ash_req = 0.09*sbe*bc*fc/fy // Ash mínimo (ACI 318-19 Tabla 18.10.6.4(f), referencial)
+Ash = 2*Ab(este) // Dos ramas
+check Ash >= Ash_req // Área de estribos de confinamiento
+hx = (lbe - 2*rec)/2 // Separación entre ramas o grapas (una grapa central)
+check hx <= 35 cm // Distancia entre ramas ≤ 350 mm (E.060 21.6.4.3)
+"Núcleos de borde: {nbe} #{barb} con estribos #{este} @ {sbe} en una altura de {hbe} desde la base (incluye una grapa central). Fuera de esa altura: estribos @ 25 cm (21.9.7.7).
+# Corte por fricción en la junta de construcción (E.060 21.9.8)
+mu = 1.0 // Coeficiente de fricción: superficie intencionalmente rugosa (E.060 11.7.4.3) [1.0|0.6]
+Nu = 0.9*PD // Fuerza normal = 0.9 veces la carga muerta
+Avf = Ast // Todo el refuerzo vertical que cruza la junta
+Vnf = min(mu*(Nu + Avf*fy), 0.2*fc*Ag, 55 kgf/cm^2*Ag) -> tonf // ec. 21-7 con el límite de E.060 11.7.5
+phiVnf = phiv*Vnf // Resistencia de diseño por fricción
+check Vu <= phiVnf // Resistencia por fricción en la junta`),
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 2) COLUMNA ESBELTA — E.060 10.10 a 10.13
+// ---------------------------------------------------------------------
+const colEsbelta = {
+  id: 'co-colesbelta', pais: 'PE', cat: CAT, icon: 'column', normas: E060 + ' — Art. 10.10 a 10.13',
+  name: 'Columna esbelta — magnificación de momentos',
+  desc: 'Efectos de esbeltez: índice de estabilidad Q, factores ψ y k (nomogramas), δns en dirección arriostrada, δs en dirección no arriostrada, M2,min, y verificación con diagramas P–M en ambas direcciones.',
+  titulo: 'Diseño de columna esbelta — método de magnificación de momentos',
+  blocks: [
+    text(`# Generalidades
+Se diseña una columna rectangular de un pórtico de concreto armado considerando los efectos de esbeltez mediante el **método de magnificación de momentos** de la NTE E.060 (Art. 10.10 a 10.13). En la dirección **X** el entrepiso se encuentra arriostrado por placas (índice de estabilidad $Q \\le 0.06$, E.060 10.11.4.2) y se aplica 10.12; en la dirección **Y** el entrepiso es no arriostrado y se aplica 10.13.
+
+Las rigideces se toman de E.060 10.11.1 (vigas $0.35I_g$, columnas $0.70I_g$) y el factor de longitud efectiva $k$ se obtiene de las ecuaciones de los nomogramas de Jackson–Julian (ACI R6.2.5), las que reproducen numéricamente los gráficos usuales.`),
+    calc(`# Datos
+fc = 280 kgf/cm^2 // Concreto [210 kgf/cm^2|280 kgf/cm^2|350 kgf/cm^2]
+fy = 4200 kgf/cm^2 // Acero
+b = 45 cm // Dimensión en X
+h = 45 cm // Dimensión en Y
+lu = 4.20 m // Longitud no arriostrada (libre entre vigas, E.060 10.11.3.1)
+hp = 4.80 m // Altura de entrepiso (piso a piso)
+bv = 30 cm // Ancho de vigas
+hv = 60 cm // Peralte de vigas
+Lv = 6.0 m // Luz de las vigas que llegan al nudo (ambos lados)
+bar = 6 // Barra longitudinal [6 : 3/4"|8 : 1"]
+## Cargas amplificadas en la columna
+Pu = 190 tonf // Carga axial amplificada
+betad = 0.60 // Carga axial sostenida / carga axial total (E.060 10.11.1)
+M1x = 9 tonf*m // Momento menor en X
+M2x = 14 tonf*m // Momento mayor en X
+sgn = 1 // Signo de M1/M2: +1 curvatura simple, −1 curvatura doble [1|-1]
+M2nsy = 6 tonf*m // Momento mayor en Y por cargas que no producen desplazamiento lateral
+M2sy = 16 tonf*m // Momento mayor en Y por cargas que producen desplazamiento lateral (sismo)
+## Datos del entrepiso (para Q)
+SPu = 2600 tonf // Suma de cargas verticales amplificadas del entrepiso
+Vus = 210 tonf // Cortante sísmico amplificado del entrepiso
+R = 8 // Coeficiente de reducción sísmica (dirección Y)
+D0e = 0.45 cm // Deriva elástica del entrepiso por el sismo reducido
+Q_x = 0.04 // Índice de estabilidad del entrepiso en X (placas), obtenido del análisis
+## Propiedades
+Ec = 15000*sqrtfc(fc) // Módulo de elasticidad (E.060 8.5, Anexo II)
+Ag = b*h // Área bruta
+Ig = b*h^3/12 // Inercia bruta
+r = 0.3*h // Radio de giro (E.060 10.11.2)`),
+    calc(`# Dirección X — entrepiso sin desplazamiento lateral (E.060 10.12)
+check Q_x <= 0.06 // Entrepiso arriostrado (E.060 10.11.4.2)
+kx = 1.0 // Factor de longitud efectiva (E.060 10.12.1, conservador)
+esb_x = kx*lu/r // Esbeltez
+lim_x = min(34 - 12*sgn*M1x/M2x, 40) // Límite para despreciar la esbeltez (ec. 10-7)
+check esb_x > lim_x // La esbeltez excede el límite: deben considerarse sus efectos (E.060 10.12.2)
+EI = 0.4*Ec*Ig/(1 + betad) -> tonf*m^2 // Rigidez efectiva (ec. 10-12)
+Pc_x = pi^2*EI/(kx*lu)^2 -> tonf // Carga crítica de pandeo (ec. 10-10)
+Cm = max(0.6 + 0.4*sgn*M1x/M2x, 0.4) // Factor de corrección (ec. 10-13)
+dns = max(Cm/(1 - Pu/(0.75*Pc_x)), 1.0) // Magnificador sin desplazamiento (ec. 10-9)
+check Pu < 0.75*Pc_x // Estabilidad del elemento
+M2min = Pu*(1.5 cm + 0.03*h) -> tonf*m // Momento mínimo (ec. 10-14, 15 mm + 0.03h)
+Mcx = dns*max(M2x, M2min) -> tonf*m // Momento magnificado de diseño (ec. 10-8)`),
+    calc(`# Dirección Y — entrepiso con desplazamiento lateral (E.060 10.13)
+## Índice de estabilidad del entrepiso (E.060 10.11.4.2)
+D0 = 0.75*R*D0e // Desplazamiento relativo de primer orden (Δo × 0.75R)
+Q = SPu*D0/(Vus*hp) // Índice de estabilidad (ec. 10-6)
+check Q > 0.06 // Entrepiso con desplazamiento lateral (no arriostrado, E.060 10.11.4.2)
+## Factor de longitud efectiva (E.060 10.13.1)
+Icol = 0.70*Ig // Inercia de columnas (E.060 10.11.1)
+Iv = 0.35*bv*hv^3/12 // Inercia de vigas (E.060 10.11.1)
+psiA = 2*(Icol/hp)/(2*Iv/Lv) // Nudo superior: dos columnas y dos vigas
+psiB = 1.0 // Nudo inferior: base semiempotrada (valor práctico)
+ky = kSway(psiA, psiB) // k para pórtico no arriostrado (nomograma, ≥ 1.0)
+esb_y = ky*lu/r // Esbeltez en Y
+check esb_y >= 22 // Deben considerarse los efectos de esbeltez (E.060 10.13.2)
+check esb_y <= 100 // Esbeltez máxima (E.060 10.11.5)
+## Magnificación por desplazamiento lateral (E.060 10.13.4.2)
+ds = 1/(1 - Q) // Magnificador δs
+check ds <= 1.5 // Límite para usar 10.13.4.2
+M2y = M2nsy + ds*M2sy -> tonf*m // Momento mayor magnificado (ec. 10-16)
+lim_y = 35/sqrt(Pu/(fc*Ag)) // Límite de ec. (10-19)
+"Esbeltez lu/r = {lu/r} frente a {lim_y}: si lu/r < 35/√(Pu/f'cAg) no se requiere magnificar M2 por curvatura del elemento (E.060 10.13.5).
+check lu/r < lim_y // No se requiere magnificación adicional por curvatura
+Qg = 1.25*SPu*D0/(Vus*hp) // Q con 1.4CM+1.7CV (≈ 1.25 veces la carga con sismo)
+check Qg <= 0.60 // Estabilidad ante cargas de gravedad (E.060 10.13.6 b)`),
+    text(`# Verificación de la sección
+Se verifica la sección con los momentos magnificados en cada dirección, por separado (E.060 10.11.6). El refuerzo es de 12 barras distribuidas en el perímetro.`),
+    { type: 'pmgen', geom: '0 0 b h', barras: 'R 6 6 b-6 h-6 4 4 bar', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'X', sufijo: 'x', demandas: 'Pu, Mcx // δns·M2 (X)', titulo: 'Diagrama de interacción en X (pórtico arriostrado)' },
+    { type: 'pmgen', geom: '0 0 b h', barras: 'R 6 6 b-6 h-6 4 4 bar', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'Y', sufijo: 'y', demandas: 'Pu, M2y // M2ns + δs·M2s (Y)', titulo: 'Diagrama de interacción en Y (pórtico no arriostrado)' },
+    calc(`## Resumen de la sección
+check rhog_x >= 0.01 // Cuantía mínima (E.060 10.9.1)
+check rhog_x <= 0.06 // Cuantía máxima (E.060 10.9.1)
+check DCpmg_x <= 1 // Flexocompresión en X
+check DCpmg_y <= 1 // Flexocompresión en Y`),
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 3) COLUMNA CON FLEXIÓN BIAXIAL — E.060 10.18 (Bresler) + compatibilidad
+// ---------------------------------------------------------------------
+const colBiaxial = {
+  id: 'co-biaxial', pais: 'PE', cat: CAT, icon: 'column', normas: E060 + ' — Art. 10.3 y 10.18',
+  name: 'Columna con flexión biaxial (Bresler y compatibilidad)',
+  desc: 'Método de la carga recíproca de Bresler (ec. 10-22) con Pnx y Pny de los diagramas uniaxiales, contraste con el contorno de carga exacto por fibras y verificación por la ec. 10-23 para carga axial baja.',
+  titulo: 'Diseño de columna en flexión biaxial',
+  blocks: [
+    text(`# Generalidades
+Una columna rectangular está sometida a carga axial y momentos en sus dos ejes principales. La NTE E.060 10.18 permite usar la **ecuación de la carga recíproca de Bresler** (ec. 10-22) para secciones rectangulares con refuerzo simétrico cuando $P_u \\ge 0.1\\,\\phi P_{on}$:
+$$\\frac{1}{P_n} = \\frac{1}{P_{nx}} + \\frac{1}{P_{ny}} - \\frac{1}{P_{on}}$$
+donde $P_{nx}$ es la resistencia nominal con excentricidad solo en X ($e_y = 0$) y $P_{ny}$ con excentricidad solo en Y. El resultado se contrasta con el **cálculo exacto por compatibilidad de deformaciones** (E.060 10.2 y 10.3) con eje neutro inclinado, que proporciona el contorno de carga $\\phi M_{nx}$–$\\phi M_{ny}$ al nivel $P_u$.`),
+    calc(`# Datos
+fc = 280 kgf/cm^2 // Concreto [210 kgf/cm^2|280 kgf/cm^2|350 kgf/cm^2]
+fy = 4200 kgf/cm^2 // Acero
+b = 50 cm // Dimensión en X
+h = 60 cm // Dimensión en Y
+rec = 6 cm // Recubrimiento al centro de barras
+bar = 8 // Barra longitudinal [6 : 3/4"|8 : 1"|9 : 1 1/8"]
+Pu = 300 tonf // Carga axial amplificada
+Mux = 30 tonf*m // Momento que comprime el extremo +X (excentricidad ex)
+Muy = 27 tonf*m // Momento que comprime el extremo +Y (excentricidad ey)
+Ag = b*h // Área bruta
+ex = Mux/Pu -> cm // Excentricidad en X
+ey = Muy/Pu -> cm // Excentricidad en Y`),
+    { type: 'pmgen', geom: '0 0 b h', barras: 'R rec rec b-rec h-rec 4 4 bar', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'XY', demandas: 'Pu, Mux, Muy // Combinación crítica', titulo: 'Diagramas uniaxiales y contorno de carga biaxial (compatibilidad de deformaciones)' },
+    calc(`# Método de la carga recíproca de Bresler (E.060 10.18)
+Pnx = Pn_X(ex) // Resistencia nominal con ex (ey = 0), del diagrama en X
+Pny = Pn_Y(ey) // Resistencia nominal con ey (ex = 0), del diagrama en Y
+Pon = Pn0 // Resistencia nominal a carga axial pura: 0.85 f'c (Ag − Ast) + fy Ast
+phi = 0.70 // Elementos con estribos en compresión (E.060 9.3.2.2)
+check Pu >= 0.1*phi*Pon // Rango de validez de la ec. 10-22
+Pn = 1/(1/Pnx + 1/Pny - 1/Pon) // Resistencia nominal biaxial (ec. 10-22)
+phiPn = min(phi*Pn, phiPnmax) // Resistencia de diseño, limitada por 10.3.6.2
+check Pu <= phiPn // Resistencia biaxial — Bresler
+## Contraste con el cálculo exacto
+DCb = Pu/phiPn // Relación demanda/capacidad por Bresler
+"Relación D/C por Bresler: **{DCb}**; por compatibilidad de deformaciones (contorno de carga): **{DCpmg}**. Ambos métodos concuerdan razonablemente; el método exacto es el de referencia (E.060 10.18, primer párrafo).
+check DCpmg <= 1 // Resistencia biaxial — compatibilidad de deformaciones
+## Cuantía (E.060 10.9.1)
+check rhog >= 0.01 // Cuantía mínima
+check rhog <= 0.06 // Cuantía máxima`),
+    summary(),
+  ],
+};
+
+
+// ---------------------------------------------------------------------
+// 4) VIGA SÍSMICA — DISEÑO POR CAPACIDAD (E.060 21.5)
+// ---------------------------------------------------------------------
+const vigaDuctil = {
+  id: 'co-vigaductil', pais: 'PE', cat: CAT, icon: 'beam', normas: E060 + ' — Art. 21.5 (pórticos y duales tipo II)',
+  name: 'Viga sísmica — diseño por capacidad (Mpr)',
+  desc: 'Requisitos geométricos y de cuantía de 21.5, momentos nominales y probables, cortante de diseño Vu = (Mpr⁻ + Mpr⁺)/ln + Vg, estribos de confinamiento en 2h y fuera de ella.',
+  titulo: 'Diseño por capacidad de viga sismorresistente',
+  blocks: [
+    text(`# Generalidades
+Se diseña una viga del sistema sismorresistente de un edificio de **pórticos (o dual tipo II)**, para la cual la NTE E.060 21.5 exige un comportamiento dúctil: refuerzo longitudinal continuo, cuantías limitadas, resistencia a momento positivo en la cara ≥ 1/2 de la negativa y **cortante de diseño por capacidad**, obtenido de las resistencias probables en flexión $M_{pr} = 1.25\\,M_n$ en ambos extremos de la luz libre más el cortante isostático de las cargas de gravedad amplificadas (E.060 21.5.4.1, Fig. 21.5.4.1). Se considera el desplazamiento lateral en ambos sentidos.`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto [210 kgf/cm^2|280 kgf/cm^2]
+fy = 4200 kgf/cm^2 // Acero
+b = 30 cm // Ancho
+h = 60 cm // Peralte
+ln = 5.40 m // Luz libre
+rec = 4 cm // Recubrimiento libre al estribo
+est = 3 // Estribo [3 : 3/8"|4 : 1/2"]
+bar = 6 // Barra longitudinal [5 : 5/8"|6 : 3/4"|8 : 1"]
+nsup = 4 // Barras superiores en la cara del apoyo
+ninf = 3 // Barras inferiores en la cara del apoyo
+Mun = 20 tonf*m // Momento negativo último en la cara (envolvente)
+Mup = 12 tonf*m // Momento positivo último en la cara (envolvente)
+wD = 2.5 tonf/m // Carga muerta repartida (servicio)
+wL = 1.0 tonf/m // Carga viva repartida (servicio)
+Pu = 0 tonf // Carga axial amplificada
+d = h - rec - db(est) - db(bar)/2 // Peralte efectivo
+## Requisitos geométricos (E.060 21.5.1)
+check Pu <= 0.1*fc*b*h // Carga axial ≤ 0.1 f'c Ag (21.5.1.1)
+check ln >= 4*h // Luz libre ≥ 4 h (21.5.1.2)
+check b >= max(0.25*h, 25 cm) // Ancho mínimo (21.5.1.3)`),
+    { type: 'section', b: 'b', h: 'h', recub: 'rec', estribo: 'est', sup: '{nsup}#{bar}', inf: '{ninf}#{bar}', sest: '1@5, rest@{so} cm', titulo: 'Sección en la cara del apoyo' },
+    calc(`# Flexión (E.060 10 y 21.5.2)
+Asn = nsup*Ab(bar) // Acero negativo colocado
+Asp = ninf*Ab(bar) // Acero positivo colocado
+check Asn >= asFlex(Mun, b, d, fc, fy) // Acero negativo por resistencia
+check Asp >= asFlex(Mup, b, d, fc, fy) // Acero positivo por resistencia
+Asmin = 0.7*sqrtfc(fc)/fy*b*d // Acero mínimo (E.060 10.5.2, Anexo II)
+check min(Asn, Asp) >= Asmin // Refuerzo continuo mínimo (21.5.2.1)
+check Asn/(b*d) <= 0.025 // Cuantía máxima 0.025 (21.5.2.1)
+check Asn <= 0.75*rhobE060(fc, fy)*b*d // Acero máximo 0.75 Asb (E.060 10.3.4)
+Mnn = mnRect(Asn, b, d, fc, fy) // Momento nominal negativo
+Mnp = mnRect(Asp, b, d, fc, fy) // Momento nominal positivo
+check Mnp >= 0.5*Mnn // M⁺ en la cara ≥ 1/2 M⁻ (21.5.2.2)
+# Cortante de diseño por capacidad (E.060 21.5.4.1)
+Mprn = 1.25*Mnn // Momento probable negativo (Mpr = 1.25 Mn)
+Mprp = 1.25*Mnp // Momento probable positivo
+wu = 1.25*(wD + wL) // Carga de gravedad amplificada concomitante con el sismo (E.060 9.2.3)
+Vg = wu*ln/2 -> tonf // Cortante isostático
+Vp = (Mprn + Mprp)/ln -> tonf // Cortante por desarrollo de Mpr en ambos extremos
+Vu = Vp + Vg // Cortante de diseño (Fig. 21.5.4.1)
+"Con la definición alternativa del ACI 318-19 (18.6.5.1, $f_s = 1.25 f_y$, $\\phi = 1$): $M_{pr}^- = $ {mprRect(Asn, b, d, fc, fy)} y $M_{pr}^+ = $ {mprRect(Asp, b, d, fc, fy)}.`),
+    { type: 'plot', var: 'x', desde: '0', hasta: 'ln/(1 m)', expr: 'Vp + wu*(ln/2 - x*1 m); -Vp + wu*(ln/2 - x*1 m)', nombres: 'Sismo →; Sismo ←', xlabel: 'x [m]', ylabel: 'Vu [t]', titulo: 'Cortante de diseño por capacidad para ambos sentidos del sismo' },
+    calc(`## Refuerzo transversal (E.060 11.5 y 21.5.3)
+phiv = 0.85 // Cortante (E.060 9.3.2.3)
+Vc = 0.53*sqrtfc(fc)*b*d -> tonf // Aporte del concreto (ec. 11-3, Anexo II)
+Vs = max(Vu/phiv - Vc, 0 tonf) // Resistencia requerida del acero
+check Vs <= 2.1*sqrtfc(fc)*b*d // Límite de Vs (E.060 11.5.7.9)
+Av = 2*Ab(est) // Estribo de dos ramas
+s_v = si(Vs > 0 tonf, Av*fy*d/Vs, 60 cm) // Espaciamiento por resistencia
+so = rounddown(min(d/4, 8*db(bar), 24*db(est), 30 cm, s_v), 2.5 cm) // Espaciamiento en la zona de confinamiento (21.5.3.2)
+check db(est) >= db(3) - 0.01 cm // Estribo ≥ 3/8" para barras hasta 1" (21.5.3.2)
+Lo = 2*h // Longitud de confinamiento en cada extremo (21.5.3.1)
+s2 = rounddown(min(d/2, s_v), 2.5 cm) // Espaciamiento fuera de la zona confinada (21.5.3.4)
+phiVn = phiv*(Vc + Av*fy*d/so) -> tonf // Resistencia con el espaciamiento adoptado
+check Vu <= phiVn // Resistencia a cortante en la zona confinada
+"**Estribos #{est}: 1 @ 5 cm, {ceil((Lo - 5 cm)/so)} @ {so} en cada extremo ({Lo}), resto @ {s2}**.`),
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 5) COLUMNA SÍSMICA — COLUMNA FUERTE, CONFINAMIENTO Y CORTANTE POR CAPACIDAD (E.060 21.6)
+// ---------------------------------------------------------------------
+const colDuctil = {
+  id: 'co-colductil', pais: 'PE', cat: CAT, icon: 'column', normas: E060 + ' — Art. 21.6 (pórticos y duales tipo II)',
+  name: 'Columna sísmica — columna fuerte, confinamiento y cortante',
+  desc: 'Criterio columna fuerte–viga débil ΣMnc ≥ 1.2 ΣMnv, flexocompresión, cortante por capacidad con Mpr de la columna limitado por las vigas, refuerzo de confinamiento Ash y longitud Lo.',
+  titulo: 'Diseño por capacidad de columna sismorresistente',
+  blocks: [
+    text(`# Generalidades
+Se diseña una columna interior de un pórtico especial (edificio de pórticos o dual tipo II) según la NTE E.060 21.6: dimensiones mínimas (21.6.1), resistencia mínima a flexión — **columna fuerte, viga débil** (21.6.2.2, ec. 21-1), cuantía (21.6.3), refuerzo transversal de confinamiento (21.6.4) y **cortante de diseño por capacidad** (21.6.5.1), en el que las resistencias probables $M_{pr} = 1.25 M_n$ corresponden al rango de cargas axiales amplificadas, sin exceder el cortante que pueden transmitir las vigas que llegan al nudo.`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero
+b = 50 cm // Dimensión de la columna (paralela al pórtico)
+hc = 50 cm // Dimensión de la columna (perpendicular)
+hn = 2.60 m // Altura libre
+bar = 8 // Barra longitudinal [6 : 3/4"|8 : 1"]
+est = 3 // Estribo [3 : 3/8"|4 : 1/2"]
+nramas = 4 // Ramas de estribo en cada dirección (estribo doble)
+recl = 4 cm // Recubrimiento libre al estribo
+## Cargas amplificadas (envolvente)
+Pumax = 250 tonf // Carga axial máxima
+Pumin = 120 tonf // Carga axial mínima (0.9 CM − CS)
+Mu = 26 tonf*m // Momento amplificado máximo en el extremo
+Vua = 14 tonf // Cortante del análisis
+## Vigas que llegan al nudo (de la memoria de la viga)
+Mnv1 = 23.64 tonf*m // Momento nominal negativo de la viga en la cara
+Mnv2 = 18.13 tonf*m // Momento nominal positivo de la viga en la otra cara
+Ag = b*hc // Área bruta
+## Requisitos geométricos (E.060 21.6.1)
+check Pumax > 0.1*fc*Ag // Pu > 0.1 f'c Ag: se aplica 21.6 (21.6.1.1)
+check min(b, hc) >= 25 cm // Dimensión menor ≥ 250 mm (21.6.1.2)
+check min(b, hc)/max(b, hc) >= 0.25 // Relación de lados ≥ 0.25 (21.6.1.3)`),
+    { type: 'pmgen', geom: '0 0 b hc', barras: 'R 6 6 b-6 hc-6 4 4 bar', fc: 'fc', fy: 'fy', norma: 'E060', dir: 'X', demandas: 'Pumax, Mu // Pu máx\nPumin, Mu // Pu mín\nPumax, -Mu // Pu máx (−)\nPumin, -Mu // Pu mín (−)', titulo: 'Columna {b} × {hc}: diagrama de interacción' },
+    calc(`# Verificaciones de flexocompresión y cuantía
+check DCpmg <= 1 // Flexocompresión (E.060 10.3)
+check rhog >= 0.01 // Cuantía mínima (21.6.3.1)
+check rhog <= 0.06 // Cuantía máxima (21.6.3.1)
+# Columna fuerte – viga débil (E.060 21.6.2.2)
+Mnc = min(Mn_X(Pumin), Mn_X(Pumax)) // Mn de la columna para la carga axial que da la menor resistencia
+SMnc = 2*Mnc // Columnas superior e inferior
+SMnv = Mnv1 + Mnv2 -> tonf*m // Vigas a ambos lados del nudo
+check SMnc >= 1.2*SMnv // ΣMnc ≥ 1.2 ΣMnv (ec. 21-1)
+# Cortante de diseño por capacidad (E.060 21.6.5.1)
+Mprc = 1.25*max(Mn_X(Pumin), Mn_X(Pumax), Mn_X(min(max(Pb_X, Pumin), Pumax))) // Mpr máximo de la columna en el rango de Pu
+Vu1 = 2*Mprc/hn -> tonf // Cortante con Mpr de la columna en ambos extremos
+Vu2 = 1.25*SMnv/hn -> tonf // Límite por las vigas: Mpr de vigas repartido a las dos columnas del nudo
+Vu = max(min(Vu1, Vu2), Vua) // Cortante de diseño
+d = hc - recl - db(est) - db(bar)/2 // Peralte efectivo
+phiv = 0.85 // Cortante
+Vc = 0.53*sqrtfc(fc)*(1 + Pumin/(140 kgf/cm^2*Ag))*b*d -> tonf // Vc con compresión axial (ec. 11-4, Anexo II)
+Av = nramas*Ab(est) // Área de estribos
+Vs = max(Vu/phiv - Vc, 0 tonf) // Resistencia requerida del acero
+s_v = si(Vs > 0 tonf, Av*fy*d/Vs, 30 cm) // Espaciamiento por cortante
+# Refuerzo de confinamiento (E.060 21.6.4)
+so = rounddown(min(min(b, hc)/3, 6*db(bar), 10 cm, s_v), 2.5 cm) // Espaciamiento en Lo (21.6.4.2)
+Lo = max(max(b, hc), hn/6, 50 cm) -> cm // Longitud de confinamiento (21.6.4.4)
+bc = hc - 2*recl - db(est) // Dimensión del núcleo c. a c. de estribos
+Ach = (b - 2*recl)*(hc - 2*recl) // Área del núcleo al exterior del estribo
+Ash1 = 0.3*so*bc*fc/fy*(Ag/Ach - 1) // ec. 21-3
+Ash2 = 0.09*so*bc*fc/fy // ec. 21-4
+check Av >= max(Ash1, Ash2) // Refuerzo de confinamiento Ash
+hx = (hc - 2*recl)/(nramas - 1) // Separación entre ramas
+check hx <= 35 cm // hx ≤ 350 mm (21.6.4.3)
+phiVn = phiv*(Vc + Av*fy*d/so) -> tonf // Resistencia de diseño con so
+check Vu <= phiVn // Resistencia a cortante
+s_fuera = rounddown(min(10*db(bar), 25 cm, s_v), 2.5 cm) // Fuera de Lo (21.6.4.5)
+"**Estribos #{est} (doble estribo, {nramas} ramas): 1 @ 5 cm, resto @ {so} en Lo = {roundup(Lo, 5 cm)} en cada extremo y dentro del nudo; fuera de Lo @ {s_fuera}.** Empalmes por traslape solo en la mitad central de la altura (21.6.3.2), de longitud clase B = {lsE060(bar, fc, fy, 2)}.`),
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 6) NUDO VIGA–COLUMNA (E.060 21.7 / ACI 318-19 18.8)
+// ---------------------------------------------------------------------
+const nudo = {
+  id: 'co-nudo', pais: 'PE', cat: CAT, icon: 'column', normas: E060 + ' — Art. 21.7 · ACI 318-19 18.8',
+  name: 'Nudo viga–columna (interior y exterior)',
+  desc: 'Cortante en el nudo con 1.25 fy, área efectiva Aj, resistencia 5.3/4.0/3.2√f\'c Aj según confinamiento, paso de barras (20 db) y anclaje con gancho en nudos exteriores.',
+  titulo: 'Verificación de nudo viga–columna',
+  blocks: [
+    text(`# Generalidades
+Se verifica un nudo de un pórtico especial de concreto armado conforme a la NTE E.060 21.7. Las fuerzas en el refuerzo de las vigas se calculan con $1.25 f_y$ (21.7.2.1), la fuerza cortante horizontal en el nudo se obtiene por equilibrio (Fig. 21.7.4.3): $V_u = 1.25 f_y (A_{s1} + A_{s2}) - V_{col}$, y la resistencia nominal se limita según el confinamiento del nudo (21.7.4.1). Se usa $\\phi = 0.85$ (21.7.2.2).`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero
+bc = 50 cm // Ancho de la columna (perpendicular a la dirección de análisis)
+hc = 50 cm // Profundidad de la columna (dirección de análisis)
+bv = 30 cm // Ancho de las vigas
+hv = 60 cm // Peralte de las vigas
+hp = 3.00 m // Altura de entrepiso (entre puntos de inflexión de columnas)
+barv = 6 // Barra de las vigas [5 : 5/8"|6 : 3/4"|8 : 1"]
+As1 = 4*Ab(barv) // Acero superior de la viga de un lado (tracción)
+As2 = 3*Ab(barv) // Acero inferior de la viga del otro lado (tracción)
+dv = hv - 6 cm // Peralte efectivo de las vigas
+conf = 3 // Confinamiento: 1 = cuatro caras, 2 = tres caras o dos opuestas, 3 = otros casos [1 : cuatro caras|2 : tres caras o dos opuestas|3 : otros casos]
+## Fuerzas en el nudo (E.060 21.7.2.1 y 21.7.4.3)
+T1 = 1.25*fy*As1 -> tonf // Tracción en el acero superior
+T2 = 1.25*fy*As2 -> tonf // Tracción en el acero inferior (compresión del lado opuesto)
+Mpr1 = mprRect(As1, bv, dv, fc, fy) // Momento probable de la viga 1
+Mpr2 = mprRect(As2, bv, dv, fc, fy) // Momento probable de la viga 2
+Vcol = (Mpr1 + Mpr2)/hp -> tonf // Cortante en la columna
+Vu = T1 + T2 - Vcol // Cortante horizontal en el nudo (Fig. 21.7.4.3)
+## Resistencia (E.060 21.7.4.1, Anexo II)
+check bv >= 0.75*bc or conf == 3 // Las vigas angostas no confinan el nudo: se usa "otros casos"
+bj = min(bc, bv + hc, 2*(bc/2)) // Ancho efectivo del nudo
+Aj = bj*hc // Área efectiva del nudo
+gam = si(conf == 1, 5.3, si(conf == 2, 4.0, 3.2)) // Coeficiente según confinamiento (5.3 / 4.0 / 3.2)
+Vn = gam*sqrtfc(fc)*Aj -> tonf // Resistencia nominal
+phij = 0.85 // Factor para nudos (21.7.2.2)
+check Vu <= phij*Vn // Resistencia a cortante del nudo
+## Detalles (E.060 21.7.2.4 y 21.7.5)
+check hc >= 20*db(barv) // Barras de viga que atraviesan el nudo: hc ≥ 20 db
+ldg = ldgE060(barv, fc, fy) // Desarrollo con gancho de 90° (nudo exterior, 12.5)
+check ldg <= hc - 5 cm // El gancho cabe en el núcleo de la columna exterior (21.7.5.1)
+ld = 1.6*ldE060(barv, fc, fy, 1.3) // Barra recta superior fuera del núcleo: ×1.6 (21.7.5.2), referencial
+"Dentro del nudo se mantiene el refuerzo transversal de confinamiento de la columna (21.7.3.1), con espaciamiento ≤ 150 mm cuando el nudo está confinado en sus cuatro caras (21.7.3.2). Longitud recta de anclaje referencial (barras superiores): {ld}.`),
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 7) VIGA T (E.060 8.10 y 10)
+// ---------------------------------------------------------------------
+const vigaT = {
+  id: 'co-vigat', pais: 'PE', cat: CAT, icon: 'beam', normas: E060 + ' — Art. 8.10, 10.3 y 10.5',
+  name: 'Viga T — ancho efectivo y flexión',
+  desc: 'Ancho efectivo del ala, diseño con bloque en el ala o en el alma, acero máximo con Asb de sección T, deformación εt ≥ 0.004 y acero mínimo.',
+  titulo: 'Diseño de viga T de concreto armado',
+  blocks: [
+    text(`# Generalidades
+Viga interior monolítica con la losa, sometida a momento positivo (ala en compresión). El ancho efectivo del ala se determina con E.060 8.10.2. Si la profundidad del bloque de compresión $a$ no excede el espesor del ala $h_f$, la sección se diseña como rectangular de ancho $b_f$; en caso contrario se separa la compresión del ala sobresaliente y del alma.`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero
+bw = 30 cm // Ancho del alma
+h = 65 cm // Peralte total
+hf = 8 cm // Espesor de la losa (ala)
+ln = 4.80 m // Luz libre de la viga
+sl = 3.50 m // Separación libre a la viga adyacente
+Mu = 85 tonf*m // Momento positivo último
+bar = 10 // Barra longitudinal [8 : 1"|9 : 1 1/8"|10 : 1 1/4"]
+n = 6 // Número de barras (dos capas)
+d = h - 9.5 cm // Peralte efectivo (centroide de dos capas)
+dt = h - 6 cm // Peralte a la capa extrema en tracción
+## Ancho efectivo (E.060 8.10.2)
+bf = min(ln/4, bw + 2*8*hf, bw + sl) -> cm // Ancho efectivo del ala
+## Diseño
+As_req = asFlexT(Mu, bw, bf, hf, d, fc, fy) // Acero requerido (sección T)
+As = n*Ab(bar) // Acero colocado
+check As >= As_req // Acero suficiente
+Asf = 0.85*fc*(bf - bw)*hf/fy // Acero equivalente a las alas sobresalientes
+aw = (As*fy - Asf*fy)/(0.85*fc*bw) // Bloque de compresión en el alma (si a > hf)
+a = si(As*fy/(0.85*fc*bf) <= hf, As*fy/(0.85*fc*bf), aw) // Profundidad del bloque
+"Profundidad del bloque a = {a} frente a hf = {hf}: el bloque de compresión ingresa al alma y la sección trabaja como **viga T**.
+Mn = si(a <= hf, As*fy*(d - a/2), Asf*fy*(d - hf/2) + (As - Asf)*fy*(d - a/2)) -> tonf*m // Momento nominal
+beta1 = beta1E060(fc) // E.060 10.2.7.3
+c = a/beta1 // Eje neutro
+epst = 0.003*(dt - c)/c // Deformación neta en el acero extremo
+check epst >= 0.004 // Ductilidad: εt ≥ 0.004 (E.060 10.3.5)
+phiMn = 0.9*Mn // Resistencia de diseño (E.060 9.3.2.1)
+check Mu <= phiMn // Resistencia a flexión
+cb = 6000 kgf/cm^2*d/(6000 kgf/cm^2 + fy) // Eje neutro balanceado
+Asb = (0.85*fc*(bf - bw)*hf + 0.85*fc*bw*beta1*cb)/fy // Acero balanceado de la sección T
+check As <= 0.75*Asb // Acero máximo (E.060 10.3.4)
+check As >= 0.7*sqrtfc(fc)/fy*bw*d // Acero mínimo con el ancho del alma (E.060 10.5.2)
+sl_libre = (bw - 2*4 cm - 2*db(3) - 3*db(bar))/2 // Espaciamiento libre entre barras (3 por capa)
+check sl_libre >= max(db(bar), 2.5 cm) // Espaciamiento libre mínimo (E.060 7.6.1)`),
+    { type: 'section', b: 'bw', h: 'h', bf: 'bf', hf: 'hf', recub: '4', estribo: '3', sup: '2#5', inf: '3#{bar} / 3#{bar}', titulo: 'Sección T: ala de ancho efectivo {bf}' },
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 8) VIGA DOBLEMENTE REFORZADA (E.060 10.3.3 a 10.3.5)
+// ---------------------------------------------------------------------
+const vigaDoble = {
+  id: 'co-vigadoble', pais: 'PE', cat: CAT, icon: 'beam', normas: E060 + ' — Art. 10.2, 10.3',
+  name: 'Viga doblemente reforzada',
+  desc: 'Momento resistente máximo con acero simple, acero en compresión con fluencia verificada por compatibilidad, As máximo con la porción equilibrada por A\'s y verificación final por compatibilidad.',
+  titulo: 'Diseño de viga doblemente reforzada',
+  blocks: [
+    text(`# Generalidades
+Cuando el peralte está restringido y el momento último excede la resistencia de la sección con acero simple dentro del límite de ductilidad, se coloca **acero en compresión** (E.060 10.3.3). Se adopta para la "viga 1" (acero en tracción equilibrado por el concreto) una cuantía de $0.5\\rho_b$ y la diferencia de momento la resisten el acero en compresión $A'_s$ y un acero adicional en tracción. El esfuerzo en $A'_s$ se obtiene por compatibilidad de deformaciones.`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero
+Es = 2000000 kgf/cm^2 // Módulo del acero
+b = 30 cm // Ancho
+h = 60 cm // Peralte total
+d = 53 cm // Peralte efectivo (dos capas)
+dp = 6 cm // Recubrimiento al centroide de A's
+Mu = 45 tonf*m // Momento último
+beta1 = beta1E060(fc) // E.060 10.2.7.3
+rhob = rhobE060(fc, fy) // Cuantía balanceada
+## ¿Se requiere acero en compresión?
+As_max1 = 0.75*rhob*b*d // Máximo con acero simple (E.060 10.3.4)
+a_m = As_max1*fy/(0.85*fc*b) // Bloque asociado
+phiMn_max = 0.9*As_max1*fy*(d - a_m/2) -> tonf*m // Momento máximo con acero simple
+check Mu > phiMn_max // Se requiere acero en compresión
+## Viga 1 (ρ1 = 0.5 ρb)
+As1 = 0.5*rhob*b*d // Acero en tracción de la viga 1
+a1 = As1*fy/(0.85*fc*b) // Bloque de compresión
+Mn1 = As1*fy*(d - a1/2) -> tonf*m // Momento nominal de la viga 1
+## Viga 2 (acero en compresión)
+Mn2 = Mu/0.9 - Mn1 // Momento remanente
+c1 = a1/beta1 // Eje neutro
+eps_s2 = 0.003*(c1 - dp)/c1 // Deformación en A's
+fs2 = min(Es*eps_s2, fy) -> kgf/cm^2 // Esfuerzo en A's (compatibilidad)
+Asp_req = Mn2/((fs2 - 0.85*fc)*(d - dp)) // Acero en compresión requerido (descontando el concreto desplazado)
+As_req = As1 + Asp_req*(fs2 - 0.85*fc)/fy // Acero total en tracción
+## Acero colocado
+As = 4*Ab(8) + 2*Ab(6) // 4 #8 + 2 #6 en tracción
+Asp = 2*Ab(8) + Ab(5) // 2 #8 + 1 #5 en compresión
+check As >= As_req // Acero en tracción suficiente
+check Asp >= Asp_req // Acero en compresión suficiente
+check As - Asp*fs2/fy <= 0.75*rhob*b*d // As máximo: la porción equilibrada por A's no se reduce (E.060 10.3.4)
+## Verificación por compatibilidad de deformaciones (E.060 10.2)
+Mn = mnRect(As, b, d, fc, fy, Asp, dp) // Momento nominal con As y A's
+check Mu <= 0.9*Mn // Resistencia a flexión
+"El acero en compresión debe estar confinado por estribos con separación ≤ 16 db longitudinal, 48 db del estribo y la menor dimensión (E.060 7.11.1 y 7.10.5): s ≤ {min(16*db(8), 48*db(3), b)}.`),
+    { type: 'section', b: 'b', h: 'h', recub: '4', estribo: '3', sup: '2#8 + 1#5', inf: '2#8 + 2#6 / 2#8', titulo: 'Sección doblemente reforzada' },
+    summary(),
+  ],
+};
+
+// ---------------------------------------------------------------------
+// 9) TORSIÓN (E.060 11.6)
+// ---------------------------------------------------------------------
+const torsion = {
+  id: 'co-torsion', pais: 'PE', cat: CAT, icon: 'beam', normas: E060 + ' — Art. 11.6 (Anexo II MKS) · ACI 318-19 22.7',
+  name: 'Viga con torsión, cortante y flexión',
+  desc: 'Umbral de torsión, torsión de equilibrio, verificación de la sección sólida (11-18), estribos combinados (Av + 2At)/s, acero longitudinal Aℓ y mínimos, espaciamientos.',
+  titulo: 'Diseño de viga sometida a torsión',
+  blocks: [
+    text(`# Generalidades
+Viga de borde que soporta un volado: el momento torsor es necesario para el equilibrio (**torsión de equilibrio**, E.060 11.6.2.1) y debe resistirse íntegramente. Se aplica la analogía del tubo de pared delgada y de la armadura espacial con $\\theta = 45°$ (E.060 11.6.3.6). Las ecuaciones se expresan en el sistema MKS según el Anexo II de la norma.`),
+    calc(`# Datos
+fc = 210 kgf/cm^2 // Concreto
+fy = 4200 kgf/cm^2 // Acero longitudinal
+fyt = 4200 kgf/cm^2 // Acero de estribos (≤ 4200, E.060 11.6.3.4)
+b = 35 cm // Ancho
+h = 60 cm // Peralte
+recl = 4 cm // Recubrimiento libre
+est = 3 // Estribo cerrado [3 : 3/8"|4 : 1/2"]
+Tu = 3.5 tonf*m // Momento torsor último a "d" de la cara
+Vu = 18 tonf // Cortante último a "d"
+Mu = 20 tonf*m // Momento flector concomitante
+phi = 0.85 // Cortante y torsión (E.060 9.3.2.3)
+d = h - 6 cm // Peralte efectivo
+## Propiedades de la sección
+Acp = b*h // Área encerrada por el perímetro exterior
+Pcp = 2*(b + h) // Perímetro exterior
+x1 = b - 2*recl - db(est) // Ancho a ejes del estribo
+y1 = h - 2*recl - db(est) // Alto a ejes del estribo
+Aoh = x1*y1 // Área encerrada por el eje del estribo
+Ph = 2*(x1 + y1) // Perímetro del eje del estribo
+Ao = 0.85*Aoh // Área del flujo de cortante (11.6.3.6)
+## Umbral de torsión (E.060 11.6.1 a)
+Tth = phi*0.27*sqrtfc(fc)*Acp^2/Pcp -> tonf*m // Torsión despreciable
+check Tu > Tth // Debe diseñarse por torsión
+## Dimensiones de la sección (ec. 11-18, Anexo II)
+Vc = 0.53*sqrtfc(fc)*b*d -> tonf // Aporte del concreto al cortante
+tau = sqrt((Vu/(b*d))^2 + (Tu*Ph/(1.7*Aoh^2))^2) -> kgf/cm^2 // Esfuerzo combinado
+check tau <= phi*(Vc/(b*d) + 2.1*sqrtfc(fc)) // Sección adecuada (11-18)
+## Refuerzo transversal
+At_s = Tu/(phi*2*Ao*fyt*cot(45 deg)) -> cm^2/m // Una rama, por torsión (11-21)
+Av_s = max(Vu/phi - Vc, 0 tonf)/(fyt*d) -> cm^2/m // Dos ramas, por cortante
+Avt_s = Av_s + 2*At_s // Requerido total (11.6.3.8)
+s_req = 2*Ab(est)/Avt_s -> cm // Espaciamiento por resistencia
+s = rounddown(min(s_req, Ph/8, 30 cm), 2.5 cm) // Espaciamiento adoptado (11.6.6.1)
+check 2*Ab(est) >= max(0.2*sqrtfc(fc)*b*s/fyt, 3.5 kgf/cm^2*b*s/fyt) // Mínimo (Av + 2At) (11.6.5.2, Anexo II)
+## Refuerzo longitudinal por torsión
+Al = At_s*Ph*fyt/fy*cot(45 deg)^2 -> cm^2 // ec. 11-22
+Al_min = 1.33*sqrtfc(fc)*Acp/fy - max(At_s, 1.75 kgf/cm^2*b/fyt)*Ph*fyt/fy // ec. 11-24 (Anexo II)
+Al_d = max(Al, Al_min) // Acero longitudinal de torsión de diseño
+As_f = asFlex(Mu, b, d, fc, fy) // Acero por flexión (cara inferior)
+As_inf = As_f + Al_d/3 // Inferior: flexión + 1/3 de Aℓ
+As_sup = Al_d/3 // Superior: 1/3 de Aℓ
+As_lat = Al_d/3 // Laterales: 1/3 de Aℓ (barras a media altura)
+"Distribución: inferior {As_inf} → 3 #8 = {3*Ab(8)}; superior {As_sup} (mínimo de flexión {0.7*sqrtfc(fc)/fy*b*d}) → 2 #6 = {2*Ab(6)}; laterales {As_lat} → 2 #4 = {2*Ab(4)}.
+check 3*Ab(8) >= As_inf // Acero inferior
+check 2*Ab(6) >= max(As_sup, 0.7*sqrtfc(fc)/fy*b*d) // Acero superior (incluye mínimo de flexión)
+check 2*Ab(4) >= As_lat // Barras laterales
+check db(4) >= max(0.042*s, db(3)) // Diámetro mínimo de barras longitudinales (11.6.6.2)
+"**Estribos cerrados #{est} con ganchos a 135° @ {s}** (11.6.4.2), extendidos (b + d) = {b + d} más allá del punto en que se requieren (11.6.6.3).`),
+    { type: 'section', b: 'b', h: 'h', recub: 'recl', estribo: 'est', sup: '2#6', inf: '3#8', lat: '1', sest: '@ {s}', titulo: 'Sección con refuerzo de torsión' },
+    summary(),
+  ],
+};
+export default [placa, colEsbelta, colBiaxial, vigaDuctil, colDuctil, nudo, vigaT, vigaDoble, torsion];

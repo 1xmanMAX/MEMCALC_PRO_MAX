@@ -174,6 +174,16 @@ defineFns({
   MSFYoud: { fn: vec((M) => 10 ** 2.24 / n0(M) ** 2.56), tex: 'MSF', args: 'Mw', desc: 'Factor de escala de magnitud MSF = 10^2.24/Mw^2.56 (Idriss; Youd et al. 2001)' },
   MSFIB: { fn: vec((M) => Math.min(1.8, 6.9 * Math.exp(-n0(M) / 4) - 0.058)), tex: 'MSF', args: 'Mw', desc: 'MSF = 6.9·e^(−M/4) − 0.058 ≤ 1.8 (Idriss y Boulanger 2008)' },
   KsigmaIB: { fn: vec((svp, N) => { const C = Math.min(0.3, 1 / (18.9 - 2.55 * Math.sqrt(Math.min(37, n0(N))))); return Math.min(1.1, 1 - C * Math.log(kPa(svp) / PA)); }), tex: 'K_{\\sigma}', args: "σ'v, (N1)60cs", desc: 'Factor de sobrecarga Kσ (Idriss y Boulanger 2008)' },
+  FSLiq: { fn: vec((CRR, CSR, z, Dw) => (mm(z) < mm(Dw) ? 3 : Math.min(3, n0(CRR) / n0(CSR)))), tex: 'FS_L', args: 'CRR_M, CSR, z, Dw', desc: 'FS_L = CRR_M/CSR (E.050 Art. 38.5.8); sobre el NF o FS > 3 se reporta 3 (no licuable)' },
+  PLCetin: { fn: vec((N160, CSR, M, svp, FC) => { const f = Math.min(35, n0(FC)), x = (n0(N160) * (1 + 0.004 * f) - 13.32 * Math.log(n0(CSR)) - 29.53 * Math.log(n0(M)) - 3.70 * Math.log(kPa(svp) / PA) + 0.05 * f + 16.85) / 2.70; return Phi(-x); }), tex: 'P_L', args: "(N1)60, CSR, Mw, σ'v, FC", desc: 'Probabilidad de licuación de Cetin et al. (2004) (E.050 Art. 38.5.6)' },
+  liqEstado: { fn: vec((FS, FSmin, z, Dw, N) => (mm(z) < mm(Dw) ? 'Sobre el NF' : N !== undefined && n0(N) >= 30 ? 'No licuable (N ≥ 30)' : n0(FS) >= n0(FSmin) ? 'No licuable' : 'LICUABLE')), tex: '\\text{estado}', args: 'FS, FSmin, z, Dw, [(N1)60cs]', desc: 'Estado frente a licuación por estrato (texto)' },
 }, 'Geotecnia');
+
+// Función de distribución normal estándar (Abramowitz y Stegun 26.2.17)
+function Phi(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989422804014327 * Math.exp(-x * x / 2);
+  const p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  return x >= 0 ? 1 - p : p;
+}
 
 export { D2R, PA };

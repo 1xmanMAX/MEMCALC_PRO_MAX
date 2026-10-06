@@ -16,8 +16,7 @@ import { C, T, Lne, svgWrap, niceTicks, caption, setVar, f2, solveBeam, blockBea
 //  Utilidades
 // ---------------------------------------------------------------------
 const EPS = 1e-9;
-const fx = (v, d = 2) => (Math.abs(v) < 0.5 * 10 ** -Math.max(d, 1) * 1e-3 || Math.abs(v) < 1e-12 ? '0' : f2(v, d));
-const fs = (v, d = 2) => { const s = fx(v, d); return s === '0' ? '0' : (v > 0 ? s : s); };
+const fx = (v, d = 2) => (Math.abs(v) < 1e-9 ? '0' : f2(v, d));
 const safeId = (s) => String(s).replace(/[^A-Za-z0-9]/g, '');
 const PAL = ['#1b2733', '#1f6feb', '#8250df', '#0a7e8c', '#b35900', '#1a7f37', '#9a2d6b', '#5b6b7b'];
 const COL = { N: '#8250df', V: C.green, M: C.blue, D: C.orange, T: '#1f6feb', Cc: '#d1242f' };
@@ -197,7 +196,7 @@ export function parseFrame(b, S) {
       if (v.length < 2 || v.length > 3) throw new Error(where + (lt === 'N' ? ': use «N nudo Fx Fy [M]»' : ': use «D nudo dx dy [θ]»'));
       const vals = lt === 'N' ? [evNum(v[0], S, U.F, where), evNum(v[1], S, U.F, where), v[2] !== undefined ? evNum(v[2], S, U.M, where) : 0]
         : [evNum(v[0], S, 'm', where), evNum(v[1], S, 'm', where), v[2] !== undefined ? evNum(v[2], S, '', where) : 0];
-      for (const n of tg) c.loads.push({ t: lt, n, vals });
+      for (const n of tg) c.loads.push({ t: lt === 'N' ? 'N' : 'S', n, vals });
       continue;
     }
     const tg = parseTargets(tk[1], mids, where);
@@ -361,32 +360,34 @@ export function solveFrame(md, nseg = 40) {
   const LL = cases.map(c => mems.map(() => []));
   cases.forEach((c, ci) => c.loads.forEach(ld => { if (ld.m !== undefined) LL[ci][ld.m].push(localLoads(mems[ld.m], ld)); }));
   // estaciones (comunes a todos los casos)
-  for (const [mi, m] of mems.entries()) {
+  mems.forEach((m, mi) => {
     const set = []; for (let k = 0; k <= nseg; k++) set.push([m.L * k / nseg, 0]);
     for (const lc of LL) for (const l of lc[mi]) {
       if (l.k === 'd') { set.push([l.a, 0], [l.b, 0]); for (let k = 1; k < 8; k++) set.push([l.a + (l.b - l.a) * k / 8, 0]); }
-      else if (l.a > 1e-9 && l.a < m.L - 1e-9) set.push([l.a, -1], [l.a, 1]);
+      else if (l.a > 1e-9 && l.a < m.L - 1e-9) set.push([l.a, 1]);
     }
-    set.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+    set.sort((p, q) => p[0] - q[0]);
     const st = [];
-    for (const p of set) { const last = st[st.length - 1]; if (last && Math.abs(last[0] - p[0]) < 1e-9 && (last[1] === p[1] || p[1] === 0)) continue; if (last && Math.abs(last[0] - p[0]) < 1e-9 && last[1] === 0) { last[1] = p[1]; continue; } st.push(p.slice()); }
+    for (let k = 0; k < set.length;) {
+      let j = k, jump = false; while (j < set.length && Math.abs(set[j][0] - set[k][0]) < 1e-9) { if (set[j][1]) jump = true; j++; }
+      if (jump) st.push([set[k][0], -1], [set[k][0], 1]); else st.push([set[k][0], 0]);
+      k = j;
+    }
     st[0][1] = 1; st[st.length - 1][1] = -1;
     m.st = st;
-  }
+  });
   // rigidez
-  for (const m of mems) {
+  mems.forEach((m, mi) => {
     const sc = secs[m.sec];
     const both = m.rel[0] && m.rel[1];
     const k0 = kLocal(sc.E, sc.A, sc.I > 0 ? sc.I : (both ? 1 : 0), m.L);
     m.k0 = k0; m.T = Tm(m.c, m.s);
-    m.qs = LL.map(lc => equivLoads(m.L, lc[mi(m)]).map(v => -v));
+    m.qs = LL.map(lc => equivLoads(m.L, lc[mi]).map(v => -v));
     const cd = condense(k0, m.qs, m.rel); m.kc = cd.k; m.qc = cd.qs;
-    const kg = m.T[0].map((_, i) => m.T[0].map((__, j) => { let s = 0; for (let p = 0; p < 6; p++) for (let q = 0; q < 6; q++) s += m.T[p][i] * m.kc[p][q] * m.T[q][j]; return s; }));
-    m.kg = kg;
+    m.kg = m.T[0].map((_, i) => m.T[0].map((__, j) => { let s = 0; for (let p = 0; p < 6; p++) for (let q = 0; q < 6; q++) s += m.T[p][i] * m.kc[p][q] * m.T[q][j]; return s; }));
     m.dofs = [3 * m.i, 3 * m.i + 1, 3 * m.i + 2, 3 * m.j, 3 * m.j + 1, 3 * m.j + 2];
-    for (let p = 0; p < 6; p++) for (let q = 0; q < 6; q++) Kg[m.dofs[p]][m.dofs[q]] += kg[p][q];
-  }
-  function mi(m) { return mems.indexOf(m); }
+    for (let p = 0; p < 6; p++) for (let q = 0; q < 6; q++) Kg[m.dofs[p]][m.dofs[q]] += m.kg[p][q];
+  });
   sup.forEach((s, n) => s.k.forEach((k, d) => { if (k) Kg[3 * n + d][3 * n + d] += k; }));
   // restricciones y giros sin rigidez (nudos articulados)
   const restr = new Uint8Array(nD); const auto = [];
@@ -402,25 +403,24 @@ export function solveFrame(md, nseg = 40) {
   }
   for (let n = 0; n < nN; n++) if (!mems.some(m => m.i === n || m.j === n)) throw new Error('El nudo ' + nodes[n].id + ' no está conectado a ninguna barra');
   const free = [], fixd = []; for (let i = 0; i < nD; i++) (restr[i] ? fixd : free).push(i);
-  if (!free.length) throw new Error('Todos los grados de libertad están restringidos');
   // vectores de carga
   const Fs = cases.map((c, ci) => {
     const Fv = new Float64Array(nD), Ur = new Float64Array(nD);
     for (const m of mems) { const g = mulTtV(m.T, m.qc[ci]); for (let p = 0; p < 6; p++) Fv[m.dofs[p]] -= g[p]; }
     for (const l of c.loads) {
       if (l.t === 'N') l.vals.forEach((v, d) => { Fv[3 * l.n + d] += v; });
-      if (l.t === 'D') l.vals.forEach((v, d) => { if (v) { if (!restr[3 * l.n + d] || auto.includes(3 * l.n + d)) { if (d < 2 || !auto.includes(3 * l.n + d)) throw new Error('Desplazamiento impuesto en el nudo ' + nodes[l.n].id + ': la dirección ' + ['x', 'y', 'θ'][d] + ' no está restringida'); } Ur[3 * l.n + d] = v; } });
+      if (l.t === 'S') l.vals.forEach((v, d) => { if (v) { if (!restr[3 * l.n + d] || auto.includes(3 * l.n + d)) throw new Error('Desplazamiento impuesto en el nudo ' + nodes[l.n].id + ': la dirección ' + ['x', 'y', 'θ'][d] + ' no está restringida'); Ur[3 * l.n + d] = v; } });
     }
     return { Fv, Ur };
   });
   const Kff = free.map(i => free.map(j => Kg[i][j]));
   const rhs = Fs.map(({ Fv, Ur }) => free.map(i => { let s = Fv[i]; for (const j of fixd) if (Ur[j]) s -= Kg[i][j] * Ur[j]; return s; }));
   let sol;
-  try { sol = solveDense(Kff, rhs); } catch (e) {
+  try { sol = free.length ? solveDense(Kff, rhs) : rhs.map(() => new Float64Array(0)); } catch (e) {
     if (e.message !== 'singular') throw e;
     throw new Error('Estructura inestable (mecanismo o apoyos insuficientes): revise apoyos y liberaciones. Grado de libertad sin rigidez cerca del nudo ' + nodes[Math.floor(free[Math.min(e.dof, free.length - 1)] / 3)].id + ' (' + ['ux', 'uy', 'θz'][free[Math.min(e.dof, free.length - 1)] % 3] + ')');
   }
-  const umax = Math.max(...sol.flatMap(x => [...x].map(Math.abs)));
+  const umax = Math.max(0, ...sol.flatMap(x => [...x].map(Math.abs)));
   if (!isFinite(umax)) throw new Error('Estructura inestable: desplazamientos no acotados');
   // resultados por caso
   const res = cases.map((c, ci) => {
@@ -440,7 +440,7 @@ export function solveFrame(md, nseg = 40) {
       if (EI > 0 && !(m.rel[0] && m.rel[1] && md.truss)) {
         const th = [0], w = [0];
         for (let p = 1; p < m.st.length; p++) { const h = m.st[p][0] - m.st[p - 1][0]; th.push(th[p - 1] + h * (M[p] + M[p - 1]) / (2 * EI)); }
-        for (let p = 1; p < m.st.length; p++) { const h = m.st[p][0] - m.st[p - 1][0]; w.push(w[p - 1] + h * (th[p] + th[p - 1]) / 2 + h * h * (M[p - 1] - M[p]) / (12 * EI) * 0); }
+        for (let p = 1; p < m.st.length; p++) { const h = m.st[p][0] - m.st[p - 1][0]; w.push(w[p - 1] + h * (th[p] + th[p - 1]) / 2); }
         const th0 = (ul[4] - ul[1] - w[w.length - 1]) / m.L;
         m.st.forEach(([x], p) => { vv.push(ul[1] + th0 * x + w[p]); });
       } else m.st.forEach(([x]) => vv.push(ul[1] + (ul[4] - ul[1]) * x / m.L));
@@ -590,7 +590,7 @@ function drawModel(md, W) {
 }
 // cargas de un caso
 function drawLoads(md, ci, W, maxH) {
-  const v = makeView(md.nodes, W, { pl: 46, pr: 46, pt: 58, pb: 40, maxH, minH: 150 });
+  const v = makeView(md.nodes, W, { pl: 50, pr: 50, pt: 74, pb: 40, maxH, minH: 150 });
   let g = DEFS + membersLine(md, v, C.ink, 1.8) + hingeGlyphs(md, v);
   md.nodes.forEach((n, k) => { g += supportGlyph(md, k, v, '#5b6b7b'); });
   const c = md.cases[ci];
@@ -658,11 +658,11 @@ function drawLoads(md, ci, W, maxH) {
   // nodales
   for (const l of c.loads.filter(q => q.t === 'N')) {
     const [x, y] = P(v, md.nodes[l.n]); const [Fx, Fy, Mz] = l.vals;
-    if (Math.abs(Fx) > 1e-12) { const sg = Fx > 0 ? 1 : -1; g += arrow(x - sg * 40, y, x - sg * 4, y, C.red, 'anR', 1.8); const p = lb.place([[x - sg * 46, y - 6], [x - sg * 46, y + 12]], 40, 11); g += TH(p ? p[0] : x - sg * 46, p ? p[1] : y - 6, fx(Fx) + ' ' + lu, { fs: 9.5, c: C.red, b: 1, a: 'middle' }); }
+    if (Math.abs(Fx) > 1e-12) { const sg = Fx > 0 ? 1 : -1; g += arrow(x - sg * 40, y, x - sg * 4, y, C.red, 'anR', 1.8); const p = lb.place([[x - sg * 22, y - 6], [x - sg * 22, y + 14]], 40, 11); g += TH(p ? p[0] : x - sg * 22, p ? p[1] : y - 6, fx(Fx) + ' ' + lu, { fs: 9.5, c: C.red, b: 1, a: 'middle' }); }
     if (Math.abs(Fy) > 1e-12) { const sg = Fy > 0 ? -1 : 1; g += arrow(x, y - sg * 40, x, y - sg * 4, C.red, 'anR', 1.8); const p = lb.place([[x + 4, y - sg * 46 + 3], [x + 24, y - sg * 46 + 3], [x - 24, y - sg * 46 + 3]], 44, 11); g += TH(p ? p[0] : x, p ? p[1] : y - sg * 46, fx(Math.abs(Fy)) + ' ' + lu, { fs: 9.5, c: C.red, b: 1 }); }
     if (Math.abs(Mz) > 1e-12) { const ccw = Mz > 0; g += `<path d="M${x + 13},${y} A13,13 0 1,${ccw ? 0 : 1} ${x - 13},${y}" fill="none" stroke="${C.red}" stroke-width="1.5" marker-end="url(#anR)"/>` + TH(x + 18, y - 14, fx(Math.abs(Mz)) + ' ' + lu + '·m', { fs: 9.5, c: C.red, b: 1, a: 'start' }); }
   }
-  for (const l of c.loads.filter(q => q.t === 'D' && q.n !== undefined)) {
+  for (const l of c.loads.filter(q => q.t === 'S')) {
     const [x, y] = P(v, md.nodes[l.n]);
     g += TH(x + 16, y + 26, 'Δ = (' + l.vals.slice(0, 2).map(q => fx(q * 1000, 1)).join('; ') + ') mm', { fs: 9, c: '#8250df', a: 'start', b: 1 });
   }
@@ -672,11 +672,11 @@ function drawLoads(md, ci, W, maxH) {
 }
 // diagramas N, V o M sobre la geometría
 function drawDiagram(md, sets, key, W, opts = {}) {
-  const v = makeView(md.nodes, W, { pl: 64, pr: 64, pt: 60, pb: 56, maxH: 470 });
+  const v = makeView(md.nodes, W, { pl: 64, pr: 64, pt: 76, pb: 56, maxH: 480 });
   let g = DEFS;
   const all = sets.flatMap(s => s.mf.flatMap(q => q[key]));
   const amax = Math.max(1e-12, ...all.map(Math.abs));
-  const ord = Math.max(26, Math.min(58, 0.13 * v.span * v.sc));
+  const ord = Math.max(24, Math.min(46, 0.1 * v.span * v.sc));
   const k = ord / amax;
   const col = COL[key], fill = FILL[key];
   const lb = labeler();
@@ -851,7 +851,12 @@ function renderFrame(b, ctx) {
   const { md, sol, sets, combos } = analyzeFrame(b, S);
   const sfx = b.sufijo ? '_' + safeId(b.sufijo) : '';
   const lu = md.U.lab, FU = md.U.F;
-  const pick = (name, what) => { const k = String(name || '').trim(); if (!k) return null; if (!sets.has(k)) throw new Error(what + ': no existe el caso o combinación «' + k + '» (disponibles: ' + [...sets.keys()].join(', ') + ')'); return sets.get(k); };
+  const pick = (name, what) => {
+    const k = String(name || '').trim(); if (!k) return null;
+    if (sets.has(k)) return sets.get(k);
+    if (/[+\-*()]/.test(k)) { const cb = parseCombos('X = ' + k, md.cases.map(c => c.name), S)[0]; const r = combine(sol, cb.f, cb.txt, md); r.kind = 'comb'; r.txt = cb.txt; return r; }
+    throw new Error(what + ': no existe el caso o combinación «' + k + '» (disponibles: ' + [...sets.keys()].join(', ') + '; también se acepta una expresión como «CM + CV»)');
+  };
   const verSet = pick(b.ver, 'Diagramas');
   const combSets = combos.map(c => sets.get(c.name));
   const envSets = verSet ? [verSet] : combSets;
@@ -1102,7 +1107,6 @@ function renderBeamCase(b, ctx) {
   const a = evalParam(b.a, S, 'm', L / 2), E = evalParam(b.E, S, 'tonf/m^2', 2.17e6), I = evalParam(b.I, S, 'm^4', 0.0054);
   if (!(L > 0) || !(E > 0) || !(I > 0)) throw new Error('L, E e I deben ser mayores que cero');
   if ((ld === 'P' || ld === 'M') && !(a >= 0 && a <= L)) throw new Error('La posición a debe estar entre 0 y L');
-  if (ld === 'M' && (sp === 'EA')) throw new Error('Momento aplicado en viga empotrada–apoyada: use el bloque «Pórtico 2D» (caso no tabulado)');
   const EI = E * I;
   const { r } = beamCaseSolve(sp, ld, L, w, P, M0, a, EI);
   const sfx = b.sufijo ? '_' + safeId(b.sufijo) : '';
@@ -1110,7 +1114,7 @@ function renderBeamCase(b, ctx) {
   const Mpos = Math.max(0, ...r.sM), Mneg = Math.min(0, ...r.sM), Mmax = Math.max(Mpos, -Mneg), Vmax = Math.max(...r.sV.map(Math.abs)), dmax = Math.max(...r.sD.map(Math.abs));
   const mm = (v) => math.unit(v, 'tonf*m');
   setVar(ctx, 'RA' + sfx, math.unit(RA, 'tonf')); setVar(ctx, 'RB' + sfx, math.unit(sp === 'V' ? 0 : RB, 'tonf'));
-  setVar(ctx, 'MA' + sfx, mm(sp === 'SA' ? 0 : -MA)); setVar(ctx, 'MB' + sfx, mm(sp === 'EE' ? -MB : 0));
+  setVar(ctx, 'MA' + sfx, mm(sp === 'SA' ? 0 : -MA)); setVar(ctx, 'MB' + sfx, mm(sp === 'EE' ? MB : 0));
   setVar(ctx, 'Mmax' + sfx, mm(Mmax)); setVar(ctx, 'Mpos' + sfx, mm(Mpos)); setVar(ctx, 'Mneg' + sfx, mm(Mneg));
   setVar(ctx, 'Vmax' + sfx, math.unit(Vmax, 'tonf')); setVar(ctx, 'deltamax' + sfx, math.unit(dmax * 1000, 'mm'));
   // fórmulas
@@ -1265,10 +1269,10 @@ export function hardyCross(Ls, EIs, sup, spanLoads, opt = {}) {
   // voladizos: momento en el apoyo por estática
   const cantM = Ls.map((L, i) => {
     if (!cant[i]) return null;
-    let m = 0; for (const q of spanLoads[i] || []) { const arm = (x) => (i === 0 ? x : L - x); if (q.t === 'U') m += q.w * L * L / 2; else if (q.t === 'P') m += q.P * arm(q.a); else if (q.t === 'T') { const W1 = q.w1 * L, W2 = (q.w2 - q.w1) * L / 2; m += W1 * L / 2 + W2 * (i === 0 ? 2 * L / 3 : L / 3); } }
+    let m = 0; for (const q of spanLoads[i] || []) { const arm = (x) => (i === 0 ? L - x : x); if (q.t === 'U') m += q.w * L * L / 2; else if (q.t === 'P') m += q.P * arm(q.a); else if (q.t === 'T') { const W1 = q.w1 * L, W2 = (q.w2 - q.w1) * L / 2; m += W1 * L / 2 + W2 * (i === 0 ? L / 3 : 2 * L / 3); } }
     return m;
   });
-  Ls.forEach((L, i) => { if (cant[i]) { if (i === 0) { M[i] = [0, -cantM[i]]; } else { M[i] = [cantM[i], 0]; } } });
+  Ls.forEach((L, i) => { if (cant[i]) M[i] = i === 0 ? [0, cantM[i]] : [-cantM[i], 0]; });
   // modificado: liberar extremo articulado
   if (modif) Ls.forEach((L, i) => {
     if (cant[i]) return;

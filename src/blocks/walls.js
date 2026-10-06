@@ -192,10 +192,10 @@ function renderRetwall(b, ctx) {
 
   // ---------- dibujo ----------
   const W = 760, Hh = 500;
-  const pressW = 120, passW = Pp.P > 0 ? 70 : 20, leftM = 70 + passW;
+  const pressW = 120, passW = Pp.P > 0 ? 70 : 20, xL0 = 100, leftM = xL0 + passW + 10;
   const yTop = Hv + (q > 0 ? 0.5 : 0.2), yBot = min(ybot, 0) - 0.15;
   const xR = B + 0.9;
-  const sc = min((W - leftM - pressW - 40) / (xR + 0.4), (Hh - 40 - 110) / (yTop - yBot));
+  const sc = min((W - leftM - pressW - 30) / (xR + 0.3), (Hh - 40 - 120) / (yTop - yBot));
   const ox = leftM, oy = 30 + (yTop) * sc;
   const X = (x) => ox + x * sc, Y = (y) => oy - y * sc;
   let g = arrowDefs + `<defs><marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.blue}"/></marker><marker id="aro" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.orange}"/></marker></defs>`;
@@ -205,9 +205,9 @@ function renderRetwall(b, ctx) {
   g += `<path d="M${X(xbb)},${Y(hz)} L${X(xbt)},${Y(H)} L${xs},${Y(yAt(xR + 0.3))} L${xs},${Y(yBot)} L${X(B)},${Y(yBot)} L${X(B)},${Y(hz)} Z" fill="url(#soilp)" opacity=".75"/>`;
   g += Lne(X(xbt), Y(H), xs, Y(yAt(xR + 0.3)), C.soil, 2);
   // suelo de cimentación y frente
-  g += `<rect x="${X(-0.6) - passW}" y="${Y(yBot + 0.001)}" width="${xs - X(-0.6) + passW}" height="${0.15 * sc}" fill="url(#soilp)" opacity=".5"/>`;
-  g += `<path d="M${X(-0.6) - passW + 10},${Y(Df)} L${X(p)},${Y(Df)} L${X(p)},${Y(hz)} L${X(0)},${Y(hz)} L${X(0)},${Y(min(0, ybot))} L${X(-0.6) - passW + 10},${Y(min(0, ybot))} Z" fill="url(#soilp)" opacity=".55"/>`;
-  g += Lne(X(-0.6) - passW + 10, Y(Df), X(p), Y(Df), C.soil, 2);
+  g += `<rect x="${xL0}" y="${Y(yBot + 0.001)}" width="${xs - xL0}" height="${0.15 * sc}" fill="url(#soilp)" opacity=".5"/>`;
+  g += `<path d="M${xL0},${Y(Df)} L${X(p)},${Y(Df)} L${X(p)},${Y(hz)} L${X(0)},${Y(hz)} L${X(0)},${Y(min(0, ybot))} L${xL0},${Y(min(0, ybot))} Z" fill="url(#soilp)" opacity=".55"/>`;
+  g += Lne(xL0, Y(Df), X(p), Y(Df), C.soil, 2);
   // muro
   let wp = `M${X(0)},${Y(0)} `;
   if (bk > 0 && hk > 0) wp += `L${X(xk)},${Y(0)} L${X(xk)},${Y(-hk)} L${X(xk + bk)},${Y(-hk)} L${X(xk + bk)},${Y(0)} `;
@@ -219,7 +219,7 @@ function renderRetwall(b, ctx) {
   if (q > 0) { const y0 = Y(yAt(xbt)) - 22; g += `<rect x="${X(xbt)}" y="${y0 - 6}" width="${xs - X(xbt)}" height="6" fill="rgba(212,115,12,.18)" stroke="${C.orange}" stroke-width=".8"/>`; for (let i = 0; i <= 8; i++) { const x = xbt + (xR + 0.3 - xbt) * i / 8; g += Lne(X(x), Y(yAt(x)) - 22, X(x), Y(yAt(x)) - 3, C.orange, 0.9).replace('/>', ' marker-end="url(#aro)"/>'); } g += T(X(xbt) + 4, y0 - 10, 'q = ' + f2(q * kF) + ' ' + uP, { fs: 10, a: 'start', c: C.orange }); }
   // plano de empuje y diagrama
   const xb0 = X(xR + 0.3) + 8;
-  if (metodo === 'rankine') g += Lne(X(B), Y(0), X(B), Y(Hv), C.red, 1, '5 3') + T(X(B) + 3, Y(Hv) - 5, 'plano virtual', { fs: 9, a: 'start', c: C.red });
+  if (metodo === 'rankine') g += Lne(X(B), Y(0), X(B), Y(Hv), C.red, 1, '5 3') + T(X(B) - 4, Y(Hv * 0.75), 'plano virtual', { fs: 9, a: 'end', c: C.red, r: -90 });
   else g += Lne(X(B), Y(0), X(xbt), Y(H), C.red, 1, '5 3') + T(X((B + xbt) / 2) + 4, Y(H / 2), 'plano de Coulomb', { fs: 9, a: 'start', c: C.red, r: -90 + theta / D2R });
   const pa = Ka * gs * Hv, pq = Ka * q * Kth, pd = seis ? 2 * DPae / Hv : 0; // ΔEae como triángulo invertido (≈0.67H) — se dibuja con su resultante real
   const pmax = max(pa + pq, 1e-6) + (seis ? pd : 0), ph = (pressW - 20) / pmax, yH = Y(Hv), y0 = Y(0);
@@ -229,6 +229,7 @@ function renderRetwall(b, ctx) {
   for (let i = 1; i <= 7; i++) { const yy = Hv * (1 - i / 7.5), w = pq + Ka * gs * (Hv - yy); g += Lne(xb0 + w * ph, Y(yy), xb0 + 2, Y(yy), C.red, 0.7).replace('/>', ' marker-end="url(#arr)"/>'); }
   g += T(xb0 + (pq + pa) * ph + 3, y0 + 12, f2((pa + pq) * kF) + ' ' + uP, { fs: 9, a: 'middle', c: C.red });
   if (pq > 0) g += T(xb0, yH - 4, 'Ka·q = ' + f2(pq * kF), { fs: 9, a: 'start', c: C.orange });
+  if (seis) g += T(xb0 + (pq + pd) * ph + 3, yH + 12, 'sismo (M-O)', { fs: 9, a: 'start', c: C.blue });
   // resultantes
   const arrowAt = (yy, lab, col, mk) => { const xx = X(metodo === 'rankine' ? B : xa(yy)); return Lne(xx + 46, Y(yy) - 46 * tan(tb), xx + 2, Y(yy), col, 1.6).replace('/>', ` marker-end="url(#${mk})"/>`) + T(xx + 48, Y(yy) - 46 * tan(tb) - 3, lab, { fs: 10, a: 'start', c: col, b: 1 }); };
   g += arrowAt(Hv / 3, 'Ea', C.red, 'arr');
@@ -248,17 +249,17 @@ function renderRetwall(b, ctx) {
     if (st.Lc < B - 1e-9) { const xL = st.toeMax ? 0 : B - st.Lc, xR2 = st.toeMax ? st.Lc : B; path = st.toeMax ? `M${X(0)},${yb} L${X(0)},${yb + st.qmax * pb} L${X(xR2)},${yb} Z` : `M${X(xL)},${yb} L${X(B)},${yb + st.qmax * pb} L${X(B)},${yb} Z`; }
     else path = `M${X(0)},${yb} L${X(0)},${yb + qT * pb} L${X(B)},${yb + qH * pb} L${X(B)},${yb} Z`;
     g += `<path d="${path}" fill="${C.blueF}" stroke="${C.blue}"/>`;
-    g += T(X(0) - 4, yb + qT * pb + 11, f2(qT * kF) + ' ' + uP, { fs: 9, a: 'start', c: C.blue });
-    g += T(X(B) + 4, yb + max(qH * pb, 8) + 2, f2(qH * kF), { fs: 9, a: 'end', c: C.blue });
-    g += Lne(X(st.xr), yb - 30, X(st.xr), yb - 2, C.blue, 1.5).replace('/>', ' marker-end="url(#arb)"/>') + T(X(st.xr) + 4, yb - 20, 'R (e = ' + f2(st.e, 3) + ' m)', { fs: 9, a: 'start', c: C.blue });
+    g += T(X(0) - 4, yb + qT * pb, f2(qT * kF) + ' ' + uP, { fs: 9, a: 'end', c: C.blue });
+    g += T(X(B) + 4, yb + max(qH * pb, 4), f2(qH * kF) + ' ' + uP, { fs: 9, a: 'start', c: C.blue });
+    g += Lne(X(st.xr), yb - 30, X(st.xr), yb - 2, C.blue, 1.5).replace('/>', ' marker-end="url(#arb)"/>') + T(X(st.xr) + 4, yb - 20, 'R (e = ' + st.e.toFixed(3) + ' m)', { fs: 9, a: 'start', c: C.blue });
     // cotas inferiores
-    const yd = yb + 45 + 18;
+    const yd = yb + 45 + 24;
     g += dimH(X(0), X(B), yd + 16, 'B = ' + f2(B) + ' m') + dimH(X(0), X(p), yd, 'punta ' + f2(p)) + dimH(X(xbb), X(B), yd, (tipo === 'gravedad' ? 'talón ' : 'talón ') + f2(Lt));
     if (t2 > 0) g += dimH(X(p), X(xbb), yd, f2(t2));
   }
-  g += dimV(X(0) - passW - 30, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimV(X(0) - passW - 12, Y(hz), Y(0), 'hz ' + f2(hz), C.ink, -1);
-  if (Df > hz + 1e-6) g += dimV(X(-0.6) - passW + 14, Y(Df), Y(0), 'Df ' + f2(Df), C.ink, 1);
-  g += T(X(p + ie + t1 / 2), Y(H) - 6, 't1 = ' + f2(t1), { fs: 10 });
+  g += dimV(xL0 - 66, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimV(xL0 - 14, Y(hz), Y(0), 'hz = ' + f2(hz), C.ink, -1);
+  if (Df > hz + 1e-6) g += dimV(xL0 - 40, Y(Df), Y(0), 'Df = ' + f2(Df), C.ink, -1);
+  g += T(X(p + ie) - 4, Y(H) + 12, 't1 = ' + f2(t1), { fs: 10, a: 'end' });
   if (bk > 0 && hk > 0) g += T(X(xk + bk / 2), Y(-hk) + 12, 'dentellón ' + f2(bk) + '×' + f2(hk), { fs: 9 });
   if (beta > 0) g += T(xs - 4, Y(yAt(xR + 0.3)) - 4, 'β = ' + f2(beta / D2R, 1) + '°', { fs: 10, a: 'end', c: '#7a5a2a' });
   const ttl = b.titulo || (tipo === 'gravedad' ? 'Muro de gravedad: geometría, fuerzas, empujes y presiones en la base' : 'Muro en voladizo: geometría, fuerzas, empujes y presiones en la base');

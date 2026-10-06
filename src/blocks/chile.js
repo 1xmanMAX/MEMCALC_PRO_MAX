@@ -157,7 +157,7 @@ registerBlock('muroCL', {
     setVar(ctx, 'cc_w', math.unit(cc / 10, 'cm')); setVar(ctx, 'As_borde', math.unit(As / 100, 'cm^2')); setVar(ctx, 'rho_borde', As / (lb * tw));
     if (Mu > 0) ctx.checks.push({ ok: Mu <= phi * Mn, label: 'Flexocompresión del muro Mu ≤ φMn (ACI 318-08 21.9.5)', ratio: Mu / (phi * Mn), block: ctx.blockId });
     // ---- dibujo ----
-    const W = 680, H = 250, ml = 30, mr = 30, sc = (W - ml - mr) / lw, ts = Math.max(tw * sc, 26), ox = ml, oy = 92;
+    const W = 680, H = 222, ml = 30, mr = 30, sc = (W - ml - mr) / lw, ts = Math.max(tw * sc, 26), ox = ml, oy = 92;
     const X = (y) => ox + y * sc, Yt = oy, Yb = oy + ts;
     let g = '';
     g += `<rect x="${X(0)}" y="${Yt}" width="${lw * sc}" height="${ts}" fill="${C.conc}" stroke="${C.ink}" stroke-width="1.4"/>`;
@@ -176,12 +176,12 @@ registerBlock('muroCL', {
     g += Lne(X(c), Yt - 26, X(c), Yb + 26, C.blue, 1.5, '6 3') + T(X(c) + 4, Yt - 30, `eje neutro c = ${f2(c / 10, 1)} cm`, { fs: 10.5, a: 'start', c: C.blue, b: 1 });
     if (isFinite(climit) && climit < lw) g += Lne(X(climit), Yt - 14, X(climit), Yb + 14, C.orange, 1.2, '2 2') + T(X(climit) + 4, Yb + 26, `lw/(600·δu/hw) = ${f2(climit / 10, 1)} cm`, { fs: 10, a: 'start', c: C.orange });
     // diagrama de deformaciones
-    const ys0 = 38, kx = 26 / Math.max(0.003, Math.abs(et));
+    const ys0 = 38, eEnd = 0.003 * (lw - c) / c, kx = 26 / Math.max(0.003, Math.abs(eEnd));
     g += Lne(X(0), ys0, X(lw), ys0, C.axis, 0.8);
-    g += `<path d="M${X(0)},${ys0} L${X(0)},${ys0 - 0.003 * kx} L${X(lw)},${ys0 + et * kx * (lw / dt)} L${X(lw)},${ys0} Z" fill="rgba(212,115,12,.12)" stroke="${C.orange}"/>`;
-    g += T(X(0) + 4, ys0 - 0.003 * kx - 4, 'εcu = 0.003', { fs: 9.5, a: 'start', c: C.orange }) + T(X(lw) - 4, ys0 + et * kx * (lw / dt) + 12, 'εt = ' + f2(et, 4), { fs: 9.5, a: 'end', c: C.orange });
-    g += T(X(0) + 2, Yb + 44, 'Borde comprimido', { fs: 9.5, a: 'start', c: C.axis });
-    g += dimH(X(0), X(lw), Yb + 62, `lw = ${f2(lw / 1000, 2)} m   ·   e = ${f2(tw / 10, 0)} cm   ·   borde ${f2(lb / 10, 0)} cm: ${nb}φ${f2(dbb, 0)}   ·   malla 2φ${f2(dbw, 0)}@${f2(sw / 10, 0)}`);
+    g += `<path d="M${X(0)},${ys0} L${X(0)},${ys0 - 0.003 * kx} L${X(lw)},${ys0 + eEnd * kx} L${X(lw)},${ys0} Z" fill="rgba(212,115,12,.12)" stroke="${C.orange}"/>`;
+    g += T(X(0) + 4, ys0 - 0.003 * kx - 4, 'εcu = 0.003', { fs: 9.5, a: 'start', c: C.orange }) + T(X(lw) - 4, ys0 + eEnd * kx + 12, 'εt = ' + f2(et, 4) + ' (en la barra extrema)', { fs: 9.5, a: 'end', c: C.orange });
+    g += T(X(0) + 2, Yb + 40, '← borde comprimido', { fs: 9.5, a: 'start', c: C.axis }) + T(X(lw) - 2, Yb + 40, 'borde traccionado →', { fs: 9.5, a: 'end', c: C.axis });
+    g += dimH(X(0), X(lw), Yb + 66, `lw = ${f2(lw / 1000, 2)} m   ·   e = ${f2(tw / 10, 0)} cm   ·   borde ${f2(lb / 10, 0)} cm: ${nb}φ${f2(dbb, 0)}   ·   malla 2φ${f2(dbw, 0)}@${f2(sw / 10, 0)}`);
     const tbl = `<table class="tbl"><thead><tr><th>Pu [tonf]</th><th>c [cm]</th><th>c/lw</th><th>εt</th><th>φ</th><th>Mn [tonf·m]</th><th>φMn [tonf·m]</th>${Mu > 0 ? '<th>Mu [tonf·m]</th>' : ''}</tr></thead><tbody><tr><td>${f2(Pu / 9806.65, 1)}</td><td>${f2(c / 10, 1)}</td><td>${f2(c / lw, 3)}</td><td>${f2(et, 4)}</td><td>${f2(phi, 3)}</td><td>${f2(Mn / 9.80665e6, 1)}</td><td>${f2(phi * Mn / 9.80665e6, 1)}</td>${Mu > 0 ? `<td>${f2(Mu / 9.80665e6, 1)}</td>` : ''}</tr></tbody></table>`;
     return `<div class="figure">${svgWrap(W, H, `<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#888" stroke-width="1"/></pattern></defs>` + g)}${tbl}${caption(ctx, b.titulo || 'Sección del muro, profundidad del eje neutro y elementos de borde (DS60 21.9.6)')}</div>`;
   },
@@ -209,7 +209,7 @@ registerBlock('fuerzasCL', {
     if (!V) V = Fv.map((_, i) => Fv.slice(i).reduce((s, x) => s + x, 0));
     const H = Math.max(...Z), n = Z.length, W = 680, Hh = Math.min(460, 90 + 46 * n), pt = 22, pb = 36;
     const Y = (z) => Hh - pb - z / H * (Hh - pt - pb);
-    const bx0 = 150, bx1 = 270, Fmax = Math.max(...Fv.map(Math.abs)), ka = 105 / (Fmax || 1);
+    const bx0 = 205, bx1 = 315, Fmax = Math.max(...Fv.map(Math.abs)), ka = 110 / (Fmax || 1);
     let g = `<defs><marker id="arF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${C.red}"/></marker></defs>`;
     g += `<rect x="${bx0 - 20}" y="${Y(0)}" width="${bx1 - bx0 + 40}" height="8" fill="url(#hatch)" stroke="${C.ink}" stroke-width=".6"/>`;
     g += `<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#888" stroke-width="1"/></pattern></defs>`;
@@ -218,17 +218,61 @@ registerBlock('fuerzasCL', {
       g += `<rect x="${bx0 - 6}" y="${Y(z) - 3}" width="${bx1 - bx0 + 12}" height="6" fill="${C.conc}" stroke="${C.ink}" stroke-width="1"/>`;
       const L = Math.abs(Fv[i]) * ka;
       g += `<line x1="${(bx0 - 10 - L).toFixed(1)}" y1="${Y(z).toFixed(1)}" x2="${bx0 - 10}" y2="${Y(z).toFixed(1)}" stroke="${C.red}" stroke-width="2" marker-end="url(#arF)"/>`;
-      g += T(bx0 - 14 - L, Y(z) - 5, `F${i + 1} = ${f2(Fv[i], 1)}`, { fs: 10, a: 'start', c: C.red });
+      g += T(bx0 - 16 - L, Y(z) + 4, `F${i + 1} = ${f2(Fv[i], 1)}`, { fs: 10, a: 'end', c: C.red });
       g += T(bx1 + 10, Y(z) + 4, `Z${i + 1} = ${f2(z, 2)} m`, { fs: 9.5, a: 'start', c: C.axis });
     });
     // diagrama de corte
-    const vx0 = 420, vw = 230, Vmax = Math.max(...V.map(Math.abs)) || 1, kv = vw / Vmax;
+    const vx0 = 440, vw = 160, Vmax = Math.max(...V.map(Math.abs)) || 1, kv = vw / Vmax;
     let d = `M${vx0},${Y(H)}`;
     for (let i = n - 1; i >= 0; i--) { const zt = Z[i], zb = i ? Z[i - 1] : 0; d += ` L${(vx0 + V[i] * kv).toFixed(1)},${Y(zt).toFixed(1)} L${(vx0 + V[i] * kv).toFixed(1)},${Y(zb).toFixed(1)}`; }
     d += ` L${vx0},${Y(0)} Z`;
     g += `<path d="${d}" fill="${C.blueF}" stroke="${C.blue}" stroke-width="1.6"/>` + Lne(vx0, Y(0), vx0, Y(H), C.ink, 1);
     V.forEach((v, i) => { const zm = ((i ? Z[i - 1] : 0) + Z[i]) / 2; g += T(vx0 + v * kv + 5, Y(zm) + 4, `V${i + 1} = ${f2(v, 1)}`, { fs: 10, a: 'start', c: C.blue }); });
-    g += T(vx0 + vw / 2, Hh - 8, `Corte de entrepiso [${un}]`, { fs: 11 }) + T(bx0 - 60, Hh - 8, `Fuerzas por nivel [${un}]`, { fs: 11 });
+    g += T(vx0 + vw / 2, Hh - 8, `Corte de entrepiso [${un}]`, { fs: 11 }) + T(bx0 - 40, Hh - 8, `Fuerzas por nivel [${un}]`, { fs: 11 });
     return `<div class="figure">${svgWrap(W, Hh, g)}${caption(ctx, b.titulo || 'Fuerzas sísmicas por nivel y esfuerzo de corte de entrepiso')}</div>`;
+  },
+});
+
+// ---------------------------------------------------------------------
+//  Galpón de dos aguas: presiones de viento sobre el marco
+// ---------------------------------------------------------------------
+registerBlock('galponCL', {
+  name: 'Galpón — presiones de viento', icon: 'steel', group: 'Cargas',
+  fields: [F('B', 'Luz B', 'B'), F('he', 'Altura de alero', 'he'), F('theta', 'Pendiente del techo', 'theta'),
+    F('pmb', 'Presión muro barlovento', 'pmb'), F('pms', 'Presión muro sotavento', 'pms'), F('ptb', 'Presión techo barlovento', 'ptb'), F('pts', 'Presión techo sotavento', 'pts'),
+    F('u', 'Unidad de presión', 'kgf/m^2'), F('titulo', 'Título', '')],
+  hint: 'Dibuja el marco transversal de un galpón de dos aguas con las presiones de viento (positivas hacia la superficie, negativas = succión).',
+  def: { B: '20 m', he: '7 m', theta: '10 deg', pmb: '50 kgf/m^2', pms: '-35 kgf/m^2', ptb: '-55 kgf/m^2', pts: '-33 kgf/m^2', u: 'kgf/m^2' },
+  render(b, ctx) {
+    const S = ctx.scope, un = (b.u || 'kgf/m^2').trim();
+    const B = evalParam(b.B, S, 'm', 20), he = evalParam(b.he, S, 'm', 7), th = evalParam(b.theta, S, 'rad', 0.17);
+    const p = ['pmb', 'pms', 'ptb', 'pts'].map(k => evalParam(b[k], S, un, 0));
+    pos({ B, he });
+    const hc = he + B / 2 * Math.tan(th), W = 680, H = 330, sc = Math.min(330 / B, 210 / hc), ox = (W - B * sc) / 2, oy = H - 40;
+    const X = (x) => ox + x * sc, Y = (y) => oy - y * sc, pm = Math.max(...p.map(Math.abs)) || 1, k = 55 / pm;
+    let g = `<defs><marker id="arW" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${C.blue}"/></marker></defs>`;
+    g += Lne(X(-0.15 * B), Y(0), X(1.15 * B), Y(0), C.ink, 1.2);
+    g += `<path d="M${X(0)},${Y(0)} L${X(0)},${Y(he)} L${X(B / 2)},${Y(hc)} L${X(B)},${Y(he)} L${X(B)},${Y(0)}" fill="none" stroke="${C.steel}" stroke-width="3"/>`;
+    // flechas: dirección normal a la superficie; p > 0 empuja hacia la superficie
+    const arrows = (x1, y1, x2, y2, nx, ny, pv, label, la) => {
+      let s = ''; const L = Math.abs(pv) * k, n = 5;
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n, px = X(x1 + (x2 - x1) * t), py = Y(y1 + (y2 - y1) * t);
+        const ex = px + nx * 4, ey = py - ny * 4, sx = px + nx * (4 + L), sy = py - ny * (4 + L);
+        s += pv >= 0 ? `<line x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${C.blue}" stroke-width="1.5" marker-end="url(#arW)"/>` : `<line x1="${ex.toFixed(1)}" y1="${ey.toFixed(1)}" x2="${sx.toFixed(1)}" y2="${sy.toFixed(1)}" stroke="${C.red}" stroke-width="1.5" marker-end="url(#arr)"/>`;
+      }
+      const mx = X((x1 + x2) / 2) + nx * (L + 14), my = Y((y1 + y2) / 2) - ny * (L + 14);
+      return s + T(mx, my, `${label} = ${f2(pv, 1)}`, { fs: 10.5, a: la, c: pv >= 0 ? C.blue : C.red, b: 1 });
+    };
+    const c = Math.cos(th), s0 = Math.sin(th);
+    g += arrows(0, 0, 0, he, -1, 0, p[0], 'p barlovento', 'end');
+    g += arrows(B, 0, B, he, 1, 0, p[1], 'p sotavento', 'start');
+    g += arrows(0, he, B / 2, hc, -s0, c, p[2], 'p techo barlov.', 'end');
+    g += arrows(B / 2, hc, B, he, s0, c, p[3], 'p techo sotav.', 'start');
+    g += `<path d="M${X(-0.13 * B)},${Y(hc + 0.5)} l40,0" stroke="${C.ink}" stroke-width="2" marker-end="url(#ar)"/>` + T(X(-0.13 * B), Y(hc + 0.5) - 8, 'VIENTO', { fs: 10, a: 'start', b: 1 });
+    g += dimH(X(0), X(B), Y(0) + 22, 'B = ' + f2(B, 2) + ' m');
+    g += T(X(B / 2), Y(hc) + 20, `θ = ${f2(th * 180 / Math.PI, 1)}°  ·  hc = ${f2(hc, 2)} m`, { fs: 10, c: C.axis });
+    g += `<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${C.ink}"/></marker><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${C.red}"/></marker></defs>`;
+    return `<div class="figure">${svgWrap(W, H, g)}${caption(ctx, b.titulo || `Presiones de viento sobre el marco [${un}] (azul: presión, rojo: succión)`)}</div>`;
   },
 });

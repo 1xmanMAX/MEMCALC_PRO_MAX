@@ -455,7 +455,7 @@ registerBlock('slope', {
     F('ybase', 'Cota mínima de la superficie de falla (estrato firme)', '-5'),
     F('metodo', 'Método', '', 'select', [['bishop', 'Bishop simplificado'], ['fellenius', 'Fellenius (ordinario)']]),
     F('ndov', 'Número de dovelas', '30'), F('FSmin', 'FS mínimo (vacío = E.050: 1.5 estático / 1.25 sísmico)', ''),
-    F('unidades', 'Unidades de c, γ, q', '', 'select', [['t', 't/m² · t/m³'], ['kN', 'kPa · kN/m³']]), F('tabla', 'Mostrar tabla de dovelas', '', 'check'), F('titulo', 'Título', ''),
+    F('unidades', 'Unidades de c, γ, q', '', 'select', [['t', 't/m² · t/m³'], ['kN', 'kPa · kN/m³']]), F('tabla', 'Mostrar tabla de dovelas', '', 'check'), F('sufijo', 'Sufijo de resultados', ''), F('titulo', 'Título', ''),
   ],
   hint: 'Coordenadas en m (y hacia arriba). Cada estrato rige desde su cota <code>y_tope</code> hasta el tope del siguiente (horizontales). φ en grados. La búsqueda recorre la malla de centros y, para cada centro, radios cuya cota inferior va desde <i>y_base</i> hasta la cresta. Exporta <code>FS FSb FSf xc yc Rc</code> y verifica FS ≥ 1.5 (estático) o ≥ 1.25 (seudoestático, kh &gt; 0) según E.050 Art. 30.3.',
   def: { superficie: '0 10\n12 10\n27 0\n45 0', estratos: '10 2.0 25 1.85 1.95 Arcilla arenosa\n2 4.0 32 1.95 2.05 Arena densa', nf: '', kh: '0', malla: '12 32 12 32 12', ybase: '-4', metodo: 'bishop', ndov: '30', unidades: 't', tabla: false },
@@ -517,8 +517,9 @@ registerBlock('slope', {
     }
     const FS = fsOf(crit);
     const FSreq = String(b.FSmin || '').trim() ? evalParam(b.FSmin, S, '') : kh > 0 ? 1.25 : 1.5;
-    setVar(ctx, 'FS', FS); setVar(ctx, 'FSb', crit.FSb); setVar(ctx, 'FSf', crit.FSf);
-    setVar(ctx, 'xc', U(crit.xc, 'm')); setVar(ctx, 'yc', U(crit.yc, 'm')); setVar(ctx, 'Rc', U(crit.R, 'm'));
+    const sfx = b.sufijo ? '_' + b.sufijo.replace(/\W/g, '') : '';
+    setVar(ctx, 'FS' + sfx, FS); setVar(ctx, 'FSb' + sfx, crit.FSb); setVar(ctx, 'FSf' + sfx, crit.FSf);
+    setVar(ctx, 'xc' + sfx, U(crit.xc, 'm')); setVar(ctx, 'yc' + sfx, U(crit.yc, 'm')); setVar(ctx, 'Rc' + sfx, U(crit.R, 'm'));
     ctx.checks.push({ ok: FS >= FSreq, label: `Estabilidad global del talud ${kh > 0 ? '(seudoestático, kh = ' + f2(kh, 3) + ')' : '(estático)'}: FS ${useF ? 'Fellenius' : 'Bishop'} ≥ ${f2(FSreq)} (E.050 Art. 30.3)`, ratio: FSreq / FS, block: ctx.blockId });
     // ----- dibujo -----
     const xs0 = pts[0][0], xs1 = pts[pts.length - 1][0];
@@ -555,7 +556,7 @@ registerBlock('slope', {
     // leyenda de estratos
     lay.forEach((l, i) => { const yy = pt + 6 + i * 13; g += `<rect x="${W - pr - 214}" y="${yy - 8}" width="12" height="10" fill="${cols[i % cols.length]}" stroke="#7a6a50" stroke-width=".6"/>` + T(W - pr - 198, yy, `${l.name || 'Estrato ' + (i + 1)}: c=${f2(l.c)} ${uStr}, φ=${f2(l.phi * 180 / Math.PI, 1)}°, γ=${f2(l.g)}`, { fs: 8.5, a: 'start' }); });
     let out = svgWrap(W, Hh, g);
-    out += kv([['FSb', crit.FSb], ['FSf', crit.FSf], ['xc', U(crit.xc, 'm')], ['yc', U(crit.yc, 'm')], ['Rc', U(crit.R, 'm')]]);
+    out += kv([['FSb' + sfx, crit.FSb], ['FSf' + sfx, crit.FSf], ['xc' + sfx, U(crit.xc, 'm')], ['yc' + sfx, U(crit.yc, 'm')], ['Rc' + sfx, U(crit.R, 'm')]]);
     out += `<div class="kv">${K('FS_{req} = ' + f2(FSreq))} ${K('k_h = ' + f2(kh, 3))} ${K('\\Sigma M_{mot}/R = ' + f2(crit.drive) + '\\,\\mathrm{' + uW.replace('/', '/') + '}')}</div>`;
     if (b.tabla) {
       out += `<table class="tbl"><thead><tr><th>#</th><th>x [m]</th><th>b [m]</th><th>h [m]</th><th>W [${uW}]</th><th>α [°]</th><th>c [${uStr}]</th><th>φ [°]</th><th>u [${uStr}]</th><th>W sinα</th><th>m<sub>α</sub></th><th>[c b + (W−u b)tanφ]/m<sub>α</sub></th></tr></thead><tbody>` +

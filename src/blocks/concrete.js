@@ -15,12 +15,21 @@ import { slabCoef, slabCase, SLAB_TABLES } from '../norms/concrete.js';
 const ECU = 0.003;
 const lines = (s) => String(s || '').split('\n').map(l => ({ code: l.split('//')[0].trim(), lab: (l.split('//')[1] || '').trim() })).filter(l => l.code);
 const toks = (s) => s.split(/[\s,;]+/).filter(Boolean);
+// Evalúa una coordenada en cm; admite mezclar variables con unidades y números (cm): "b-6"
+function evCm(s, S) {
+  try { return evalParam(s, S, 'cm'); } catch (e) {
+    const S2 = new Map(); for (const [k, v] of S) { if (math.isUnit(v)) { try { S2.set(k, v.toNumber('cm')); continue; } catch (er) { /* */ } } S2.set(k, v); }
+    try { const r = math.evaluate(String(s), S2); if (typeof r === 'number') return r; } catch (er) { /* */ }
+    throw e;
+  }
+}
 
 // ---------------------------------------------------------------------
 //  Sección por fibras
 // ---------------------------------------------------------------------
-function barArea(tok) {
-  const t = String(tok).trim();
+function barArea(tok, S) {
+  let t = String(tok).trim();
+  if (S && /^[A-Za-z_]\w*$/.test(t) && !/^\d/.test(t) && S.has(t)) { const v = S.get(t); t = String(math.isUnit(v) ? v.toNumber('mm') + 'mm' : v); }
   let m = /^(?:Ø|ø|φ)?(\d+(?:\.\d+)?)mm$/i.exec(t);
   if (m) { const d = +m[1] / 10; return { A: Math.PI * d * d / 4, d, lab: 'Ø' + m[1] + 'mm' }; }
   m = /^#?(\d+)$/.exec(t);
@@ -29,25 +38,25 @@ function barArea(tok) {
 }
 export function parseBarsGen(text, S) {
   const out = [];
-  const ev = (s) => evalParam(s, S, 'cm');
+  const ev = (s) => evCm(s, S);
   for (const { code } of lines(text)) {
     const tk = toks(code), k = tk[0].toUpperCase();
     if (k === 'L' || k === 'M') {
       if (tk.length < 7) throw new Error('Formato: ' + k + ' x1 y1 x2 y2 ' + (k === 'L' ? 'n' : 's') + ' barra');
-      const [x1, y1, x2, y2] = tk.slice(1, 5).map(ev), bar = barArea(tk[6]);
+      const [x1, y1, x2, y2] = tk.slice(1, 5).map(ev), bar = barArea(tk[6], S);
       const len = Math.hypot(x2 - x1, y2 - y1);
       const n = k === 'L' ? Math.round(evalParam(tk[5], S, '')) : Math.max(1, Math.round(len / ev(tk[5]))) + 1;
       if (!(n >= 1) || n > 400) throw new Error('Número de barras no válido en: ' + code);
       for (let i = 0; i < n; i++) { const t = n === 1 ? 0.5 : i / (n - 1); out.push({ x: x1 + (x2 - x1) * t, y: y1 + (y2 - y1) * t, ...bar }); }
     } else if (k === 'R') {
       if (tk.length < 8) throw new Error('Formato: R x1 y1 x2 y2 nx ny barra (anillo perimetral)');
-      const [x1, y1, x2, y2] = tk.slice(1, 5).map(ev), nx = Math.round(evalParam(tk[5], S, '')), ny = Math.round(evalParam(tk[6], S, '')), bar = barArea(tk[7]);
+      const [x1, y1, x2, y2] = tk.slice(1, 5).map(ev), nx = Math.round(evalParam(tk[5], S, '')), ny = Math.round(evalParam(tk[6], S, '')), bar = barArea(tk[7], S);
       if (nx < 2 || ny < 2) throw new Error('El anillo requiere nx ≥ 2 y ny ≥ 2 (barras por lado, incluidas esquinas)');
       for (let i = 0; i < nx; i++) { const x = x1 + (x2 - x1) * i / (nx - 1); out.push({ x, y: y1, ...bar }, { x, y: y2, ...bar }); }
       for (let j = 1; j < ny - 1; j++) { const y = y1 + (y2 - y1) * j / (ny - 1); out.push({ x: x1, y, ...bar }, { x: x2, y, ...bar }); }
     } else {
       if (tk.length < 3) throw new Error('Formato de barra: x y barra   (o L/M/R …): "' + code + '"');
-      out.push({ x: ev(tk[0]), y: ev(tk[1]), ...barArea(tk[2]) });
+      out.push({ x: ev(tk[0]), y: ev(tk[1]), ...barArea(tk[2], S) });
     }
   }
   return out;
@@ -56,7 +65,7 @@ export function parseRects(text, S) {
   const out = [];
   for (const { code } of lines(text)) {
     const tk = toks(code); if (tk.length < 4) throw new Error('Rectángulo: x0 y0 b h (cm) — "' + code + '"');
-    const [x0, y0, b, h] = tk.slice(0, 4).map(s => evalParam(s, S, 'cm'));
+    const [x0, y0, b, h] = tk.slice(0, 4).map(s => evCm(s, S));
     pos({ b, h }); out.push({ x0, y0, b, h });
   }
   if (!out.length) throw new Error('Defina al menos un rectángulo de concreto');
@@ -115,7 +124,7 @@ function phiOf(sec, st, Plim) {
   return 0.9 / (1 + (0.9 - sec.phic) * st.P / Plim);
 }
 // Curva P–M en la dirección θ: puntos nominales y de diseño ordenados de compresión a tracción
-export function curveAt(sec, th, N = 150) {
+export function curveAt(sec, th, N = 150, axis = null) {
   const G = geo(sec, th);
   const cb = ECU * G.dt / (ECU + sec.ey);
   const Pb = stateAt(sec, G, cb).P;
@@ -126,13 +135,13 @@ export function curveAt(sec, th, N = 150) {
     const c = G.D * 6 * Math.pow(0.002 / 6, i / N);
     const st = stateAt(sec, G, c);
     st.phi = phiOf(sec, st, Plim);
-    st.M = st.Mx * ux + st.My * uy; // componente del momento en la dirección del gradiente
+    st.M = axis === 'x' ? st.Mx : axis === 'y' ? st.My : st.Mx * ux + st.My * uy; // momento según el eje global (o el gradiente)
     pts.push(st);
   }
   // compresión pura y tracción pura
   pts.unshift({ P: sec.P0, Mx: 0, My: 0, M: 0, c: Infinity, et: -ECU, phi: sec.phic });
   const Tx = sec.bars.reduce((s, b) => s - sec.fy * b.A * (b.x - sec.xc), 0), Ty = sec.bars.reduce((s, b) => s - sec.fy * b.A * (b.y - sec.yc), 0);
-  pts.push({ P: -sec.fy * sec.Ast, Mx: Tx, My: Ty, M: Tx * ux + Ty * uy, c: 0, et: 1, phi: 0.9 });
+  pts.push({ P: -sec.fy * sec.Ast, Mx: Tx, My: Ty, M: axis === 'x' ? Tx : axis === 'y' ? Ty : Tx * ux + Ty * uy, c: 0, et: 1, phi: 0.9 });
   const capP = sec.phic * sec.Pnmax;
   const des = pts.map(p => ({ P: Math.min(p.phi * p.P, capP), Pu: p.phi * p.P, M: p.phi * p.M, Mx: p.phi * p.Mx, My: p.phi * p.My, c: p.c, phi: p.phi }));
   return { th, G, pts, des, Pb, cb, Plim };
@@ -245,7 +254,13 @@ function drawPM(cpos, cneg, dem, W, H, title, uM = 't·m') {
   const poly = (arr) => arr.map((p, i) => (i ? 'L' : 'M') + X(p.M).toFixed(1) + ',' + Y(p.P).toFixed(1)).join(' ') + ' Z';
   g += `<path d="${poly(nom)}" fill="none" stroke="${C.axis}" stroke-width="1.3" stroke-dasharray="6 4"/>`;
   g += `<path d="${poly(des)}" fill="${C.blueF}" stroke="${C.blue}" stroke-width="2"/>`;
-  dem.forEach((d, i) => { const ok = d.dc <= 1; g += `<circle cx="${X(d.M)}" cy="${Y(d.P)}" r="4.2" fill="${ok ? C.green : C.red}" stroke="#fff"/>` + T(X(d.M) + (d.M >= 0 ? 7 : -7), Y(d.P) - 6, d.lab || 'P' + (i + 1), { fs: 9.5, a: d.M >= 0 ? 'start' : 'end', c: ok ? C.green : C.red, b: 1 }); });
+  const placed = [];
+  dem.forEach((d, i) => {
+    const ok = d.dc <= 1, lx = X(d.M) + (d.M >= 0 ? 7 : -7); let ly = Y(d.P) - 6;
+    for (let k = 0; k < 6 && placed.some(q => Math.abs(q.x - lx) < 70 && Math.abs(q.y - ly) < 11); k++) ly += 12;
+    placed.push({ x: lx, y: ly });
+    g += `<circle cx="${X(d.M)}" cy="${Y(d.P)}" r="4.2" fill="${ok ? C.green : C.red}" stroke="#fff"/>` + `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="9.5" font-weight="600" fill="${ok ? C.green : C.red}" text-anchor="${d.M >= 0 ? 'start' : 'end'}" font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(d.lab || 'P' + (i + 1))}</text>`;
+  });
   g += T((pl + W - pr) / 2, H - 8, title + ' [' + uM + ']', { fs: 10.5 }) + T(14, (pt + H - pb) / 2, 'P [t]', { fs: 10.5, r: -90 });
   g += Lne(W - pr - 150, pt + 6, W - pr - 128, pt + 6, C.axis, 1.3, '6 4') + T(W - pr - 124, pt + 9, 'Pn, Mn', { fs: 9, a: 'start' }) + Lne(W - pr - 80, pt + 6, W - pr - 58, pt + 6, C.blue, 2) + T(W - pr - 54, pt + 9, 'φPn, φMn', { fs: 9, a: 'start' });
   return svgWrap(W, H, g);
@@ -297,10 +312,10 @@ function renderPMgen(b, ctx) {
   if (!sec.bars.length) throw new Error('Defina el refuerzo longitudinal');
   const dir = String(b.dir || 'X').toUpperCase();
   const sfx = b.sufijo ? '_' + String(b.sufijo).replace(/\W/g, '') : '';
-  const cores = lines(b.nucleos).map(({ code, lab }) => { const tk = toks(code); const [x0, y0, bb, hh] = tk.slice(0, 4).map(s => evalParam(s, S, 'cm')); return { x0, y0, b: bb, h: hh, lab }; });
+  const cores = lines(b.nucleos).map(({ code, lab }) => { const tk = toks(code); const [x0, y0, bb, hh] = tk.slice(0, 4).map(s => evCm(s, S)); return { x0, y0, b: bb, h: hh, lab }; });
   const curves = {};
   const dirsNeeded = dir === 'Y' ? ['Y'] : dir === 'X' ? ['X'] : ['X', 'Y'];
-  for (const d of dirsNeeded) { const th = d === 'X' ? 0 : Math.PI / 2; curves[d] = { pos: curveAt(sec, th), neg: curveAt(sec, th + Math.PI) }; }
+  for (const d of dirsNeeded) { const th = d === 'X' ? 0 : Math.PI / 2; const ax = d === 'X' ? 'x' : 'y'; curves[d] = { pos: curveAt(sec, th, 150, ax), neg: curveAt(sec, th + Math.PI, 150, ax) }; }
   const capP = sec.phic * sec.Pnmax, Pt = -0.9 * sec.fy * sec.Ast;
   const U = (v, u) => math.unit(v, u);
   // funciones exportadas
@@ -346,7 +361,8 @@ function renderPMgen(b, ctx) {
     });
     html += drawPM(cv.pos, cv.neg, dem, pmW, pmH, 'M' + (dir === 'X' ? 'x' : 'y') + ' — compresión variable en ' + dir);
   } else {
-    html += '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:4px">' + drawPM(curves.X.pos, curves.X.neg, [], pmW, pmH, 'Mx') + drawPM(curves.Y.pos, curves.Y.neg, [], pmW, pmH, 'My') + '</div>';
+    const cell = (x) => '<div style="flex:1 1 300px;max-width:50%">' + x + '</div>';
+    html += '<div style="display:flex;justify-content:center;gap:4px">' + cell(drawPM(curves.X.pos, curves.X.neg, [], pmW, pmH, 'Mx')) + cell(drawPM(curves.Y.pos, curves.Y.neg, [], pmW, pmH, 'My')) + '</div>';
     let crit = null, critPoly = null;
     dem.forEach(d => {
       const P = d.P * 1000;
@@ -365,7 +381,7 @@ function renderPMgen(b, ctx) {
       if (!crit || d.dc > crit.dc) { crit = d; critPoly = d.poly; }
       maxDC = Math.max(maxDC, d.dc);
     });
-    if (crit && critPoly) html += drawContour(critPoly, dem.filter(d => Math.abs(d.P - crit.P) < 1e-6 * Math.max(1, Math.abs(crit.P)) || d === crit), crit.P, 560, 480);
+    if (crit && critPoly) html += drawContour(critPoly, dem.filter(d => Math.abs(d.P - crit.P) < 1e-6 * Math.max(1, Math.abs(crit.P)) || d === crit), crit.P, 470, 400);
   }
   setVar(ctx, 'DCpmg' + sfx, maxDC);
   dem.forEach((d, i) => ctx.checks.push({ ok: d.dc <= 1, label: 'Flexocompresión' + (dir === 'XY' ? ' biaxial ' : ' ') + (d.lab || 'P' + (i + 1)) + ' (Pu = ' + f2(d.P) + ' t, ' + (dir === 'XY' ? 'Mux = ' + f2(d.Mx) + ', Muy = ' + f2(d.My) : 'Mu = ' + f2(d.M)) + ' t·m)', ratio: d.dc, block: ctx.blockId }));

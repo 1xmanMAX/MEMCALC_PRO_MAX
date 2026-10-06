@@ -4,7 +4,7 @@
 //  NCh432 (viento) · análisis modal de edificios de cortante (NCh433 6.3)
 //  Fuentes y verificación: docs/referencias/chile.md
 // =====================================================================
-import { defineFns, math, toNum, mkUnit, interp1 } from '../engine.js';
+import { defineFns, math, toNum, mkUnit, interp1, fixedUnits } from '../engine.js';
 
 const G = 9.80665;
 // ---------- utilidades ----------
@@ -221,6 +221,7 @@ defineFns({
 // Exposición: 1 = B, 2 = C, 3 = D (NCh432:2010, procedimiento analítico tipo ASCE 7-05 cap. 6)
 const EXP = { B: { a: 7.0, zg: 365.76 }, C: { a: 9.5, zg: 274.32 }, D: { a: 11.5, zg: 213.36 } };
 function expo(e) { if (typeof e === 'string') { const k = e.trim().toUpperCase(); if (!EXP[k]) throw new Error('Exposición B, C o D'); return EXP[k]; } e = Math.round(toNum(e)); if (!(e >= 1 && e <= 3)) throw new Error('Exposición: 1 = B, 2 = C, 3 = D'); return EXP['BCD'[e - 1]]; }
+const kgm2 = (v) => { const u = mkUnit(v, 'kgf/m^2'); fixedUnits.set(u, 'kgf/m^2'); return u; };
 const kz = (z, e) => { const E = expo(e); return 2.01 * (Math.max(z, 4.6) / E.zg) ** (2 / E.a); };
 // Cp techo barlovento/sotavento, viento normal a la cumbrera (ASCE 7-05 Fig. 6-6, adoptada en NCh432:2010)
 const TH = [10, 15, 20, 25, 30, 35, 45];
@@ -238,11 +239,11 @@ const Q71 = { 1: { z: [0, 15, 20, 30, 40, 50, 75, 100, 150, 200, 300], q: [55, 7
 defineFns({
   KzNCh432: { fn: (z, e) => vmap(z, x => kz(nu(x, 'm'), e)), tex: 'K_z', desc: 'Coeficiente de exposición Kz = 2.01(z/zg)^(2/α), z ≥ 4.6 m (NCh432:2010, exposición 1=B, 2=C, 3=D)', args: 'z, exposición' },
   qzNCh432: {
-    fn: (z, V, e, I = 1, Kzt = 1, Kd = 0.85) => vmap(z, x => mkUnit(0.613 * kz(nu(x, 'm'), e) * toNum(Kzt) * toNum(Kd) * nu(V, 'm/s') ** 2 * toNum(I), 'N/m^2')),
-    tex: 'q_z', desc: 'Presión por velocidad qz = 0.613·Kz·Kzt·Kd·V²·I [N/m²] (NCh432:2010)', args: 'z, V, exposición, I, Kzt, Kd',
+    fn: (z, V, e, I = 1, Kzt = 1, Kd = 0.85) => vmap(z, x => kgm2(0.613 * kz(nu(x, 'm'), e) * toNum(Kzt) * toNum(Kd) * nu(V, 'm/s') ** 2 * toNum(I) / G)),
+    tex: 'q_z', desc: 'Presión por velocidad qz = 0.613·Kz·Kzt·Kd·V²·I [N/m², se muestra en kgf/m²] (NCh432:2010)', args: 'z, V, exposición, I, Kzt, Kd',
   },
   CpTechoNCh432: { fn: (th, hL, caso = 1) => cpRoof(nu(th, 'deg'), toNum(hL), Math.round(toNum(caso)), false), tex: 'C_{p,b}', desc: 'Cp del techo a barlovento, viento normal a la cumbrera (caso 1 succión, 2 presión)', args: 'θ, h/L, caso' },
   CpTechoSotNCh432: { fn: (th, hL) => cpRoof(nu(th, 'deg'), toNum(hL), 1, true), tex: 'C_{p,s}', desc: 'Cp del techo a sotavento, viento normal a la cumbrera', args: 'θ, h/L' },
   CpMuroSotNCh432: { fn: (LB) => interp1(toNum(LB), [1, 2, 4], [-0.5, -0.3, -0.2]), tex: 'C_{p,sot}', desc: 'Cp del muro de sotavento según L/B (−0.5, −0.3, −0.2)', args: 'L/B' },
-  qNCh432Of71: { fn: (z, tipo = 1) => { const t = Q71[Math.round(toNum(tipo))]; if (!t) throw new Error('Tipo: 1 = ciudad, 2 = campo abierto / frente al mar'); return vmap(z, x => mkUnit(interp1(nu(x, 'm'), t.z, t.q), 'kgf/m^2')); }, tex: 'q', desc: 'Presión básica NCh432.Of71 Tabla 1 (1 ciudad, 2 campo abierto)', args: 'z, tipo' },
+  qNCh432Of71: { fn: (z, tipo = 1) => { const t = Q71[Math.round(toNum(tipo))]; if (!t) throw new Error('Tipo: 1 = ciudad, 2 = campo abierto / frente al mar'); return vmap(z, x => kgm2(interp1(nu(x, 'm'), t.z, t.q))); }, tex: 'q', desc: 'Presión básica NCh432.Of71 Tabla 1 (1 ciudad, 2 campo abierto)', args: 'z, tipo' },
 }, 'Viento — Chile');
