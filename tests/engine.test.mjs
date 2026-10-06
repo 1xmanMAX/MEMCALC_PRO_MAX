@@ -55,4 +55,10 @@ for (const t of TEMPLATES.filter(x => x.validacion)) {
     truthy(`[${t.id}] ${v.fuente}: ${x.var} = ${x.esperado} ${x.unidad || ''}`, ok, 'calculado ' + got);
   }
 }
+
+{
+  const { valTex, fmtNum } = await import('../src/engine.js');
+  truthy('Restos de coma flotante (6.87e-12) se muestran como 0', fmtNum(6.87e-12) === '0');
+  truthy('Área por metro se muestra en cm²/m', /cm\^\{2\}\/m/.test(valTex(math.evaluate('0.000555 m^2/m'))));
+}
 done();

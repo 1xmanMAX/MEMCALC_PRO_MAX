@@ -178,7 +178,7 @@ export function fmtNum(x, dec = settings.dec) {
   if (typeof x !== 'number') x = Number(x);
   if (Number.isNaN(x)) return '\\text{NaN}';
   if (!isFinite(x)) return x > 0 ? '\\infty' : '-\\infty';
-  if (x === 0) return '0';
+  if (x === 0 || Math.abs(x) < 1e-11) return '0';
   const ax = Math.abs(x);
   let s;
   if (ax >= 1e7 || ax < 1e-4) {
@@ -223,7 +223,13 @@ export function displayUnit(u) {
   }
   // misma unidad base repetida -> conservar (m·m·m -> m^3)
   const names = u.units.map(x => x.prefix.name + x.unit.name);
-  if (names.every(n => n === names[0])) {
+  const mixedPow = u.units.some(x => x.power < 0) && u.units.some(x => x.power > 0);
+  // área por unidad de longitud (acero por metro): cm²/m, mm²/m, in²/ft
+  if (mixedPow && !rest && dims === '0,1,0' && u.units.some(x => x.power === 2) && u.units.some(x => x.power === -1)) {
+    const t = { tec: 'cm^2/m', si: 'mm^2/m', us: 'in^2/ft' }[settings.sys];
+    try { return { v: u.toNumber(t), u: t }; } catch (e) { /* sigue */ }
+  }
+  if (names.every(n => n === names[0]) && !(mixedPow && PREF[settings.sys][dims] && !rest)) {
     const p = u.units.reduce((t, x) => t + x.power, 0);
     const us = p === 1 ? names[0] : names[0] + '^' + p;
     try { return { v: u.toNumber(us), u: us }; } catch (e) { /* sigue */ }
