@@ -162,7 +162,7 @@ registerBlock('steelsec', {
     }
     const pw = rows.find(r => r[0] === 'peso' + sfx)?.[2];
     const pwt = pw ? (settings.sys === 'us' ? f2(pw.toNumber('lbf/ft'), 1) + ' lb/ft' : f2(pw.toNumber('kgf/m'), 2) + ' kg/m') : '';
-    const head = `<div class="dt" style="text-align:center"><b>${esc(s.name)}</b> — ${esc(NAMEF[s.fam])}${pwt ? ' · ' + pwt : ''}</div>`;
+    const head = `<div class="dt" style="text-align:center"><b>${esc(s.name)}</b> — ${esc(NAMEF[s.fam])}${pwt ? ' · <span style="text-transform:none">' + pwt + '</span>' : ''}</div>`;
     let tb = '';
     if (b.tabla !== false) {
       const cells = rows.filter(r => r[0] !== 'peso' + sfx).map(r => `<td>${esc(r[1])}</td><td>${K(symTex(r[0]) + ' = ' + valTex(r[2], 3))}</td>`);

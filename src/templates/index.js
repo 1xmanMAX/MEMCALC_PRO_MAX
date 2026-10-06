@@ -10,4 +10,5 @@ import steel from './steel.js';
 import analysis from './analysis.js';
 import masonry from './masonry.js';
 import dynamics from './dynamics.js';
-export const EXTRA_TEMPLATES = [...peru, ...chile, ...japan, ...concrete, ...geotech, ...walls, ...bridges, ...steel, ...analysis, ...masonry, ...dynamics];
+import extras from './extras.js';
+export const EXTRA_TEMPLATES = [...peru, ...chile, ...japan, ...concrete, ...geotech, ...walls, ...bridges, ...steel, ...analysis, ...masonry, ...dynamics, ...extras];

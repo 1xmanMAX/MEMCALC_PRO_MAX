@@ -307,15 +307,15 @@ function renderRetwall(b, ctx) {
     g += `<path d="${path}" fill="${C.blueF}" stroke="${C.blue}"/>`;
     g += T(X(0) - 4, yb + qT * pb, f2(qT * kF) + ' ' + uP, { fs: 9, a: 'end', c: C.blue });
     g += T(X(B) + 4, yb + max(qH * pb, 4), f2(qH * kF) + ' ' + uP, { fs: 9, a: 'start', c: C.blue });
-    g += Lne(X(st.xr), yb - 30, X(st.xr), yb - 2, C.blue, 1.5).replace('/>', ' marker-end="url(#arb)"/>') + T(X(st.xr) + 4, yb - 20, 'R (e = ' + st.e.toFixed(3) + ' m)', { fs: 9, a: 'start', c: C.blue });
+    g += Lne(X(st.xr), yb - 30, X(st.xr), yb - 2, C.blue, 1.5).replace('/>', ' marker-end="url(#arb)"/>') + T(X(st.xr) + 4, yb - 20, 'R (e = ' + f2(st.e * 100, 1) + ' cm)', { fs: 9, a: 'start', c: C.blue });
     // cotas inferiores
     const yd = yb + 45 + 24;
-    g += dimH(X(0), X(B), yd + 16, 'B = ' + f2(B) + ' m') + dimH(X(0), X(p), yd, 'punta ' + f2(p)) + dimH(X(xbb), X(B), yd, (tipo === 'gravedad' ? 'talón ' : 'talón ') + f2(Lt));
+    g += dimH(X(0), X(B), yd + 16, 'B = ' + f2(B) + ' m') + dimH(X(0), X(p), yd, 'punta ' + f2(p) + ' m') + dimH(X(xbb), X(B), yd, (tipo === 'gravedad' ? 'talón ' : 'talón ') + f2(Lt) + ' m');
     if (t2 * sc > 40) g += dimH(X(p), X(xbb), yd, f2(t2));
   }
-  g += dimV(xL0 - 66, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimV(xL0 - 14, Y(hz), Y(0), 'hz = ' + f2(hz), C.ink, -1);
-  if (Df > hz + 1e-6) g += dimV(xL0 - 40, Y(Df), Y(0), 'Df = ' + f2(Df), C.ink, -1);
-  g += T(X(p + ie) - 4, Y(H) + 12, 't1 = ' + f2(t1), { fs: 10, a: 'end' });
+  g += dimV(xL0 - 66, Y(H), Y(0), 'H = ' + f2(H) + ' m') + dimV(xL0 - 14, Y(hz), Y(0), 'hz = ' + f2(hz) + ' m', C.ink, -1);
+  if (Df > hz + 1e-6) g += dimV(xL0 - 40, Y(Df), Y(0), 'Df = ' + f2(Df) + ' m', C.ink, -1);
+  g += T(X(p + ie) - 4, Y(H) + 12, 't1 = ' + f2(t1) + ' m', { fs: 10, a: 'end' });
   if (bk > 0 && hk > 0) g += T(X(xk) - 4, Y(-hk / 2) + 3, 'dentellón ' + f2(bk) + '×' + f2(hk), { fs: 9, a: 'end' });
   if (beta > 0) g += T(xs - 4, Y(yAt(xR + 0.3)) - 4, 'β = ' + f2(beta / D2R, 1) + '°', { fs: 10, a: 'end', c: '#7a5a2a' });
   const ttl = b.titulo || (tipo === 'gravedad' ? 'Muro de gravedad: geometría, fuerzas, empujes y presiones en la base' : 'Muro en voladizo: geometría, fuerzas, empujes y presiones en la base');
@@ -405,7 +405,7 @@ function renderWallRebar(b, ctx) {
   if (corte > 0) g += `<path d="M${xs2},${Y(zc)} L${xs2},${Y(hp) + 12} L${xs2 - 34},${Y(hp) + 12}" fill="none" stroke="${C.blue}" stroke-width="2.2"/>`;
   g += dimV(ex0 - 30, Y(0), Y(hp), 'hp = ' + f2(hp) + ' m');
   if (corte > 0) g += dimV(xBack + 80, Y(zc), Y(hp), 'hc = ' + f2(hcut2) + ' m', C.blue, 1);
-  g += T(xBack - t1 * tsc / 2, Y(0) - 6, 't1 = ' + f2(t1), { fs: 10 }) + T(xBack - t2 * tsc / 2, Y(hp) + 36, 't2 = ' + f2(t2), { fs: 10 });
+  g += T(xBack - t1 * tsc / 2, Y(0) - 6, 't1 = ' + f2(t1) + ' m', { fs: 10 }) + T(xBack - t2 * tsc / 2, Y(hp) + 36, 't2 = ' + f2(t2) + ' m', { fs: 10 });
   g += T(xs1 - 6, Y(hp * 0.25), `${BARS[bar].n} @ ${f2(sl, 0)}`, { fs: 10, c: C.red, a: 'end' }) + (corte > 0 ? T(xs2 - 6, Y(zc + (hp - zc) * 0.5), `${BARS[bar].n} @ ${f2(sl, 0)} (alternas)`, { fs: 10, c: C.blue, a: 'end' }) : '');
   // diagrama
   const dx0 = 400, dW = 290;
