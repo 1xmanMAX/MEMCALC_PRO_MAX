@@ -39,6 +39,7 @@ Tabla 6 (R/ξ) leída del texto en consulta pública; la plantilla `cl-nch2369` 
 `TpNCh2369, nNCh2369, INCh2369, CNCh2369, CmaxNCh2369, CminNCh2369, SaNCh2369, SaNCh2369v23`,
 análisis modal de edificio de cortante (NCh433 6.3): `TmodosCL, phiModosCL, GammaModosCL, MeffModosCL, FmodalCL, UmodalCL, cortesCL, entrepisoCL, cqcNCh433` (ρij de la ec. 6-14, ξ = 0,05),
 viento: `KzNCh432, qzNCh432, CpTechoNCh432, CpTechoSotNCh432, CpMuroSotNCh432, qNCh432Of71`.
+NCh433:2026 (vigente ≈ 10-02-2027): `sueloVsNCh433v26, sueloNCh433v26, TgLimNCh433v26` y alias `…NCh433v26` (Ao, I, S, To, T', n, p, α, Sa, R*, C, Cmáx, Cmín, f, Ak, Sde) — ver `chile-2026.md`.
 Suelo NCh433: código 1..5 (= A..E) o texto `"A"`…`"E"`. Suelo NCh2369.Of2003: 1..4 (= I..IV).
 
 ## Validación (tests/chile.test.mjs)
@@ -62,3 +63,4 @@ Suelo NCh433: código 1..5 (= A..E) o texto `"A"`…`"E"`. Suelo NCh2369.Of2003:
 
 7. **DS60 21.9.5.4 y 21.9.6.4 a)**: el PDF oficial del MINVU no fue accesible en la revisión (bloqueo del servidor). La demanda de curvatura se evalúa con la envolvente de φu = 2δu/(lw·Ht) y φu = φy + (δu − δy)/(lp(Ht − lp/2)) (lp = lw/2, δy = 11/40·φy·Ht², forma usada en la memoria de Meriño, U. del Bío-Bío); la longitud a confinar con la envolvente máx(c − lw/(600δu/hw); c − 0,1lw; c/2). Ambos criterios son conservadores; confirmar con el texto oficial.
 8. Revisión independiente: ver `docs/referencias/revision-chile.md`.
+9. **Actualización 2026–2027** (NCh433:2026, NCh2369:2025 vigente 10-09-2027, NCh432:2025): ver `docs/referencias/chile-2026.md`. Plantillas nuevas `cl-nch433-2026` y `cl-nch433-comparacion`.

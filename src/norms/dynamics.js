@@ -244,10 +244,17 @@ export function storyDrift(V, st) {
   }
   return V <= Vy ? V / k : Vy / k + (V - Vy) / (a * k);
 }
-export function pushoverShear({ m, k, Vy, h, alpha, pattern = 'modal', fcr = 0, r2 = 0.5, druEnd = 0.05, npts = 160 }) {
+// Opciones: pdelta (θi = Pi/hi con Pi = g·Σ_{j≥i} mj·fP), cap = { dr: deriva de inicio de la degradación (δc/h),
+// ac: pendiente negativa −ac·k, res: resistencia residual/Vy }. Sin P-Δ ni degradación la curva es exacta (control
+// de fuerzas invertido por bisección); con ellos se usa control de desplazamiento incremental con Newton-Raphson
+// (equilibrio de entrepisos en serie + restricción Σδi = d), descarga elástica de los entrepisos que no localizan.
+export function pushoverShear({ m, k, Vy, h, alpha, pattern = 'modal', fcr = 0, r2 = 0.5, druEnd = 0.05, npts = 160, pdelta = false, fP = 1, cap = null }) {
   const n = m.length;
   const al = (Array.isArray(alpha) ? alpha : m.map(() => alpha)).map(a => Math.max(a, 1e-5));
-  const modes = shearModes(m, k);
+  const theta = m.map((_, i) => (pdelta ? G * fP * m.slice(i).reduce((a, b) => a + b, 0) / h[i] : 0));
+  const kE = k.map((x, i) => x - theta[i]);
+  if (kE.some(x => !(x > 0))) { const i = kE.findIndex(x => !(x > 0)); const e = new Error(`Inestabilidad elástica por P-Δ en el entrepiso ${i + 1}: P/h = ${theta[i].toExponential(3)} ≥ k`); e.unstable = i; throw e; }
+  const modes = shearModes(m, kE);
   const H = []; h.reduce((s, x, i) => (H[i] = s + x), 0);
   let s;
   if (pattern === 'uniforme') s = m.slice();
@@ -258,6 +265,11 @@ export function pushoverShear({ m, k, Vy, h, alpha, pattern = 'modal', fcr = 0, 
   const sumS = s.reduce((a, b) => a + b, 0);
   const Sx = s.map((_, i) => s.slice(i).reduce((a, b) => a + b, 0) / sumS);      // V_i / V_b
   const st = m.map((_, i) => ({ k: k[i], Vy: Vy[i], a: al[i], fcr, r2 }));
+  const mstar0 = m.reduce((a, x, i) => a + x * Phi[i], 0), Gam0 = mstar0 / m.reduce((a, x, i) => a + x * Phi[i] ** 2, 0), Mt0 = m.reduce((a, b) => a + b, 0);
+  if (pdelta || (cap && cap.dr > 0)) {
+    const r = pushoverIncr({ st, theta, Sx, h, druEnd, cap });
+    return { modes, Phi, s, Sx, H, ...r, mstar: mstar0, Gam: Gam0, Mt: Mt0, alpha1: mstar0 * Gam0 / Mt0, theta, pdelta, incremental: true };
+  }
   const drifts = (Vb) => Sx.map((x, i) => storyDrift(Vb * x, st[i]));
   const roof = (Vb) => drifts(Vb).reduce((a, b) => a + b, 0);
   const VbAt = (d) => { let lo = 0, hi = Math.max(...Vy.map((v, i) => v / Sx[i])); while (roof(hi) < d) hi *= 1.5; for (let it = 0; it < 70; it++) { const mid = (lo + hi) / 2; if (roof(mid) < d) lo = mid; else hi = mid; } return (lo + hi) / 2; };
@@ -276,7 +288,81 @@ export function pushoverShear({ m, k, Vy, h, alpha, pattern = 'modal', fcr = 0, 
   const curve = dl.map(d => { const Vb = d === 0 ? 0 : VbAt(d); return { d, Vb }; });
   const mstar = m.reduce((a, x, i) => a + x * Phi[i], 0), Gam = mstar / m.reduce((a, x, i) => a + x * Phi[i] ** 2, 0);
   const Mt = m.reduce((a, b) => a + b, 0);
-  return { modes, Phi, s, Sx, H, curve, ev, dEnd, VbEnd, mstar, Gam, Mt, drifts, roof, VbAt, alpha1: mstar * Gam / Mt };
+  const stateAt = (d) => { const Vb = VbAt(Math.min(d, dEnd)); return { Vb, dr: drifts(Vb) }; };
+  curve.forEach(q => { q.dr = q.d === 0 ? Sx.map(() => 0) : drifts(q.Vb); });
+  return { modes, Phi, s, Sx, H, curve, ev, dEnd, VbEnd, mstar, Gam, Mt, drifts, roof, VbAt, stateAt, alpha1: mstar * Gam / Mt, theta, pdelta: false, endBy: 'deriva', Vbmax: VbEnd };
+}
+// envolvente de entrepiso (fuerza resistente del resorte, sin P-Δ) y su tangente; descarga con k
+export function storyBackbone(st, cap, hgt) {
+  const { k, Vy, a, fcr, r2 } = st;
+  const tri = fcr > 0 && fcr < 1, Vc = tri ? fcr * Vy : Vy, dc = Vc / k, dy = tri ? dc + (Vy - Vc) / (r2 * k) : Vy / k;
+  const pre = (d) => (d <= dc ? [k * d, k] : d <= dy ? [Vc + r2 * k * (d - dc), r2 * k] : [Vy + a * k * (d - dy), a * k]);
+  const dcap = cap && cap.dr > 0 ? Math.max(cap.dr * hgt, dy) : Infinity, Fc = isFinite(dcap) ? pre(dcap)[0] : 0;
+  const ac = cap ? Math.max(cap.ac ?? 0.1, 1e-4) : 0, Fr = cap ? Math.max(cap.res ?? 0, 0) * Vy : 0;
+  const dres = isFinite(dcap) ? dcap + Math.max(Fc - Fr, 0) / (ac * k) : Infinity;
+  const f = (d) => { if (d <= dcap) return pre(d); if (d <= dres) return [Fc - ac * k * (d - dcap), -ac * k]; return [Fr, 0]; };
+  return { f, dy, dc, dcap, dres, Fc, Fr };
+}
+function pushoverIncr({ st, theta, Sx, h, druEnd, cap }) {
+  const n = st.length, bb = st.map((x, i) => storyBackbone(x, cap, h[i]));
+  const del = new Float64Array(n), dmx = new Float64Array(n);
+  let lam = 0;
+  const trial = (i, d) => {
+    if (d >= dmx[i] - 1e-15) { const [F, kt] = bb[i].f(d); return [F, kt]; }
+    const Fm = bb[i].f(dmx[i])[0]; return [Fm - st[i].k * (dmx[i] - d), st[i].k];
+  };
+  const solve = (dTarget) => {
+    const dl = Float64Array.from(del); let lm = lam;
+    for (let it = 0; it < 60; it++) {
+      const R = new Float64Array(n), kt = new Float64Array(n); let g = -dTarget, nr = 0;
+      for (let i = 0; i < n; i++) { const [F, t] = trial(i, dl[i]); R[i] = F - theta[i] * dl[i] - lm * Sx[i]; let kk = t - theta[i]; if (Math.abs(kk) < 1e-7 * st[i].k) kk = (kk < 0 ? -1 : 1) * 1e-7 * st[i].k; kt[i] = kk; g += dl[i]; nr = Math.max(nr, Math.abs(R[i]) / st[i].Vy); }
+      if (nr < 1e-10 && Math.abs(g) < 1e-12 * Math.max(dTarget, 1e-9)) return { dl, lm, it };
+      // kt Δδ − Sx Δλ = −R ; ΣΔδ = −g
+      let A = 0, B = 0; for (let i = 0; i < n; i++) { A += Sx[i] / kt[i]; B += R[i] / kt[i]; }
+      const dlam = (-g + B) / A;
+      for (let i = 0; i < n; i++) dl[i] += (Sx[i] * dlam - R[i]) / kt[i];
+      lm += dlam;
+    }
+    return null;
+  };
+  const dGuess = druEnd * h.reduce((a, b) => a + b, 0);
+  const run = (step) => {
+    del.fill(0); dmx.fill(0); lam = 0;
+    const out = [{ d: 0, Vb: 0, dr: Array(n).fill(0) }];
+    let d = 0, Vmax = 0, endBy = 'deriva', fails = 0, hstep = step;
+    for (let k = 0; k < 6000; k++) {
+      const r = solve(d + hstep);
+      if (!r) { hstep /= 2; if (++fails > 12) { endBy = 'convergencia'; break; } continue; }
+      const drPrev = Math.max(...Array.from(del, (x, i) => x / h[i]));
+      d += hstep; del.set(r.dl); lam = r.lm; for (let i = 0; i < n; i++) dmx[i] = Math.max(dmx[i], del[i]);
+      const Vb = lam;   // λ·Sx1 = λ = cortante basal neto (incluye el efecto P-Δ)
+      const drNow = Math.max(...Array.from(del, (x, i) => x / h[i]));
+      if (drNow >= druEnd) {   // recorta al punto con deriva = druEnd (interpolación lineal)
+        const t = (druEnd - drPrev) / (drNow - drPrev || 1), p0 = out[out.length - 1];
+        out.push({ d: p0.d + t * (d - p0.d), Vb: p0.Vb + t * (Vb - p0.Vb), dr: p0.dr.map((x, i) => x + t * (del[i] - x)) });
+        break;
+      }
+      out.push({ d, Vb, dr: Array.from(del) }); Vmax = Math.max(Vmax, Vb);
+      if (Vb <= 0.2 * Vmax && Vmax > 0) { endBy = 'resistencia'; break; }
+      if (hstep < step) hstep = Math.min(step, hstep * 2);
+    }
+    return { out, endBy, Vmax: Math.max(Vmax, out[out.length - 1].Vb) };
+  };
+  let R = run(dGuess / 500);
+  const dE = R.out[R.out.length - 1].d;
+  if (R.out.length < 150 && dE > 0) R = run(dE / 300);
+  const curve = R.out;
+  const dEnd = curve[curve.length - 1].d;
+  // eventos: fluencia, fisuración e inicio de la degradación por entrepiso (primer cruce)
+  const ev = [];
+  for (let i = 0; i < n; i++) {
+    const marks = [['fluencia', bb[i].dy]]; if (st[i].fcr > 0 && st[i].fcr < 1) marks.push(['fisuración', bb[i].dc]); if (isFinite(bb[i].dcap)) marks.push(['degradación', bb[i].dcap]);
+    for (const [tipo, dl] of marks) { for (let j = 1; j < curve.length; j++) if (curve[j].dr[i] >= dl && curve[j - 1].dr[i] < dl) { const a = curve[j - 1], b = curve[j], t = (dl - a.dr[i]) / (b.dr[i] - a.dr[i]); ev.push({ i, tipo, Vb: a.Vb + t * (b.Vb - a.Vb), d: a.d + t * (b.d - a.d) }); break; } }
+  }
+  ev.sort((a, b) => a.d - b.d);
+  const stateAt = (d) => { const x = Math.min(Math.max(d, 0), dEnd); for (let j = 1; j < curve.length; j++) if (x <= curve[j].d) { const a = curve[j - 1], b = curve[j], t = (x - a.d) / (b.d - a.d || 1); return { Vb: a.Vb + t * (b.Vb - a.Vb), dr: a.dr.map((y, i) => y + t * (b.dr[i] - y)) }; } const c = curve[curve.length - 1]; return { Vb: c.Vb, dr: c.dr.slice() }; };
+  const VbAt = (d) => stateAt(d).Vb;
+  return { curve, ev, dEnd, VbEnd: curve[curve.length - 1].Vb, stateAt, VbAt, drifts: null, roof: null, endBy: R.endBy, Vbmax: R.Vmax, bb };
 }
 // curva tabulada [x, y] (desde el origen): interpolación y área acumulada
 export function tab(pts) {
@@ -399,18 +485,51 @@ export function fema440ELM(cap, Sa) {
 // Método de coeficientes (ASCE 41-17 §7.4.3.3.2 / FEMA 440 cap. 5). Curva global [[d_techo, Vb]] (m, N)
 export function C1ASCE41(mu, Te, a) { const T = Math.min(Math.max(Te, 0.2), 1.0); return Te > 1.0 ? 1 : 1 + (mu - 1) / (a * T * T); }
 export function C2ASCE41(mu, Te) { return Te > 0.7 ? 1 : 1 + ((mu - 1) / Te) ** 2 / 800; }
-export function coefMethod(curve, W, Sa, Te, C0, a = 130, Cm = 1) {
-  const c = tab(curve); let dt = C0 * Sa(Te) * (Te / PI2) ** 2, out;
-  for (let it = 0; it < 100; it++) {
-    const bl = bilinEqualArea(c, Math.min(dt, c.xmax));
-    const Vy = bl.ay;
-    const mu = Math.max(Sa(Te) / G / (Vy / W) * Cm, 1);
-    const C1 = C1ASCE41(mu, Te, a), C2 = C2ASCE41(mu, Te);
-    const dn = C0 * C1 * C2 * Sa(Te) * (Te / PI2) ** 2;
-    out = { dt: dn, C0, C1, C2, mu, Vy, it: it + 1 };
-    if (Math.abs(dn - dt) <= 1e-6 * dn) break;
-    dt = dn;
+// Idealización bilineal de ASCE 41-17 §7.4.3.2.4 (Fig. 7-3): Ke secante en 0.6Vy, rama post-fluencia por (Δd, Vd)
+// con Δd = min(δt, desplazamiento en Vb máximo) y áreas iguales hasta Δd. Iterativa en Vy.
+export function idealizeASCE41(c, dt) {
+  let iMax = 0; for (let i = 1; i < c.P.length; i++) if (c.P[i][1] > c.P[iMax][1]) iMax = i;
+  const Dd = Math.min(dt, c.P[iMax][0], c.xmax), Vd = c.at(Dd), A = c.area(Dd);
+  const d06 = (V) => { for (let i = 1; i < c.P.length; i++) if (c.P[i][1] >= V) { const [x0, y0] = c.P[i - 1], [x1, y1] = c.P[i]; return x0 + (x1 - x0) * (V - y0) / (y1 - y0 || 1); } return NaN; };
+  let Vy = Vd, Ke = c.k0, elastic = false;
+  for (let it = 0; it < 60; it++) {
+    Ke = 0.6 * Vy / d06(0.6 * Vy);
+    const den = Dd - Vd / Ke;
+    if (!(den > 1e-9 * Dd)) { Vy = Vd; elastic = true; break; }
+    const Vn = Math.min(Math.max((2 * A - Vd * Dd) / den, 1e-6 * Vd), Vd * 1.0000001);
+    if (Math.abs(Vn - Vy) <= 1e-9 * Vd) { Vy = Vn; break; }
+    Vy = Vn;
   }
+  if (!isFinite(Ke) || !(Ke > 0)) Ke = c.k0;
+  const dy = Math.min(Vy / Ke, Dd), a1 = Dd > dy * (1 + 1e-9) ? (Vd - Vy) / (Dd - dy) / Ke : 0;
+  // pendiente negativa α2 (de (Δd, Vd) al punto de la rama descendente con V = 0.6Vy, o al final de la curva)
+  let a2 = null;
+  const last = c.P[c.P.length - 1];
+  if (last[0] > Dd * (1 + 1e-6) && last[1] < Vd * (1 - 1e-3)) {
+    let pt = last;
+    for (let i = iMax + 1; i < c.P.length; i++) if (c.P[i][0] > Dd && c.P[i][1] <= 0.6 * Vy) { const [x0, y0] = c.P[i - 1], [x1, y1] = c.P[i]; pt = [x0 + (x1 - x0) * (0.6 * Vy - y0) / (y1 - y0 || -1), 0.6 * Vy]; break; }
+    a2 = (pt[1] - Vd) / (pt[0] - Dd) / Ke;
+  }
+  return { Vy, Ke, dy, Dd, Vd, a1, a2, elastic };
+}
+// Método de coeficientes (ASCE 41-17 §7.4.3.3.2). Curva global [[δ_techo, Vb]] (m, N); Ti = periodo elástico (s)
+// Te = Ti·√(Ki/Ke) (Ec. 7-27); μstrength = Sa/(Vy/W)·Cm (Ec. 7-31); límite μmax por pendiente negativa (Ec. 7-32).
+export function coefMethod(curve, W, Sa, Ti, C0, a = 130, Cm = 1, opt = {}) {
+  const c = tab(curve), Ki = c.k0, lam = opt.lambda ?? 0.8, aPD = Math.min(opt.alphaPD ?? 0, 0);
+  let dt = C0 * Sa(Ti) * (Ti / PI2) ** 2, out;
+  for (let it = 0; it < 100; it++) {
+    const idl = idealizeASCE41(c, Math.min(dt, c.xmax));
+    const Te = Ti * Math.sqrt(Ki / idl.Ke), SaT = Sa(Te);
+    const mu = Math.max(SaT / G / (idl.Vy / W) * Cm, 1);
+    const C1 = C1ASCE41(mu, Te, a), C2 = C2ASCE41(mu, Te);
+    const dn = C0 * C1 * C2 * SaT * (Te / PI2) ** 2;
+    let ae = null, mumax = Infinity;
+    if (idl.a2 !== null && idl.a2 < 0) { ae = aPD + lam * (idl.a2 - aPD); const hh = 1 + 0.15 * Math.log(Te); mumax = idl.Dd / idl.dy + Math.abs(ae) ** (-hh) / 4; }
+    out = { dt: dn, C0, C1, C2, mu, Vy: idl.Vy, Ke: idl.Ke, Ki, Te, Ti, SaT, dy: idl.dy, Dd: idl.Dd, Vd: idl.Vd, a1: idl.a1, a2: idl.a2, ae, mumax, it: it + 1 };
+    if (Math.abs(dn - dt) <= 1e-6 * dn) break;
+    dt = 0.5 * (dt + dn);
+  }
+  out.unstable = out.mu > out.mumax;
   return out;
 }
 
