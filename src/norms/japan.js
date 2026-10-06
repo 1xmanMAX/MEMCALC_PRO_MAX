@@ -19,14 +19,22 @@ const E_STEEL = 205000; // N/mm² (AIJ / BSL)
 // ---------------------------------------------------------------------
 const ZONAS = { 1: 1.0, 2: 0.9, 3: 0.8, 4: 0.7 };
 function DsTabRC(rF, rW, bu) {
-  // Notif. 1792 (Arts. 1 y 4): rango global = el menos dúctil entre柱・梁 (FA–FD) y muros (WA–WD)
+  // Notif. 1792 Art. 4 (texto vigente, mod. Notif. 596 de 2007), tabla para pórticos con muros de C°A°.
+  // Transcrita del MEXT «建築構造設計指針» (2024), tabla 6.1, que reproduce el Art. 4 de la Notif. 1792.
+  // Filas: rango del grupo de muros WA–WD y tramo de βu; columnas: rango del grupo de vigas y columnas FA–FD.
   rF = Math.round(rF); rW = Math.round(rW);
   chk(rF >= 1 && rF <= 4, 'Rango de columnas/vigas: 1 (FA) a 4 (FD)');
   chk(rW >= 1 && rW <= 4, 'Rango de muros: 1 (WA) a 4 (WD)');
   chk(bu >= 0 && bu <= 1, 'βu debe estar entre 0 y 1');
-  const r = bu === 0 ? rF : Math.max(rF, rW);
-  const col = bu <= 0.3 ? 0 : bu <= 0.7 ? 1 : 2;
-  return [[0.30, 0.35, 0.40], [0.35, 0.40, 0.45], [0.40, 0.45, 0.50], [0.45, 0.50, 0.55]][r - 1][col];
+  if (bu === 0) return [0.30, 0.35, 0.40, 0.45][rF - 1]; // pórtico sin muros
+  const T = {
+    1: [[0.30, 0.35, 0.40, 0.45], [0.35, 0.40, 0.45, 0.50], [0.40, 0.45, 0.45, 0.55]],
+    2: [[0.35, 0.35, 0.40, 0.45], [0.40, 0.40, 0.45, 0.50], [0.45, 0.45, 0.50, 0.55]],
+    3: [[0.35, 0.35, 0.40, 0.45], [0.40, 0.45, 0.45, 0.50], [0.50, 0.50, 0.50, 0.55]],
+    4: [[0.40, 0.40, 0.45, 0.45], [0.45, 0.50, 0.50, 0.50], [0.55, 0.55, 0.55, 0.55]],
+  };
+  const fila = bu <= 0.3 ? 0 : bu <= 0.7 ? 1 : 2;
+  return T[rW][fila][rF - 1];
 }
 function DsTabS(rF, rB, bu) {
   // Notif. 1792 (Art. 3, mod. Notif. 596 de 2007): acero, columnas/vigas FA–FD y arriostres BA–BC
@@ -47,9 +55,11 @@ function S0bed(T, nivel) {
   const k = nivel === 2 ? 5 : 1;
   return k * (T < 0.16 ? 0.64 + 6 * T : T < 0.64 ? 1.6 : 1.024 / T);
 }
-// Amplificación simplificada del suelo Gs (Notif. 1457, Art. 10)
+// Amplificación simplificada del suelo Gs (Notif. 1457 Art. 10, método por tipo de suelo)
+//   suelo 1: 1.5 (T < 0.576) · 0.864/T · 1.35 (T ≥ 0.64)
+//   suelos 2 y 3: 1.5 (T < 0.64) · 1.5·T/0.64 · gv (T ≥ Tu = 0.64·gv/1.5), gv = 2.025 / 2.7
 function GsSimp(T, suelo) {
-  if (suelo === 1) return T < 0.576 ? 1.35 : T < 0.64 ? 0.778 / T : 1.215;
+  if (suelo === 1) return T < 0.576 ? 1.5 : T < 0.64 ? 0.864 / T : 1.35;
   const gv = suelo === 2 ? 2.025 : 2.7, Tu = 0.64 * gv / 1.5;
   return T < 0.64 ? 1.5 : T < Tu ? 1.5 * T / 0.64 : gv;
 }
