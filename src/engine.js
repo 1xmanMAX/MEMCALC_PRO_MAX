@@ -212,6 +212,15 @@ const PREF = {
 // Devuelve {v:number, u:string} para mostrar una unidad
 export const fixedUnits = new WeakMap();
 export function displayUnit(u) {
+  const d = displayUnit0(u);
+  // longitudes y áreas muy pequeñas en m / m²: más legibles en cm o mm (no afecta unidades fijadas con -> o datos)
+  if (!fixedUnits.get(u) && d.v !== 0 && isFinite(d.v)) {
+    const small = { m: [0.1, settings.sys === 'si' ? 'mm' : 'cm'], 'm^2': [0.01, settings.sys === 'si' ? 'mm^2' : 'cm^2'] }[d.u];
+    if (small && Math.abs(d.v) < small[0]) { try { return { v: u.toNumber(small[1]), u: small[1] }; } catch (e) { /* sigue */ } }
+  }
+  return d;
+}
+function displayUnit0(u) {
   if (!u.units || u.units.length === 0) return { v: u.value ?? 0, u: '' };
   const fx = fixedUnits.get(u);
   if (fx) { try { return { v: u.toNumber(fx), u: fx }; } catch (e) { /* sigue */ } }
