@@ -919,7 +919,9 @@ ldg = ldgE060(bar, fc, fy) // Desarrollo con gancho estándar en el elemento de 
 "Las {n} barras #{bar} superiores se anclan en el apoyo con gancho de 90°: ℓdg = {ldg}; en el voladizo se prolongan hasta el extremo (barras superiores, ψt = 1.3: ℓd = {ldE060(bar, fc, fy, 1.3)}).
 # Diseño por cortante (E.060 11)
 Vud1 = Vmax - (1.4*wD + 1.7*wL)*d // U1: cortante a "d" de la cara (11.1.3.1)
-Vud2 = 1.25*((wD + wL)*(Lv - d) + PD) + Fv*(wD*(Lv - d) + PD + 0.25*wL*(Lv - d)) -> tonf // U2 con sismo vertical, a "d" de la cara
+Wd = wD*(Lv - d) + PD -> tonf // Carga muerta más allá de la sección a "d" de la cara
+Wl = wL*(Lv - d) -> tonf // Carga viva más allá de la sección a "d"
+Vud2 = 1.25*(Wd + Wl) + Fv*(Wd + 0.25*Wl) // U2 con sismo vertical, a "d" de la cara
 Vud = max(Vud1, Vud2) // Cortante de diseño
 phiVc = 0.85*0.53*sqrtfc(fc)*b*d -> tonf // Resistencia del concreto
 Av = 2*Ab(est) // Estribo de dos ramas

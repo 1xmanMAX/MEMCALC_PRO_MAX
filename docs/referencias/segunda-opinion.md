@@ -702,3 +702,294 @@ Validaciones modificadas, con la justificación de arriba:
 - `st-compuesta`: perfil W12×19 → W16×31 (AISC DG11). `phiMn` 28.7 → 48.38 t·m, `Mu` 24.38 → 24.59 t·m y `dL`
   1.834 → 0.880 cm; se agregó `apg` = 0.0042.
 - `ma-cisterna` no tiene `validacion`; su varilla por defecto pasó de 1/2" a 5/8" @ 20 (sismo del suelo).
+
+---
+
+# Tercera tanda B: plantillas aún no revisadas de base, Chile, Japón, dinámica, análisis, Perú, concreto, geotecnia y muros
+
+Revisor: ingeniero jefe (misma metodología y escala de gravedad). Fecha: octubre de 2026. Alcance: las 69 plantillas de
+`src/templates.js` y de `src/templates/{chile,japan,dynamics,analysis,peru,concrete,geotech,walls}.js` que no figuraban en
+las dos tandas anteriores. Los módulos *bridges*, *steel*, *masonry* y *extras* los revisa otro agente en paralelo.
+
+**Método.** Cada plantilla se ejecutó con `runTemplate` y se leyó la memoria línea por línea: fórmula, valor y artículo
+citado. Luego se probaron cambios realistas de datos: otra zona, suelo blando, más carga, luces mayores, otra barra u otro
+sistema. Se revisaron renderizadas (`build.mjs` + `shot.mjs --paper`) *puente*, *asce7*, *co-colesbelta* y *wa-mse*, y las
+100 plantillas de estos módulos pasaron por `tools/qa-render.mjs --no-shot`. No quedan errores de render en estas
+plantillas; solo persisten tres avisos «sin resumen» en *espectros*, *combos* y *blanco*, que son plantillas sin
+verificaciones.
+
+**Archivos editados:** `src/templates.js`, `src/templates/{analysis,japan,peru,concrete,geotech,walls}.js`,
+`tests/verify.mjs` y `tests/{analysis,japan,concrete,geotech,walls,peru}.test.mjs`. Al final, `node tests/run.mjs` pasa
+completo.
+
+## Resumen
+
+| Plantilla | Veredicto | Hallazgo principal | Corregido |
+|---|---|---|---|
+| aci | Apta, con corrección | 5 Ø 20 mm en un alma de 300 mm dejaban 25.0 mm libres, menos que 4/3·dagg = 25.3 mm | Sí (barra 22 mm y check 25.2.1) |
+| ec2 | Apta | x/d ≤ 0.45 frente a 0.448 exacto (k1 = 0.44, k2 = 1.25) | No (diferencia de 0.4 %) |
+| portante | Apta | Sin advertencia de corte local en suelos sueltos | No (observación) |
+| muro | Apta | — | — |
+| asce7 | **Corregida (Media)** | Sin SDC, sin limitaciones del sistema (Tabla 12.2-1) y sin P-Δ (12.8.7) | Sí |
+| japon | Apta | — | — |
+| espectros | Apta, con corrección | Z editable, pero S calculado siempre con la zona 4 | Sí |
+| sismo2018 | Apta | Sin P-Δ: el texto de la E.030-2018 no lo exige | No (observación) |
+| puente | **Corregida (Media)** | Faltaba la franja de borde, que gobierna (73.7 > 73.5 t·m/m) | Sí |
+| acero | Apta | Sin control de deflexión (no hay luz en los datos) | No |
+| predim, combos, albanileria, guia, blanco | Aptas | — | — |
+| cl-nch433-estatico, cl-nch433-modal, cl-nch433-2026, cl-nch433-comparacion, cl-nch2369, cl-nch3171 | Aptas | — | — |
+| cl-muro-ds60 | Apta, con observación | δu/hw sin el mínimo de 0.007 de ACI 318-08 21.9.6.2 | No (verificar con el DS60) |
+| cl-viento-galpon | Apta, con observación | Presión interior con signo distinto en el muro de barlovento | No (conservador) |
+| jp-bsl-ruta12, jp-bsl-ruta3, jp-aij-viga, jp-aij-columna, jp-aij-acero, jp-bsl-viento-nieve, jp-bsl-n1461 | Aptas | — | — |
+| jp-madera-kaberyo | **Corregida (Media)** | c_w de la tabla anterior a la reforma de 2025, sin forma de ingresar el vigente | Sí |
+| jp-jra-espectro | **Corregida (Media)** | Faltaba el desplazamiento residual de nivel 2 (JRA V 6.4.6) | Sí |
+| dy-sdof-elcentro, dy-espectro-e030, dy-5pisos-chopra, dy-nl-cortante, dy-pushover-n2, dy-momcurv-col | Aptas (didácticas) | — | — |
+| dy-aislamiento | Apta (didáctica), con observación | Un solo registro y sin DTM ni λ: no sirve para diseñar | No (remite a *pe-e031*) |
+| an-armadura | **Corregida (Media)** | Sin viento: no se verificaba la inversión de esfuerzos | Sí |
+| an-nave | **Corregida (Media)** | Se suponía Mn = Mp (Lb ≤ Lp) sin dato de arriostramiento del ala interior | Sí |
+| an-voladizo | **Corregida (Media)** | Mu = 1.5·Ms (factor «promedio») y sin sismo vertical | Sí |
+| an-influencia, an-matricial, an-cross | Aptas | — | — |
+| an-modal-pdelta | Apta, con observación | Usa la E.030-2018 | No |
+| pe-e030-irregularidades, pe-e031-aislamiento | Aptas | — | — |
+| pe-e020-viento | Apta, con corrección | El levantamiento de la cobertura se estabilizaba con 0.9 CM frente a un viento de servicio | Sí (0.6 CM) |
+| co-colesbelta | **Corregida (Media-Alta)** | Sin verificación biaxial: con 12 Ø 3/4" la D/C biaxial era 1.12 | Sí |
+| co-biaxial, co-vigat, co-vigadoble, co-deflexion, co-aligerado2d, co-mensula, co-stm, co-anclajes | Aptas | — | — |
+| co-vigaductil | Apta, con observación | Vc en Lo: la E.060 no lo anula; el ACI 318-19 18.6.5.2 sí | No |
+| co-voladizo (ya revisada) | Corrección de presentación | Ecuación de Vud2 al 68 % del ancho de la hoja | Sí |
+| ge-winkler | Apta, con corrección | No se verificaba Av,mín cuando Vu > 0.5 φVc | Sí |
+| ge-corrido, ge-spt | Aptas | — | — |
+| ge-grupo | Apta, con observación | No se verifica la capacidad estructural del pilote | No |
+| ge-talud | **Corregida (Media)** | kh = 0.15 fijo, sin relación con la zona ni con el suelo | Sí |
+| wa-contrafuertes | **Corregida (Alta)** | Talón y tirantes verticales diseñados solo en condición estática; con sismo la carga neta es 2.6 veces mayor | Sí |
+| wa-mse | **Corregida (Media-Alta)** | Sin estabilidad interna con sismo (11.10.7.2) | Sí |
+| wa-coeficientes, wa-gaviones | Aptas | — | — |
+| wa-tablestaca, wa-tablestaca-anclada | Aptas para obra provisional | Cálculo solo estático | Nota en la memoria |
+
+## Detalle por plantilla
+
+### Plantillas base (`src/templates.js`)
+
+**aci — apta, con corrección.** φ por εt, εt ≥ 0.004, Asmín, Vc según la Tabla 22.5.5.1, λs y smáx están bien.
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| Con Ø 20 mm resultaban 5 barras en 300 mm: separación libre de 25.0 mm, menor que máx(25 mm, db, 4/3·19 mm) = 25.3 mm. La memoria supone una sola capa en *d*. | Baja-Media (constructibilidad; con dos capas *d* baja) | ACI 318-19 25.2.1 | Dato `dagg`, `sl` y check. **Barra por defecto 20 → 22 mm** (4 barras, 37.3 mm). Validación: d 540 → 539 mm, As 1320 → 1322.5 mm², φMn 293.2 → 284.1 kN·m, Vc 145.7 → 145.5 kN y φVn 216.2 → 215.8 kN. |
+
+**ec2 — apta.** Observación (Baja): el límite x/d ≤ 0.45 redondea el valor exacto de 5.5(4) con δ = 1, que es
+(1 − 0.44)/1.25 = 0.448. Con los datos por defecto x/d = 0.21.
+
+**portante — apta.** Ecuación general con De Beer y Hansen. Observación (Baja): con φ ≤ 30° y arena suelta la falla puede
+ser por corte local (Terzaghi c′ = 2c/3, φ′ = atan(2/3 tan φ)). La memoria remite a *ge-portante* y al EMS.
+
+**muro — apta.** Sobrecarga excluida de los momentos y fuerzas estabilizantes (conservador), 1.7E en la pantalla y
+mínimos de 14.3.
+
+**asce7 — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| No se determinaba la categoría de diseño sísmico. Con SDS = 1.0 (SDC D) se podía elegir «C.7 pórtico ordinario de C°A°» con R = 3, que **no está permitido** (NP) en SDC C–F, o «C.6 pórtico intermedio», NP en D–F. | Media | ASCE 7-22 11.6 (Tablas 11.6-1 y 11.6-2), Tabla 12.2-1 | `cSDS`, `cSD1`, `SDC` (con S1 ≥ 0.75 → E/F) y check del sistema con los límites de altura de B.4 y B.1. |
+| La opción «solo irregularidades H2–H5/V4–V5» se aceptaba con hn ≤ 48.8 m (criterio de la edición 2010). Desde la edición 2016 la condición es T < 3.5 Ts. En SDC A–C la Tabla 12.6-1 no restringe. | Baja | ASCE 7-22 Tabla 12.6-1 | Check reescrito. |
+| No se evaluaba el efecto P-Δ. | Media | ASCE 7-22 12.8.7 | `Px`, `theta`, `thetamax` = 0.5/Cd ≤ 0.25 y check θ ≤ mín(0.10, θmáx). Por defecto, θ = 0.017. |
+
+**japon — apta.** Ci = Z·Rt·Ai·Co, deriva de 1/200 y Qun = Ds·Fes·Qud coinciden con la Orden Art. 88 y la Notif. 1793.
+
+**espectros — apta, con corrección.** Z era editable, pero `S = SE030(4, …)` quedaba fijo en la zona 4. Al cambiar Z a 0.25,
+el espectro peruano mezclaba la zona 2 con el S de la zona 4 (Baja). Se agregaron los datos `zona` y `Vs30`, con
+`Z = ZE030(zona)` y `S`, `TP` y `TL` del mismo Vs30. La validación no cambia.
+
+**sismo2018 — apta.** La restricción de irregularidades de la Tabla 10, la aplicabilidad 28.1.2, C/R ≥ 0.11 y 0.75R/0.85R
+están conformes con el texto de 2018. El texto de la norma confirma que el mínimo de C/R no se aplica a los
+desplazamientos. Observación: la E.030-2018 no contiene un artículo de P-Δ. Para concreto conviene el Q de la E.060
+10.11.4.2.
+
+**puente — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| Solo se diseñaba la franja interior; el texto decía «diseñar la franja de borde». La franja de borde (Eb = 1.80 m) soporta una barrera completa, media línea de ruedas y el carril tributario con m = 1.2: **Mu = 73.7 t·m/m frente a φMn = 73.5 t·m/m** de la armadura interior #8 @ 12.5. Los bordes del plano quedaban subarmados. | **Media** | AASHTO LRFD 4.6.2.1.4, 3.6.1.1.2 y 3.6.1.2.4 | Dato `bb`; `Eb`, `MDCb`, `MDWb`, `MLLb`, `Mub`; diseño propio con `sb` = 10 cm, εt ≥ 0.005 y φMn,b = 90.1 t·m/m. La validación no cambia. |
+
+**acero — apta.** F2 y G2.1(a) correctos; validado con la Tabla 3-2. Observación (Baja): no verifica la deflexión
+porque no hay luz en los datos.
+
+**predim, combos, albanileria, guia, blanco — aptas.** Las combinaciones 9.2.1 a 9.2.3 y las de viento 9.2.2 están bien.
+Fa, Vm, α y Ve ≤ 0.55Vm coinciden con la E.070. Las reglas de *predim* se declaran como referenciales.
+
+### Chile
+
+**cl-nch433-estatico y cl-nch433-2026 — aptas.** Aplicabilidad 6.2.1, Cmín y Cmáx·f, Ak, torsión accidental
+±0.10·b·Zk/H y derivas de 5.9.2 y 5.9.3. La versión 2026 declara que cita el proyecto de consulta y marca como «por
+confirmar» la deriva absoluta de 0.003. Eso es correcto.
+
+**cl-nch433-modal — apta.** R*, Sa, CQC, ΣM* ≥ 90 % y el factor de corte mínimo aplicado también a los desplazamientos
+(6.3.7.1). Qmáx sin f es conservador y está declarado.
+
+**cl-nch433-comparacion — apta.** La degradación de C a D por Tg = 0.45 s es coherente (S de 1.05 a 1.20, Q × 1.14).
+
+**cl-nch2369 — apta.** Cmáx según la Tabla 5.7, R1, deformación ≤ 0.015h y separación 6.2.1.
+
+**cl-muro-ds60 — apta, con observación.** Pu ≤ 0.35 f′c Ag, εc ≤ 0.008, el borde y el corte con φ = 0.60 (conservador)
+están bien. Observación (Media, por confirmar): `clim = lw/(600·δu/hw)` usa el δu de la NCh433 5.9.5 sin el mínimo
+δu/hw ≥ 0.007 de ACI 318-08 21.9.6.2(a). Con los datos por defecto no cambia el resultado: c = 1.21 m, menor que los 1.43 m
+que da 0.007. Se debe confirmar si el DS60 mantiene ese mínimo. No se cambió.
+
+**cl-viento-galpon — apta, con observación.** El equilibrio del marco para el levantamiento es correcto: 3B/8, B/8 y las
+componentes horizontales del techo. Observación (Baja, conservadora): `pmb` usa succión interior (+qh·GCpi) y las demás
+superficies usan presión interior. La presión interior es única en todo el edificio, por lo que deben evaluarse dos casos
+(±GCpi en todas las caras). La mezcla sobrestima en 2·qh·GCpi la fuerza horizontal del marco.
+
+**cl-nch3171 — apta.** Combinaciones LRFD con 1.4E y combinaciones ASD.
+
+### Japón
+
+**jp-bsl-ruta12, jp-bsl-ruta3, jp-aij-viga, jp-aij-columna, jp-aij-acero, jp-bsl-viento-nieve, jp-bsl-n1461 — aptas.** Son
+correctos: Rs ≥ 0.6, Re ≤ 0.15, ΣαAw y Ac de la Ruta 2-1, Ds y Fes de la Notif. 1792, Ma = at·ft·j, QA y QAS, Arakawa
+mínima con Qm amplificado, rango FA, fb con pandeo lateral, L/300, q = 0.6·Er²·Gf·V0², μb y Gs·S0·Fh. Las cuatro
+plantillas de C°A° declaran que sus valores son de control.
+
+**jp-madera-kaberyo — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| `cw` salía de la tabla anterior a la reforma de abril de 2025, que ahora exige c_w según el peso real. La nota decía «editable», pero c_w era una fórmula sin dato de entrada. Un expediente nuevo podía firmarse con la tabla derogada. | Media (vigencia) | BSL, Orden Art. 46 (reforma vigente desde abril de 2025) | Datos `cw1v` y `cw2v` (c_w vigentes), con `cw = máx(tabla anterior, vigente)`, y nota de vigencia. Por defecto (0) no cambia. **Pendiente:** cargar la tabla vigente en `kabeBSL` (`src/norms/japan.js`). |
+
+**jp-jra-espectro — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| El nivel 2 solo comparaba Pa ≥ khc·W; faltaba el desplazamiento residual δR ≤ h/100, que gobierna con frecuencia en pilas altas. | Media | JRA V (2012) 6.4.6 | `dy`, `Hp`, `rpos` y `cR`; μr = ½[(khc0·W/Pa)² + 1] con el sismo que gobierna; checks μr ≤ μa y δR ≤ h/100. Por defecto δR = 40 mm. Observación: la edición vigente del JRA es la de 2017, con estados límite. |
+
+### Dinámica
+
+**dy-sdof-elcentro, dy-espectro-e030, dy-5pisos-chopra, dy-nl-cortante, dy-pushover-n2, dy-momcurv-col — aptas, con fines
+didácticos.** Están validadas con Chopra, OpenSees, Mander y ATC-40. Observación (Baja): *dy-nl-cortante* calcula θ1 = 0.11
+y no lo comenta. Con θ > 0.10 se justifica el análisis con P-Δ, que es justamente lo que hace la plantilla.
+
+**dy-aislamiento — apta como comparación, con observación.** Usa un solo acelerograma sintético, sin DTM ni los factores
+λ. No sirve para dimensionar aisladores; para eso está *pe-e031-aislamiento*. La memoria ya lo presenta como comparación.
+
+### Análisis
+
+**an-armadura — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| Con una cubierta liviana (30 kg/m²) no había caso de viento. Con 0.9CM + 1.3W el cordón inferior pasa a compresión, y solo está arriostrado en las riostras (L ≫ panel). Los montantes también pasan a compresión. | **Media** | E.020 Art. 12 (Tabla 4, 15° < θ ≤ 60°, y 12.5); E.090 (0.9D + 1.3W); AISC 360-16 E3 | Datos `V`, `he`, `Cup` (0.6 + 0.3 interior) y `PW`; caso W y U3 en el bloque; compresión del cordón inferior con `Lbci` y de los montantes. Con V = 130 km/h y Lbci = 6 m da NO CUMPLE (prueba). |
+
+**an-nave — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| φMn = 0.9·Fy·Z «por arriostres de correas». En el nudo de esquina se comprime el ala **interior**, que las correas no arriostran. Lp del W14×34 es 1.65 m: sin tornapuntas a ≤ 1.65 m la resistencia baja (con Lb = 4 m, IH = 1.01). | **Media** | AISC 360-16 F2 | Datos `S_x`, `ry`, `rts`, `Jt`, `ho`, `Lbr` = 1.50 m y `Cb`; Mn con F2. Por defecto Mn = Mp (validación sin cambios). |
+| El cortante usaba d·tw del W14×34 escrito en la fórmula; al cambiar el perfil no se actualizaba. | Baja | AISC 360-16 G2.1(a) | Datos `d_vig` y `tw_vig` y check de h/tw. |
+
+**an-voladizo — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| Mu = 1.5·Ms («factor promedio»), que no es normativo: con carga viva dominante es no conservador. Tampoco había sismo vertical en el voladizo. | Media | E.060 9.2.1 y 9.2.3; E.030-2026 Art. 28.4 | `wvL` y `Fv`; Mu = máx(1.4CM + 1.7CV; 1.25(CM + CV) + CSv). Se agregaron el acero mínimo y el cortante. Validación: Mu 4.536 → 4.592 t·m. |
+
+**an-influencia, an-matricial, an-cross — aptas.** **an-modal-pdelta — apta**, con la observación de que usa la E.030-2018
+y lo declara.
+
+### Perú
+
+**pe-e030-irregularidades — apta.** Detecta el piso blando por el promedio de los tres entrepisos superiores (0.765 < 0.80).
+Ia1 es coherente con el modelo y la torsión se evalúa con la condición del 50 % de la deriva.
+
+**pe-e031-aislamiento — apta.** Considera los límites inferior y superior, los requisitos 17.1 a 17.7, DTM, Vb, Vst, Ra, los
+límites de Vs y la deriva de 0.0035.
+
+**pe-e020-viento — apta, con corrección.** El levantamiento neto de la cobertura se estabilizaba con 0.9·CM frente a
+presiones de **servicio** y a una resistencia **admisible** del fabricante. En esfuerzos admisibles corresponde 0.6·CM
+(ASCE 7-05 2.4.1, combinación 0.6D + W, porque la E.020 no da una combinación). Gravedad baja. Se cambió el check; la D/C
+pasa de 0.44 a 0.48.
+
+### Concreto
+
+**co-colesbelta — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La columna se verificaba por separado en X (δns·M2x) y en Y (M2ns + δs·M2s) con la misma Pu. En la combinación con sismo en Y el momento de gravedad en X está presente. Con 12 Ø 3/4", las D/C uniaxiales eran 0.55 y 0.83, pero **la biaxial por compatibilidad era 1.12**. | **Media-Alta** | E.060 10.18 | Tercer bloque `pmgen` en XY con (Pu, Mcx, M2y) y check `DCpmg_xy`. **Barra por defecto 3/4" → 1"** (D/C biaxial 0.90). Validación: DCpmg_y 0.825 → 0.640; se agregó DCpmg_xy = 0.904. |
+| Q = ΣPu·(0.75R·Δe)/(Vus·hp). La E.060 10.11.4.2 define Δo como el desplazamiento de primer orden bajo Vus, que es elástico. Multiplicar por 0.75R aumenta Q unas 6 veces. | Observación (conservador) | E.060 10.11.4.2 | No se cambió. Puede llevar a exigir un análisis de segundo orden innecesario (δs > 1.5). |
+
+**co-vigaductil — apta, con observación.** Mpr = 1.25Mn (conservador frente a fs = 1.25fy), so ≤ mín(d/4, 8db, 24de,
+300 mm) y Vu por capacidad conforme a la E.060 21.5.4.1 y 21.5.3.2, comprobado con el texto oficial. Observación (Media,
+no normativa en Perú): el ACI 318-19 18.6.5.2 anula Vc en Lo cuando Vp ≥ ½Vu y Pu < Ag f′c/20. La E.060 no lo exige. Con
+los datos por defecto no aplica (Vp = 9.7 < 10.7 t).
+
+**co-biaxial, co-vigat, co-vigadoble, co-deflexion, co-aligerado2d, co-mensula, co-stm, co-anclajes — aptas.** Son
+correctos Bresler y el contorno, bf, Asb de la T, 10.3.4 con A′s, Branson y Bischoff, Z ≤ 26 000 kgf/cm, 8.11 y 1.1Vc,
+11.9 (Asc, Ah, Vn máx.), βs y βn del ACI 318-19 y 23.8.3. *co-anclajes* usa 8.2 y 6.6 (MKS), que coinciden con la Tabla
+12.1 del texto oficial de la E.060 (2.6 y 2.1 en MPa). Son menos exigentes que el ACI 318 (2.1 y 1.7), pero corresponden a
+la norma peruana.
+
+**co-voladizo (presentación).** Vud2 se partió en `Wd` y `Wl` porque la ecuación salía al 68 % del ancho de la hoja. Los
+resultados no cambian.
+
+### Geotecnia
+
+**ge-winkler — apta, con corrección.** Con Vu = 80.6 t > 0.5φVc no se verificaba Av,mín (E.060 11.5.6.1 y 11.5.6.3). Se
+agregó el check (D/C 0.97). Gravedad baja.
+
+**ge-corrido — apta.** Usa qn y el concreto simple con φ = 0.65 y h − 5 cm (E.060 22). **ge-spt — apta.** El φ de Peck
+con N60 es conservador.
+
+**ge-grupo — apta, con observación.** Converse–Labarre, bloque de Skempton, Pmáx ≤ Qu/2, consolidación desde 2L/3 y
+punzonamiento del cabezal están bien. Observación (Baja): no se verifica la capacidad estructural del pilote; con los datos
+por defecto Pmáx = 39.5 t, muy por debajo de 0.25·f′c·Ap ≈ 198 t.
+
+**ge-talud — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| kh = 0.15 era un dato libre sin relación con la zona. En la costa (zona 4, Vs30 = 400 m/s) 0.5·PGA = 0.24; con ese valor el mismo talud da FS = 1.08 < 1.25. La E.050 30.3 fija el FS, pero no kh. | **Media** | E.050 Art. 30.3; Hynes-Griffin y Franklin (1984) | Datos `zona` y `Vs30`, `PGA = Z·S` y check kh ≥ 0.5·PGA. Valores por defecto: zona 2 y Vs30 = 450 m/s (0.5·PGA = 0.144). En zona 4 da NO CUMPLE (prueba). |
+
+### Muros
+
+**wa-contrafuertes — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La carga neta del talón (losa entre contrafuertes y tirantes verticales talón–contrafuerte) se calculaba solo con la presión estática mínima (12.0 t/m²). Con sismo, la presión en el talón cae a 0 y la carga neta es 1.25(γs·hp + γc·hz + 0.5q) = **20.1 t/m² frente a 7.7 t/m²**. Los tirantes verticales #4 @ 30 tenían 2.6 veces menos área de la necesaria. La punta sí usaba la envolvente. | **Alta** | E.060 9.2.3; equilibrio del talón (Huntington) | `wn1` (estático), `wn2` (sismo, con `qheels`) y `wn = máx`. Los tirantes verticales pasan a #4 @ 15 cm. El acero del talón sigue gobernado por el mínimo. La validación no cambia. |
+
+**wa-mse — corregida.**
+
+| Hallazgo | Gravedad | Cita | Corrección |
+|---|---|---|---|
+| La estabilidad interna solo era estática, aunque la plantilla tiene zona 4 (kh = 0.236). Faltaban la fuerza de inercia de la zona activa, su reparto por capa y las verificaciones de rotura (sin el factor de fluencia lenta en la parte dinámica) y de arranque (F* al 80 %). | **Media-Alta** | AASHTO LRFD 11.10.7.2; Tabla 11.5.7-1 (φ = 1.20 en Evento Extremo) | `Wa`, `Pi = kh·Wa`, `Tmd` proporcional a Le, `Tmaxe` (γEV = 1.0, γLS = 0.5), `DCre` y `DCpe` con sus checks. Valores por defecto: 0.49 y 0.71. |
+
+**wa-coeficientes, wa-gaviones — aptas.** Reproducen Das Ej. 7.6, M-O con su condición de equilibrio, la junta entre
+hiladas y el criterio de Maccaferri.
+
+**wa-tablestaca, wa-tablestaca-anclada — aptas para entibación provisional.** Blum y apoyo libre con FS sobre Kp,
+0.65fy (USS), tirante, viga de reparto y muerto con FS ≥ 2. Observación (Media si la obra es permanente): no tienen
+sismo. Se agregó una nota que limita el cálculo a obra provisional y que, para obra permanente, pide M-O con kh = 0.5·Z·S,
+Kpe y la reducción del pasivo del muerto.
+
+## Hallazgos en el motor y en los bloques (no editables por este revisor)
+
+| # | Dónde | Hallazgo | Gravedad | Propuesta |
+|---|---|---|---|---|
+| M5 | `src/norms/japan.js`, `kabeBSL` | Contiene la tabla de c_w anterior a la reforma de la BSL de abril de 2025. | Media (vigencia) | Agregar el procedimiento vigente (c_w según el peso de la cubierta, los muros y los paneles) y el límite del multiplicador; mientras tanto, la plantilla admite el valor vigente como dato. |
+| M6 | Bloque `frame2d` (dibujo de cargas nodales) | Las cargas nodales aplicadas en los nudos de apoyo dibujan su rótulo fuera del área de la figura (qa-render: «0.115 t» a 11 px). | Baja | Recortar o desplazar los rótulos al borde; en *an-armadura* se quitaron las cargas de viento en los apoyos, que no afectan los esfuerzos. |
+| M7 | Bloque `pmgen` | El rótulo de la demanda (texto después de `//`) no se recorta y sale de la figura si es largo. | Baja | Truncar el rótulo con elipsis o partirlo en dos líneas. |
+| M8 | `SE030` / plantillas con Vs30 | Sigue vigente M3: con Vs30 < 200 m/s en zona 4 se lanza una excepción. *espectros* y *ge-talud* usan ahora `SE030(zona, Vs30)`. Los rangos de los datos (Vs30 ≥ 200 y 180 m/s) avisan, pero no impiden el error. | Baja | Ver M3. |
+
+## Pruebas añadidas (tercera tanda B)
+
+- `tests/verify.mjs`: separación libre de *aci* y NO CUMPLE con Ø 20 mm; SDC D con los datos por defecto y SDC E con S1 = 0.80;
+  θ del primer entrepiso calculado a mano; NO CUMPLE «Sistema permitido» con el pórtico intermedio en SDC D; MLL de la
+  franja de borde a mano; la franja de borde gobierna; NO CUMPLE εt de la franja de borde con h = 0.35 m.
+- `tests/analysis.test.mjs`: PW a mano; cordón inferior en compresión con V = 130 km/h y Lbci = 6 m (NO CUMPLE); Lp (F2-5) y
+  NO CUMPLE de la nave con Lbr = 4 m; Mu del voladizo con la envolvente E.060/E.030.
+- `tests/japan.test.mjs`: μr y δR de la JRA a mano; NO CUMPLE δR con δy = 0.12 m; c_w vigente en el kabe-ryo.
+- `tests/concrete.test.mjs`: D/C biaxial ≤ 1 con 12 Ø 1" y NO CUMPLE biaxial con 12 Ø 3/4" (las uniaxiales cumplen).
+- `tests/geotech.test.mjs`: PGA = Z·S; NO CUMPLE kh en zona 4; check de Av,mín presente en *ge-winkler*.
+- `tests/walls.test.mjs`: wn2 a mano y envolvente del talón; Pi, ΣTmd = Pi y D/C de rotura sísmica de la capa inferior a mano.
+- `tests/peru.test.mjs`: D/C del levantamiento con 0.6 CM.
+
+Validaciones modificadas, con su justificación arriba: `aci` (d, As, φMn, Vc y φVn, por la barra de 22 mm, ACI 25.2.1),
+`an-voladizo` (Mu 4.536 → 4.592 t·m, E.060 9.2.1 y 9.2.3, E.030 Art. 28.4) y `co-colesbelta` (DCpmg_y 0.825 → 0.640, más
+DCpmg_xy, por la barra de 1" y E.060 10.18). Cada `validacion.nota` deja constancia del cambio.

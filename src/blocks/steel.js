@@ -410,11 +410,23 @@ registerBlock('armadura', {
     });
     r.nodes.forEach(n => { g += `<circle cx="${X(n.x)}" cy="${Y(n.y)}" r="2.6" fill="#fff" stroke="${C.ink}"/>`; });
     const fs = np > 12 ? 7.5 : 9;
-    r.mem.forEach(m => {
-      const p = r.nodes[m.i], q = r.nodes[m.j]; const mx = (X(p.x) + X(q.x)) / 2, my = (Y(p.y) + Y(q.y)) / 2;
+    // rótulos sin solaparse: se prueba la posición a lo largo de la barra (centro, 35 %, 65 %…)
+    const boxes = [];
+    const hit = (b) => boxes.some(o => b.x1 < o.x2 && b.x2 > o.x1 && b.y1 < o.y2 && b.y2 > o.y1);
+    const ord = { cs: 0, ci: 1, v: 2, d: 3 };
+    [...r.mem].sort((a, b) => (ord[a.t] ?? 3) - (ord[b.t] ?? 3)).forEach(m => {
+      const p = r.nodes[m.i], q = r.nodes[m.j];
       const dy = m.t === 'cs' ? -6 : m.t === 'ci' ? 13 : 3, dx = m.t === 'v' ? 3 : 0;
-      const val = Fu(m.N).toNumber(forU());
-      g += `<text x="${(mx + dx).toFixed(1)}" y="${(my + dy).toFixed(1)}" font-size="${fs}" fill="${m.N >= 0 ? C.blue : C.red}" text-anchor="${m.t === 'v' ? 'start' : 'middle'}" font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="2.5" paint-order="stroke">${esc(f2(val))}</text>`;
+      const val = Fu(m.N).toNumber(forU()), txt = f2(val), wTxt = txt.length * fs * 0.58;
+      let best = null;
+      for (const t of [0.5, 0.36, 0.64, 0.26, 0.74]) {
+        const x = X(p.x) + (X(q.x) - X(p.x)) * t + dx, y = Y(p.y) + (Y(q.y) - Y(p.y)) * t + dy;
+        const x1 = m.t === 'v' ? x : x - wTxt / 2, b = { x1, x2: x1 + wTxt, y1: y - fs, y2: y + 2 };
+        if (!best) best = { x, y, b };
+        if (!hit(b)) { best = { x, y, b }; break; }
+      }
+      boxes.push(best.b);
+      g += `<text x="${best.x.toFixed(1)}" y="${best.y.toFixed(1)}" font-size="${fs}" fill="${m.N >= 0 ? C.blue : C.red}" text-anchor="${m.t === 'v' ? 'start' : 'middle'}" font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="2.5" paint-order="stroke">${esc(txt)}</text>`;
     });
     for (let i = 0; i <= np; i++) { const x = X(i * r.a); g += `<line x1="${x}" y1="${Y(h) - 40}" x2="${x}" y2="${Y(h) - 6}" stroke="${C.ink}" stroke-width="1.2" marker-end="url(#ar)"/>`; }
     g += T(X(0) + 4, Y(h) - 46, 'P = ' + f2(Fu(r.P).toNumber(forU())) + ' ' + uTxt(forU()) + ' (P/2 en los extremos)', { a: 'start', fs: 10 });

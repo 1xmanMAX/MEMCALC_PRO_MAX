@@ -92,11 +92,11 @@ function renderText(src, ctx) {
 
 // ---------- referencias normativas ----------
 // Un paréntesis final que cita una norma, p. ej. «(E.060 9.3.2)», «(ACI 318-19 22.5)», «(NCh433 Tabla 6.1)»
-const NORM_RX = /(\bE\.?\s?0\d\d\b|\bACI\b|\bAISC\b|\bAISI\b|\bAASHTO\b|\bASCE\b|\bNCh\s?\d|\bD\.?S\.?\s?N?°?\s?\d|\bNTE\b|\bRNE\b|\bArt[íi]?c?u?l?o?\.?\s?\d|\bTabla\b|\bEc\.|§|\bAnexo\b|\bNotif\.|\bOrder\b|\bAIJ\b|\bPCA\b|\bFEMA\b|\bCIRSOC\b|\bNSR\b|\bEN\s?19|\bEurocódigo\b|\bcap\.|\bsec\.|\bcl\.)/i;
+const NORM_RX = /(\bE\.?\s?0\d\d\b|\bACI\b|\bAISC\b|\bAISI\b|\bAASHTO\b|\bASCE\b|\bNCh\s?\d|\bD\.?S\.?\s?N?°?\s?\d|\bNTE\b|\bRNE\b|\bArt[íi]?c?u?l?o?\.?\s?\d|\bTabla\b|\bEc\.|§|\bAnexo\b|\bNotif\.|\bOrder\b|\bAIJ\b|\bPCA\b|\bFEMA\b|\bCIRSOC\b|\bNSR\b|\bEN\s?19|\bEurocódigo\b|\bcap\.|\bsec\.|\bcl\.|\bJRA\b|\bMTC\b|\bBSL\b|\bMLIT\b|\bATC\b|\bASTM\b|\bDG\s?\d|\bEC\s?\d|\bNAVFAC\b|\bFHWA\b|\bPTI\b|\bUSACE\b)/i;
 export function splitRef(s) {
   const m = /\(([^()]{2,70})\)\s*\.?\s*$/.exec(s || '');
   if (!m || !/\d/.test(m[1])) return null;
-  const r = NORM_RX.exec(m[1]); if (!r || r.index > 2) return null; // la cita empieza por la norma o el artículo
+  const r = NORM_RX.exec(m[1]); if (!r || (r.index > 2 && m[1].length > 40)) return null; // cita normativa: empieza por la norma o es corta
   let ref = m[1].trim(), text = s.slice(0, m.index).replace(/[\s,;:—–-]+$/, '');
   const k = ref.search(/;\s/); // «Art. 33.2; la regularidad se verifica…» → la nota vuelve al texto
   if (k > 0) { text += (text ? ' ' : '') + '(' + ref.slice(k + 1).trim() + ')'; ref = ref.slice(0, k).trim(); }
