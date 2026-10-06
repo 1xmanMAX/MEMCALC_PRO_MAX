@@ -303,7 +303,6 @@ d = h - rec - db(est) - db(bar)/2 // Peralte efectivo
 check Pu <= 0.1*fc*b*h // Carga axial ≤ 0.1 f'c Ag (21.5.1.1)
 check ln >= 4*h // Luz libre ≥ 4 h (21.5.1.2)
 check b >= max(0.25*h, 25 cm) // Ancho mínimo (21.5.1.3)`),
-    { type: 'section', b: 'b', h: 'h', recub: 'rec', estribo: 'est', sup: '{nsup}#{bar}', inf: '{ninf}#{bar}', sest: '1@5, rest@{so} cm', titulo: 'Sección en la cara del apoyo' },
     calc(`# Flexión (E.060 10 y 21.5.2)
 Asn = nsup*Ab(bar) // Acero negativo colocado
 Asp = ninf*Ab(bar) // Acero positivo colocado
@@ -339,6 +338,7 @@ s2 = rounddown(min(d/2, s_v), 2.5 cm) // Espaciamiento fuera de la zona confinad
 phiVn = phiv*(Vc + Av*fy*d/so) -> tonf // Resistencia con el espaciamiento adoptado
 check Vu <= phiVn // Resistencia a cortante en la zona confinada
 "**Estribos #{est}: 1 @ 5 cm, {ceil((Lo - 5 cm)/so)} @ {so} en cada extremo ({Lo}), resto @ {s2}**.`),
+    { type: 'section', b: 'b', h: 'h', recub: 'rec', estribo: 'est', sup: '{nsup}#{bar}', inf: '{ninf}#{bar}', sest: '1@5, rest@{so}', titulo: 'Sección en la cara del apoyo' },
     summary(),
   ],
 };
