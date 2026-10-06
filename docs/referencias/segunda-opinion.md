@@ -707,7 +707,7 @@ Validaciones modificadas, con la justificación de arriba:
 
 # Tercera tanda B: plantillas aún no revisadas de base, Chile, Japón, dinámica, análisis, Perú, concreto, geotecnia y muros
 
-Revisor: ingeniero jefe (misma metodología y escala de gravedad). Fecha: octubre de 2026. Alcance: las 69 plantillas de
+Revisor: ingeniero jefe (misma metodología y escala de gravedad). Fecha: octubre de 2026. Alcance: las 70 plantillas de
 `src/templates.js` y de `src/templates/{chile,japan,dynamics,analysis,peru,concrete,geotech,walls}.js` que no figuraban en
 las dos tandas anteriores. Los módulos *bridges*, *steel*, *masonry* y *extras* los revisa otro agente en paralelo.
 
@@ -952,7 +952,7 @@ por defecto Pmáx = 39.5 t, muy por debajo de 0.25·f′c·Ap ≈ 198 t.
 
 | Hallazgo | Gravedad | Cita | Corrección |
 |---|---|---|---|
-| La carga neta del talón (losa entre contrafuertes y tirantes verticales talón–contrafuerte) se calculaba solo con la presión estática mínima (12.0 t/m²). Con sismo, la presión en el talón cae a 0 y la carga neta es 1.25(γs·hp + γc·hz + 0.5q) = **20.1 t/m² frente a 7.7 t/m²**. Los tirantes verticales #4 @ 30 tenían 2.6 veces menos área de la necesaria. La punta sí usaba la envolvente. | **Alta** | E.060 9.2.3; equilibrio del talón (Huntington) | `wn1` (estático), `wn2` (sismo, con `qheels`) y `wn = máx`. Los tirantes verticales pasan a #4 @ 15 cm. El acero del talón sigue gobernado por el mínimo. La validación no cambia. |
+| La carga neta del talón (losa entre contrafuertes y tirantes verticales talón–contrafuerte) se calculaba solo con la presión estática mínima (12.0 t/m²). Con sismo, la presión en el talón cae a 0 y la carga neta es 1.25(γs·hp + γc·hz + 0.5q) = **20.1 t/m² frente a 7.7 t/m²**. Los tirantes verticales #4 @ 30 cm (8.6 cm²/m) cubrían solo el 54 % de los 15.9 cm²/m necesarios. La punta sí usaba la envolvente. | **Alta** | E.060 9.2.3; equilibrio del talón (Huntington) | `wn1` (estático), `wn2` (sismo, con `qheels`) y `wn = máx`. Los tirantes verticales pasan a #4 @ 15 cm. El acero del talón sigue gobernado por el mínimo. La validación no cambia. |
 
 **wa-mse — corregida.**
 
