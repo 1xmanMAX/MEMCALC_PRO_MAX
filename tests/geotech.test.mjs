@@ -362,4 +362,15 @@ section('Plantillas con datos extremos: NO CUMPLE, sin errores ni NaN');
   }
 }
 
+section('Rangos usuales [mín..máx] y ejemplos de validación de las plantillas «geotech»');
+for (const t of TEMPLATES.filter(x => x.id.startsWith('ge-'))) {
+  const inp = runTemplate(t.id).res.ctx.inputs, rg = inp.filter(i => i.range);
+  const out = rg.filter(i => { let v = parseFloat(i.num); if (i.range.unit && i.unit && i.range.unit !== i.unit) v = math.unit(v, i.unit).toNumber(i.range.unit); return !(v >= i.range.min && v <= i.range.max); });
+  const bad = inp.filter(i => /\.\.|\[/.test(i.label || ''));
+  truthy(`${t.id}: ${rg.length} datos con rango, valores por defecto dentro del rango, etiquetas limpias`, rg.length >= 3 && out.length === 0 && bad.length === 0, out.map(i => i.name + ' = ' + i.num).concat(bad.map(i => i.name)).join(', '));
+  const v = t.validacion;
+  truthy(`${t.id}: tiene «validacion» con fuente, nota y valores`, !!(v && v.fuente && v.nota && Array.isArray(v.valores) && v.valores.length >= 3));
+}
+truthy('Listas desplegables intactas con rango (φ, f\'c, FS de licuación)', (() => { const f = (id, n) => runTemplate(id).res.ctx.inputs.find(i => i.name === n); return f('ge-portante', 'phi').options.length === 5 && f('ge-portante', 'phi').range.max === 45 && f('ge-combinada', 'fc').options.length === 3 && f('ge-licuacion', 'FSreq').options.length === 3; })());
+truthy('Capacidad portante: validacion con los factores publicados de Das (φ = 30°)', TEMPLATES.find(x => x.id === 'ge-portante').validacion.valores.some(v => v.var === 'Nq' && v.esperado === 18.40));
 done();

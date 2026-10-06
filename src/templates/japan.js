@@ -5,7 +5,7 @@
 import { calc, text, summary } from './_h.js';
 
 const ZONA = `zona = 1 // Zona sísmica (Notif. 1793 Art. 1) [1 : Z = 1.0 (Tokio, Osaka, Nagoya, Sendai)|2 : Z = 0.9 (Sapporo, Hiroshima, Kumamoto)|3 : Z = 0.8 (Fukuoka, Yamaguchi, Saga)|4 : Z = 0.7 (Okinawa)]
-suelo = 2 // Tipo de suelo (Notif. 1793 Art. 2) [1 : Tipo 1 — roca o grava dura|2 : Tipo 2 — intermedio|3 : Tipo 3 — aluvial blando]`;
+suelo = 2 // Tipo de suelo (Notif. 1793 Art. 2) [1 : Tipo 1 — roca o grava dura|2 : Tipo 2 — intermedio|3 : Tipo 3 — aluvial blando] [1..3]`;
 
 export default [
   // ------------------------------------------------------------------
@@ -13,6 +13,18 @@ export default [
   // ------------------------------------------------------------------
   {
     id: 'jp-bsl-ruta12', pais: 'JP', cat: 'Sismo — Japón', icon: 'quake', settings: { sys: 'si' },
+    validacion: {
+      fuente: 'BSL — Notif. 1793 (Z, Rt, Ai) y Order Art. 88 — valores de control calculados a mano (tests/japan.test.mjs)',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. T = h(0.02 + 0.01α) = 18·0.02 = 0.36 s; Rt = 1 (T < Tc = 0.6 s); Qb = Co·ΣW = 0.2·25700 kN; A5 con α = 4300/25700.',
+      valores: [
+        { var: 'T', unidad: 's', esperado: 0.36, tol: 0.001, desc: 'Notif. 1793: T = 0.02·18 m' },
+        { var: 'Rt', esperado: 1, tol: 0.001, desc: 'Notif. 1793: Rt = 1 (T < Tc)' },
+        { var: 'Qb', unidad: 'kN', esperado: 5140, tol: 0.001, desc: 'Control: Q1 = 0.2·ΣW = 5140 kN' },
+        { var: 'Ai[5]', esperado: 1.7883, tol: 0.002, desc: 'Control: Ai del 5F (cálculo manual)' },
+        { var: 'Rex', esperado: 0.015434, tol: 0.002, desc: 'Control: excentricidad Re en X' },
+        { var: 'Rey', esperado: 0.022844, tol: 0.002, desc: 'Control: excentricidad Re en Y' },
+      ],
+    },
     name: 'Diseño sísmico BSL — Rutas 1 y 2 (Ai, derivas, Rs, Re)',
     normas: 'Building Standard Law · Enforcement Order Art. 81, 82, 82-2, 82-6, 88 · Notif. MOC 1793 (1980) · Notif. MOC 1791 (1980, mod. 2007)',
     desc: 'Primera fase (Co = 0.2): Ci = Z·Rt·Ai·Co por piso, deriva ≤ 1/200, rigidez relativa Rs ≥ 0.6, excentricidad Re ≤ 0.15, esbeltez H/B ≤ 4 y cantidad de muros y columnas de C°A° (Ruta 2-1).',
@@ -31,12 +43,12 @@ con $A_i = 1 + \\left(\\dfrac{1}{\\sqrt{\\alpha_i}} - \\alpha_i\\right)\\dfrac{2
 **Unidades:** kN, m, N/mm². **Normas:** BSL, Enforcement Order, Notificaciones del MOC/MLIT 1791, 1792 y 1793.`),
       calc(`# Datos del edificio
 ${ZONA}
-alpha_h = 0 // Fracción de la altura con estructura de acero o madera (Notif. 1793 Art. 2)
-Fc = 24 N/mm^2 // Resistencia de diseño del concreto [21 N/mm^2|24 N/mm^2|27 N/mm^2|30 N/mm^2|36 N/mm^2]
+alpha_h = 0 // Fracción de la altura con estructura de acero o madera (Notif. 1793 Art. 2) [0..1]
+Fc = 24 N/mm^2 // Resistencia de diseño del concreto [21 N/mm^2|24 N/mm^2|27 N/mm^2|30 N/mm^2|36 N/mm^2] [18..60]
 wi = [5600, 5300, 5300, 5200, 4300] kN // Peso sísmico por piso, del 1F al 5F (Order Art. 88: G + P sísmica)
 hs = [4.0, 3.5, 3.5, 3.5, 3.5] m // Altura de cada entrepiso
-Bx = 24.0 m // Dimensión en planta en X
-By = 14.0 m // Dimensión en planta en Y
+Bx = 24.0 m // Dimensión en planta en X [5..100]
+By = 14.0 m // Dimensión en planta en Y [5..100]
 ## Coeficientes sísmicos (Order Art. 88; Notif. 1793)
 Z = ZBSL(zona) // Coeficiente de zona (Notif. 1793 Art. 1)
 Tc = TcBSL(suelo) // Periodo característico del suelo (Notif. 1793 Art. 2)
@@ -44,7 +56,7 @@ hT = sum(hs) // Altura total del edificio
 check hT <= 31 m // Ruta 2: altura ≤ 31 m (Order Art. 81-2)
 check hT/min(Bx, By) <= 4 // Relación de esbeltez H/B ≤ 4 para Rutas 1 y 2 (Notif. 1791 Art. 3, reforma 2007)
 T = TBSL(hT, alpha_h) // Periodo fundamental de diseño T = h(0.02 + 0.01α) (Notif. 1793 Art. 2)
-Co = 0.2 // Coeficiente de corte estándar, primera fase (Order Art. 88-2)`),
+Co = 0.2 // Coeficiente de corte estándar, primera fase (Order Art. 88-2) [0.2..0.3]`),
       { type: 'aidist', wi: 'wi', hi: 'hs', T: 'T', Z: 'Z', Tc: 'Tc', Co: 'Co', titulo: 'Distribución Ai, coeficiente de corte Ci y cortante de entrepiso Qi (primera fase, Co = 0.2)' },
       calc(`## Fuerza sísmica de diseño (Order Art. 88-1)
 CB = Qb/sum(wi) // Coeficiente de corte basal C1 = Z·Rt·Co (A1 = 1); Qb = cortante basal exportado por el bloque Ai
@@ -64,8 +76,8 @@ xY = [0, 6, 12, 18, 24] m // Posición x de los ejes resistentes en Y
 KY = [0.9, 1.2, 1.2, 1.2, 1.0] kN/mm // Rigidez lateral de cada eje en Y
 yX = [0, 7, 14] m // Posición y de los ejes resistentes en X
 KX = [1.5, 1.2, 1.4] kN/mm // Rigidez lateral de cada eje en X
-gx = 12.0 m // Centro de masas, coordenada x
-gy = 7.0 m // Centro de masas, coordenada y
+gx = 12.0 m // Centro de masas, coordenada x [0..100]
+gy = 7.0 m // Centro de masas, coordenada y [0..100]
 lx = sum(KY .* xY)/sum(KY) -> m // Centro de rigidez, coordenada x
 ly = sum(KX .* yX)/sum(KX) -> m // Centro de rigidez, coordenada y
 KR = sum(KY .* (xY - lx).^2) + sum(KX .* (yX - ly).^2) -> kN*m // Rigidez torsional respecto al centro de rigidez
@@ -93,6 +105,17 @@ check min(Qr ./ Qreq) >= 1 // Σ2.5αAw + 0.7αAc ≥ 0.75·Z·W·Ai en todos lo
   // ------------------------------------------------------------------
   {
     id: 'jp-bsl-ruta3', pais: 'JP', cat: 'Sismo — Japón', icon: 'quake', settings: { sys: 'si' },
+    validacion: {
+      fuente: 'BSL — Notif. 1792 (Ds de C°A.°, MEXT 2024 tabla 6.1; Fes) — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Qun1 = Ds·Fes·Qud = 0.40·1.0·25700 kN; Ds del 5F (FB + WA, βu = 0.28) = 0.35 según la tabla oficial.',
+      valores: [
+        { var: 'Qb', unidad: 'kN', esperado: 25700, tol: 0.001, desc: 'Control: Qud1 = 1.0·ΣW' },
+        { var: 'Ds[1]', esperado: 0.4, tol: 0.001, desc: 'Notif. 1792 / MEXT tabla 6.1: Ds del 1F' },
+        { var: 'Ds[5]', esperado: 0.35, tol: 0.001, desc: 'Notif. 1792 / MEXT tabla 6.1: Ds del 5F (FB + WA, βu ≤ 0.3)' },
+        { var: 'Qun[1]', unidad: 'kN', esperado: 10280, tol: 0.001, desc: 'Control: Qun1 = 0.40·25700 kN' },
+        { var: 'rmin', esperado: 1.0992, tol: 0.002, desc: 'Control: menor relación Qu/Qun' },
+      ],
+    },
     name: 'Capacidad lateral última BSL — Ruta 3 (Qun = Ds·Fes·Qud)',
     normas: 'Building Standard Law · Enforcement Order Art. 82-3 · Notif. MOC 1792 (1980, mod. 2007) · Notif. MOC 1793',
     desc: 'Segunda fase (Co = 1.0): Qud con distribución Ai, Ds por rango de miembros (FA–FD, WA–WD) y βu, Fes = Fs·Fe por piso, y comparación con la resistencia de un análisis pushover.',
@@ -108,19 +131,19 @@ $$Q_{un} = D_s\\,F_{es}\\,Q_{ud}, \\qquad Q_{ud} = Z\\,R_t\\,A_i\\,C_o \\sum_{j 
 Edificio de concreto armado de 5 pisos (pórticos FB con muros WA). Los valores $Q_u$, $\\beta_u$, $R_s$ y $R_e$ provienen del análisis incremental y del análisis elástico de primera fase del proyecto. La Ruta 3 no exime de la primera fase (esfuerzos admisibles y deriva ≤ 1/200).`),
       calc(`# Datos
 ${ZONA}
-alpha_h = 0 // Fracción de altura de acero o madera
+alpha_h = 0 // Fracción de altura de acero o madera [0..1]
 wi = [5600, 5300, 5300, 5200, 4300] kN // Peso sísmico por piso (1F → 5F)
 hs = [4.0, 3.5, 3.5, 3.5, 3.5] m // Altura de entrepiso
 Z = ZBSL(zona) // Coeficiente de zona (Notif. 1793 Art. 1)
 Tc = TcBSL(suelo) // Periodo del suelo (Notif. 1793 Art. 2)
 T = TBSL(sum(hs), alpha_h) // Periodo de diseño (Notif. 1793 Art. 2)
-Co = 1.0 // Coeficiente de corte estándar para sismo severo (Order Art. 88-3)`),
+Co = 1.0 // Coeficiente de corte estándar para sismo severo (Order Art. 88-3) [1.0..1.5]`),
       { type: 'aidist', wi: 'wi', hi: 'hs', T: 'T', Z: 'Z', Tc: 'Tc', Co: 'Co', titulo: 'Cortante elástico último Qud = Z·Rt·Ai·Co·ΣW con Co = 1.0' },
       calc(`# Resistencia lateral requerida Qun (Order Art. 82-3)
 Qud = Qi // Cortante sísmico último por piso (bloque Ai, Co = 1.0)
 ## Coeficiente Ds (Notif. 1792 Art. 4)
-rF = 2 // Rango del grupo de vigas y columnas [1 : FA|2 : FB|3 : FC|4 : FD]
-rW = 1 // Rango del grupo de muros de corte [1 : WA|2 : WB|3 : WC|4 : WD]
+rF = 2 // Rango del grupo de vigas y columnas [1 : FA|2 : FB|3 : FC|4 : FD] [1..4]
+rW = 1 // Rango del grupo de muros de corte [1 : WA|2 : WB|3 : WC|4 : WD] [1..4]
 bu = [0.55, 0.52, 0.48, 0.40, 0.28] // Fracción βu del cortante último tomada por los muros (pushover)
 Ds = DsRC(rF, rW, bu) // Ds por piso (Notif. 1792 Art. 4, tabla)
 ## Factor de forma Fes (Notif. 1792 Art. 7)
@@ -142,6 +165,18 @@ Qu = [11300, 10050, 8350, 6450, 3700] kN // Resistencia lateral última por piso
   // ------------------------------------------------------------------
   {
     id: 'jp-aij-viga', pais: 'JP', cat: 'Concreto — normas extranjeras', icon: 'beam', settings: { sys: 'si' },
+    validacion: {
+      fuente: 'AIJ, Normas de C°A.° (2010) art. 13 y 15; fórmula mínima de Arakawa — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. fs = 0.49 + Fc/100 = 0.73 N/mm² (largo plazo) y ft = 215 N/mm² (SD345 D25) son valores de la norma.',
+      valores: [
+        { var: 'fs_L', unidad: 'N/mm^2', esperado: 0.73, tol: 0.001, desc: 'AIJ: fs largo plazo Fc 24 = 0.73' },
+        { var: 'ft_L', unidad: 'N/mm^2', esperado: 215, tol: 0.001, desc: 'AIJ: ft largo plazo SD345 D25 = 215' },
+        { var: 'Ma_S', unidad: 'kN*m', esperado: 388.52, tol: 0.002, desc: 'Control: momento admisible de corto plazo' },
+        { var: 'Qa_S', unidad: 'kN', esperado: 320.48, tol: 0.002, desc: 'Control: cortante admisible de corto plazo' },
+        { var: 'Mu', unidad: 'kN*m', esperado: 439.58, tol: 0.002, desc: 'Control: momento último 0.9·at·σy·d' },
+        { var: 'Qsu', unidad: 'kN', esperado: 323.86, tol: 0.002, desc: 'Control: Qsu (Arakawa mín.)' },
+      ],
+    },
     name: 'Viga de concreto armado AIJ (esfuerzos admisibles + Arakawa)',
     normas: 'AIJ Standard for Structural Calculation of Reinforced Concrete Structures (2010/2018) · Notif. MLIT 594 · Notif. MOC 1791',
     desc: 'Flexión at = M/(ft·j), cortante admisible de largo plazo, de corto plazo con control de daño y de seguridad (AIJ 2010 art. 15), y resistencia última Mu = 0.9·at·σy·d y Qsu de Arakawa (mín.) frente al mecanismo.',
@@ -167,18 +202,18 @@ Para garantizar la falla dúctil (diseño de garantía) se compara la resistenci
 
 Viga de pórtico de 7.0 m (luz libre 6.3 m), sección 400 × 700 mm, 4-D25, estribos 2-D10@125, Fc = 24 N/mm², SD345.`),
       calc(`# Materiales y sección
-Fc = 24 N/mm^2 // Resistencia de diseño del concreto [21 N/mm^2|24 N/mm^2|27 N/mm^2|30 N/mm^2]
+Fc = 24 N/mm^2 // Resistencia de diseño del concreto [21 N/mm^2|24 N/mm^2|27 N/mm^2|30 N/mm^2] [18..60]
 SD = 345 // Acero longitudinal [295 : SD295|345 : SD345|390 : SD390]
 SD_w = 295 // Acero de estribos [295 : SD295|345 : SD345]
-b = 400 mm // Ancho de la viga
-D = 700 mm // Peralte total
-dt = 65 mm // Distancia del borde al centroide del acero en tracción
-nb = 4 // Número de barras en tracción
+b = 400 mm // Ancho de la viga [200..1200]
+D = 700 mm // Peralte total [300..1500]
+dt = 65 mm // Distancia del borde al centroide del acero en tracción [40..120]
+nb = 4 // Número de barras en tracción [2..12]
 db = 25 // Diámetro de las barras [19 : D19|22 : D22|25 : D25|29 : D29]
-nw = 2 // Ramas de estribo
+nw = 2 // Ramas de estribo [2..6]
 dw = 10 // Diámetro de estribo [10 : D10|13 : D13]
-sw = 125 mm // Espaciamiento de estribos
-l0 = 6.3 m // Luz libre de la viga
+sw = 125 mm // Espaciamiento de estribos [50..250]
+l0 = 6.3 m // Luz libre de la viga [2..15]
 ## Propiedades
 d = D - dt // Peralte efectivo
 j = 7/8*d // Brazo de palanca (AIJ RC art. 13)
@@ -196,11 +231,11 @@ fs_L = fsaAIJ(Fc, 1) // Cortante del concreto, largo plazo
 fs_S = fsaAIJ(Fc, 2) // Cortante del concreto, corto plazo
 wft_S = wftAIJ(SD_w, 2) // Tracción en estribos, corto plazo
 # Solicitaciones en el extremo de la viga
-M_L = 165 kN*m // Momento de largo plazo (G + P)
-Q_L = 120 kN // Cortante de largo plazo
-M_E = 175 kN*m // Momento sísmico (Co = 0.2)
-Q_E = 55 kN // Cortante sísmico
-n = 2 // Factor de amplificación del cortante sísmico [1.5 : Ruta 1|2 : Ruta 2-1 / 2-2]
+M_L = 165 kN*m // Momento de largo plazo (G + P) [0..2000]
+Q_L = 120 kN // Cortante de largo plazo [0..2000]
+M_E = 175 kN*m // Momento sísmico (Co = 0.2) [0..3000]
+Q_E = 55 kN // Cortante sísmico [0..2000]
+n = 2 // Factor de amplificación del cortante sísmico [1.5 : Ruta 1|2 : Ruta 2-1 / 2-2] [1.5..2.0]
 M_S = M_L + M_E // Momento de corto plazo
 Q_S = Q_L + Q_E // Cortante de corto plazo sin amplificar
 # Flexión (AIJ RC art. 13)
@@ -223,7 +258,7 @@ check Q_D <= Qa_S // Cortante de corto plazo, seguridad (AIJ RC art. 15, ec. 15.
 Fy = SD*1 N/mm^2 // Valor F del acero longitudinal (Notif. 2464)
 sy = 1.1*Fy // Resistencia de fluencia para resistencia última: 1.1·F en barras JIS (Notif. 2464)
 Mu = MuAIJ(at, sy, d) // Momento último Mu = 0.9·at·σy·d
-nm = 1.1 // Factor de amplificación del cortante del mecanismo (diseño de garantía) [1.1|1.2|1.25]
+nm = 1.1 // Factor de amplificación del cortante del mecanismo (diseño de garantía) [1.1|1.2|1.25] [1.0..1.5]
 Qm = Q_L + nm*2*Mu/l0 // Cortante de diseño en el mecanismo de flexión (rótulas en ambos extremos)
 MQd = l0/(2*d) // Relación de corte M/(Q·d) (se limita a 1 ≤ M/Qd ≤ 3 dentro de Qsu)
 swy = SD_w*1 N/mm^2 // Fluencia de estribos
@@ -239,6 +274,18 @@ check Qsu >= Qm // Qsu ≥ QL + nm·2Mu/l0: falla por flexión antes que por cor
   // ------------------------------------------------------------------
   {
     id: 'jp-aij-columna', pais: 'JP', cat: 'Concreto — normas extranjeras', icon: 'column', settings: { sys: 'si' },
+    validacion: {
+      fuente: 'AIJ, Normas de C°A.° (2010) art. 13–15; Notif. 1791 — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. fc = Fc/3 = 8 N/mm² (largo plazo) es valor de la norma.',
+      valores: [
+        { var: 'fca_L', unidad: 'N/mm^2', esperado: 8, tol: 0.001, desc: 'AIJ: fc largo plazo = Fc/3' },
+        { var: 'Ma_L', unidad: 'kN*m', esperado: 209.97, tol: 0.002, desc: 'Control: momento admisible de largo plazo' },
+        { var: 'Ma_S1', unidad: 'kN*m', esperado: 494.51, tol: 0.002, desc: 'Control: momento admisible con N máx.' },
+        { var: 'Qa_S', unidad: 'kN', esperado: 619.91, tol: 0.002, desc: 'Control: cortante admisible de corto plazo' },
+        { var: 'Mu', unidad: 'kN*m', esperado: 927.42, tol: 0.002, desc: 'Control: momento último' },
+        { var: 'Qsu', unidad: 'kN', esperado: 756.28, tol: 0.002, desc: 'Control: Qsu (Arakawa mín.)' },
+      ],
+    },
     name: 'Columna de concreto armado AIJ (flexocompresión y cortante)',
     normas: 'AIJ Standard for Structural Calculation of Reinforced Concrete Structures (2018) · Notif. MLIT 594 · Notif. MOC 1791',
     desc: 'Momento admisible para la carga axial (sección fisurada, n = 15) a largo y corto plazo, cortante admisible de largo plazo, de control de daño y de seguridad, y resistencia última Mu y Qsu (Arakawa mín.) con margen frente al mecanismo.',
@@ -253,18 +300,18 @@ y la fórmula **mínima de Arakawa** incluyendo el efecto de la compresión $0.1
 
 Columna interior del 1F de 600 × 600 mm, 16-D25 (5 por cara), estribos cerrados de 4 ramas D13@100, Fc = 24 N/mm², SD345.`),
       calc(`# Materiales y sección
-Fc = 24 N/mm^2 // Resistencia de diseño del concreto [21 N/mm^2|24 N/mm^2|27 N/mm^2|30 N/mm^2]
+Fc = 24 N/mm^2 // Resistencia de diseño del concreto [21 N/mm^2|24 N/mm^2|27 N/mm^2|30 N/mm^2] [18..60]
 SD = 345 // Acero longitudinal [295 : SD295|345 : SD345|390 : SD390]
 SD_w = 345 // Acero de estribos [295 : SD295|345 : SD345]
-b = 600 mm // Ancho de la columna
-D = 600 mm // Peralte en la dirección analizada
-dt = 65 mm // Distancia del borde al centroide de las barras de la cara
-nc = 5 // Barras por cara (armadura simétrica)
+b = 600 mm // Ancho de la columna [200..1200]
+D = 600 mm // Peralte en la dirección analizada [300..1500]
+dt = 65 mm // Distancia del borde al centroide de las barras de la cara [40..120]
+nc = 5 // Barras por cara (armadura simétrica) [2..12]
 db = 25 // Diámetro de barras [22 : D22|25 : D25|29 : D29]
-nw = 4 // Ramas de estribo en la dirección analizada [2|3|4]
+nw = 4 // Ramas de estribo en la dirección analizada [2|3|4] [2..6]
 dw = 13 // Diámetro de estribo [10 : D10|13 : D13]
-sw = 100 mm // Espaciamiento de estribos
-h0 = 3.2 m // Altura libre de la columna
+sw = 100 mm // Espaciamiento de estribos [50..250]
+h0 = 3.2 m // Altura libre de la columna [1.5..6]
 ## Propiedades
 d = D - dt // Peralte efectivo
 j = 7/8*d // Brazo de palanca
@@ -286,13 +333,13 @@ fs_L = fsaAIJ(Fc, 1) // Cortante concreto, largo plazo
 fs_S = fsaAIJ(Fc, 2) // Cortante concreto, corto plazo
 wft_S = wftAIJ(SD_w, 2) // Estribos, corto plazo
 # Solicitaciones
-N_L = 1650 kN // Carga axial de largo plazo
-M_L = 45 kN*m // Momento de largo plazo
-Q_L = 25 kN // Cortante de largo plazo
-N_E = 380 kN // Carga axial sísmica (variación)
-M_E = 330 kN*m // Momento sísmico (Co = 0.2)
-Q_E = 160 kN // Cortante sísmico
-nQ = 2 // Amplificación del cortante sísmico (Notif. 1791 Art. 3) [1.5 : Ruta 1|2 : Ruta 2-1 / 2-2]
+N_L = 1650 kN // Carga axial de largo plazo [0..20000]
+M_L = 45 kN*m // Momento de largo plazo [0..2000]
+Q_L = 25 kN // Cortante de largo plazo [0..2000]
+N_E = 380 kN // Carga axial sísmica (variación) [0..10000]
+M_E = 330 kN*m // Momento sísmico (Co = 0.2) [0..3000]
+Q_E = 160 kN // Cortante sísmico [0..2000]
+nQ = 2 // Amplificación del cortante sísmico (Notif. 1791 Art. 3) [1.5 : Ruta 1|2 : Ruta 2-1 / 2-2] [1.5..2.0]
 check N_L/(b*D*Fc) <= 1/3 // Compresión de largo plazo N/(bDFc) ≤ 1/3 (AIJ RC art. 14, comentario)
 # Flexocompresión (AIJ RC art. 14)
 Ma_L = MaColAIJ(N_L, b, D, at, dt, fca_L, ft_L, n) // Momento admisible de largo plazo para N_L
@@ -319,7 +366,7 @@ Fy = SD*1 N/mm^2 // Valor F del acero longitudinal (Notif. 2464)
 sy = 1.1*Fy // Resistencia de fluencia para resistencia última: 1.1·F (Notif. 2464)
 check N1 <= 0.4*b*D*Fc // Rango de validez de la fórmula de Mu (N ≤ 0.4bDFc)
 Mu = MucAIJ(at, sy, D, N1, b, Fc) // Momento último con N máx.
-nm = 1.25 // Factor de amplificación del cortante del mecanismo en columnas (diseño de garantía) [1.1|1.2|1.25]
+nm = 1.25 // Factor de amplificación del cortante del mecanismo en columnas (diseño de garantía) [1.1|1.2|1.25] [1.0..1.5]
 Qm = nm*2*Mu/h0 // Cortante de diseño en el mecanismo (rótulas en ambos extremos)
 s0 = N1/(b*D) -> N/mm^2 // Esfuerzo axial medio σ0
 MQd = h0/(2*d) // Relación de corte M/(Qd)
@@ -336,6 +383,18 @@ check Qsu >= Qm // Qsu ≥ nm·2Mu/h0: falla por flexión antes que por cortante
   // ------------------------------------------------------------------
   {
     id: 'jp-aij-acero', pais: 'JP', cat: 'Acero estructural', icon: 'steel', settings: { sys: 'si' },
+    validacion: {
+      fuente: 'AIJ, Normas de acero (2005) art. 5; perfil JIS G 3192 H-400×200×8×13 (Ix = 23 500 cm⁴, Zx = 1 170 cm³)',
+      nota: 'Ix y Zx son los del catálogo JIS (r = 13 mm); Λ = √(π²E/0.6F) = 119.8 (F = 235). Los esfuerzos y la deflexión son valores de control calculados con la plantilla (5wL⁴/384EI).',
+      valores: [
+        { var: 'Ix', unidad: 'cm^4', esperado: 23500, tol: 0.005, desc: 'JIS G 3192: Ix de H-400×200×8×13' },
+        { var: 'Zx', unidad: 'cm^3', esperado: 1170, tol: 0.005, desc: 'JIS G 3192: Zx de H-400×200×8×13' },
+        { var: 'Lambda', esperado: 119.8, tol: 0.001, desc: 'AIJ: Λ (F = 235 N/mm²) = 119.8' },
+        { var: 'fb_L', unidad: 'N/mm^2', esperado: 156.67, tol: 0.002, desc: 'Control: fb de largo plazo' },
+        { var: 'sb_L', unidad: 'N/mm^2', esperado: 96.923, tol: 0.002, desc: 'Control: σb = M/Z' },
+        { var: 'delta', unidad: 'mm', esperado: 12.711, tol: 0.002, desc: 'Control: deflexión 5wL⁴/384EI' },
+      ],
+    },
     name: 'Viga de acero AIJ — perfil H JIS (esfuerzos admisibles)',
     normas: 'AIJ Design Standard for Steel Structures · Notif. MLIT 1024 (2001) · Notif. MOC 2464 (2000) · Notif. MOC 1792 (relaciones ancho-espesor) · Notif. MOC 1459',
     desc: 'Flexión con pandeo lateral fb = máx{(1 − 0.4(lb/i)²/(CΛ²))ft ; 89000/(lb·h/Af)}, cortante, rango FA por relaciones ancho-espesor y deflexión (Notif. 1459).',
@@ -353,7 +412,7 @@ Viga secundaria de piso de oficina, simplemente apoyada, luz 7.2 m, arriostrada 
 Deflexión: la Notif. 1459 exige $\\delta/L \\le 1/250$ cuando el peralte es menor que $L/15$ (acero); aquí se adopta el límite más estricto $L/300$ recomendado por el AIJ.`),
       calc(`# Material y perfil
 F = 235 N/mm^2 // Valor F de diseño (Notif. 2464) [235 N/mm^2 : SN400B / SS400 (t ≤ 40)|325 N/mm^2 : SN490B / SM490 (t ≤ 40)]
-Es = 205000 N/mm^2 // Módulo de elasticidad del acero
+Es = 205000 N/mm^2 // Módulo de elasticidad del acero [200000..210000]
 sec = 400200 // Perfil H JIS G 3192 [300150 : H-300×150×6.5×9|350175 : H-350×175×7×11|400200 : H-400×200×8×13|450200 : H-450×200×9×14|500200 : H-500×200×10×16|600200 : H-600×200×11×17]
 H = hHJIS(sec) // Altura
 B = bHJIS(sec) // Ancho de ala
@@ -367,16 +426,16 @@ Af = B*tf // Área del ala comprimida
 check (B/2)/tf <= 9*sqrt(235 N/mm^2/F) // Ala de viga: b/t ≤ 9√(235/F)
 check (H - 2*tf)/tw <= 60*sqrt(235 N/mm^2/F) // Alma de viga: d/tw ≤ 60√(235/F)
 # Cargas y solicitaciones
-L = 7.2 m // Luz de la viga (simplemente apoyada)
-lb = 2.4 m // Longitud no arriostrada del ala comprimida
-wL = 17.5 kN/m // Carga de largo plazo (G + P)
+L = 7.2 m // Luz de la viga (simplemente apoyada) [2..20]
+lb = 2.4 m // Longitud no arriostrada del ala comprimida [0.5..20]
+wL = 17.5 kN/m // Carga de largo plazo (G + P) [1..100]
 M_L = wL*L^2/8 -> kN*m // Momento de largo plazo
 Q_L = wL*L/2 -> kN // Cortante de largo plazo
 # Esfuerzos admisibles (AIJ acero art. 5)
 ft = ftsAIJ(F) // Tracción ft = F/1.5
 fs = fssAIJ(F) // Cortante fs = F/(1.5√3)
 Lambda = LambdaAIJ(F) // Esbeltez límite Λ
-M2M1 = -1 // Relación M2/M1 en el tramo arriostrado (−1: curvatura simple uniforme)
+M2M1 = -1 // Relación M2/M1 en el tramo arriostrado (−1: curvatura simple uniforme) [-1..1]
 C = CbAIJ(M2M1) // Factor de gradiente de momento (≥ 1.0)
 fb_L = fbAIJ(lb, ib, H, Af, F, C) // Flexión admisible de largo plazo con pandeo lateral
 # Verificaciones
@@ -396,6 +455,18 @@ check delta <= dlim // Deflexión de largo plazo`),
   // ------------------------------------------------------------------
   {
     id: 'jp-madera-kaberyo', pais: 'JP', cat: 'Madera y tierra', icon: 'wall', settings: { sys: 'si' },
+    validacion: {
+      fuente: 'BSL Order Art. 46-4 (cantidad de muros, tablas 1 y 3) y Notif. 1352 (yonbun-wari) — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Coeficientes de piso de la tabla del Art. 46-4 (techo ligero, 2 pisos): 29 cm/m² en el 1F y 15 cm/m² en el 2F.',
+      valores: [
+        { var: 'cw1', unidad: 'cm/m^2', esperado: 29, tol: 0.001, desc: 'Order Art. 46-4: 1F, techo ligero, 2 pisos' },
+        { var: 'cw2', unidad: 'cm/m^2', esperado: 15, tol: 0.001, desc: 'Order Art. 46-4: 2F, techo ligero, 2 pisos' },
+        { var: 'LreqX', unidad: 'm', esperado: 23.054, tol: 0.002, desc: 'Control: longitud requerida en X' },
+        { var: 'LeX', unidad: 'm', esperado: 35.49, tol: 0.002, desc: 'Control: longitud efectiva en X' },
+        { var: 'LreqY', unidad: 'm', esperado: 24.75, tol: 0.002, desc: 'Control: longitud requerida en Y (rige viento)' },
+        { var: 'bX', esperado: 0.75, tol: 0.002, desc: 'Control: relación de balance en X' },
+      ],
+    },
     name: 'Casa de madera — cantidad de muros (kabe-ryo) y balance 1/4',
     normas: 'Building Standard Law · Enforcement Order Art. 46 · Notif. MOC 1352 (2000, yonbun-wari) · Notif. MOC 1100 (multiplicadores de muro)',
     desc: 'Método de cantidad de muros por sismo (longitud por m² de planta) y por viento (50 cm/m² de área proyectada), con multiplicadores de muro y balance por cuartos (yonbun-wari).',
@@ -414,14 +485,14 @@ Vivienda de 2 pisos, techo ligero de lámina metálica, planta del 1F de 10.92 �
       calc(`# Datos de la vivienda
 techo = 1 // Tipo de techo [1 : Ligero (lámina metálica, pizarra)|2 : Pesado (teja cerámica)]
 niv = 2 // Número de pisos [1 : 1 piso|2 : 2 pisos|3 : 3 pisos]
-Lx = 10.92 m // Largo de la planta del 1F (dirección X)
-Ly = 7.28 m // Ancho de la planta del 1F (dirección Y)
+Lx = 10.92 m // Largo de la planta del 1F (dirección X) [3..30]
+Ly = 7.28 m // Ancho de la planta del 1F (dirección Y) [3..30]
 A1 = Lx*Ly // Área de piso del 1F
 cw1 = kabeBSL(techo, niv, 1) // Longitud requerida por sismo, 1F (Order Art. 46-4, tabla 2)
 cw2 = kabeBSL(techo, niv, 2) // Longitud requerida por sismo, 2F
 cv = 50 cm/m^2 // Longitud requerida por viento (Order Art. 46-4, tabla 3) [50 cm/m^2 : Zona general|75 cm/m^2 : Zona de vientos fuertes]
-AvX = 31.0 m^2 // Área de fachada proyectada que recibe viento en X (por encima de 1.35 m del 1F)
-AvY = 49.5 m^2 // Área de fachada proyectada que recibe viento en Y
+AvX = 31.0 m^2 // Área de fachada proyectada que recibe viento en X (por encima de 1.35 m del 1F) [5..300]
+AvY = 49.5 m^2 // Área de fachada proyectada que recibe viento en Y [5..300]
 ## Longitudes requeridas en el 1F
 LsX = cw1*A1 -> m // Requisito sísmico (igual en X e Y)
 LwX = cv*AvX -> m // Requisito por viento en X
@@ -435,10 +506,10 @@ check LeX >= LreqX // Longitud efectiva en X ≥ requerida (sismo y viento)
 check LeY >= LreqY // Longitud efectiva en Y ≥ requerida (sismo y viento)
 # Verificación simplificada del 2F
 A2 = 7.28 m*7.28 m // Área de piso del 2F
-Le2X = 21.8 m // Longitud efectiva de muros del 2F en X (Σk·L)
-Le2Y = 23.7 m // Longitud efectiva de muros del 2F en Y (Σk·L)
-Av2X = 14.5 m^2 // Área de fachada del 2F que recibe viento en X
-Av2Y = 21.0 m^2 // Área de fachada del 2F que recibe viento en Y
+Le2X = 21.8 m // Longitud efectiva de muros del 2F en X (Σk·L) [0..200]
+Le2Y = 23.7 m // Longitud efectiva de muros del 2F en Y (Σk·L) [0..200]
+Av2X = 14.5 m^2 // Área de fachada del 2F que recibe viento en X [0..200]
+Av2Y = 21.0 m^2 // Área de fachada del 2F que recibe viento en Y [0..200]
 Lreq2X = max(cw2*A2, cv*Av2X) -> m // Longitud requerida del 2F en X (sismo o viento)
 Lreq2Y = max(cw2*A2, cv*Av2Y) -> m // Longitud requerida del 2F en Y (sismo o viento)
 check Le2X >= Lreq2X // 2F en X (Order Art. 46-4)
@@ -452,6 +523,19 @@ check Le2Y >= Lreq2Y // 2F en Y (Order Art. 46-4)
   // ------------------------------------------------------------------
   {
     id: 'jp-bsl-viento-nieve', pais: 'JP', cat: 'Cargas y combinaciones', icon: 'calc', settings: { sys: 'si' },
+    validacion: {
+      fuente: 'Ejemplo difundido de la Notif. 1454 (kentiku-kouzou.jp): V0 = 34 m/s, rugosidad III, H = 10 m → Er = 0.794, E = 1.58, q ≈ 1095 N/m²',
+      nota: 'Datos de viento por defecto = datos del ejemplo publicado (la fuente redondea E = 1.58, por eso q = 1093 frente a 1095 N/m²). Gf = 2.5 es valor de tabla; μb = √cos(1.5β) = 0.9306 para β = 20°. Las cargas totales (Qw, S) son valores de control.',
+      valores: [
+        { var: 'Er', esperado: 0.794, tol: 0.001, desc: 'Notif. 1454: Er (H = 10 m, rugosidad III)' },
+        { var: 'Gf', esperado: 2.5, tol: 0.001, desc: 'Notif. 1454: Gf rugosidad III, H ≤ 10 m' },
+        { var: 'E', esperado: 1.58, tol: 0.004, desc: 'Ejemplo: E = Er²·Gf = 1.58' },
+        { var: 'q', unidad: 'N/m^2', esperado: 1095, tol: 0.004, desc: 'Ejemplo: q = 0.6·E·V0² ≈ 1095 N/m²' },
+        { var: 'mub', esperado: 0.9306, tol: 0.001, desc: 'Notif. 1455: μb = √cos(30°)' },
+        { var: 'Qw', unidad: 'kN', esperado: 262.35, tol: 0.002, desc: 'Control: fuerza de viento' },
+        { var: 'S', unidad: 'N/m^2', esperado: 558.36, tol: 0.002, desc: 'Control: carga de nieve de diseño' },
+      ],
+    },
     name: 'Presión de viento y carga de nieve BSL (Japón)',
     normas: 'Building Standard Law · Enforcement Order Art. 86 (nieve) y 87 (viento) · Notif. MOC 1454 (viento) · Notif. MOC 1455 (nieve)',
     desc: 'q = 0.6·E·V0² con E = Er²·Gf por categoría de rugosidad, coeficientes de presión de muros y fuerza de viento global sobre la estructura; carga de nieve S = ρ·ds·μb para zona general o de nieve intensa.',
@@ -473,32 +557,32 @@ La fuerza sobre la estructura principal es $W = q\\,C_f\\,A$, con $C_f = C_{pe} 
 
 Edificio de 3 pisos en Tokio ($V_0 = 34$ m/s), zona suburbana, techo a dos aguas de 20°.`),
       calc(`# Presión de viento (Order Art. 87)
-V0 = 34 m/s // Velocidad básica del viento (Notif. 1454 Art. 2) [30 m/s|32 m/s|34 m/s : Tokio|36 m/s|38 m/s|40 m/s|42 m/s|44 m/s|46 m/s : Okinawa]
+V0 = 34 m/s // Velocidad básica del viento (Notif. 1454 Art. 2) [30 m/s|32 m/s|34 m/s : Tokio|36 m/s|38 m/s|40 m/s|42 m/s|44 m/s|46 m/s : Okinawa] [30..46]
 cat = 3 // Categoría de rugosidad del terreno (Notif. 1454 Art. 1) [1 : I — mar o lago|2 : II — campo abierto|3 : III — suburbano|4 : IV — urbano denso]
-Hb = 10.0 m // Altura media del edificio (promedio entre alero y cumbrera)
-Bw = 20.0 m // Ancho de la fachada expuesta
+Hb = 10.0 m // Altura media del edificio (promedio entre alero y cumbrera) [3..100]
+Bw = 20.0 m // Ancho de la fachada expuesta [3..200]
 Er = ErBSL(Hb, cat) // Factor de distribución vertical (Notif. 1454 Art. 1)
 Gf = GfBSL(Hb, cat) // Factor de ráfaga (Notif. 1454 Art. 1)
 E = Er^2*Gf // Factor de exposición E = Er²·Gf
 q = 0.6 kg/m^3*E*V0^2 -> N/m^2 // Presión de velocidad q = 0.6·E·V0² (Order Art. 87-2)
 kz = kzBSL(Hb, Hb, cat) // Factor de altura en la cumbre (Notif. 1454 Art. 3)
 Cpe1 = 0.8*kz // Coeficiente de presión exterior, barlovento
-Cpe2 = -0.4 // Coeficiente de presión exterior, sotavento
-Cp_i = -0.2 // Coeficiente de presión interior (edificio cerrado) [0|-0.2]
+Cpe2 = -0.4 // Coeficiente de presión exterior, sotavento [-0.8..0]
+Cp_i = -0.2 // Coeficiente de presión interior (edificio cerrado) [0|-0.2] [-0.5..0.2]
 ## Presiones y fuerza global sobre la estructura principal
 pw = q*(Cpe1 - Cp_i) -> N/m^2 // Presión neta en el muro de barlovento (estructura principal)
 Qw = q*(Cpe1 - Cpe2)*Bw*Hb -> kN // Fuerza global de viento sobre el edificio
-QE1 = 1450 kN // Cortante sísmico basal de primera fase (Co = 0.2) del mismo edificio
+QE1 = 1450 kN // Cortante sísmico basal de primera fase (Co = 0.2) del mismo edificio [10..100000]
 check Qw <= QE1 // El sismo controla el diseño lateral (si no, diseñar por viento)
 # Carga de nieve (Order Art. 86)
 reg = 1 // Región (Order Art. 86-2) [1 : Zona general|2 : Zona de nieve intensa (tasetsu kuiki)]
-ds = 30 cm // Profundidad de nieve de diseño (Notif. 1455; reglamento de la prefectura)
-beta = 20 deg // Pendiente del techo
+ds = 30 cm // Profundidad de nieve de diseño (Notif. 1455; reglamento de la prefectura) [0..400]
+beta = 20 deg // Pendiente del techo [0..60]
 rho = si(reg == 1, 20, 30)*1 N/m^2/cm // Peso unitario de la nieve por cm (Order Art. 86-2)
 mub = mubBSL(beta) // Coeficiente de forma del techo (Order Art. 86-4)
 S = rho*ds*mub -> N/m^2 // Carga de nieve de diseño S = ρ·ds·μb
 SL = si(reg == 1, 0, 0.7)*S // Nieve en combinación de largo plazo (solo zona de nieve intensa: 0.7S, Order Art. 82)
-scap = 1200 N/m^2 // Capacidad de carga variable de la cubierta (correas y paneles)
+scap = 1200 N/m^2 // Capacidad de carga variable de la cubierta (correas y paneles) [300..10000]
 check S <= scap // Carga de nieve ≤ capacidad de la cubierta`),
       { type: 'plot', expr: 'qBSL(x m, 1, V0)/(1 N/m^2); qBSL(x m, 2, V0)/(1 N/m^2); qBSL(x m, 3, V0)/(1 N/m^2); qBSL(x m, 4, V0)/(1 N/m^2)', var: 'x', desde: '3', hasta: '100', puntos: '200', xlabel: 'Altura media del edificio H [m]', ylabel: 'q [N/m²]', leyenda: true, nombres: 'Rugosidad I; Rugosidad II; Rugosidad III; Rugosidad IV', titulo: 'Presión de velocidad q = 0.6·Er²·Gf·V0² según la rugosidad del terreno (V0 del proyecto)' },
       { type: 'plot', expr: 'si(x <= 60, sqrt(cos(1.5*x*pi/180)), 0)', var: 'x', desde: '0', hasta: '70', puntos: '200', xlabel: 'Pendiente del techo β [°]', ylabel: 'μb', titulo: 'Coeficiente de forma del techo para nieve μb = √cos(1.5β) (Order Art. 86-4)' },
@@ -510,6 +594,20 @@ check S <= scap // Carga de nieve ≤ capacidad de la cubierta`),
   // ------------------------------------------------------------------
   {
     id: 'jp-jra-espectro', pais: 'JP', cat: 'Puentes', icon: 'spectrum', settings: { sys: 'si' },
+    validacion: {
+      fuente: 'JRA, Especificaciones de puentes V (2012), tablas de S0, kh0 y khc0 (manual de la Pref. de Miyagi, tablas 3-9, 3-13 y 3-14; NILIM 2013, fig. 1)',
+      nota: 'Con T = 0.8 s en suelo tipo II las ordenadas caen en las mesetas tabuladas: nivel 1 = 250 gal (kh0 = 0.25), nivel 2 tipo I (2012) = 1300 gal, nivel 2 tipo II = 1750 gal. TG y los coeficientes con cs son valores de control.',
+      valores: [
+        { var: 'TG', unidad: 's', esperado: 0.25911, tol: 0.002, desc: 'Control: periodo característico del suelo' },
+        { var: 'suelo', esperado: 2, tol: 0.001, desc: 'Control: suelo tipo II' },
+        { var: 'kh0', esperado: 0.25, tol: 0.001, desc: 'JRA: kh0 suelo II, meseta 0.2–1.3 s' },
+        { var: 'S1', esperado: 250, tol: 0.001, desc: 'JRA: S0 nivel 1, suelo II = 250 gal' },
+        { var: 'SI', esperado: 1300, tol: 0.001, desc: 'JRA 2012 / NILIM 2013: tipo I, suelo II = 1300 gal' },
+        { var: 'SII', esperado: 1750, tol: 0.001, desc: 'JRA: tipo II, suelo II = 1750 gal' },
+        { var: 'khcI', esperado: 0.58138, tol: 0.002, desc: 'Control: khc tipo I con cs' },
+        { var: 'khcII', esperado: 0.78262, tol: 0.002, desc: 'Control: khc tipo II con cs' },
+      ],
+    },
     name: 'Espectros sísmicos JRA para puentes (nivel 1 y nivel 2)',
     normas: 'JRA Specifications for Highway Bridges, Part V Seismic Design (Doro-kyo Shiho-sho V, ed. 2012)',
     desc: 'Clasificación del suelo por TG, espectros estándar de nivel 1 y nivel 2 (tipo I subducción, revisado en 2012, y tipo II cortical), coeficientes sísmicos kh0 y khc0 del método estático y verificación de la pila por capacidad de carga horizontal.',
@@ -535,22 +633,22 @@ suelo = sueloJRA(TG) // Tipo de suelo (1 = I, 2 = II, 3 = III)
 # Parámetros del puente
 zona = 1 // Zona sísmica JRA para nivel 1 y nivel 2 tipo II [1 : A (cz = 1.0)|2 : B (cz = 0.85)|3 : C (cz = 0.7)]
 cz = czJRA(zona) // Coeficiente de zona cz
-cIz = 1.0 // Coeficiente regional para nivel 2 tipo I (JRA 2012, mapa de cIz) [1.2|1.0|0.8]
-h = 0.05 // Amortiguamiento del sistema (para el espectro dinámico)
+cIz = 1.0 // Coeficiente regional para nivel 2 tipo I (JRA 2012, mapa de cIz) [1.2|1.0|0.8] [0.8..1.2]
+h = 0.05 // Amortiguamiento del sistema (para el espectro dinámico) [0.02..0.20]
 cD = cDJRA(h) // Corrección por amortiguamiento
-T = 0.80 s // Periodo natural de la pila en la dirección analizada
-W = 9800 kN // Peso equivalente (superestructura + 1/2 pila)
+T = 0.80 s // Periodo natural de la pila en la dirección analizada [0.1..5]
+W = 9800 kN // Peso equivalente (superestructura + 1/2 pila) [100..100000]
 # Nivel 1 — método estático (JRA V 6.3)
 kh0 = kh0JRA(T, suelo) // Coeficiente sísmico estándar de nivel 1
 kh = max(cz*kh0, 0.1) // Coeficiente sísmico de diseño kh = cz·kh0 ≥ 0.1
-khA = 0.30 // Coeficiente sísmico que la pila resiste con esfuerzos admisibles (análisis de la pila)
+khA = 0.30 // Coeficiente sísmico que la pila resiste con esfuerzos admisibles (análisis de la pila) [0.1..1.0]
 check kh <= khA // Nivel 1: respuesta elástica con esfuerzos admisibles
 # Nivel 2 — capacidad de carga horizontal (JRA V 6.4 y 10.2)
-muA = 3.0 // Ductilidad admisible de la pila μa (JRA V 10.2)
+muA = 3.0 // Ductilidad admisible de la pila μa (JRA V 10.2) [1..8]
 cs = 1/sqrt(2*muA - 1) // Coeficiente de características estructurales cs
 khcI = max(cs*cIz*khc0JRA(T, suelo, 1), 0.4*cIz) // Coeficiente sísmico de diseño, tipo I
 khcII = max(cs*cz*khc0JRA(T, suelo, 2), 0.4*cz) // Coeficiente sísmico de diseño, tipo II
-Pa = 8200 kN // Capacidad de carga horizontal de la pila (curva de capacidad)
+Pa = 8200 kN // Capacidad de carga horizontal de la pila (curva de capacidad) [100..100000]
 check khcI*W <= Pa // Nivel 2 tipo I: Pa ≥ khc·W
 check khcII*W <= Pa // Nivel 2 tipo II: Pa ≥ khc·W
 # Espectros de aceleración en el sitio (análisis dinámico, JRA V 4.2 y 4.3)
@@ -567,6 +665,18 @@ SII = cz*cD*SJRA2II(T, suelo) // Nivel 2 tipo II [gal]`),
   // ------------------------------------------------------------------
   {
     id: 'jp-bsl-n1461', pais: 'JP', cat: 'Sismo — Japón', icon: 'spectrum', settings: { sys: 'si' },
+    validacion: {
+      fuente: 'BSL — Notif. 1461 (espectro en roca de ingeniería) y Notif. 1457 (Gs) — valores de control; las funciones se validan con NILIM TN 1084 y denmoku 2024 (tests/japan.test.mjs)',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Los ejemplos publicados (NILIM TN 1084: S0 = 4.71 m/s², Gs = 2.025 para Ts = 1.09 s; denmoku 2024: Gs = 1.358/1.350/1.500) se comprueban en las pruebas del módulo con otros periodos.',
+      valores: [
+        { var: 'Sad', unidad: 'm/s^2', esperado: 2.4, tol: 0.002, desc: 'Control: Sa en el límite de daño' },
+        { var: 'Qdem1', unidad: 'kN', esperado: 3480, tol: 0.002, desc: 'Control: demanda en el límite de daño' },
+        { var: 'Sas', unidad: 'm/s^2', esperado: 5.9246, tol: 0.002, desc: 'Control: Sa en el límite de seguridad' },
+        { var: 'Qdem2', unidad: 'kN', esperado: 8590.6, tol: 0.002, desc: 'Control: demanda en el límite de seguridad' },
+        { var: 'thd', esperado: 0.0038462, tol: 0.002, desc: 'Control: deriva en el límite de daño' },
+        { var: 'ths', esperado: 0.011111, tol: 0.002, desc: 'Control: deriva en el límite de seguridad' },
+      ],
+    },
     name: 'Espectro BSL de la roca de ingeniería (Notif. 1461 / cálculo de límites)',
     normas: 'Building Standard Law · Enforcement Order Art. 82-5 (cálculo de límites, genkai tairyoku keisan) · Notif. MOC 1457 (2000, mod. 2007) · Notif. MOC 1461 (2000)',
     desc: 'Espectro de aceleración en la roca de ingeniería para sismo raro y muy raro, amplificación simplificada del suelo Gs, reducción por amortiguamiento Fh y verificación de un sistema equivalente de 1 GDL.',
@@ -581,21 +691,21 @@ Se verifica un edificio de 4 pisos idealizado como sistema equivalente de 1 GDL:
       calc(`# Datos
 ${ZONA}
 Z = ZBSL(zona) // Coeficiente de zona (Notif. 1793)
-M = 1450 tonne // Masa equivalente del sistema de 1 GDL
-Td = 0.55 s // Periodo equivalente en el límite de daño
-Ts = 1.05 s // Periodo equivalente (secante) en el límite de seguridad
-hs = 0.15 // Amortiguamiento equivalente en el límite de seguridad (histerético + 5 %)
+M = 1450 tonne // Masa equivalente del sistema de 1 GDL [10..100000]
+Td = 0.55 s // Periodo equivalente en el límite de daño [0.05..5]
+Ts = 1.05 s // Periodo equivalente (secante) en el límite de seguridad [0.05..5]
+hs = 0.15 // Amortiguamiento equivalente en el límite de seguridad (histerético + 5 %) [0.05..0.25]
 # Límite de daño — sismo raro (Notif. 1457 Art. 9)
 Sad = Z*GsN1457(Td, suelo)*S0N1461(Td, 1)*1 m/s^2 // Aceleración de respuesta Sa = Z·Gs·S0 (h = 5 %)
 Qdem1 = M*Sad -> kN // Cortante basal demandado
-Qd = 4200 kN // Resistencia en el límite de daño (primer elemento que alcanza el esfuerzo admisible de corto plazo)
+Qd = 4200 kN // Resistencia en el límite de daño (primer elemento que alcanza el esfuerzo admisible de corto plazo) [100..1000000]
 check Qdem1 <= Qd // Límite de daño: fuerza (Order Art. 82-5, inc. 3)
 thd = 1/260 // Deriva máxima de entrepiso en el límite de daño (análisis incremental)
 check thd <= 1/200 // Límite de daño: deriva ≤ 1/200 (Order Art. 82-5, inc. 3)
 # Límite de seguridad — sismo muy raro (Notif. 1457 Art. 7)
 Sas = Z*GsN1457(Ts, suelo)*S0N1461(Ts, 2)*FhBSL(hs)*1 m/s^2 // Aceleración de respuesta reducida
 Qdem2 = M*Sas -> kN // Cortante basal demandado
-Qs = 9800 kN // Resistencia en el límite de seguridad (curva de capacidad)
+Qs = 9800 kN // Resistencia en el límite de seguridad (curva de capacidad) [100..1000000]
 check Qdem2 <= Qs // Límite de seguridad: fuerza (Order Art. 82-5, inc. 5)
 ths = 1/90 // Deriva máxima de entrepiso en el límite de seguridad (análisis incremental)
 check ths <= 1/75 // Límite de seguridad: deriva ≤ 1/75 (Notif. 1457 Art. 6, mod. 2007)`),

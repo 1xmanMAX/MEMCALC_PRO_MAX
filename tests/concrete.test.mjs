@@ -298,4 +298,15 @@ const setData = (vals) => (d) => { for (const b of d.blocks) if (b.type === 'cal
   const nj = runTemplate('co-nudo', setData({ bc: '30 cm', hc: '30 cm', barv: '8' }));
   truthy('Nudo con columna de 30×30 y barras de 1": NO CUMPLE sin errores', nj.res.ctx.errors.length === 0 && nj.res.ctx.checks.some(c => !c.ok));
 }
+section('Rangos usuales [mín..máx] y ejemplos de validación de las plantillas «concrete»');
+for (const t of TEMPLATES.filter(x => x.id.startsWith('co-'))) {
+  const inp = runTemplate(t.id).res.ctx.inputs, rg = inp.filter(i => i.range);
+  const out = rg.filter(i => { let v = parseFloat(i.num); if (i.range.unit && i.unit && i.range.unit !== i.unit) v = math.unit(v, i.unit).toNumber(i.range.unit); return !(v >= i.range.min && v <= i.range.max); });
+  const bad = inp.filter(i => /\.\.|\[/.test(i.label || ''));
+  truthy(`${t.id}: ${rg.length} datos con rango, valores por defecto dentro del rango, etiquetas limpias`, rg.length >= 3 && out.length === 0 && bad.length === 0, out.map(i => i.name + ' = ' + i.num).concat(bad.map(i => i.name)).join(', '));
+  const v = t.validacion;
+  truthy(`${t.id}: tiene «validacion» con fuente, nota y valores`, !!(v && v.fuente && v.nota && Array.isArray(v.valores) && v.valores.length >= 3));
+}
+truthy('Listas desplegables intactas con rango (f\'c, espesor de losa, estribo del voladizo)', (() => { const f = (id, n) => runTemplate(id).res.ctx.inputs.find(i => i.name === n); return f('co-placa', 'fc').options.length === 3 && f('co-placa', 'fc').range.max === 420 && f('co-losa2d', 'h').options.length === 4 && f('co-voladizo', 'est').options.length === 2; })());
+truthy('Losas: validacion con los coeficientes de la E.060 (Tabla 13.1 y Art. 8.3.3)', ['co-losa2d', 'co-losa1d'].every(id => /Tabla 13\.1|8\.3\.3/.test(TEMPLATES.find(x => x.id === id).validacion.fuente)));
 done();

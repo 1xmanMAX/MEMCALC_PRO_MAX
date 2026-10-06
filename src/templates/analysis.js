@@ -12,6 +12,17 @@ export default [
     name: 'Pórtico de C°A° 2 pisos × 2 vanos (rigidez)',
     desc: 'Análisis matricial de un pórtico plano con cargas de gravedad y sismo estático, combinaciones E.060, envolvente, derivas y diseño de la viga más esforzada.',
     titulo: 'Análisis y diseño de pórtico de concreto armado — 2 pisos, 2 vanos',
+    validacion: {
+      fuente: 'Control: pórtico de 2 pisos por rigidez (frame2d, contrastado con PyNite en tests/analysis.test.mjs), NTE E.030-2018 y E.060',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). V = ZUCS·P/R = 0.45·1·2.5·1.05/8·(P1 + P2) se comprueba a mano.',
+      valores: [
+        { var: 'V', unidad: 'tonf', esperado: 9.221, tol: 0.002, desc: 'Cortante basal ZUCS·P/R' },
+        { var: 'Mu_n', unidad: 'tonf*m', esperado: 18.58, tol: 0.002, desc: 'Momento negativo máximo de viga' },
+        { var: 'Mu_p', unidad: 'tonf*m', esperado: 9.499, tol: 0.002, desc: 'Momento positivo máximo de viga' },
+        { var: 'derivamax', esperado: 0.005833, tol: 0.002, desc: 'Deriva máxima (0.75R·Δ/h)' },
+        { var: 'phiMn_n', unidad: 'tonf*m', esperado: 19.17, tol: 0.002, desc: 'Resistencia negativa de la viga' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 La presente memoria desarrolla el **análisis estructural por el método de rigidez directa** de un pórtico plano interior de concreto armado de dos pisos y dos vanos, sometido a cargas de gravedad (muerta CM y viva CV) y a la fuerza sísmica estática equivalente (CS). Con la envolvente de las combinaciones de la NTE E.060 se diseña a flexión y cortante la viga más esforzada del primer nivel.
@@ -26,25 +37,25 @@ La presente memoria desarrolla el **análisis estructural por el método de rigi
       calc(`# Datos
 ## Materiales
 fc = 210 kgf/cm^2 // Resistencia del concreto [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2]
-fy = 4200 kgf/cm^2 // Fluencia del acero ASTM A615 Gr. 60
-gammac = 2.4 tonf/m^3 // Peso específico del concreto armado (E.020 Anexo 1)
+fy = 4200 kgf/cm^2 // Fluencia del acero ASTM A615 Gr. 60 [2800..4200]
+gammac = 2.4 tonf/m^3 // Peso específico del concreto armado (E.020 Anexo 1) [2.2..2.5]
 Ec = 15000*sqrtfc(fc) -> tonf/m^2 // Módulo de elasticidad (E.060 8.5.2)
 ## Geometría
-L1 = 6.0 m // Luz del vano 1
-L2 = 5.0 m // Luz del vano 2
-h1 = 3.5 m // Altura del primer entrepiso (a ejes)
-h2 = 3.0 m // Altura del segundo entrepiso
-bc = 40 cm // Ancho de columnas
-hc = 40 cm // Peralte de columnas (dirección del pórtico)
-bv = 30 cm // Ancho de vigas
-hv = 55 cm // Peralte de vigas
+L1 = 6.0 m // Luz del vano 1 [3..8]
+L2 = 5.0 m // Luz del vano 2 [3..8]
+h1 = 3.5 m // Altura del primer entrepiso (a ejes) [2.5..4.5]
+h2 = 3.0 m // Altura del segundo entrepiso [2.5..4]
+bc = 40 cm // Ancho de columnas [25..80]
+hc = 40 cm // Peralte de columnas (dirección del pórtico) [25..80]
+bv = 30 cm // Ancho de vigas [25..40]
+hv = 55 cm // Peralte de vigas [40..80]
 ## Cargas de gravedad (ancho tributario)
-At = 4.5 m // Ancho tributario del pórtico
-wlosa = 0.30 tonf/m^2 // Losa aligerada h = 20 cm (E.020 Anexo 1)
-wacab = 0.10 tonf/m^2 // Piso terminado
-wtab = 0.10 tonf/m^2 // Tabiquería repartida
-sc1 = 0.20 tonf/m^2 // Sobrecarga de vivienda (E.020 Tabla 1)
-sc2 = 0.10 tonf/m^2 // Sobrecarga de azotea (E.020 7.1)
+At = 4.5 m // Ancho tributario del pórtico [3..8]
+wlosa = 0.30 tonf/m^2 // Losa aligerada h = 20 cm (E.020 Anexo 1) [0.28..0.42]
+wacab = 0.10 tonf/m^2 // Piso terminado [0.05..0.15]
+wtab = 0.10 tonf/m^2 // Tabiquería repartida [0..0.30]
+sc1 = 0.20 tonf/m^2 // Sobrecarga de vivienda (E.020 Tabla 1) [0.20..0.50]
+sc2 = 0.10 tonf/m^2 // Sobrecarga de azotea (E.020 7.1) [0.10..0.20]
 wD1 = (wlosa + wacab + wtab)*At // Carga muerta en vigas del 1.er piso (sin peso propio)
 wD2 = (wlosa + wacab)*At // Carga muerta en vigas de azotea (sin peso propio)
 wL1 = sc1*At // Carga viva en vigas del 1.er piso
@@ -52,14 +63,14 @@ wL2 = sc2*At // Carga viva en vigas de azotea
 "El peso propio de vigas y columnas se incluye automáticamente en el caso CM ($\\gamma_c A$ por metro).`),
       calc(`## Fuerza sísmica estática equivalente (E.030-2018, Art. 28)
 Z = 0.45 // Factor de zona [0.45 : Zona 4|0.35 : Zona 3|0.25 : Zona 2|0.10 : Zona 1]
-U = 1.0 // Factor de uso (categoría C, vivienda)
-S = 1.05 // Factor de suelo (S2, zona 4)
-Tp = 0.6 s // Periodo TP del suelo
+U = 1.0 // Factor de uso (categoría C, vivienda) [1.0..1.5]
+S = 1.05 // Factor de suelo (S2, zona 4) [0.8..2.0]
+Tp = 0.6 s // Periodo TP del suelo [0.3..1.0]
 hn = h1 + h2 // Altura total
-CT = 35 // Coeficiente para pórticos de concreto armado (E.030 28.4.1)
+CT = 35 // Coeficiente para pórticos de concreto armado (E.030 28.4.1) [35..60]
 Ta = hn/CT*(1 s/m) // Periodo fundamental aproximado T = hn/CT
 C = si(Ta < Tp, 2.5, 2.5*Tp/Ta) // Factor de amplificación sísmica (E.030 14)
-R = 8 // Coeficiente de reducción, pórticos de C°A° regulares (E.030 Tabla 7)
+R = 8 // Coeficiente de reducción, pórticos de C°A° regulares (E.030 Tabla 7) [3..8]
 check C/R >= 0.11 // Valor mínimo de C/R (E.030 28.2.2)
 P1 = (wD1 + 0.25*wL1 + gammac*bv*hv)*(L1 + L2) + 3*gammac*bc*hc*(h1 + h2)/2 -> tonf // Peso sísmico del nivel 1 (CM + 25 % CV)
 P2 = (wD2 + 0.25*wL2 + gammac*bv*hv)*(L1 + L2) + 3*gammac*bc*hc*h2/2 -> tonf // Peso sísmico del nivel 2
@@ -138,6 +149,17 @@ nu_c = Pu_c/(fc*Ag) // Carga axial normalizada (si > 0.1 el elemento se diseña 
     name: 'Armadura de techo de acero (Pratt a dos aguas)',
     desc: 'Armadura a dos aguas analizada por rigidez (barras articuladas): fuerzas axiales, tracción/compresión, y verificación de cordones, montantes y diagonales con AISC 360.',
     titulo: 'Análisis y verificación de armadura de techo tipo Pratt',
+    validacion: {
+      fuente: 'Control: armadura a dos aguas por rigidez (frame2d, validado con el método de los nudos en tests/analysis.test.mjs) y AISC 360-16 E3, D2',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). PD = 30 kgf/m²·2 m·5 m = 0.30 t se comprueba a mano.',
+      valores: [
+        { var: 'PD', unidad: 'tonf', esperado: 0.3, tol: 0.0005, desc: 'Carga muerta por nudo' },
+        { var: 'Pu_cs', unidad: 'tonf', esperado: 9.852, tol: 0.002, desc: 'Compresión última del cordón superior' },
+        { var: 'Pu_ci', unidad: 'tonf', esperado: 9.341, tol: 0.002, desc: 'Tracción última del cordón inferior' },
+        { var: 'phiPn_cs', unidad: 'tonf', esperado: 19.07, tol: 0.002, desc: 'Resistencia a compresión del cordón superior' },
+        { var: 'dmax', unidad: 'mm', esperado: 7.036, tol: 0.002, desc: 'Deflexión máxima' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Se analiza una armadura de techo a dos aguas tipo **Pratt** de 12 m de luz, con seis paneles de 2.0 m y flecha de 2.0 m, que soporta correas en los nudos del cordón superior. El modelo es de **barras biarticuladas** (solo fuerza axial) y se resuelve por el método de rigidez directa; la estructura es isostática ($b + r = 2n$: 21 + 3 = 2·12). Las barras se verifican a tracción (AISC 360-16, cap. D) y a compresión (cap. E, Art. E3) con la envolvente de las combinaciones LRFD.
@@ -148,20 +170,20 @@ Se analiza una armadura de techo a dos aguas tipo **Pratt** de 12 m de luz, con 
 - A. Kassimali, *Matrix Analysis of Structures*, cap. 3–4 (armaduras planas por rigidez).`),
       calc(`# Datos
 ## Geometría
-Lt = 12 m // Luz de la armadura
-f = 2.0 m // Flecha (altura en la cumbrera)
+Lt = 12 m // Luz de la armadura [6..30]
+f = 2.0 m // Flecha (altura en la cumbrera) [1..5]
 p = Lt/6 // Longitud de panel
-st = 5.0 m // Separación entre armaduras
+st = 5.0 m // Separación entre armaduras [3..8]
 ## Material y secciones (ángulos dobles, ASTM A36)
-Es = 200000 MPa // Módulo de elasticidad
-Fy = 250 MPa // Esfuerzo de fluencia A36
-Fu = 400 MPa // Resistencia a tracción A36
-A_c = 15.35 cm^2 // Cordones: 2L 2½×2½×¼" — área
-r_c = 1.96 cm // Cordones: radio de giro mínimo (eje x de la sección)
-A_w = 9.23 cm^2 // Montantes y diagonales: 2L 2×2×3/16" — área
-r_w = 1.57 cm // Montantes y diagonales: radio de giro mínimo
+Es = 200000 MPa // Módulo de elasticidad [190000..210000]
+Fy = 250 MPa // Esfuerzo de fluencia A36 [250..345]
+Fu = 400 MPa // Resistencia a tracción A36 [400..450]
+A_c = 15.35 cm^2 // Cordones: 2L 2½×2½×¼" — área [5..60]
+r_c = 1.96 cm // Cordones: radio de giro mínimo (eje x de la sección) [1..5]
+A_w = 9.23 cm^2 // Montantes y diagonales: 2L 2×2×3/16" — área [3..40]
+r_w = 1.57 cm // Montantes y diagonales: radio de giro mínimo [1..5]
 ## Cargas
-wD = 30 kgf/m^2 // Cubierta + correas + instalaciones (E.020)
+wD = 30 kgf/m^2 // Cubierta + correas + instalaciones (E.020) [10..60]
 theta = atan(f/(Lt/2)) -> deg // Inclinación del techo
 wLr = max(100 kgf/m^2 - 5 kgf/m^2*(theta/(1 deg) - 3), 50 kgf/m^2) -> kgf/m^2 // Sobrecarga de techo inclinado (E.020 7.1)
 PD = wD*st*p -> tonf // Carga muerta por nudo interior
@@ -184,7 +206,7 @@ PL = wLr*st*p -> tonf // Carga viva de techo por nudo interior
       calc(`# Verificación de barras (AISC 360-16, LRFD)
 phit = 0.90 // Fluencia en tracción (D2)
 phic = 0.90 // Compresión (E1)
-K = 1.0 // Factor de longitud efectiva (barras biarticuladas)
+K = 1.0 // Factor de longitud efectiva (barras biarticuladas) [0.65..1.0]
 lim = 4.71*sqrt(Es/Fy) // Límite de esbeltez inelástica (E3)
 ## Cordón superior (compresión)
 Pu_cs = Nc_CS // Compresión máxima del grupo
@@ -226,6 +248,17 @@ check dmax <= Lt/360 // Deflexión admisible de la armadura`),
     name: 'Nave industrial: pórtico a dos aguas con viento',
     desc: 'Pórtico de acero a dos aguas con carga muerta, viva de techo y viento E.020; envolvente LRFD, desplazamiento lateral, deflexión y verificación flexocompresión AISC H1.',
     titulo: 'Análisis de pórtico a dos aguas de nave industrial',
+    validacion: {
+      fuente: 'Control: pórtico a dos aguas con análisis de 2.º orden (frame2d P-Δ) y AISC 360-16 E3, F2, H1',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). El modelo matricial se contrasta con PyNite y con soluciones cerradas P-Δ en tests/analysis.test.mjs.',
+      valores: [
+        { var: 'Mu', unidad: 'kip*ft', esperado: 144.8, tol: 0.002, desc: 'Momento máximo (2.º orden)' },
+        { var: 'Pu', unidad: 'tonf', esperado: 8.431, tol: 0.002, desc: 'Carga axial máxima en columna' },
+        { var: 'ampPD', esperado: 1.023, tol: 0.002, desc: 'Amplificación P-Δ del análisis' },
+        { var: 'phiPn', unidad: 'tonf', esperado: 155.8, tol: 0.002, desc: 'Resistencia a compresión de la columna (K = 1.5)' },
+        { var: 'IH', esperado: 0.7337, tol: 0.002, desc: 'Interacción H1' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Se analiza el pórtico principal de una nave industrial de acero: columnas de 6.0 m, luz de 20 m y cumbrera a 8.0 m (pendiente 20 %), con pórticos cada 6.0 m y bases empotradas. Las cargas de viento se determinan con la **NTE E.020, Art. 12** ($p_h = 0.005\\,C\\,V_h^2$) para el viento transversal de izquierda a derecha, actuando perpendicular a cada superficie. Las combinaciones de la NTE E.090 se resuelven con un **análisis elástico de segundo orden** (efectos P-Δ y P-δ con la matriz geométrica, iterativo), como exige AISC 360-16 C1 para usar el método de la longitud efectiva (Anexo 7).
@@ -236,27 +269,27 @@ Se analiza el pórtico principal de una nave industrial de acero: columnas de 6.
 - AISC Design Guide 3 *Serviceability Design Considerations* (desplazamiento lateral H/100–H/200 en naves).`),
       calc(`# Datos
 ## Geometría
-Lb = 20 m // Luz de la nave
-hcol = 6.0 m // Altura de columnas
-hr = 2.0 m // Altura de la cumbrera sobre los aleros
-sp = 6.0 m // Separación entre pórticos
+Lb = 20 m // Luz de la nave [10..40]
+hcol = 6.0 m // Altura de columnas [4..12]
+hr = 2.0 m // Altura de la cumbrera sobre los aleros [1..4]
+sp = 6.0 m // Separación entre pórticos [4..9]
 ## Perfiles (ASTM A992)
-Es = 200000 MPa // Módulo de elasticidad
-Fy = 345 MPa // Fluencia
-A_col = 64.5 cm^2 // Columna W14×34: área
-I_col = 14150 cm^4 // Columna W14×34: inercia Ix
-Z_col = 895 cm^3 // Columna W14×34: módulo plástico Zx
-r_col = 14.8 cm // Columna W14×34: radio de giro rx
-A_vig = 64.5 cm^2 // Viga W14×34: área
-I_vig = 14150 cm^4 // Viga W14×34: inercia Ix
+Es = 200000 MPa // Módulo de elasticidad [190000..210000]
+Fy = 345 MPa // Fluencia [250..345]
+A_col = 64.5 cm^2 // Columna W14×34: área [30..300]
+I_col = 14150 cm^4 // Columna W14×34: inercia Ix [2000..100000]
+Z_col = 895 cm^3 // Columna W14×34: módulo plástico Zx [200..4000]
+r_col = 14.8 cm // Columna W14×34: radio de giro rx [8..30]
+A_vig = 64.5 cm^2 // Viga W14×34: área [30..300]
+I_vig = 14150 cm^4 // Viga W14×34: inercia Ix [2000..100000]
 ## Cargas de gravedad
-wcub = 25 kgf/m^2 // Cubierta + correas + instalaciones
+wcub = 25 kgf/m^2 // Cubierta + correas + instalaciones [10..50]
 pend = atan(hr/(Lb/2)) -> deg // Pendiente del techo
 wlr = max(100 kgf/m^2 - 5 kgf/m^2*(pend/(1 deg) - 3), 50 kgf/m^2) -> kgf/m^2 // Carga viva de techo (E.020 7.1)
 qD = wcub*sp -> tonf/m // Carga muerta sobre las vigas (por longitud de barra)
 qL = wlr*sp -> tonf/m // Carga viva (por proyección horizontal)
 ## Viento (E.020 Art. 12)
-V = 75 // Velocidad básica a 10 m [km/h] (mapa eólico, mín. 75 km/h)
+V = 75 // Velocidad básica a 10 m [km/h] (mapa eólico, mín. 75 km/h) [75..130]
 hv = hcol + hr // Altura de la edificación
 Vh = V*(hv/(10 m))^0.22 // Velocidad de diseño (E.020 12.3)
 ph = 0.005*Vh^2 kgf/m^2 -> kgf/m^2 // Presión dinámica con C = 1 (E.020 12.4)
@@ -282,7 +315,7 @@ qw4 = 0.6*ph*sp -> tonf/m // Techo a sotavento, C = −0.6 (succión)`),
       calc(`# Verificación de columnas (AISC 360-16, cap. H)
 Pu = Nc_COL // Compresión máxima en columnas
 Mu = Mmax_COL // Momento máximo en columnas
-K = 1.5 // Longitud efectiva en el plano (pórtico no arriostrado, estimado)
+K = 1.5 // Longitud efectiva en el plano (pórtico no arriostrado, estimado) [1.0..2.5]
 KLr = K*hcol/r_col // Esbeltez en el plano del pórtico
 Fe = pi^2*Es/KLr^2 // Pandeo elástico (E3-4)
 Fcr = si(KLr <= 4.71*sqrt(Es/Fy), 0.658^(Fy/Fe)*Fy, 0.877*Fe) // Esfuerzo crítico (E3)
@@ -310,6 +343,18 @@ check Vmax_VIG <= 1.0*0.6*Fy*(35.5 cm*0.724 cm) // Cortante en el alma, φv = 1.
     name: 'Viga en voladizo y viga simple (casos tabulados)',
     desc: 'Voladizo de balcón con carga uniforme y puntual (superposición) y dintel simplemente apoyado: fórmulas cerradas, diagramas V-M-δ y verificación de deflexiones.',
     titulo: 'Vigas en voladizo y simplemente apoyadas — casos tabulados',
+    validacion: {
+      fuente: 'AISC Steel Construction Manual, Tabla 3-23, casos 7, 22 y 24 (fórmulas cerradas: voladizo con carga uniforme y puntual en el extremo; viga simple con carga puntual)',
+      nota: 'Valores exactos de las fórmulas cerradas con los datos por defecto: MA = wL²/2 + PL, RA = Pb/L, Mmax = Pab/L.',
+      valores: [
+        { var: 'abs(MA_w)', unidad: 'tonf*m', esperado: 1.944, tol: 0.0005, desc: 'Tabla 3-23 caso 22: wL²/2' },
+        { var: 'abs(MA_P)', unidad: 'tonf*m', esperado: 1.08, tol: 0.0005, desc: 'Tabla 3-23 caso 24: PL' },
+        { var: 'RA_d', unidad: 'tonf', esperado: 1.142857, tol: 0.0005, desc: 'Tabla 3-23 caso 7: Pb/L' },
+        { var: 'Mmax_d', unidad: 'tonf*m', esperado: 1.714286, tol: 0.0005, desc: 'Tabla 3-23 caso 7: Pab/L' },
+        { var: 'Mu', unidad: 'tonf*m', esperado: 4.536, tol: 0.002, desc: 'Control: momento último en el empotramiento' },
+        { var: 'phiMn', unidad: 'tonf*m', esperado: 9.295, tol: 0.002, desc: 'Control: resistencia a flexión' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Esta memoria resuelve vigas isostáticas e hiperestáticas simples con **fórmulas cerradas** de la Tabla 3-23 del *AISC Steel Construction Manual* y de la Tabla 8.1 de *Roark's Formulas for Stress and Strain*. Para cada caso se muestran las fórmulas, su valor numérico y los diagramas de cortante, momento y deflexión (obtenidos además por el método de rigidez, con los que coinciden). Las solicitaciones de cargas combinadas se obtienen por **superposición** (análisis elástico lineal).
@@ -319,14 +364,14 @@ Esta memoria resuelve vigas isostáticas e hiperestáticas simples con **fórmul
 - W. C. Young, R. G. Budynas, A. M. Sadegh, *Roark's Formulas for Stress and Strain*, 8.ª ed., Tabla 8.1.
 - NTE E.060 Concreto Armado, Tabla 9.2 (deflexiones máximas admisibles).`),
       calc(`# Voladizo de balcón
-fc = 210 kgf/cm^2 // Concreto
+fc = 210 kgf/cm^2 // Concreto [175..420]
 Ec = 15000*sqrtfc(fc) -> tonf/m^2 // Módulo de elasticidad (E.060 8.5.2)
-b = 25 cm // Ancho de la viga en voladizo
-h = 50 cm // Peralte en el empotramiento
+b = 25 cm // Ancho de la viga en voladizo [20..40]
+h = 50 cm // Peralte en el empotramiento [30..80]
 Ig = b*h^3/12 -> m^4 // Inercia bruta
-Lv = 1.80 m // Longitud del voladizo
-wv = 1.20 tonf/m // Carga uniforme de servicio (losa + acabados + s/c)
-Pv = 0.60 tonf // Parapeto en el extremo libre (carga puntual de servicio)`),
+Lv = 1.80 m // Longitud del voladizo [0.8..3]
+wv = 1.20 tonf/m // Carga uniforme de servicio (losa + acabados + s/c) [0.5..5]
+Pv = 0.60 tonf // Parapeto en el extremo libre (carga puntual de servicio) [0..3]`),
       { type: 'beamcase', apoyo: 'V', carga: 'U', L: 'Lv', w: 'wv', E: 'Ec', I: 'Ig', sufijo: 'w', titulo: 'Voladizo con carga uniforme' },
       { type: 'beamcase', apoyo: 'V', carga: 'P', L: 'Lv', P: 'Pv', a: 'Lv', E: 'Ec', I: 'Ig', sufijo: 'P', titulo: 'Voladizo con carga puntual en el extremo' },
       calc(`## Superposición y verificación
@@ -335,15 +380,15 @@ Mu = 1.5*Ms // Momento último aproximado (factor promedio 1.4–1.7)
 delta = deltamax_w + deltamax_P // Deflexión inmediata en el extremo libre (superposición)
 check delta <= 2*Lv/360 // Deflexión inmediata ≤ ℓ/360 con ℓ = 2Lv (E.060 Tabla 9.2)
 d = h - 6 cm // Peralte efectivo
-fy = 4200 kgf/cm^2 // Acero
+fy = 4200 kgf/cm^2 // Acero [2800..4200]
 As = 3*Ab(5) // Refuerzo superior colocado: 3 Ø 5/8"
 a = As*fy/(0.85*fc*b) // Bloque equivalente de compresiones
 phiMn = 0.9*As*fy*(d - a/2) -> tonf*m // Momento resistente de diseño
 check Mu <= phiMn // Flexión en el empotramiento`),
       calc(`# Dintel simplemente apoyado
-Ld = 3.5 m // Luz del dintel
-Pd = 2.0 tonf // Carga puntual de una viga que apoya en el dintel
-ad = 1.5 m // Posición de la carga desde el apoyo A
+Ld = 3.5 m // Luz del dintel [2..8]
+Pd = 2.0 tonf // Carga puntual de una viga que apoya en el dintel [0..20]
+ad = 1.5 m // Posición de la carga desde el apoyo A [0.3..3.0]
 Id = 0.25 m*(0.40 m)^3/12 // Inercia del dintel 25 × 40 cm`),
       { type: 'beamcase', apoyo: 'SA', carga: 'P', L: 'Ld', P: 'Pd', a: 'ad', E: 'Ec', I: 'Id', deflim: '480', sufijo: 'd', titulo: 'Dintel con carga puntual' },
       calc(`check Mmax_d <= MSAp(Pd, ad, Ld)*1.0001 // Coincidencia con la fórmula Pab/L`),
@@ -359,6 +404,17 @@ Id = 0.25 m*(0.40 m)^3/12 // Inercia del dintel 25 × 40 cm`),
     name: 'Líneas de influencia de viga continua',
     desc: 'Líneas de influencia de momento en el tramo, momento en apoyo, cortante y reacción de una viga continua de 3 tramos; posición desfavorable de la carga viva y diseño.',
     titulo: 'Líneas de influencia de viga continua de tres tramos',
+    validacion: {
+      fuente: 'Control: líneas de influencia por Müller-Breslau (bloque influence, validado con Hibbeler cap. 6 y 10 en tests/analysis.test.mjs)',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión).',
+      valores: [
+        { var: 'Mu_p', unidad: 'tonf*m', esperado: 25.7, tol: 0.002, desc: 'Momento positivo último en el tramo 1' },
+        { var: 'Mu_n', unidad: 'tonf*m', esperado: 41.95, tol: 0.002, desc: 'Momento negativo último en el apoyo B' },
+        { var: 'Vu', unidad: 'tonf', esperado: 25.19, tol: 0.002, desc: 'Cortante último en B' },
+        { var: 'Emax_RB', unidad: 'tonf', esperado: 49.81, tol: 0.002, desc: 'Reacción máxima en B' },
+        { var: 'phiMn_n', unidad: 'tonf*m', esperado: 43.18, tol: 0.002, desc: 'Resistencia negativa' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Las **líneas de influencia** representan la variación de un efecto (reacción, cortante o momento en una sección fija) cuando una carga unitaria recorre la estructura. Según el **principio de Müller-Breslau**, la línea de influencia es la deformada de la estructura cuando se libera el vínculo asociado al efecto y se le impone un desplazamiento unitario. En vigas continuas (hiperestáticas) las líneas son curvas; aquí se obtienen resolviendo la viga por el método de rigidez para cada posición de la carga.
@@ -369,11 +425,11 @@ Con ellas se determina la **disposición desfavorable de la carga viva** (altern
 - R. C. Hibbeler, *Análisis estructural*, 8.ª ed., cap. 6 (líneas de influencia de estructuras isostáticas) y cap. 10 (hiperestáticas).
 - A. Ghali, A. Neville, *Structural Analysis: A Unified Classical and Matrix Approach*, cap. 12.`),
       calc(`# Datos
-La1 = 8 m // Tramo 1
-La2 = 10 m // Tramo 2
-La3 = 8 m // Tramo 3
-wD = 2.0 tonf/m // Carga muerta de servicio
-wL = 1.2 tonf/m // Carga viva de servicio
+La1 = 8 m // Tramo 1 [4..15]
+La2 = 10 m // Tramo 2 [4..15]
+La3 = 8 m // Tramo 3 [4..15]
+wD = 2.0 tonf/m // Carga muerta de servicio [0.5..6]
+wL = 1.2 tonf/m // Carga viva de servicio [0.3..4]
 xs = 0.4*La1 // Sección de estudio en el tramo 1 (0.4 L, cerca del M+ máximo)`),
       { type: 'influence', tramos: 'La1, La2, La3', apoyos: 'A, A, A, A', efecto: 'M', x: 'xs', wD: '1.4*wD', wL: '1.7*wL', sufijo: 'M1', titulo: 'Línea de influencia del momento en la sección s (x = 0.4 L₁)' },
       { type: 'influence', tramos: 'La1, La2, La3', apoyos: 'A, A, A, A', efecto: 'M', x: 'La1', wD: '1.4*wD', wL: '1.7*wL', sufijo: 'MB', titulo: 'Línea de influencia del momento en el apoyo B' },
@@ -383,10 +439,10 @@ xs = 0.4*La1 // Sección de estudio en el tramo 1 (0.4 L, cerca del M+ máximo)`
 Mu_p = Emax_M1 // Momento positivo último en la sección s
 Mu_n = -Emin_MB // Momento negativo último en el apoyo B
 Vu = Emax_VB // Cortante último a la derecha de B
-fc = 210 kgf/cm^2 // Concreto
-fy = 4200 kgf/cm^2 // Acero
-bw = 30 cm // Ancho
-d = 64 cm // Peralte efectivo (h = 70 cm)
+fc = 210 kgf/cm^2 // Concreto [175..420]
+fy = 4200 kgf/cm^2 // Acero [2800..4200]
+bw = 30 cm // Ancho [25..60]
+d = 64 cm // Peralte efectivo (h = 70 cm) [30..120]
 Asp = 5*Ab(6) // Refuerzo inferior: 5 Ø 3/4"
 phiMn_p = 0.9*Asp*fy*(d - Asp*fy/(0.85*fc*bw)/2) -> tonf*m // Momento resistente positivo
 check Mu_p <= phiMn_p // Flexión positiva en el tramo 1
@@ -408,6 +464,17 @@ check Vu <= phiVn // Cortante junto al apoyo B
     name: 'Análisis matricial paso a paso (pórtico)',
     desc: 'Didáctico: matrices de rigidez local, transformación, global, ensamblaje, solución K·u = F y fuerzas en extremos de un pórtico simple, comparado con el bloque Pórtico 2D.',
     titulo: 'Análisis matricial paso a paso de un pórtico plano',
+    validacion: {
+      fuente: 'Control: método de rigidez paso a paso (Kassimali, Matrix Analysis of Structures, caps. 6–7) contrastado con el bloque Pórtico 2D en la misma memoria',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). El desplazamiento u₂ paso a paso coincide con el del bloque frame2d (tests/analysis.test.mjs); ΣFy = R1y + R4y = w·L = 18 t.',
+      valores: [
+        { var: 'u2*1000', esperado: 3.701, tol: 0.002, desc: 'Desplazamiento horizontal del nudo 2 [mm]' },
+        { var: 'R1y + R4y', unidad: 'tonf', esperado: 18, tol: 0.0005, desc: 'Equilibrio vertical ΣR = w·L' },
+        { var: 'abs(R1x + R4x)', unidad: 'tonf', esperado: 5, tol: 0.0005, desc: 'Equilibrio horizontal ΣR = H' },
+        { var: 'Mmax', unidad: 'tonf*m', esperado: 9.399, tol: 0.002, desc: 'Momento máximo' },
+        { var: 'R4m', unidad: 'tonf*m', esperado: 7.854, tol: 0.002, desc: 'Momento en el empotramiento 4' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Se resuelve paso a paso, con todas las matrices a la vista, un **pórtico plano de un vano** con columnas empotradas en la base, una carga lateral $H$ en el nudo 2 y carga uniforme $w$ en la viga. El procedimiento es el del **método de rigidez directa** (Kassimali, cap. 6):
@@ -424,15 +491,15 @@ Unidades consistentes: **t y m** (las matrices se escriben sin unidades). Conven
 - A. Kassimali, *Matrix Analysis of Structures*, 2.ª ed., Cengage (2012): Ec. 6.6 (k local), 6.19 (T), 6.29 (K global).
 - W. McGuire, R. Gallagher, R. Ziemian, *Matrix Structural Analysis*, cap. 4–5.`),
       calc(`# Datos (t, m)
-E = 2170000 // Módulo de elasticidad [t/m²]
-h = 4.0 // Altura de columnas [m]
-L = 6.0 // Luz de la viga [m]
+E = 2170000 // Módulo de elasticidad [t/m²] [1500000..3000000]
+h = 4.0 // Altura de columnas [m] [2.5..6]
+L = 6.0 // Luz de la viga [m] [3..10]
 Ac = 0.40*0.40 // Área de columnas 40 × 40 [m²]
 Ic = 0.40*0.40^3/12 // Inercia de columnas [m⁴]
 Av = 0.30*0.60 // Área de la viga 30 × 60 [m²]
 Iv = 0.30*0.60^3/12 // Inercia de la viga [m⁴]
-H = 5.0 // Carga lateral en el nudo 2 [t]
-w = 3.0 // Carga uniforme en la viga, hacia abajo [t/m]
+H = 5.0 // Carga lateral en el nudo 2 [t] [0..20]
+w = 3.0 // Carga uniforme en la viga, hacia abajo [t/m] [0..10]
 # Matrices de las barras
 ## Matriz de rigidez local (Kassimali Ec. 6.6)
 kl(A, I, Lm) = [[E*A/Lm, 0, 0, -E*A/Lm, 0, 0], [0, 12*E*I/Lm^3, 6*E*I/Lm^2, 0, -12*E*I/Lm^3, 6*E*I/Lm^2], [0, 6*E*I/Lm^2, 4*E*I/Lm, 0, -6*E*I/Lm^2, 2*E*I/Lm], [-E*A/Lm, 0, 0, E*A/Lm, 0, 0], [0, -12*E*I/Lm^3, -6*E*I/Lm^2, 0, 12*E*I/Lm^3, -6*E*I/Lm^2], [0, 6*E*I/Lm^2, 2*E*I/Lm, 0, -6*E*I/Lm^2, 4*E*I/Lm]]
@@ -509,6 +576,17 @@ check round(abs(t2 - theta_2), 12) <= 1e-7 // Coincidencia del giro θ₂`),
     name: 'Método de Cross (viga continua)',
     desc: 'Distribución de momentos paso a paso en tabla (rigideces, factores de distribución, MEP, distribución y transporte), comparada con el método de rigidez.',
     titulo: 'Análisis de viga continua por el método de Cross',
+    validacion: {
+      fuente: 'Control: distribución de momentos de Hardy Cross (1930), contrastada con el método de rigidez (bloque beam) en la misma memoria',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). M_AB, M_BA y M_CB coinciden con la viga continua por rigidez (verificación interna errCross).',
+      valores: [
+        { var: 'M_AB', unidad: 'tonf*m', esperado: -4.296, tol: 0.002, desc: 'Momento en el empotramiento A' },
+        { var: 'M_BA', unidad: 'tonf*m', esperado: 9.409, tol: 0.002, desc: 'Momento en B' },
+        { var: 'M_CB', unidad: 'tonf*m', esperado: 9.347, tol: 0.002, desc: 'Momento en C' },
+        { var: 'R2', unidad: 'tonf', esperado: 14.86, tol: 0.002, desc: 'Reacción en B' },
+        { var: 'R1 + R2 + R3 + R4', unidad: 'tonf', esperado: 34, tol: 0.0005, desc: 'Equilibrio ΣR = w(L1 + L2) + P' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 El **método de Cross** (distribución de momentos, H. Cross 1930) resuelve estructuras sin desplazamiento lateral por aproximaciones sucesivas: se bloquean los nudos (momentos de empotramiento perfecto, MEP), se liberan uno a uno distribuyendo el momento desequilibrado según los **factores de distribución** $FD = K/\\Sigma K$ con $K = 4EI/L$, y se **transporta** la mitad del momento distribuido al extremo opuesto. Se itera hasta que los momentos transportados sean despreciables.
@@ -520,11 +598,11 @@ Convención: momentos en los extremos de barra **positivos en sentido horario**.
 - R. C. Hibbeler, *Análisis estructural*, 8.ª ed., cap. 12.
 - J. McCormac, *Análisis de estructuras*, cap. 21.`),
       calc(`# Datos
-L1 = 6 m // Tramo AB (A empotrado)
-L2 = 8 m // Tramo BC
-L3 = 6 m // Tramo CD (D articulado)
-w = 2.0 tonf/m // Carga uniforme en tramos 1 y 2
-P = 6.0 tonf // Carga puntual al centro del tramo 3
+L1 = 6 m // Tramo AB (A empotrado) [3..10]
+L2 = 8 m // Tramo BC [3..10]
+L3 = 6 m // Tramo CD (D articulado) [3..10]
+w = 2.0 tonf/m // Carga uniforme en tramos 1 y 2 [0..10]
+P = 6.0 tonf // Carga puntual al centro del tramo 3 [0..20]
 "MEP de referencia: $wL_1^2/12$ = {MEPu(w, L1)}, $wL_2^2/12$ = {MEPu(w, L2)}, $PL_3/8$ = {MEPpi(P, L3/2, L3)}.`),
       { type: 'cross', tramos: 'L1, L2, L3', apoyos: 'E, A, A, A', I: '1, 1, 1', E: '1', cargas: 'U 1 w\nU 2 w\nP 3 P L3/2', ciclos: '12', titulo: 'Distribución de momentos (t·m), convención horaria +' },
       calc(`# Resultados
@@ -543,6 +621,17 @@ check errCross <= 0.01 // Error del método iterativo frente a la solución exac
     name: 'Pórtico de 4 pisos: análisis modal, zonas rígidas y P-Δ',
     desc: 'Periodos y formas de modo con masas concentradas, fuerzas sísmicas E.030 con el periodo del modelo, análisis de segundo orden P-Δ con zonas rígidas en nudos, derivas e índice de estabilidad.',
     titulo: 'Pórtico de concreto armado de 4 pisos — análisis modal y de segundo orden',
+    validacion: {
+      fuente: 'Control: análisis modal y P-Δ (frame2d, contrastado con PyNite y soluciones cerradas) y NTE E.030-2018',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). V = 0.45·1·2.5·1.05/8·P se comprueba a mano; T = 0.85·T₁ (Art. 28.4.2).',
+      valores: [
+        { var: 'T1', unidad: 's', esperado: 0.4378, tol: 0.002, desc: 'Periodo fundamental del modelo' },
+        { var: 'T', unidad: 's', esperado: 0.3721, tol: 0.002, desc: 'T = 0.85·T₁' },
+        { var: 'SMPx_M', esperado: 1, tol: 0.002, desc: 'Masa participante acumulada' },
+        { var: 'V', unidad: 'tonf', esperado: 36.46, tol: 0.002, desc: 'Cortante basal ZUCS·P/R' },
+        { var: 'ampPD', esperado: 1.008, tol: 0.002, desc: 'Amplificación P-Δ' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Se analiza un pórtico plano interior de concreto armado de **cuatro pisos y tres vanos** con un modelo de barras que incluye **zonas rígidas** en los nudos (brazos rígidos iguales a la mitad del peralte de los elementos que concurren, factor 0.5) y deformaciones por flexión y axiales. El estudio se realiza en tres etapas:
@@ -559,20 +648,20 @@ Se analiza un pórtico plano interior de concreto armado de **cuatro pisos y tre
       calc(`# Datos
 ## Materiales
 fc = 280 kgf/cm^2 // Resistencia del concreto [210 kgf/cm^2|280 kgf/cm^2|350 kgf/cm^2]
-gammac = 2.4 tonf/m^3 // Peso específico del concreto armado
+gammac = 2.4 tonf/m^3 // Peso específico del concreto armado [2.2..2.5]
 Ec = 15000*sqrtfc(fc) -> tonf/m^2 // Módulo de elasticidad (E.060 8.5.2)
 ## Geometría
-L1 = 6.0 m // Vano 1
-L2 = 5.0 m // Vano 2
-L3 = 6.0 m // Vano 3
-h1 = 4.0 m // Altura del primer piso
-h = 3.0 m // Altura de los pisos típicos
-bc = 60 cm // Columnas: ancho
-hc = 60 cm // Columnas: peralte en la dirección del pórtico
-bv = 30 cm // Vigas: ancho
-hv = 60 cm // Vigas: peralte
+L1 = 6.0 m // Vano 1 [3..8]
+L2 = 5.0 m // Vano 2 [3..8]
+L3 = 6.0 m // Vano 3 [3..8]
+h1 = 4.0 m // Altura del primer piso [2.5..5]
+h = 3.0 m // Altura de los pisos típicos [2.5..4]
+bc = 60 cm // Columnas: ancho [30..100]
+hc = 60 cm // Columnas: peralte en la dirección del pórtico [30..100]
+bv = 30 cm // Vigas: ancho [25..50]
+hv = 60 cm // Vigas: peralte [40..90]
 ## Cargas por metro de viga (ancho tributario 5 m)
-At = 5.0 m // Ancho tributario
+At = 5.0 m // Ancho tributario [3..8]
 wD = (0.30 tonf/m^2 + 0.10 tonf/m^2 + 0.10 tonf/m^2)*At // CM pisos: aligerado h = 20 cm, acabados y tabiquería (E.020 Anexo 1)
 wL = 0.25 tonf/m^2*At // CV pisos: oficinas (E.020 Tabla 1)
 wDa = (0.30 tonf/m^2 + 0.10 tonf/m^2)*At // CM azotea
@@ -600,11 +689,11 @@ Las masas se concentran en los nudos a partir de las cargas verticales del model
       },
       calc(`# Fuerzas sísmicas estáticas (E.030-2018, Art. 28)
 Z = 0.45 // Factor de zona [0.45 : Zona 4|0.35 : Zona 3|0.25 : Zona 2|0.10 : Zona 1]
-U = 1.0 // Categoría C (oficinas)
-S = 1.05 // Suelo S2 en zona 4 (Tabla 3)
-Tp = 0.6 s // Periodo TP (Tabla 4)
-TL = 2.0 s // Periodo TL (Tabla 4)
-R = 8 // Pórticos de concreto armado regulares (Tabla 7)
+U = 1.0 // Categoría C (oficinas) [1.0..1.5]
+S = 1.05 // Suelo S2 en zona 4 (Tabla 3) [0.8..2.0]
+Tp = 0.6 s // Periodo TP (Tabla 4) [0.3..1.0]
+TL = 2.0 s // Periodo TL (Tabla 4) [1.6..3.0]
+R = 8 // Pórticos de concreto armado regulares (Tabla 7) [3..8]
 T1 = T1_M // Periodo fundamental del modelo (modo 1)
 T = 0.85*T1 // Periodo de diseño (E.030 28.4.2: periodo del análisis con las rigideces del modelo × 0.85)
 C = si(T < Tp, 2.5, si(T < TL, 2.5*Tp/T, 2.5*Tp*TL/T^2)) // Factor de amplificación sísmica (E.030 Art. 14)

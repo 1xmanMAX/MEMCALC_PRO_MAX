@@ -315,21 +315,30 @@ function updatePrintStyle() {
   document.title = (doc.meta.titulo || 'Memoria') + ' — MemoriaCalc';
 }
 function updateStatus() {
-  const c = lastRes.ctx.checks, ok = c.filter(x => x.ok).length, bad = c.filter(x => !x.ok && !x.nv).length, err = lastRes.ctx.errors.length;
+  const c = lastRes.ctx.checks, ok = c.filter(x => x.ok).length, bad = c.filter(x => !x.ok && !x.nv).length, nvc = c.filter(x => !x.ok && x.nv).length, err = lastRes.ctx.errors.length;
+  const nverif = (n) => n === 1 ? '1 verificación' : n + ' verificaciones';
   $('#chips').innerHTML = (c.length ? `<span class="chip ok" data-go="ok" title="Verificaciones que cumplen">✔ ${ok}</span>` : '') + (bad ? `<span class="chip bad" data-go="bad" title="Verificaciones que no cumplen">✘ ${bad}</span>` : '') + (err ? `<span class="chip err" data-go="err" title="Errores">⚠ ${err}</span>` : '');
   const maxr = Math.max(0, ...c.map(x => (x.ratio != null && isFinite(x.ratio) ? x.ratio : 0)));
   const sb = $('#sbchk');
-  if (sb) sb.innerHTML = !c.length && !err ? '<span class="mut">Sin verificaciones</span>' : `<span class="dot ${bad ? 'bad' : err ? 'warn' : 'ok'}"></span>${bad ? bad + ' de ' + c.length + ' no cumplen' : c.length + ' verificaciones cumplen'}${c.length ? ` · D/C máx. <b>${maxr.toFixed(2)}</b>` : ''}${err ? ` · <span class="sb-err" data-go="err">⚠ ${err} error${err > 1 ? 'es' : ''}</span>` : ''}`;
+  if (sb) sb.innerHTML = !c.length && !err ? '<span class="mut">Sin verificaciones</span>' : `<span class="dot ${bad ? 'bad' : err ? 'warn' : 'ok'}"></span>${bad ? bad + ' de ' + c.length + ' no ' + (bad === 1 ? 'cumple' : 'cumplen') : nvc ? ok + ' de ' + c.length + ' cumplen · ' + nvc + ' sin verificar' : nverif(c.length) + (c.length === 1 ? ' cumple' : ' cumplen')}${c.length ? ` · D/C máx. <b>${maxr.toFixed(2)}</b>` : ''}${err ? ` · <span class="sb-err" data-go="err">⚠ ${err} error${err > 1 ? 'es' : ''}</span>` : ''}`;
   const nv = [...lastRes.ctx.scope.values()].filter(v => typeof v !== 'function').length;
   const si = $('#sbinfo'); if (si) si.textContent = `${doc.blocks.length} bloques · ${lastRes.ctx.inputs.length} datos · ${nv} variables`;
   const su = $('#sbunits'); if (su) su.textContent = { tec: 'Unidades: técnico (t, m)', si: 'Unidades: SI (kN, m)', us: 'Unidades: inglés (kip, ft)' }[doc.settings.sys] || '';
 }
+// Mensajes del motor con jerga interna → lenguaje del usuario
+const friendlyMsg = (s) => String(s).replace(/ y math\.js la interpretar[íi]a como una unidad/g, ' y se confundiría con una unidad').replace(/math\.js/g, 'el motor de cálculo');
+let lastKey = 0, errT = 0;
 function updateBlockErrors() {
+  // mientras se escribe, el error de la línea en curso espera a una pausa (evita avisos rojos a media palabra)
+  const act = document.activeElement, typing = act?.classList?.contains('code') && Date.now() - lastKey < 1100;
+  const curB = typing ? act.closest('.bk')?.dataset.id : null, curL = typing ? act.value.slice(0, act.selectionStart).split('\n').length : -1;
+  let held = false;
   document.querySelectorAll('.bk').forEach(el => {
-    const id = el.dataset.id, errs = lastRes.ctx.errors.filter(e => e.block === id);
-    const box = el.querySelector('.errs'); const eh = errs.map(e => `⚠ ${e.line ? 'Línea ' + e.line + ': ' : ''}${esc(e.msg)}`).join('<br>'); if (box && box._eh !== eh) { box.innerHTML = eh; box._eh = eh; }
+    const id = el.dataset.id, errs = lastRes.ctx.errors.filter(e => !(e.block === curB && e.line === curL && (held = true)) && e.block === id);
+    const box = el.querySelector('.errs'); const eh = errs.map(e => `⚠ ${e.line ? 'Línea ' + e.line + ': ' : ''}${esc(friendlyMsg(e.msg))}`).join('<br>'); if (box && box._eh !== eh) { box.innerHTML = eh; box._eh = eh; }
     const ta = el.querySelector('textarea.code'); if (ta) paintHL(ta);
   });
+  clearTimeout(errT); if (held) errT = setTimeout(() => { if (lastRes) updateBlockErrors(); }, 1150);
 }
 
 // ---------------- Panel de datos (entradas automáticas) ----------------
@@ -609,6 +618,7 @@ function paintHL(ta, noSize) {
   const pre = ta.previousElementSibling; if (!pre) return;
   const id = ta.closest('.bk')?.dataset.id;
   const errL = new Set((lastRes?.ctx.errors || []).filter(e => e.block === id).map(e => e.line - 1));
+  if (document.activeElement === ta && Date.now() - lastKey < 1100) errL.delete(ta.value.slice(0, ta.selectionStart).split('\n').length - 1);
   // caché: solo se vuelve a resaltar si cambió el texto o las líneas con error
   const key = ta.value + '\u0000' + [...errL].join(',');
   if (ta._hk === key) return; // sin cambios: no tocar el DOM ni leer el layout
@@ -652,6 +662,7 @@ function splitLabel(l) {
   return [l, ''];
 }
 let hintOpen = lsGet('mc_hint', '0') === '1';
+let optOpen = lsGet('mc_bkopt', '0') === '1';
 function blockEl(b, i) {
   const T = TYPES[b.type] || { name: b.type, icon: 'calc' };
   const col = collapsed.has(b.id);
@@ -672,16 +683,22 @@ function blockEl(b, i) {
     const TXT = ['titulo', 'xlabel', 'ylabel', 'nombres', 'acero', 'sest', 'caption', 'nota'];
     const fid = (f) => 'f' + b.id + '_' + f.k;
     const lab = (f) => { const p = splitLabel(f.l); return `<span class="fl">${p[0]}</span>${p[1] ? `<small class="fh">${p[1]}</small>` : ''}`; };
-    const main = [], areas = [], checks = [], tail = [];
+    const main = [], areas = [], checks = [], tail = [], opts = [];
+    let optSet = 0;
+    const nIn = T.fields.filter(f => (!f.t || f.t === 'text') && f.k !== 'titulo').length, nAr = T.fields.filter(f => f.t === 'area').length;
+    // bloques de análisis con muchas opciones (pórtico 2D…): el modelo (áreas de texto) va primero
+    // y las opciones avanzadas quedan agrupadas y plegables
+    const split = nAr >= 3 && nIn >= 6;
     for (const f of T.fields) {
       const v = b[f.k];
       if (f.t === 'check') checks.push(`<label class="ck"><input type="checkbox" data-f="${f.k}"${v || (f.k === 'deflexion' && v === undefined) ? ' checked' : ''}><span>${f.l}</span></label>`);
       else if (f.t === 'select') main.push(`<label class="fld">${lab(f)}<select data-f="${f.k}">${(f.opt || []).map(o => `<option value="${esc(o[0])}"${(v || f.opt[0][0]) === o[0] ? ' selected' : ''}>${o[1]}</option>`).join('')}</select></label>`);
       else if (f.t === 'area') areas.push(`<label class="fld w">${lab(f)}<textarea data-f="${f.k}" class="auto" spellcheck="false" autocapitalize="off" wrap="off" placeholder="${esc(f.ph)}">${esc(v || '')}</textarea></label>`);
-      else { const txt = TXT.includes(f.k); const el = `<label class="fld${txt || f.k === 'expr' ? ' w' : ''}">${lab(f)}<input data-f="${f.k}"${txt ? ' class="tx"' : ''} value="${esc(v ?? '')}" placeholder="${esc(f.ph)}" spellcheck="false" autocapitalize="off" autocomplete="off"></label>`; (f.k === 'titulo' ? tail : main).push(el); }
+      else { const txt = TXT.includes(f.k); const el = `<label class="fld${txt || f.k === 'expr' ? ' w' : ''}">${lab(f)}<input data-f="${f.k}"${txt ? ' class="tx"' : ''} value="${esc(v ?? '')}" placeholder="${esc(f.ph)}" spellcheck="false" autocapitalize="off" autocomplete="off"></label>`; (f.k === 'titulo' ? tail : split ? opts : main).push(el); if (split && f.k !== 'titulo' && v != null && String(v).trim() !== '') optSet++; }
     }
     void fid;
-    body.innerHTML = `<div class="fg">${main.join('')}${areas.join('')}${checks.length ? `<div class="fck">${checks.join('')}</div>` : ''}${tail.join('')}${T.hint ? `<details class="hint"${hintOpen ? ' open' : ''}><summary>${I.help}Ayuda: formato y resultados exportados</summary><div class="hb">${T.hint}</div></details>` : ''}</div><div class="errs"></div>`;
+    const optH = opts.length ? `<details class="bkopt"${optOpen ? ' open' : ''}><summary>${I.gear || ''}Opciones de análisis <em>${opts.length} campos${optSet ? ' · ' + optSet + ' con valor' : ' · todas por defecto'}</em></summary><div class="fg">${opts.join('')}</div></details>` : '';
+    body.innerHTML = `<div class="fg">${main.join('')}${areas.join('')}${checks.length ? `<div class="fck">${checks.join('')}</div>` : ''}${optH}${tail.join('')}${T.hint ? `<details class="hint"${hintOpen ? ' open' : ''}><summary>${I.help}Ayuda: formato y resultados exportados</summary><div class="hb">${T.hint}</div></details>` : ''}</div><div class="errs"></div>`;
   } else {
     body.innerHTML = `<div class="hint" style="font-size:12px;color:var(--mut);padding:4px">${b.type === 'summary' ? 'Tabla automática con todas las verificaciones del documento, su relación demanda/capacidad y estado.' : 'Fuerza el inicio de una nueva página al imprimir.'}</div>`;
   }
@@ -735,6 +752,7 @@ function insertBlock(type, at) {
   if (type === 'text') b.src = '';
   doc.blocks.splice(at ?? doc.blocks.length, 0, b);
   selId = b.id; renderBlocks(); changed();
+  follow = { b: b.id }; // la vista previa va al bloque nuevo (gráficos y análisis se ven al instante)
   setTimeout(() => { const el = document.querySelector(`.bk[data-id="${b.id}"]`); el?.scrollIntoView({ block: 'center', behavior: 'smooth' }); el?.querySelector('textarea,input')?.focus(); }, 30);
 }
 
@@ -970,10 +988,17 @@ function showTemplates(first) {
 }
 async function showLibrary() {
   const all = (await dbAll()).sort((a, b) => b.updated - a.updated);
-  const m = modal('Mis memorias', `<table class="lib"><tbody>${all.map(d => `<tr data-id="${d.id}"><td class="t" data-open>${esc(d.meta?.titulo || 'Sin título')}<div style="font-weight:400;color:var(--mut);font-size:12px">${esc(d.meta?.proyecto || '')}</div></td><td style="color:var(--mut);font-size:12px;white-space:nowrap">${new Date(d.updated).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })}</td><td style="text-align:right;white-space:nowrap"><button class="btn" data-open>Abrir</button> <button class="btn ghost ic" data-del title="Eliminar">${I.del}</button></td></tr>`).join('') || '<tr><td class="empty">Aún no hay memorias guardadas.</td></tr>'}</tbody></table><p style="font-size:12px;color:var(--mut)">Las memorias se guardan automáticamente en este dispositivo. Use <b>Guardar archivo</b> para respaldarlas o compartirlas (.mcalc).</p>`);
+  const m = modal('Mis memorias', `<table class="lib"><tbody>${all.map(d => `<tr data-id="${d.id}"><td class="t" data-open>${esc(d.meta?.titulo || 'Sin título')}<div style="font-weight:400;color:var(--mut);font-size:12px">${esc(d.meta?.proyecto || '')}</div></td><td style="color:var(--mut);font-size:12px;white-space:nowrap">${new Date(d.updated).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })}</td><td style="text-align:right;white-space:nowrap"><button class="btn" data-open>Abrir</button> <button class="btn ghost ic" data-del title="Eliminar">${I.del}</button></td></tr>`).join('') || '<tr><td class="empty">Aún no hay memorias guardadas.</td></tr>'}</tbody></table><div class="libact"><button class="btn" data-libopen>${I.open || ''}Abrir archivo .mcalc…</button><button class="btn" data-libsave>${I.save || ''}Guardar la memoria actual (.mcalc)</button></div><p style="font-size:12px;color:var(--mut)">Las memorias se guardan automáticamente en este dispositivo (solo en este navegador). Use <b>Guardar archivo</b> para respaldarlas o compartirlas (.mcalc).</p>`);
   m.c.addEventListener('click', async e => {
+    if (e.target.closest('[data-libopen]')) { m.close(); openFile(); return; }
+    if (e.target.closest('[data-libsave]')) { m.close(); saveFile(); return; }
     const tr = e.target.closest('tr[data-id]'); if (!tr) return;
-    if (e.target.closest('[data-del]')) { if (tr.dataset.id === doc.id) return toast('No se puede eliminar la memoria abierta'); await dbDel(tr.dataset.id); tr.remove(); return; }
+    if (e.target.closest('[data-del]')) {
+      if (tr.dataset.id === doc.id) return toast('No se puede eliminar la memoria abierta');
+      const d = await dbGet(tr.dataset.id); await dbDel(tr.dataset.id); tr.remove();
+      toast('Memoria «' + esc(d?.meta?.titulo || 'Sin título') + '» eliminada', 'Deshacer', async () => { if (d) { await dbPut(d); m.close(); showLibrary(); } });
+      return;
+    }
     if (e.target.closest('[data-open]')) { const d = await dbGet(tr.dataset.id); if (d) { doc = migrate(d); inputsKey = ''; m.close(); loadUI(); compute(); } }
   });
 }
@@ -1077,13 +1102,21 @@ function insertFn(f) {
   toast('Insertada <b>' + esc(f.name) + '</b>' + (args ? ' — reemplace los argumentos' : ''));
 }
 function showFunctions(initial = '') {
-  const fns = allFns();
-  const cats = [...new Set(fns.map(f => f.cat))];
+  const fns0 = allFns();
+  // «Sismo — Perú» y «Sismo — Perú (E.030)» son la misma categoría para el usuario
+  const raw = new Set(fns0.map(f => f.cat));
+  const fns = fns0.map(f => { const base = f.cat.replace(/\s*\([^)]*\)\s*$/, ''); return base !== f.cat && raw.has(base) ? { ...f, cat: base } : f; });
+  const cats0 = [...new Set(fns.map(f => f.cat))];
+  // al buscar, primero las categorías del país elegido en Inicio
+  const PAIS_RE = { PE: /Perú|E\.0\d\d/, CL: /Chile|NCh/, JP: /Japón|Jap/, US: /EE\. ?UU|Internacional|ASCE|AISC|ACI/, EU: /Europa|Internacional|EN 199/, INT: /Internacional/ }[lsGet('mc_hpais', 'PE')];
+  const catsFor = (searching) => !searching || !PAIS_RE ? cats0 : [...cats0.filter(c => PAIS_RE.test(c)), ...cats0.filter(c => !PAIS_RE.test(c))];
+  let cats = cats0;
   const st = { cat: '', q: initial };
   const m = modal(`${I.fn}Biblioteca de funciones`, `<div class="gal fnl"><div class="gal-top"><div class="sbox">${I.search}<input id="fnq" placeholder="Buscar entre ${fns.length} funciones: nombre, norma o descripción…" autocomplete="off" spellcheck="false" value="${esc(initial)}"></div></div><div class="gal-body"><nav class="gal-side"></nav><div class="gal-main"></div></div><div class="gal-foot">Clic en <b>Insertar</b> para escribir la función en el bloque de cálculo activo (los argumentos quedan seleccionados para reemplazarlos). También disponibles en el autocompletado del editor.</div></div>`, 'gallery');
   const q = m.c.querySelector('#fnq'), side = m.c.querySelector('.gal-side'), main = m.c.querySelector('.gal-main');
   const draw = () => {
     const ts = terms(st.q);
+    cats = catsFor(ts.length > 0);
     const base = fns.filter(f => !ts.length || matchAll(f.name + ' ' + f.desc + ' ' + f.cat + ' ' + f.args, ts));
     side.innerHTML = `<button class="gs${st.cat === '' ? ' on' : ''}" data-cat="">${I.layers}<span>Todas</span><em>${base.length}</em></button><div class="gsep">Categorías</div>` + cats.map(c => { const n = base.filter(f => f.cat === c).length; return `<button class="gs${st.cat === c ? ' on' : ''}${n ? '' : ' zero'}" data-cat="${esc(c)}"><span>${esc(c)}</span><em>${n}</em></button>`; }).join('');
     const list = base.filter(f => !st.cat || f.cat === st.cat);
@@ -1606,9 +1639,13 @@ export function start() {
   pb.addEventListener('focusin', e => { if (e.target.matches('textarea.code') && e.target.closest('.bk')?.querySelector('.snip')) lastTA = e.target; });
   pb.addEventListener('focusin', e => { const el = e.target.closest('.bk'); if (el && selId !== el.dataset.id) { selId = el.dataset.id; document.querySelectorAll('.bk').forEach(x => x.classList.toggle('sel', x === el)); } });
   pb.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.bt[data-act]')) { e.preventDefault(); e.target.click(); } });
-  pb.addEventListener('toggle', e => { if (e.target.matches?.('details.hint')) { hintOpen = e.target.open; lsSet('mc_hint', hintOpen ? '1' : '0'); } }, true);
+  pb.addEventListener('toggle', e => { if (e.target.matches?.('details.hint')) { hintOpen = e.target.open; lsSet('mc_hint', hintOpen ? '1' : '0'); } if (e.target.matches?.('details.bkopt')) { optOpen = e.target.open; lsSet('mc_bkopt', optOpen ? '1' : '0'); } }, true);
   pb.addEventListener('keydown', e => {
     const ta = e.target; if (!ta.classList.contains('code')) return;
+    lastKey = Date.now();
+    if (e.key === '(' && ac.paren && ac.paren.ta === ta && ta.selectionStart === ac.paren.pos && ta.selectionEnd === ac.paren.pos && ta.value[ac.paren.pos - 1] === '(') { e.preventDefault(); ac.paren = null; sigHint(ta); return; }
+    if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Enter') ac.paren = null;
+    if (e.key === 'Escape' && sig.el && !ac.el) { closeSig(); return; }
     if (ac.el && ac.ta === ta) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); ac.nav = true; ac.sel = (ac.sel + (e.key === 'ArrowDown' ? 1 : -1) + ac.items.length) % ac.items.length; drawAC(); return; }
       if (e.key === 'Tab' || (e.key === 'Enter' && ac.nav)) { e.preventDefault(); acceptAC(); return; }
@@ -1620,8 +1657,12 @@ export function start() {
   pb.addEventListener('input', e => {
     if (!e.target.classList.contains('code')) return;
     if (e.target.closest('.bk')?.querySelector('.snip') && !(e.inputType || '').startsWith('delete')) suggest(e.target); else closeAC();
+    if (e.target.closest('.bk')?.querySelector('.snip')) sigHint(e.target);
   });
-  pb.addEventListener('focusout', () => setTimeout(() => { if (!document.activeElement?.classList.contains('code')) closeAC(); }, 150));
+  pb.addEventListener('keyup', e => { if (e.target.classList?.contains('code') && /^(Arrow|Home|End)/.test(e.key) && e.target.closest('.bk')?.querySelector('.snip')) sigHint(e.target); });
+  pb.addEventListener('click', e => { if (e.target.classList?.contains('code') && e.target.closest('.bk')?.querySelector('.snip')) sigHint(e.target); });
+  pb.addEventListener('scroll', () => closeSig(), { passive: true, capture: true });
+  pb.addEventListener('focusout', () => setTimeout(() => { if (!document.activeElement?.classList.contains('code')) { closeAC(); closeSig(); } }, 150));
   pb.addEventListener('click', e => {
     const pk = e.target.closest('[data-addpick]'); if (pk) { showBlockPicker(pk); return; }
     const add = e.target.closest('[data-add]'); if (add) { insertBlock(add.dataset.add); return; }
@@ -1679,6 +1720,7 @@ export function start() {
   window.addEventListener('resize', () => { if (ied) iedPlace(); });
   document.addEventListener('keydown', e => {
     if (e.key === 'F1') { e.preventDefault(); showHelp(); return; }
+    if (e.key === 'Escape' && document.querySelector('.menu') && !e.defaultPrevented) { document.querySelectorAll('.menu').forEach(m => m.remove()); return; }
     if (e.altKey && !e.ctrlKey && !e.metaKey && /^[1-4]$/.test(e.key)) { e.preventDefault(); if (isMobile()) setView('edit'); setTab(['datos', 'bloques', 'vars', 'proyecto'][+e.key - 1]); return; }
     if (!(e.ctrlKey || e.metaKey)) return;
     const k = e.key.toLowerCase();
@@ -1686,7 +1728,9 @@ export function start() {
     if (k === 'f' && e.shiftKey) { e.preventDefault(); showFunctions(); return; }
     if (e.key === '\\' && !isMobile()) { e.preventDefault(); toggleFocus(); return; }
     const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
-    if ((k === 'z' || k === 'y') && !inField) { e.preventDefault(); undoRedo(k === 'y' || e.shiftKey ? 1 : -1); return; }
+    // en los campos de la pestaña Datos el valor se aplica al instante: Ctrl+Z deshace en la memoria
+    const formField = inField && document.activeElement.closest('#p-datos') && document.activeElement.tagName !== 'TEXTAREA';
+    if ((k === 'z' || k === 'y') && (!inField || formField)) { e.preventDefault(); undoRedo(k === 'y' || e.shiftKey ? 1 : -1); return; }
     if (k === 's') { e.preventDefault(); saveFile(); } else if (k === 'o') { e.preventDefault(); openFile(); } else if (k === 'p') { e.preventDefault(); doPrint(); }
   });
   window.addEventListener('beforeprint', () => { if (lastRes) compute(); });
@@ -1774,10 +1818,48 @@ function drawAC() { ac.el.innerHTML = '<div class="achint">Tab para completar ·
 function acceptAC() {
   const it = ac.items[ac.sel], ta = ac.ta; if (!it) return closeAC();
   ta.focus(); ta.setSelectionRange(ac.start, ta.selectionStart);
-  document.execCommand('insertText', false, it.t + (it.k === 'f' && it.t !== 'check' ? '(' : it.t === 'check' ? ' ' : ''));
+  const paren = it.k === 'f' && it.t !== 'check';
+  document.execCommand('insertText', false, it.t + (paren ? '(' : it.t === 'check' ? ' ' : ''));
+  // si el usuario escribe «(» por costumbre justo después, no se duplica
+  ac.paren = paren ? { ta, pos: ta.selectionStart } : null;
   closeAC();
+  if (paren) sigHint(ta);
 }
 function closeAC() { if (ac.el) { ac.el.remove(); ac.el = null; } }
+
+// Ayuda de parámetros: con el cursor dentro de f( … ) muestra la firma y resalta el argumento actual
+const sig = { el: null };
+function fnInfo(name) {
+  const f = allFns().find(x => x.name === name); if (f) return f;
+  const a = AC_FUN.find(x => x[0] === name); return a ? { name, args: '', desc: a[1] } : null;
+}
+function sigHint(ta) {
+  if (!ta || document.activeElement !== ta || ta.selectionStart !== ta.selectionEnd) return closeSig();
+  const before = ta.value.slice(0, ta.selectionStart); const line = before.slice(before.lastIndexOf('\n') + 1);
+  if (/^\s*["'#@]/.test(line)) return closeSig();
+  const code = line.replace(/\/\/.*$/, ''); if (code.length !== line.length) return closeSig();
+  // función más interna con paréntesis abierto antes del cursor
+  let depth = 0, argi = 0, i = code.length - 1;
+  for (; i >= 0; i--) {
+    const c = code[i];
+    if (c === ')' || c === ']') depth++;
+    else if (c === '(' || c === '[') { if (depth === 0) break; depth--; }
+    else if (c === ',' && depth === 0) argi++;
+  }
+  if (i < 0 || code[i] !== '(') return closeSig();
+  const m = /([A-Za-z_]\w*)\s*$/.exec(code.slice(0, i)); if (!m) return closeSig();
+  const f = fnInfo(m[1]); if (!f || (!f.args && !f.desc)) return closeSig();
+  const args = (f.args || '').replace(/\[\s*,\s*/g, ', [').split(',').map(s => s.trim()).filter(Boolean);
+  const cur = Math.min(argi, Math.max(0, args.length - 1));
+  const sigH = `<code><b>${esc(f.name)}</b>(${args.map((a, k) => k === cur && argi < args.length + 1 ? `<u>${esc(a)}</u>` : esc(a)).join(', ')})</code>`;
+  if (!sig.el) { sig.el = h('<div class="sighint" role="tooltip"></div>'); document.body.appendChild(sig.el); }
+  sig.el.innerHTML = sigH + (f.desc ? `<span>${esc(f.desc)}</span>` : '');
+  const { x, y } = caretXY(ta), lh = 22, bh = sig.el.offsetHeight;
+  sig.el.style.left = Math.max(8, Math.min(x - 12, window.innerWidth - sig.el.offsetWidth - 8)) + 'px';
+  // por encima de la línea (el autocompletado va debajo)
+  sig.el.style.top = Math.max(4, y - lh - bh - 4) + 'px';
+}
+function closeSig() { if (sig.el) { sig.el.remove(); sig.el = null; } }
 
 function loadImage(file, cb, max = 1600) {
   const r = new FileReader();

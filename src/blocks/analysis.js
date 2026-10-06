@@ -1044,6 +1044,7 @@ function drawDiagram(md, sets, key, W, opts = {}) {
   g += membersLine(md, v, '#c3ccd5', 1.4);
   md.nodes.forEach((n, i) => { g += supportGlyph(md, i, v, '#9aa5b1'); });
   const labels = [], dense = md.mems.length * sets.length > 36;
+  const env = sets.length === 2 && sets[0].name === 'máx' && sets[1].name === 'mín';
   sets.forEach((set, si) => {
     md.mems.forEach((m, mi) => {
       const vals = set.mf[mi][key];
@@ -1060,6 +1061,26 @@ function drawDiagram(md, sets, key, W, opts = {}) {
       while (e0 < e1 && m.st[e0][0] < (m.zi || 0) - 1e-9) e0++;
       while (e1 > e0 && m.st[e1][0] > m.L - (m.zj || 0) + 1e-9) e1--;
       const idx = new Set([e0, e1]);
+      // envolvente (máx./mín.): un rótulo por extremo de barra (el gobernante de las dos curvas) y los máximos
+      // interiores de cada curva; se rotula en la pasada de «máx.» con los valores de ambas curvas
+      if (env && key !== 'N') {
+        if (si) return;
+        const vmn = sets[1].mf[mi][key], pmn = m.st.map(([x], p) => { const t = x / m.L; return [a[0] + ex * t + ny[0] * vmn[p] * k, a[1] + ey * t + ny[1] * vmn[p] * k]; });
+        const loc = [], push = (p, val, q, end) => { const sg = val >= 0 ? 1 : -1; loc.push({ x: q[p][0], y: q[p][1], nx: ny[0] * sg, ny: ny[1] * sg, val, end, mem: mi, tx: m.st[p][0] / m.L, ex, ey }); };
+        // pórticos grandes: el valor gobernante de la barra y, si es importante, su máximo interior
+        const flush = () => {
+          if (dense && loc.length > 1) { loc.sort((u, w) => Math.abs(w.val) - Math.abs(u.val)); const inn = loc.slice(1).find(L => !L.end && Math.abs(L.val) >= 0.3 * amax); loc.splice(1); if (inn) loc.push(inn); }
+          labels.push(...loc);
+        };
+        const vConst = key === 'V' && Math.abs(vals[e0] - vals[e1]) < 1e-6 * amax + 1e-9 && Math.abs(vmn[e0] - vmn[e1]) < 1e-6 * amax + 1e-9;
+        if (vConst) { const pc = Math.floor(vals.length / 2), uMn = Math.abs(vmn[pc]) > Math.abs(vals[pc]); push(pc, uMn ? vmn[pc] : vals[pc], uMn ? pmn : pts, false); flush(); return; }
+        for (const p of [e0, e1]) { const uMn = Math.abs(vmn[p]) > Math.abs(vals[p]), val = uMn ? vmn[p] : vals[p]; if (Math.abs(val) >= 0.06 * amax) push(p, val, uMn ? pmn : pts, true); }
+        const lin = (arr, p) => arr[e0] + (arr[e1] - arr[e0]) * (m.st[p][0] - m.st[e0][0]) / Math.max(1e-9, m.st[e1][0] - m.st[e0][0]);
+        let ia = e0, ib = e0; for (let p = e0; p <= e1; p++) { if (vals[p] > vals[ia]) ia = p; if (vmn[p] < vmn[ib]) ib = p; }
+        if (ia > e0 && ia < e1 && vals[ia] > 0.05 * amax && vals[ia] > 1.03 * lin(vals, ia)) push(ia, vals[ia], pts, false);
+        if (ib > e0 && ib < e1 && vmn[ib] < -0.05 * amax && vmn[ib] < 1.03 * lin(vmn, ib)) push(ib, vmn[ib], pmn, false);
+        flush(); return;
+      }
       let imax = e0, imin = e0; for (let p = e0; p <= e1; p++) { if (vals[p] > vals[imax]) imax = p; if (vals[p] < vals[imin]) imin = p; }
       const endMax = Math.max(Math.abs(vals[e0]), Math.abs(vals[e1]));
       for (const p of [imax, imin]) if (p > e0 && p < e1 && Math.abs(vals[p]) > 1.03 * Math.abs(vals[e0] + (vals[e1] - vals[e0]) * (m.st[p][0] - m.st[e0][0]) / Math.max(1e-9, m.st[e1][0] - m.st[e0][0])) && Math.abs(vals[p]) > 0.05 * amax) idx.add(p);

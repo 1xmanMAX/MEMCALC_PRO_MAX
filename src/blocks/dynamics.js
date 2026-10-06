@@ -71,8 +71,19 @@ function tableHtml(ctx, title, heads, rows) {
   return `<div class="figure"><div class="cap">Tabla ${ctx.tab}${title ? ': ' + esc(title) : ''}</div>${h}</tbody></table></div>`;
 }
 const txt = (h) => `<div class="txt">${h}</div>`;
-const sg = (x, p = 4) => (Math.abs(x) < 1e-14 ? '0' : String(+x.toPrecision(p)));
-const fe = (x, d = 3) => (Math.abs(x) >= 1e4 || (Math.abs(x) < 1e-3 && x !== 0) ? x.toExponential(d) : f2(x, d));
+// números con p cifras significativas sin notación «e»: decimales fijos entre 10⁻⁵ y 10⁶ y, fuera de ese
+// intervalo, mantisa × 10ⁿ (superíndices Unicode en tablas y figuras; feT en LaTeX)
+const SUP = (n) => String(n).replace(/[-0-9]/g, c => '⁻⁰¹²³⁴⁵⁶⁷⁸⁹'['-0123456789'.indexOf(c)]);
+const sigParts = (x, p) => {
+  if (typeof x !== 'number' || !isFinite(x)) return { s: String(x) };
+  const a = Math.abs(x); if (a < 1e-14) return { s: '0' };
+  const xr = +x.toPrecision(p), e = Math.floor(Math.log10(Math.abs(xr)));
+  if (e >= -5 && e < 6) { const t = xr.toFixed(Math.max(0, p - 1 - e)); return { s: t.indexOf('.') >= 0 ? t.replace(/\.?0+$/, '') : t }; }
+  return { m: String(+(xr / 10 ** e).toPrecision(p)), e };
+};
+const sg = (x, p = 4) => { const r = sigParts(x, p); return r.s ?? `${r.m}×10${SUP(r.e)}`; };
+const fe = (x, d = 3) => (Math.abs(x) >= 1e4 || (Math.abs(x) < 1e-3 && x !== 0) ? sg(x, d + 1) : f2(x, d));
+const feT = (x, d = 3) => { if (!(Math.abs(x) >= 1e4 || (Math.abs(x) < 1e-3 && x !== 0))) return f2(x, d); const r = sigParts(x, d + 1); return r.s ?? `${r.m}\\times 10^{${r.e}}`; };
 // ---------- memoización de cálculos pesados ----------
 const MEMO = new Map();
 function memo(key, fn) {
@@ -260,7 +271,7 @@ registerBlock('thsdof', {
     h += txt(`Ecuación de movimiento por unidad de masa ${K('\\ddot u + 2\\zeta\\omega_n\\dot u + f_S(u)/m = -\\ddot u_g(t)')}, con ${K(`\\omega_n = 2\\pi/T_n = ${f2(w, 4)}\\;\\mathrm{rad/s}`)}, ${K(`\\Delta t = ${f2(dt, 4)}\\;\\mathrm{s}`)} (${N} pasos, ${K(`\\Delta t/T_n = ${f2(dt / Tn, 4)}`)}). Integración paso a paso por el método ${metName}.` + ((R.ns || 1) > 1 ? ` El paso se subdividió ${R.ns} veces (interpolación lineal de üg) para mantener Δt/Tn ≤ ${nl ? '1/40' : '1/20'}.` : '') + (nl ? ` En cada paso se resuelve ${K('\\hat p_{i+1} - f_S(u) - a_1 u = 0')} por Newton-Raphson con la rigidez tangente ${K('k_T + a_1')} (Chopra Tabla 5.7.1); el resorte bilineal tiene envolventes ${K('f = \\alpha k u \\pm (1-\\alpha) f_y')} con ${K(`\\alpha = ${f2(alpha, 3)}`)}.` : ''));
     if (met === 'nj' || nl) {
       const c = njCoefs(w, z, dt);
-      if (met === 'nj') { const ft = (x) => { const t = fe(x, 5); const m = /^(-?[\d.]+)e([-+]\d+)$/.exec(t); return m ? `${m[1]}\\times 10^{${+m[2]}}` : t; };
+      if (met === 'nj') { const ft = (x) => feT(x, 5);
         h += txt(`Recurrencia exacta con ${K('p = -\\ddot u_g')} (Chopra Ec. 5.2.5 y Tabla 5.2.1; coeficientes en unidades SI):`) + `<div class="txt">${K('\\begin{aligned} u_{i+1} &= A u_i + B\\dot u_i + C p_i + D p_{i+1} \\\\ \\dot u_{i+1} &= A\' u_i + B\'\\dot u_i + C\' p_i + D\' p_{i+1} \\end{aligned}', true)}${K(`\\begin{array}{llll} A = ${ft(c.A)} & B = ${ft(c.B)} & C = ${ft(c.C)} & D = ${ft(c.D)} \\\\ A' = ${ft(c.Ap)} & B' = ${ft(c.Bp)} & C' = ${ft(c.Cp)} & D' = ${ft(c.Dp)} \\end{array}`, true)}</div>`; }
     }
     const rows = []; for (let i = 0; i <= Math.min(6, N - 1); i++) rows.push([String(i), f2(i * dt, 2), sg(rec.ag[i] / G), sg(nL(R.u[i])), sg(nV(R.v[i])), sg(R.at[i] / G)]);
@@ -472,7 +483,7 @@ registerBlock('thmdof', {
     g += legend(70, y, [['Tiempo-historia (envolvente)', C.blue], [`Espectral ${b.comb === 'SRSS' ? 'SRSS' : 'CQC'} con el espectro del registro`, C.red, '5 3'], ...(RD ? [['Espectral con el espectro de diseño', C.ink, '2 2']] : [])]);
     y += 42;
     let h = `<div class="figure">${svgWrap(W, y, g)}${caption(ctx, b.titulo || `Tiempo-historia modal (${nm} modos) del edificio de ${n} niveles: respuesta del techo, cortante basal y envolventes`)}</div>`;
-    h += txt(`Modos de ${K('\\mathbf K\\boldsymbol\\phi = \\omega^2\\mathbf M\\boldsymbol\\phi')} por Jacobi; factores ${K('\\Gamma_n = L_n/M_n')}, ${K('L_n = \\boldsymbol\\phi_n^T\\mathbf M\\boldsymbol\\iota')}. Cada coordenada modal ${K('D_n(t)')} es la respuesta de un 1 GDL ${K('(\\omega_n, \\zeta_n)')} a ${K('-\\ddot u_g')}, integrada exactamente (Nigam-Jennings); ${K('\\mathbf u(t) = \\sum_n \\Gamma_n\\boldsymbol\\phi_n D_n(t)')}, ${K('V_i(t) = k_i\\Delta_i(t)')} y ${K('M_b(t) = \\sum_j f_j(t) H_j')} (Chopra §13.1–13.2). ` + (ray ? `Amortiguamiento de Rayleigh ${K('\\mathbf C = a_0\\mathbf M + a_1\\mathbf K')} con ζ = ${f2(z0 * 100, 1)} % en los modos ${ray.i} y ${ray.j}: ${K(`a_0 = ${fe(ray.a0, 4)}\\;\\mathrm{s^{-1}},\\; a_1 = ${fe(ray.a1, 4)}\\;\\mathrm{s}`)}, ${K('\\zeta_n = a_0/(2\\omega_n) + a_1\\omega_n/2')}.` : `Amortiguamiento modal ζn = ${f2(z0 * 100, 1)} % en todos los modos.`));
+    h += txt(`Modos de ${K('\\mathbf K\\boldsymbol\\phi = \\omega^2\\mathbf M\\boldsymbol\\phi')} por Jacobi; factores ${K('\\Gamma_n = L_n/M_n')}, ${K('L_n = \\boldsymbol\\phi_n^T\\mathbf M\\boldsymbol\\iota')}. Cada coordenada modal ${K('D_n(t)')} es la respuesta de un 1 GDL ${K('(\\omega_n, \\zeta_n)')} a ${K('-\\ddot u_g')}, integrada exactamente (Nigam-Jennings); ${K('\\mathbf u(t) = \\sum_n \\Gamma_n\\boldsymbol\\phi_n D_n(t)')}, ${K('V_i(t) = k_i\\Delta_i(t)')} y ${K('M_b(t) = \\sum_j f_j(t) H_j')} (Chopra §13.1–13.2). ` + (ray ? `Amortiguamiento de Rayleigh ${K('\\mathbf C = a_0\\mathbf M + a_1\\mathbf K')} con ζ = ${f2(z0 * 100, 1)} % en los modos ${ray.i} y ${ray.j}: ${K(`a_0 = ${feT(ray.a0, 4)}\\;\\mathrm{s^{-1}},\\; a_1 = ${feT(ray.a1, 4)}\\;\\mathrm{s}`)}, ${K('\\zeta_n = a_0/(2\\omega_n) + a_1\\omega_n/2')}.` : `Amortiguamiento modal ζn = ${f2(z0 * 100, 1)} % en todos los modos.`));
     const rows1 = modes.map((md, r) => [String(r + 1) + (r < nm ? '' : ' *'), f2(md.T, 4), f2(md.w, 3), f2(md.Gam, 4), f2(md.ratio * 100, 2), f2(zn[r] * 100, 2), r < nm ? f2(nL(spR[r].D), 3) : '—', r < nm ? f2(spR[r].PSA / G, 4) : '—', r < nm ? f2(nL(pk(R.Dn[r]).v * md.Gam), 3) : '—']);
     h += tableHtml(ctx, 'Propiedades modales (φ normalizada al techo) y respuesta espectral del registro', ['Modo', K('T_n') + ' [s]', K('\\omega_n') + ' [rad/s]', K('\\Gamma_n'), K('M^*_n/M') + ' [%]', K('\\zeta_n') + ' [%]', K('D_n') + ` [${UL()}]`, K('A_n/g'), K('\\max|u_{techo,n}|') + ` [${UL()}]`], rows1);
     const rows2 = []; for (let i = n - 1; i >= 0; i--) rows2.push([String(i + 1), f2(nL(uE[i]), 3), f2(nL(RS.u[i]), 3), sg(dE[i] / he[i], 4), sg(RS.d[i] / he[i], 4), f2(nF(VE[i]), 2), f2(nF(RS.V[i]), 2), ...(RD ? [f2(nF(RD.V[i]), 2)] : [])]);
@@ -574,7 +585,7 @@ registerBlock('thnl', {
     g += legend(70, y, [['No lineal' + (pdelta ? ' + P-Δ' : ''), C.blue], ['Elástico (mismo amortiguamiento)', C.axis, '5 3'], ['Deriva residual', C.orange, '2 2']]);
     y += 46;
     let h = `<div class="figure">${svgWrap(W, y, g)}${caption(ctx, b.titulo || `Tiempo-historia no lineal del edificio de cortante de ${n} niveles ante ${rec.name}`)}</div>`;
-    h += txt(`Ecuación de movimiento ${K('\\mathbf M\\ddot{\\mathbf u} + \\mathbf C\\dot{\\mathbf u} + \\mathbf f_S(\\mathbf u) = -\\mathbf M\\boldsymbol\\iota\\,\\ddot u_g(t)')} con resortes de entrepiso bilineales de endurecimiento cinemático (${K('k_i')}, ${K('V_{y,i}')}, ${K('\\alpha_i k_i')}; equivalente a OpenSees <i>Steel01</i> sin transición) y amortiguamiento de Rayleigh ${K('\\mathbf C = a_0\\mathbf M + a_1\\mathbf K_0')} con la rigidez inicial (ζ = ${f2(z0 * 100, 1)} % en los modos ${mi} y ${mj}: ${K(`a_0 = ${fe(ray.a0, 4)}\\;\\mathrm{s^{-1}},\\; a_1 = ${fe(ray.a1, 4)}\\;\\mathrm{s}`)}; ζ1 = ${f2(zn[0] * 100, 2)} %). Integración de Newmark (γ = 1/2, β = 1/4, incondicionalmente estable) con ${K(`\\Delta t = ${f2(nl.hs, 4)}\\;\\mathrm{s}`)}${nl.ns > 1 ? ` (registro subdividido ${nl.ns} veces para ${K('\\Delta t \\le T_n/20')})` : ''} y Newton-Raphson en cada paso: ${K('\\hat{\\mathbf p}_{i+1} - \\mathbf f_S(\\mathbf u) - \\mathbf a_1\\mathbf u = \\mathbf 0')}, ${K('\\hat{\\mathbf K}_T = \\mathbf K_T + \\mathbf M/(\\beta\\Delta t^2) + \\gamma\\mathbf C/(\\beta\\Delta t)')} (tridiagonal; Chopra Tabla 16.3.3); máximo ${nl.itMax} iteraciones por paso${nl.nfail ? `, <b>${nl.nfail} pasos sin convergencia</b>` : ''}.` + (pdelta ? ` P-Δ con columna ficticia: ${K('V_i = F_i(\\delta_i) - (P_i/h_i)\\delta_i')}, ${K('P_i = ' + (fP !== 1 ? f2(fP, 2) + '\\,' : '') + 'g\\sum_{j\\ge i}m_j')} (estabilidad elástica ${K('P_i/(k_ih_i)')} = [${nl.theta.map((t, i) => f2(t / k[i], 4)).join(', ')}]).` : '') + ` Se añaden ${f2(nl.Nf * dt, 1)} s de vibración libre después del registro; la deriva residual es la media de la deriva en los últimos ${K('2T_1')}. Contraste: el mismo modelo con resortes elásticos.`);
+    h += txt(`Ecuación de movimiento ${K('\\mathbf M\\ddot{\\mathbf u} + \\mathbf C\\dot{\\mathbf u} + \\mathbf f_S(\\mathbf u) = -\\mathbf M\\boldsymbol\\iota\\,\\ddot u_g(t)')} con resortes de entrepiso bilineales de endurecimiento cinemático (${K('k_i')}, ${K('V_{y,i}')}, ${K('\\alpha_i k_i')}; equivalente a OpenSees <i>Steel01</i> sin transición) y amortiguamiento de Rayleigh ${K('\\mathbf C = a_0\\mathbf M + a_1\\mathbf K_0')} con la rigidez inicial (ζ = ${f2(z0 * 100, 1)} % en los modos ${mi} y ${mj}: ${K(`a_0 = ${feT(ray.a0, 4)}\\;\\mathrm{s^{-1}},\\; a_1 = ${feT(ray.a1, 4)}\\;\\mathrm{s}`)}; ζ1 = ${f2(zn[0] * 100, 2)} %). Integración de Newmark (γ = 1/2, β = 1/4, incondicionalmente estable) con ${K(`\\Delta t = ${f2(nl.hs, 4)}\\;\\mathrm{s}`)}${nl.ns > 1 ? ` (registro subdividido ${nl.ns} veces para ${K('\\Delta t \\le T_n/20')})` : ''} y Newton-Raphson en cada paso: ${K('\\hat{\\mathbf p}_{i+1} - \\mathbf f_S(\\mathbf u) - \\mathbf a_1\\mathbf u = \\mathbf 0')}, ${K('\\hat{\\mathbf K}_T = \\mathbf K_T + \\mathbf M/(\\beta\\Delta t^2) + \\gamma\\mathbf C/(\\beta\\Delta t)')} (tridiagonal; Chopra Tabla 16.3.3); máximo ${nl.itMax} iteraciones por paso${nl.nfail ? `, <b>${nl.nfail} pasos sin convergencia</b>` : ''}.` + (pdelta ? ` P-Δ con columna ficticia: ${K('V_i = F_i(\\delta_i) - (P_i/h_i)\\delta_i')}, ${K('P_i = ' + (fP !== 1 ? f2(fP, 2) + '\\,' : '') + 'g\\sum_{j\\ge i}m_j')} (estabilidad elástica ${K('P_i/(k_ih_i)')} = [${nl.theta.map((t, i) => f2(t / k[i], 4)).join(', ')}]).` : '') + ` Se añaden ${f2(nl.Nf * dt, 1)} s de vibración libre después del registro; la deriva residual es la media de la deriva en los últimos ${K('2T_1')}. Contraste: el mismo modelo con resortes elásticos.`);
     const rows = []; for (let i = n - 1; i >= 0; i--) rows.push([String(i + 1), f2(nF(Vy[i]), 1), f2(nL(dy[i]), 3), f2(nF(nl.Fpk[i]), 1), f2(nL(nl.drPk[i]), 3), sg(drr[i], 4), sg(drrE[i], 4), f2(mu[i], 2), sg(dres[i], 3), f2(nM(nl.Eh[i]), 2)]);
     h += tableHtml(ctx, 'Respuesta máxima por entrepiso: no lineal vs elástica', ['Entrepiso', K('V_y') + ` [${lab(UF())}]`, K('\\delta_y') + ` [${UL()}]`, K('|V|_{\\max}') + ` [${lab(UF())}]`, K('\\delta_{\\max}') + ` [${UL()}]`, K('(\\Delta/h)_{NL}'), K('(\\Delta/h)_{el}'), K('\\mu'), K('\\Delta_{\\mathrm{res}}/h'), K('E_h') + ` [${lab(UM())}]`], rows);
     h += txt(`Techo: ${K(`u_{${n},\\max} = ${f2(nL(nl.uPk[n - 1]), 3)}\\;\\mathrm{${UL()}}`)} (elástico ${f2(nL(el.uPk[n - 1]), 3)}; razón ${f2(nl.uPk[n - 1] / el.uPk[n - 1], 3)}); cortante basal ${K(`V_{b,\\max} = ${f2(nF(nl.VbPk), 1)}\\;\\mathrm{${lab(UF())}} = ${f2(nl.VbPk / Wt, 4)}W`)} frente a ${f2(nF(el.VbPk), 1)} elástico (${K(`R_\\mu = V_{b,el}/V_{y,1} = ${f2(el.VbPk / Vy[0], 2)}`)}); ductilidad máxima ${K(`\\mu = ${f2(muMax, 2)}`)} en el entrepiso ${iCrit + 1}; deriva residual máxima ${K(`${sg(dresMax, 3)}`)}.`);
@@ -684,7 +695,16 @@ registerBlock('pushover', {
       const xm = Math.max(xs[xs.length - 1], ...Object.values(res).filter(isFinite).map(nL)) * 1.05;
       const fr = frame(56, top, pw, ph, [0, xm], [0, Math.max(...ys) * 1.15], { title: 'Curva de capacidad Vb – u techo', xl: `u techo [${UL()}]`, yl: `Vb [${lab(UF())}]`, nx: 5, ny: 5, yf: t => f2(t, 0) });
       g += fr.g + P(pathXY(xs, ys, fr), C.blue, 2);
-      po.ev.filter(e => e.d <= dEnd).forEach(e => { g += dot(fr.X(nL(e.d)), fr.Y(nF(e.Vb)), e.tipo === 'fluencia' ? C.ink : C.axis, 2.6) + (e.tipo === 'fluencia' ? TX(fr.X(nL(e.d)) + 4, fr.Y(nF(e.Vb)) + 11, 'y' + (e.i + 1), { fs: 8, a: 'start', c: C.axis }) : ''); });
+      // fluencias: rótulo «y1», «y2»…; las que caen en el mismo punto (< 16 px) se agrupan («y1, y2»)
+      const ylab = [];
+      po.ev.filter(e => e.d <= dEnd).forEach(e => {
+        const ex0 = fr.X(nL(e.d)), ey0 = fr.Y(nF(e.Vb));
+        g += dot(ex0, ey0, e.tipo === 'fluencia' ? C.ink : C.axis, 2.6);
+        if (e.tipo !== 'fluencia') return;
+        const near = ylab.find(q => Math.abs(q.x - ex0) < 16 && Math.abs(q.y - ey0) < 10);
+        if (near) near.s.push('y' + (e.i + 1)); else ylab.push({ x: ex0, y: ey0, s: ['y' + (e.i + 1)] });
+      });
+      ylab.forEach(q => { g += TX(q.x + 4, q.y + 11, q.s.join(', '), { fs: 8, a: 'start', c: C.axis }); });
       // bilineal N2 equivalente (sistema MDOF)
       g += P(`M${fr.X(0)},${fr.Y(0)}L${fr.X(nL(dyRoof)).toFixed(1)},${fr.Y(nF(n2.Fy * ms * Gm)).toFixed(1)}L${fr.X(nL(Math.min(n2.dt, cap[cap.length - 1][0]) * Gm)).toFixed(1)},${fr.Y(nF(n2.Fy * ms * Gm)).toFixed(1)}`, C.red, 1, '4 3');
       Object.entries(res).forEach(([kk, d]) => { if (!isFinite(d)) return; const st = stAt(d); g += mark(fr.X(nL(d)), fr.Y(nF(st.Vb)), shapes[kk][1], shapes[kk][0], kk === met ? 5 : 3.6); });
@@ -834,13 +854,13 @@ registerBlock('momcurv', {
       const e1 = last.et, e2 = last.et - last.phi * hh, emax = Math.max(Math.abs(e1), Math.abs(e2));
       const Xe = (e) => ux + uw / 2 + e / emax * uw / 2;
       g += Lne(ux + uw / 2, sy, ux + uw / 2, sy + wh, C.axis, 0.8) + `<path d="M${ux + uw / 2},${sy} L${Xe(e1).toFixed(1)},${sy} L${Xe(e2).toFixed(1)},${(sy + wh).toFixed(1)} L${ux + uw / 2},${(sy + wh).toFixed(1)} Z" fill="${C.redF}" stroke="${C.red}"/>`;
-      g += TX(ux + uw / 2, top - 7, 'ε (última)', { fs: 10.5, b: 1 }) + TX(Xe(e1), sy - 2 + 12, f2(e1 * 1000, 2) + '‰', { fs: 8.5, c: C.red }) + TX(Xe(e2), sy + wh + 12, f2(e2 * 1000, 1) + '‰', { fs: 8.5, c: C.red });
+      g += TX(ux + uw / 2, top - 7, 'ε (última)', { fs: 10.5, b: 1 }) + TX(Xe(e1), sy - 2 + 12, e1.toFixed(4).replace('-', '−'), { fs: 8.5, c: C.red }) + TX(Xe(e2), sy + wh + 12, e2.toFixed(4).replace('-', '−'), { fs: 8.5, c: C.red });
     }
     { // materiales
       const yy = top + 300, fr1 = frame(62, yy, 290, 130, [0, Math.max(R.ecuLim * 1.15, 0.006)], [0, (conc === 'mander' ? R.conf.fcc : fc) * 1.15], { title: 'Concreto σ–ε (compresión)', xl: 'ε', yl: 'σ [MPa]', nx: 5, ny: 4, xf: t => f2(t, 3) });
       const es = Array.from({ length: 121 }, (_, i) => i * R.ecuLim * 1.1 / 120);
       g += fr1.g + P(pathXY(es, es.map(R.sCore), fr1), C.blue, 1.8) + (conc === 'mander' ? P(pathXY(es, es.map(R.sCov), fr1), C.axis, 1.4, '4 3') + Lne(fr1.X(R.ecuLim), yy, fr1.X(R.ecuLim), yy + 130, C.red, 0.8, '3 3') + TX(fr1.X(R.ecuLim) - 3, yy + 12, 'εcu', { fs: 8.5, a: 'end', c: C.red }) : '');
-      g += legend(200, yy + 14, conc === 'mander' ? [['confinado (Mander)', C.blue], ['no confinado', C.axis, '4 3']] : [['Hognestad', C.blue]]);
+      g += legend(150, yy + 92, conc === 'mander' ? [['confinado (Mander)', C.blue], ['no confinado', C.axis, '4 3']] : [['Hognestad', C.blue]]);
       const esu = model === 'epp' ? 0.05 : steel.esu, fr2 = frame(420, yy, 270, 130, [0, esu * 1.05], [0, (model === 'epp' ? fy : steel.fsu) * 1.15], { title: 'Acero σ–ε', xl: 'ε', yl: 'σ [MPa]', nx: 5, ny: 4, xf: t => f2(t, 3), yf: t => f2(t, 0) });
       const e2s = Array.from({ length: 151 }, (_, i) => i * esu / 150);
       g += fr2.g + P(pathXY(e2s, e2s.map(R.ss), fr2), C.ink, 1.8);

@@ -18,6 +18,19 @@ const vigaT = {
   normas: NORMAS_PE,
   desc: 'Superestructura simplemente apoyada L = 20 m con 4 vigas T: predimensionamiento, losa del tablero (franjas, voladizo y colisión de barrera), factores de distribución, HL-93, Resistencia I, Servicio I, fatiga, flexión, cortante y deflexión.',
   titulo: 'Diseño de puente viga-losa de concreto armado L = 20.00 m — AASHTO LRFD / MTC 2018',
+  validacion: {
+    fuente: 'Control: AASHTO LRFD 9.ª ed. / Manual de Puentes MTC 2018 (HL-93, factores de distribución forma SI, Secc. 5)',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión), contrastados por partes: el tándem 2·11.34·(L/2 − 0.30)²/L y el carril 0.952 t/m·L²/8 son fórmulas cerradas; el bloque hl93env reproduce la tabla HS20 del Apéndice A (AASHTO Standard) y los factores de distribución el ejemplo FHWA PSC 5.1 (tests/bridges.test.mjs).',
+    valores: [
+      { var: 'Mta', unidad: 'tonf*m', esperado: 106.65, tol: 0.002, desc: 'Momento del tándem, L = 20 m (fórmula cerrada)' },
+      { var: 'Mtr', unidad: 'tonf*m', esperado: 125.1, tol: 0.002, desc: 'Momento del camión HL-93 por carril' },
+      { var: 'gMi', esperado: 0.6581, tol: 0.002, desc: 'Factor de distribución de momento, viga interior' },
+      { var: 'Mu', unidad: 'tonf*m', esperado: 453.7, tol: 0.002, desc: 'Momento último de la viga' },
+      { var: 'phiMn', unidad: 'tonf*m', esperado: 463.3, tol: 0.002, desc: 'Resistencia a flexión de la viga T' },
+      { var: 'Vu', unidad: 'tonf', esperado: 91.42, tol: 0.002, desc: 'Cortante último de la viga' },
+      { var: 'Mupos', unidad: 'tonf*m/m', esperado: 5.046, tol: 0.002, desc: 'Momento último positivo de la losa' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 ## Descripción
@@ -38,22 +51,22 @@ Puente de un tramo simplemente apoyado de **20.00 m** de luz entre ejes de apoyo
 Modificador de cargas $\\eta = \\eta_D\\,\\eta_R\\,\\eta_I = 1.00$ (puente típico, componentes dúctiles y redundantes, 1.3.2).`),
     calc(`# Datos de diseño
 ## Geometría
-L = 20.00 m // Luz de cálculo entre ejes de apoyos
-Nb = 4 // Número de vigas longitudinales (la franja de losa se modela con 4 vigas)
-S = 2.10 m // Separación entre ejes de vigas
-vol = 0.85 m // Longitud del voladizo, desde el eje de la viga exterior
-bbar = 0.40 m // Ancho de la barrera en su base
+L = 20.00 m // Luz de cálculo entre ejes de apoyos [10..30]
+Nb = 4 // Número de vigas longitudinales (la franja de losa se modela con 4 vigas) [3..8]
+S = 2.10 m // Separación entre ejes de vigas [1.8..3.0]
+vol = 0.85 m // Longitud del voladizo, desde el eje de la viga exterior [0.5..1.5]
+bbar = 0.40 m // Ancho de la barrera en su base [0.35..0.50]
 B = (Nb - 1)*S + 2*vol // Ancho total del tablero
 wc = B - 2*bbar // Ancho de calzada entre caras de barreras
-ta = 0.05 m // Espesor de la carpeta asfáltica
-bsup = 0.40 m // Longitud de apoyo (dispositivo de neopreno) en el sentido longitudinal
+ta = 0.05 m // Espesor de la carpeta asfáltica [0.025..0.075]
+bsup = 0.40 m // Longitud de apoyo (dispositivo de neopreno) en el sentido longitudinal [0.3..0.6]
 ## Materiales
 fc = 280 kgf/cm^2 // Resistencia del concreto f'c [280 kgf/cm^2|315 kgf/cm^2|350 kgf/cm^2]
-fy = 4200 kgf/cm^2 // Acero de refuerzo ASTM A615 Gr. 60
-Es = 200000 MPa // Módulo de elasticidad del acero (5.4.3.2)
-gammac = 2.50 tonf/m^3 // Peso unitario del concreto armado (Tabla 3.5.1-1)
-gammaw = 2.25 tonf/m^3 // Peso unitario del asfalto (Tabla 3.5.1-1)
-wbar = 0.50 tonf/m // Peso de cada barrera New Jersey (área ≈ 0.20 m²)
+fy = 4200 kgf/cm^2 // Acero de refuerzo ASTM A615 Gr. 60 [2800..4200]
+Es = 200000 MPa // Módulo de elasticidad del acero (5.4.3.2) [190000..210000]
+gammac = 2.50 tonf/m^3 // Peso unitario del concreto armado (Tabla 3.5.1-1) [2.4..2.5]
+gammaw = 2.25 tonf/m^3 // Peso unitario del asfalto (Tabla 3.5.1-1) [2.0..2.4]
+wbar = 0.50 tonf/m // Peso de cada barrera New Jersey (área ≈ 0.20 m²) [0.4..0.8]
 Ec = EcLRFD(fc) -> kgf/cm^2 // Módulo de elasticidad del concreto, K1 = 1, wc = 0.145 kcf (5.4.2.4-1)
 nmod = Es/Ec // Relación modular
 ## Carriles de diseño
@@ -66,7 +79,7 @@ hmin = 0.070*L // Peralte mínimo de vigas T simplemente apoyadas (Tabla 2.5.2.6
 h = roundup(hmin, 0.05 m) + 0.10 m // Peralte total adoptado (incluye la losa)
 tsmin = max((S + 3 m)/30, 175 mm) -> m // Espesor mínimo de losa: (S + 3000)/30 ≥ 165 mm y 175 mm (Tabla 2.5.2.6.3-1, 9.7.1.1)
 ts = roundup(tsmin, 0.05 m) // Espesor de la losa adoptado
-bw = 0.50 m // Ancho del alma: aloja 6 barras por capa (5.10.3.1)
+bw = 0.50 m // Ancho del alma: aloja 6 barras por capa (5.10.3.1) [0.30..0.60]
 hv = h - ts // Altura del alma bajo la losa
 de = vol - bbar // Distancia del eje de la viga exterior a la cara interior de la barrera (4.6.2.2.1)
 check de >= -0.30 m and de <= 0.91 m // −0.30 ≤ de ≤ 1.70 m (Tabla 4.6.2.2.2d-1) y parte de calzada del voladizo ≤ 0.91 m (4.6.2.2.1)
@@ -100,8 +113,8 @@ Mneg6 = 1.25*abs(MDCx6L1) + 1.50*abs(MDWx6L1) + 1.75*max(abs(MLLnx6L1), abs(MLLn
 Muneg = max(Mneg1, Mneg2, Mneg3, Mneg4, Mneg5, Mneg6)/(1 m) -> tonf*m/m // Resistencia I, M⁻ de diseño en la cara de las vigas
 ## Refuerzo de la losa
 barL = 5 // Varilla principal de la losa [4 : 1/2"|5 : 5/8"|6 : 3/4"]
-rinf = 2.5 cm // Recubrimiento inferior (Tabla 5.10.1-1)
-rsup = 5.0 cm // Recubrimiento superior, superficie expuesta (Tabla 5.10.1-1)
+rinf = 2.5 cm // Recubrimiento inferior (Tabla 5.10.1-1) [2.5..5]
+rsup = 5.0 cm // Recubrimiento superior, superficie expuesta (Tabla 5.10.1-1) [4..7.5]
 dpos = ts - rinf - db(barL)/2 // Peralte efectivo para M⁺
 dneg = ts - rsup - db(barL)/2 // Peralte efectivo para M⁻
 phif = 0.90 // Flexión, sección controlada por tracción (5.5.4.2)
@@ -135,29 +148,29 @@ Muv = (1.25*MDCv + 1.50*MDWv + 1.75*MLLv)/(1 m) -> tonf*m/m // Resistencia I en 
 TL = 4 // Nivel de contención (Tabla A13.2-1, base NCHRP 350) [2 : TL-2|3 : TL-3|4 : TL-4|5 : TL-5]
 Ft = FtLRFD(TL) // Fuerza transversal de diseño (Tabla A13.2-1)
 Lt = LtLRFD(TL) // Longitud de distribución de Ft (Tabla A13.2-1)
-Hb = 0.85 m // Altura de la barrera
+Hb = 0.85 m // Altura de la barrera [0.81..1.40]
 check Hb >= HbminLRFD(TL) // Altura mínima de la barrera para el nivel de contención (Tabla A13.2-1)
 ### Resistencias de la barrera (sección rectangular equivalente de espesor medio)
-tbt = 0.15 m // Espesor de la barrera en la corona
+tbt = 0.15 m // Espesor de la barrera en la corona [0.15..0.25]
 tbm = (bbar + tbt)/2 // Espesor medio equivalente de la barrera New Jersey
 barv = 4 // Varilla vertical de la barrera [4 : 1/2"|5 : 5/8"]
-svb = 0.20 m // Espaciamiento del acero vertical
+svb = 0.20 m // Espaciamiento del acero vertical [0.10..0.30]
 barh = 4 // Varilla horizontal de la barrera [3 : 3/8"|4 : 1/2"]
-nhb = 4 // Barras horizontales por cara
-rbar = 5.0 cm // Recubrimiento de la barrera
+nhb = 4 // Barras horizontales por cara [3..8]
+rbar = 5.0 cm // Recubrimiento de la barrera [4..7.5]
 Asvb = Ab(barv)*1 m/svb // Acero vertical por metro (cara del tráfico)
 dvb = tbm - rbar - db(barv)/2 // Peralte medio del acero vertical
 Mc = Asvb*fy*(dvb - Asvb*fy/(2*0.85*fc*1 m))/(1 m) -> tonf*m/m // Resistencia a flexión alrededor del eje horizontal (por metro)
 Ashb = nhb*Ab(barh) // Acero horizontal de una cara
 dhb = tbm - rbar - db(barv) - db(barh)/2 // Peralte del acero horizontal
 MwH = Ashb*fy*(dhb - Ashb*fy/(2*0.85*fc*Hb)) -> tonf*m // Resistencia total alrededor del eje vertical Mw·H (A13.3.1)
-Mb = 0 tonf*m // Resistencia de la viga superior (no hay)
+Mb = 0 tonf*m // Resistencia de la viga superior (no hay) [0..50]
 Lc = Lt/2 + sqrt((Lt/2)^2 + 8*Hb*(Mb + MwH)/Mc) // Longitud crítica del mecanismo de líneas de fluencia (A13.3.1-2)
 Rw = 2/(2*Lc - Lt)*(8*Mb + 8*MwH + Mc*Lc^2/Hb) -> tonf // Resistencia transversal de la barrera (A13.3.1-1)
 check Ft <= Rw // La barrera resiste la colisión (A13.3.1)
 Tcol = Rw/(Lc + 2*Hb) -> tonf/m // Tracción en el voladizo (A13.4.2-1)
 Mcol = Mc + 1.25*MDCv/(1 m) -> tonf*m/m // Momento en la base de la barrera + DC con γp = 1.25 (Evento Extremo II, Tabla 3.4.1-1)
-sv = 12.5 cm // Espaciamiento del acero superior en el voladizo (se reduce respecto al tramo)
+sv = 12.5 cm // Espaciamiento del acero superior en el voladizo (se reduce respecto al tramo) [10..30]
 Asv = Ab(barL)*100 cm/sv // Acero superior colocado en el voladizo por metro
 Cv = Asv*fy - Tcol*1 m // Compresión en el concreto tras descontar la tracción
 av = Cv/(0.85*fc*100 cm) // Profundidad del bloque comprimido
@@ -228,10 +241,10 @@ Ms = max(Msi, Mse)
 ## Refuerzo longitudinal
 bar = 8 // Varilla longitudinal [8 : 1"|9 : 1 1/8"|10 : 1 1/4"]
 est = 4 // Estribo [3 : 3/8"|4 : 1/2"]
-rec = 5.0 cm // Recubrimiento libre al estribo (Tabla 5.10.1-1)
+rec = 5.0 cm // Recubrimiento libre al estribo (Tabla 5.10.1-1) [4..7.5]
 sl = max(1.5*db(bar), 3.8 cm, 1.5*2.54 cm) // Separación libre mínima: 1.5 db, 1.5 TMA (1"), 38 mm (5.10.3.1.1)
 nmax = rounddown((bw - 2*rec - 2*db(est) + sl)/(db(bar) + sl), 1) // Barras por capa que caben en el alma
-nb = 18 // Número de barras adoptado
+nb = 18 // Número de barras adoptado [6..30]
 ncap = roundup(nb/nmax, 1) // Número de capas
 sv2 = max(2.5 cm, db(bar)) // Separación libre entre capas (5.10.3.1.3)
 ycg = rec + db(est) + db(bar)/2 + (ncap - 1)*(db(bar) + sv2)/2 // Centroide del acero (capas iguales)
@@ -333,6 +346,19 @@ const presf = {
   normas: 'AASHTO LRFD Bridge Design Specifications 9.ª ed. (2020), Secc. 3, 4 y 5 · PCI Bridge Design Manual (2014)',
   desc: 'Viga interior pretensada AASHTO Tipo IV compuesta con losa, L = 100 ft: propiedades, factores de distribución, pérdidas aproximadas (5.9.3), esfuerzos en transferencia y servicio (5.9.2.3), resistencia a flexión con fps, refuerzo mínimo, cortante (MCFT) y deflexión.',
   titulo: 'Diseño de viga pretensada AASHTO Tipo IV compuesta — AASHTO LRFD',
+  validacion: {
+    fuente: 'AASHTO Standard Specifications, Apéndice A (HS20-44 = camión HL-93; L = 100 ft → 1524.9 kip·ft) y carril 0.64 klf (wL²/8 = 800 kip·ft); demás valores de control',
+    nota: 'La viga no es exactamente la del ejemplo FHWA/PCI: solo los momentos del camión y del carril por carril (sin IM ni distribución) son valores publicados. Los demás son valores de control de esta implementación; las pérdidas se contrastan con el ejemplo CONSPAN y ΔfpES con la forma cerrada (tests/bridges.test.mjs).',
+    valores: [
+      { var: 'Mtr', unidad: 'kip*ft', esperado: 1524.9, tol: 0.003, desc: 'Apéndice A HS20: camión, L = 100 ft' },
+      { var: 'Mln', unidad: 'kip*ft', esperado: 800, tol: 0.004, desc: 'Carril 0.64 klf: wL²/8' },
+      { var: 'gM', esperado: 0.6659, tol: 0.002, desc: 'Factor de distribución de momento (4.6.2.2.2b)' },
+      { var: 'dfpT', unidad: 'ksi', esperado: 39.94, tol: 0.002, desc: 'Pérdida total de presfuerzo (5.9.3)' },
+      { var: 'fps', unidad: 'ksi', esperado: 262.1, tol: 0.002, desc: 'Esfuerzo en el acero de presfuerzo (5.6.3.1.1)' },
+      { var: 'Mu', unidad: 'kip*ft', esperado: 6391, tol: 0.002, desc: 'Momento último (Resistencia I)' },
+      { var: 'Mn', unidad: 'kip*ft', esperado: 7945, tol: 0.002, desc: 'Resistencia nominal a flexión' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 ## Descripción
@@ -347,43 +373,43 @@ Viga **interior** de un puente de un tramo simplemente apoyado de 100 ft, con se
 Esfuerzos de **compresión positivos**. Etapas: (1) transferencia, viga sola con peso propio; (2) servicio, viga + losa (sección simple) y cargas sobreimpuestas + carga viva (sección compuesta).`),
     calc(`# Datos
 ## Geometría del puente
-L = 100 ft // Luz de cálculo (eje a eje de apoyos)
-S = 8.0 ft // Separación entre vigas
-Nb = 6 // Número de vigas
-wcc = 44 ft // Ancho de calzada entre barreras
-ts = 8.0 in // Espesor de la losa
-hh = 0.5 in // Espesor del acartelamiento (solo carga)
+L = 100 ft // Luz de cálculo (eje a eje de apoyos) [60..130]
+S = 8.0 ft // Separación entre vigas [6..12]
+Nb = 6 // Número de vigas [4..10]
+wcc = 44 ft // Ancho de calzada entre barreras [24..60]
+ts = 8.0 in // Espesor de la losa [7.5..9]
+hh = 0.5 in // Espesor del acartelamiento (solo carga) [0..2]
 ## Viga AASHTO Tipo IV (PCI BDM Tabla 8.10.1-1)
-h = 54 in // Peralte de la viga
-Ag = 789 in^2 // Área
-Ig = 260730 in^4 // Momento de inercia
-yb = 24.73 in // Centroide desde la fibra inferior
-bw = 8 in // Ancho del alma
-btf = 20 in // Ancho del ala superior
+h = 54 in // Peralte de la viga [28..72]
+Ag = 789 in^2 // Área [276..1100]
+Ig = 260730 in^4 // Momento de inercia [22750..735000]
+yb = 24.73 in // Centroide desde la fibra inferior [12..37]
+bw = 8 in // Ancho del alma [6..9]
+btf = 20 in // Ancho del ala superior [12..42]
 ## Materiales
-fci = 5.5 ksi // f'ci del concreto de la viga en la transferencia
+fci = 5.5 ksi // f'ci del concreto de la viga en la transferencia [4..7]
 fc = 7.0 ksi // f'c del concreto de la viga [6.0 ksi|7.0 ksi|8.0 ksi]
-fcd = 4.0 ksi // f'c de la losa
-gammac = 0.150 kip/ft^3 // Peso unitario del concreto (Tabla 3.5.1-1)
-fpu = 270 ksi // Torón grado 270, baja relajación (5.4.4.1)
+fcd = 4.0 ksi // f'c de la losa [3..6]
+gammac = 0.150 kip/ft^3 // Peso unitario del concreto (Tabla 3.5.1-1) [0.140..0.155]
+fpu = 270 ksi // Torón grado 270, baja relajación (5.4.4.1) [250..270]
 fpy = 0.90*fpu // Fluencia del torón de baja relajación
-Ep = 28500 ksi // Módulo del acero de presfuerzo (5.4.4.2)
-Es = 29000 ksi // Módulo del acero de refuerzo
-fy = 60 ksi // Refuerzo pasivo Gr. 60
+Ep = 28500 ksi // Módulo del acero de presfuerzo (5.4.4.2) [27000..29500]
+Es = 29000 ksi // Módulo del acero de refuerzo [28000..30000]
+fy = 60 ksi // Refuerzo pasivo Gr. 60 [40..80]
 Eci = EcLRFD(fci, gammac) // Módulo en la transferencia (5.4.2.4-1)
 Ec = EcLRFD(fc, gammac) // Módulo de la viga
 Ecd = EcLRFD(fcd, gammac) // Módulo de la losa
 ## Presfuerzo
-Ns = 30 // Número de torones de 0.6 in
-Ap1 = 0.217 in^2 // Área de un torón de 0.6 in
-dbs = 0.6 in // Diámetro del torón
+Ns = 30 // Número de torones de 0.6 in [10..60]
+Ap1 = 0.217 in^2 // Área de un torón de 0.6 in [0.153..0.294]
+dbs = 0.6 in // Diámetro del torón [0.5..0.7]
 Aps = Ns*Ap1 // Área total de presfuerzo
 fpj = 0.75*fpu // Esfuerzo de tensado (Tabla 5.9.2.2-1: ≤ 0.75 fpu)
-ybsm = 4.0 in // Centroide de torones desde la base, en el centro de la luz
-ybse = 10.0 in // Centroide de torones en el extremo (torones desviados)
+ybsm = 4.0 in // Centroide de torones desde la base, en el centro de la luz [2..8]
+ybse = 10.0 in // Centroide de torones en el extremo (torones desviados) [2..30]
 em = yb - ybsm // Excentricidad en el centro de la luz
 ee = yb - ybse // Excentricidad en el extremo
-H = 70 // Humedad relativa media anual (%) (Fig. 5.4.2.3.3-1)
+H = 70 // Humedad relativa media anual (%) (Fig. 5.4.2.3.3-1) [40..100]
 # Propiedades de la sección
 St = Ig/(h - yb) // Módulo resistente superior, viga sola
 Sb = Ig/yb // Módulo resistente inferior, viga sola
@@ -496,7 +522,7 @@ beta = betaMCFT(epsx) // β = 4.8/(1 + 750 εs)
 theta = thetaMCFT(epsx) // θ = 29 + 3500 εs
 Vc = 0.0316*beta*sqrt(fc/(1 ksi))*1 ksi*bw*dv -> kip // Vc = 0.0316 β λ √f'c bv dv (5.7.3.3-3)
 Avs = 2*0.20 in^2 // Estribos #4 de dos ramas
-sv = 12 in // Espaciamiento de estribos en la zona de apoyo
+sv = 12 in // Espaciamiento de estribos en la zona de apoyo [3..24]
 Vs = Avs*fy*dv*cot(theta)/sv -> kip // (5.7.3.3-4)
 Vn = min(Vc + Vs + Vp, 0.25*fc*bw*dv + Vp) -> kip // (5.7.3.3-1, -2)
 check Vux <= 0.90*Vn // Resistencia a cortante, φ = 0.90
@@ -524,6 +550,19 @@ const acero = {
   normas: 'AASHTO LRFD Bridge Design Specifications 9.ª ed. (2020), Secc. 3, 4, 6 y Apéndice D6 · FHWA Steel Bridge Design Handbook',
   desc: 'Viga I armada interior de puente simplemente apoyado L = 100 ft compuesta con losa: propiedades n y 3n, momento plástico Mp (D6.1), compacidad y ductilidad, Resistencia I, Servicio II, constructibilidad durante el vaciado de la losa (6.10.3), cortante del alma y deflexión.',
   titulo: 'Diseño de viga de acero compuesta — AASHTO LRFD Sección 6',
+  validacion: {
+    fuente: 'AASHTO Standard Specifications, Apéndice A (HS20-44 = camión HL-93; L = 100 ft → 1524.9 kip·ft) y carril 0.64 klf (wL²/8 = 800 kip·ft); demás valores de control',
+    nota: 'Solo los momentos del camión y del carril por carril son valores publicados; la viga I armada no es la del ejemplo FHWA-NHI-04-041. Los demás son valores de control de esta implementación (Mp de D6.1 por los tres casos de la ENP).',
+    valores: [
+      { var: 'Mtr', unidad: 'kip*ft', esperado: 1524.9, tol: 0.003, desc: 'Apéndice A HS20: camión, L = 100 ft' },
+      { var: 'Mln', unidad: 'kip*ft', esperado: 800, tol: 0.004, desc: 'Carril 0.64 klf: wL²/8' },
+      { var: 'gM', esperado: 0.6641, tol: 0.002, desc: 'Factor de distribución de momento' },
+      { var: 'Mp', unidad: 'kip*ft', esperado: 8198, tol: 0.002, desc: 'Momento plástico de la sección compuesta (D6.1)' },
+      { var: 'Mn', unidad: 'kip*ft', esperado: 8047, tol: 0.002, desc: 'Resistencia nominal a flexión (6.10.7.1.2)' },
+      { var: 'Mu', unidad: 'kip*ft', esperado: 5774, tol: 0.002, desc: 'Momento último (Resistencia I)' },
+      { var: 'Vn', unidad: 'kip', esperado: 343.8, tol: 0.002, desc: 'Resistencia nominal a cortante del alma' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 ## Descripción
@@ -540,28 +579,28 @@ Viga **interior** de un puente de un tramo de 100 ft con cinco vigas I armadas d
 3. **Compuesta corto plazo** ($n$): carga viva HL-93 con IM.`),
     calc(`# Datos
 ## Puente
-L = 100 ft // Luz de cálculo
-S = 9.0 ft // Separación entre vigas
-Nb = 5 // Número de vigas
-wcc = 40 ft // Ancho de calzada entre barreras
-ts = 8.5 in // Espesor de la losa
-th = 2.0 in // Altura del acartelamiento (borde superior del ala a fondo de losa)
-Lb = 20 ft // Separación de diafragmas (longitud no arriostrada del ala comprimida)
+L = 100 ft // Luz de cálculo [60..200]
+S = 9.0 ft // Separación entre vigas [6..14]
+Nb = 5 // Número de vigas [4..10]
+wcc = 40 ft // Ancho de calzada entre barreras [24..60]
+ts = 8.5 in // Espesor de la losa [7.5..10]
+th = 2.0 in // Altura del acartelamiento (borde superior del ala a fondo de losa) [0..4]
+Lb = 20 ft // Separación de diafragmas (longitud no arriostrada del ala comprimida) [10..30]
 ## Materiales
 Fy = 50 ksi // Acero ASTM A709 Gr. 50 [36 ksi|50 ksi|70 ksi]
-Es = 29000 ksi // Módulo del acero (6.4.1)
-fc = 4.0 ksi // f'c de la losa
-gammac = 0.150 kip/ft^3 // Concreto armado
-gammas = 0.490 kip/ft^3 // Acero
+Es = 29000 ksi // Módulo del acero (6.4.1) [28000..30000]
+fc = 4.0 ksi // f'c de la losa [3..6]
+gammac = 0.150 kip/ft^3 // Concreto armado [0.140..0.155]
+gammas = 0.490 kip/ft^3 // Acero [0.485..0.495]
 Ecd = EcLRFD(fc, gammac) // Módulo de la losa
 n = roundup(Es/Ecd, 1) // Relación modular (6.10.1.1.1b)
 ## Sección de acero (viga armada)
-bc = 14 in // Ancho del ala superior (comprimida)
-tc = 0.875 in // Espesor del ala superior
-D = 48 in // Altura del alma
-tw = 0.5 in // Espesor del alma
-bt = 16 in // Ancho del ala inferior (traccionada)
-tt = 1.25 in // Espesor del ala inferior
+bc = 14 in // Ancho del ala superior (comprimida) [12..30]
+tc = 0.875 in // Espesor del ala superior [0.75..2.5]
+D = 48 in // Altura del alma [30..120]
+tw = 0.5 in // Espesor del alma [0.4..1.0]
+bt = 16 in // Ancho del ala inferior (traccionada) [12..30]
+tt = 1.25 in // Espesor del ala inferior [0.75..3]
 # Proporciones de la sección (6.10.2)
 check D/tw <= 150 // Alma sin rigidizadores longitudinales (6.10.2.1.1)
 check bc/(2*tc) <= 12 and bt/(2*tt) <= 12 // Esbeltez de alas bf/2tf ≤ 12 (6.10.2.2-1)
@@ -654,7 +693,7 @@ rt = bc/sqrt(12*(1 + Dc*tw/(3*bc*tc))) // Radio de giro efectivo (6.10.8.2.3-9)
 Lp = 1.0*rt*sqrt(Es/Fy) -> ft // (6.10.8.2.3-4)
 Fyr = max(0.7*Fy, 0.5*Fy) // Fyr = 0.7 Fyc ≥ 0.5 Fyw
 Lr = pi*rt*sqrt(Es/Fyr) -> ft // (6.10.8.2.3-5)
-Cb = 1.0 // Gradiente de momento (segmento central, conservador)
+Cb = 1.0 // Gradiente de momento (segmento central, conservador) [1.0..2.3]
 Fnc = si(Lb <= Lp, Fy, si(Lb <= Lr, min(Cb*(1 - (1 - Fyr/Fy)*(Lb - Lp)/(Lr - Lp))*Fy, Fy), min(Cb*pi^2*Es/(Lb/rt)^2, Fy))) -> ksi // Pandeo lateral-torsional (6.10.8.2.3)
 check fbu <= 1.00*Fy // Fluencia del ala (6.10.3.2.1-1)
 check fbu <= 1.00*Fnc // Pandeo del ala comprimida (6.10.3.2.1-2)
@@ -664,7 +703,7 @@ check fbu <= 1.00*Fcrw // Pandeo del alma durante la construcción (6.10.3.2.1-3
 # Cortante en el apoyo (6.10.9)
 Vu = (1.25*(wst + wsl + wb) + 1.50*ww)*L/2 + 1.75*VLLv -> kip // Resistencia I en el apoyo
 Vp = 0.58*Fy*D*tw -> kip // Fuerza cortante plástica (6.10.9.2-2)
-kv = 5 // Alma sin rigidizadores transversales
+kv = 5 // Alma sin rigidizadores transversales [5..20]
 Cv = si(D/tw <= 1.12*sqrt(Es*kv/Fy), 1, si(D/tw <= 1.40*sqrt(Es*kv/Fy), 1.12/(D/tw)*sqrt(Es*kv/Fy), 1.57/(D/tw)^2*(Es*kv/Fy))) // Relación C (6.10.9.3.2-4 a -6)
 Vn = Cv*Vp // Resistencia nominal del alma no rigidizada (6.10.9.2-1)
 check Vu <= 1.00*Vn // φv = 1.00
@@ -689,6 +728,18 @@ const estribo = {
   normas: NORMAS_PE,
   desc: 'Estribo en voladizo H = 7.0 m: cargas DC, DW, LL, BR, EH, EV, LS y sismo (Mononobe–Okabe + inercia), Resistencia Ia/Ib y Evento Extremo I, excentricidad, deslizamiento, capacidad portante, longitud de apoyo N y diseño de pantalla, punta y talón.',
   titulo: 'Diseño de estribo de concreto armado en voladizo H = 7.00 m — AASHTO LRFD / MTC 2018',
+  validacion: {
+    fuente: 'Control: AASHTO LRFD 3.11, 11.6 y Apéndice A11 (M-O); Manual de Puentes MTC 2018',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Ka = 1/3 (φ = 30°) y kh = 0.5·Fpga·PGA = 0.5·1.1·0.40 se comprueban a mano; Fi·EQw = kh·ΣWi·yi lo comprueba tests/bridges.test.mjs.',
+    valores: [
+      { var: 'Ka', esperado: 0.33333, tol: 0.0005, desc: 'Ka de Rankine, φ = 30°' },
+      { var: 'kh', esperado: 0.22, tol: 0.0005, desc: 'kh = 0.5·Fpga·PGA' },
+      { var: 'EH', unidad: 'tonf', esperado: 15.52, tol: 0.002, desc: 'Empuje de tierras horizontal' },
+      { var: 'KAE', esperado: 0.4907, tol: 0.002, desc: 'Kae de Mononobe–Okabe' },
+      { var: 'Mus', unidad: 'tonf*m', esperado: 79.1, tol: 0.002, desc: 'Momento último en la base de la pantalla' },
+      { var: 'qb', unidad: 'tonf/m^2', esperado: 32.36, tol: 0.002, desc: 'Presión de contacto, Resistencia I' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 ## Descripción
@@ -705,38 +756,38 @@ Estribo de concreto armado tipo **voladizo** (pantalla, cajuela y parapeto sobre
 - Presión de contacto uniforme de Meyerhof sobre $B' = B - 2e$ (10.6.3.1.5).`),
     calc(`# Datos
 ## Superestructura (puente viga-losa L = 20 m)
-L = 20.00 m // Luz del puente
-Ba = 8.00 m // Ancho del estribo (ancho del tablero)
-wDCs = 10.20 tonf/m // Peso DC de la superestructura por metro de puente (vigas, losa, barreras, diafragmas)
-wDWs = 0.81 tonf/m // Peso DW (asfalto) por metro de puente
-NL = 2 // Carriles de diseño
+L = 20.00 m // Luz del puente [10..40]
+Ba = 8.00 m // Ancho del estribo (ancho del tablero) [4..15]
+wDCs = 10.20 tonf/m // Peso DC de la superestructura por metro de puente (vigas, losa, barreras, diafragmas) [4..20]
+wDWs = 0.81 tonf/m // Peso DW (asfalto) por metro de puente [0.3..2]
+NL = 2 // Carriles de diseño [1..4]
 ## Geometría del estribo
-H = 7.00 m // Altura total, desde el fondo de la zapata hasta la rasante
-hz = 0.80 m // Espesor de la zapata
-B = 5.20 m // Ancho de la zapata
-Lp = 1.40 m // Longitud de la punta
-t2 = 0.90 m // Espesor de la pantalla (cuerpo) bajo la cajuela
-t1 = 0.30 m // Espesor del parapeto (muro espaldar)
-hb = 1.65 m // Altura del parapeto: viga + apoyo + losa (1.50 + 0.15)
-Df = 1.50 m // Profundidad de desplante (relleno sobre la punta)
+H = 7.00 m // Altura total, desde el fondo de la zapata hasta la rasante [4..12]
+hz = 0.80 m // Espesor de la zapata [0.6..1.5]
+B = 5.20 m // Ancho de la zapata [3..9]
+Lp = 1.40 m // Longitud de la punta [0.8..2.5]
+t2 = 0.90 m // Espesor de la pantalla (cuerpo) bajo la cajuela [0.6..1.5]
+t1 = 0.30 m // Espesor del parapeto (muro espaldar) [0.25..0.50]
+hb = 1.65 m // Altura del parapeto: viga + apoyo + losa (1.50 + 0.15) [1..2.5]
+Df = 1.50 m // Profundidad de desplante (relleno sobre la punta) [1..3]
 hp = H - hz // Altura de la pantalla
 Lt = B - Lp - t2 // Longitud del talón
 bc = t2 - t1 // Ancho de la cajuela (asiento de las vigas)
 ## Suelos y materiales
-gammas = 1.90 tonf/m^3 // Peso unitario del relleno
-phis = 30 deg // Ángulo de fricción del relleno
-phif = 32 deg // Ángulo de fricción del suelo de fundación
-qn = 75 tonf/m^2 // Capacidad portante nominal (estudio geotécnico)
-gammac = 2.40 tonf/m^3 // Concreto armado del estribo
-fc = 280 kgf/cm^2 // f'c del estribo
-fy = 4200 kgf/cm^2 // Acero Gr. 60
+gammas = 1.90 tonf/m^3 // Peso unitario del relleno [1.5..2.2]
+phis = 30 deg // Ángulo de fricción del relleno [20..40]
+phif = 32 deg // Ángulo de fricción del suelo de fundación [20..40]
+qn = 75 tonf/m^2 // Capacidad portante nominal (estudio geotécnico) [20..150]
+gammac = 2.40 tonf/m^3 // Concreto armado del estribo [2.2..2.5]
+fc = 280 kgf/cm^2 // f'c del estribo [175..420]
+fy = 4200 kgf/cm^2 // Acero Gr. 60 [2800..4200]
 ## Peligro sísmico (MTC 2018 / AASHTO 3.10, Tr = 1000 años)
-PGA = 0.40 // Aceleración pico en roca, en g (mapa de isoaceleraciones MTC)
+PGA = 0.40 // Aceleración pico en roca, en g (mapa de isoaceleraciones MTC) [0.05..0.60]
 sitio = 4 // Clase de sitio [2 : B roca|3 : C suelo muy denso|4 : D suelo rígido|5 : E suelo blando]
 Fpga = FpgaLRFD(PGA, sitio) // Factor de sitio (Tabla 3.10.3.2-1)
 As = Fpga*PGA // Coeficiente de aceleración As = Fpga·PGA (3.10.4.2-2)
 kh = 0.5*As // Coeficiente sísmico horizontal: el estribo puede desplazarse 25–50 mm (11.6.5.2.2)
-gEQ = 0.50 // Factor de carga viva en Evento Extremo I (Tabla 3.4.1-1, práctica MTC)
+gEQ = 0.50 // Factor de carga viva en Evento Extremo I (Tabla 3.4.1-1, práctica MTC) [0..1.0]
 # Longitud de apoyo en la cajuela (4.7.4.4)
 Nap = NapLRFD(L, H, 0 deg) // N = (200 + 0.0017L + 0.0067H)(1 + 0.000125S²)
 zona = zonaLRFD(FvLRFD(0.40, sitio)*0.40) // Zona sísmica (Tabla 3.10.6-1) con S1 = 0.40 g
@@ -883,6 +934,18 @@ const pilar = {
   normas: NORMAS_PE + ' · AASHTO Guide Specifications for LRFD Seismic Bridge Design (referencial)',
   desc: 'Pilar intermedio de puente continuo 2 × 25 m: masa sísmica, rigidez y periodo en ambas direcciones, espectro AASHTO/MTC (Fpga, Fa, Fv), R (Tabla 3.10.7.1-1), combinación 100 %–30 %, esbeltez, diagrama P–M con φ AASHTO, P–Δ, cortante y confinamiento.',
   titulo: 'Diseño sísmico de pilar de dos columnas — AASHTO LRFD 3.10 / MTC 2018',
+  validacion: {
+    fuente: 'Control: AASHTO LRFD 3.10 (espectro de 3 puntos, Fa/Fv), 4.7.4.3 (uniforme) y 5.6.4 (P-M)',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). SDS = Fa·Ss = 1.12·0.95 y SD1 = Fv·S1 = 1.64·0.38 se comprueban a mano (tablas 3.10.3.2 interpoladas).',
+    valores: [
+      { var: 'SDS', esperado: 1.064, tol: 0.0005, desc: 'SDS = Fa·Ss' },
+      { var: 'SD1', esperado: 0.6232, tol: 0.0005, desc: 'SD1 = Fv·S1' },
+      { var: 'TL', unidad: 's', esperado: 0.7536, tol: 0.002, desc: 'Periodo longitudinal' },
+      { var: 'FeL', unidad: 'tonf', esperado: 330.7, tol: 0.002, desc: 'Fuerza sísmica longitudinal elástica' },
+      { var: 'DCpm', esperado: 0.7764, tol: 0.002, desc: 'D/C de la columna en el diagrama P-M' },
+      { var: 'Nmin', unidad: 'cm', esperado: 50.79, tol: 0.002, desc: 'Longitud mínima de apoyo N (4.7.4.4)' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 ## Descripción
@@ -897,21 +960,21 @@ Pilar central de un puente continuo de dos tramos de 25 m, formado por **dos col
 Método de un modo con carga uniforme (4.7.4.3.2c): superestructura rígida, masa concentrada en el cabezal, rigidez lateral de las columnas con inercia fisurada $I_e = 0.5\\,I_g$.`),
     calc(`# Datos
 ## Superestructura y pilar
-L1 = 25.0 m // Luz de cada tramo (puente continuo 2 × 25 m)
-wDCs = 10.20 tonf/m // Peso DC de la superestructura por metro
-wDWs = 0.81 tonf/m // Peso DW por metro
-NL = 2 // Carriles de diseño
-ncol = 2 // Número de columnas
-bcol = 1.20 m // Lado de la columna (sección cuadrada)
-Hc = 8.00 m // Altura libre de la columna (empotramiento a eje del cabezal)
+L1 = 25.0 m // Luz de cada tramo (puente continuo 2 × 25 m) [15..40]
+wDCs = 10.20 tonf/m // Peso DC de la superestructura por metro [4..20]
+wDWs = 0.81 tonf/m // Peso DW por metro [0.3..2]
+NL = 2 // Carriles de diseño [1..4]
+ncol = 2 // Número de columnas [2..4]
+bcol = 1.20 m // Lado de la columna (sección cuadrada) [0.8..2.0]
+Hc = 8.00 m // Altura libre de la columna (empotramiento a eje del cabezal) [4..15]
 Wcab = 2.40 tonf/m^3*1.2 m*1.4 m*7.0 m -> tonf // Peso de la viga cabezal 1.20 × 1.40 × 7.00 m
-fc = 280 kgf/cm^2 // f'c de las columnas
-fy = 4200 kgf/cm^2 // Acero Gr. 60
+fc = 280 kgf/cm^2 // f'c de las columnas [175..420]
+fy = 4200 kgf/cm^2 // Acero Gr. 60 [2800..4200]
 Ec = EcLRFD(fc) -> kgf/cm^2 // Módulo de elasticidad (5.4.2.4-1)
 ## Peligro sísmico (mapas MTC, Tr = 1000 años)
-PGA = 0.40 // Aceleración pico del terreno en roca, g
-Ss = 0.95 // Aceleración espectral a 0.2 s en roca, g
-S1 = 0.38 // Aceleración espectral a 1.0 s en roca, g
+PGA = 0.40 // Aceleración pico del terreno en roca, g [0.05..0.60]
+Ss = 0.95 // Aceleración espectral a 0.2 s en roca, g [0.2..2.5]
+S1 = 0.38 // Aceleración espectral a 1.0 s en roca, g [0.05..1.0]
 sitio = 4 // Clase de sitio (Tabla 3.10.3.1-1) [2 : B roca|3 : C suelo muy denso|4 : D suelo rígido|5 : E suelo blando]
 imp = 2 // Categoría operativa (3.10.5) [1 : Crítico|2 : Esencial|3 : Otros]
 # Espectro de diseño (3.10.4)
@@ -958,7 +1021,7 @@ Mu1 = 1.75*BRLRFD(2*L1, NL)/ncol*(Hc + 2.5 m) -> tonf*m // Resistencia I: frenad
 Pu2 = 1.25*PD + 1.50*PW + 0.5*PLL + PEQe // Evento Extremo I (máx. compresión): γp máximos, γEQ = 0.5 (Tabla 3.4.1-1)
 Pu3 = 0.90*PD + 0.65*PW - PEQe // Evento Extremo I (mín. compresión): γp mínimos, sin carga viva
 ## Esbeltez y magnificación de momentos en Resistencia I (5.6.4.3)
-Kcol = 2.0 // Factor de longitud efectiva longitudinal: columna en voladizo con desplazamiento lateral
+Kcol = 2.0 // Factor de longitud efectiva longitudinal: columna en voladizo con desplazamiento lateral [1..2.1]
 rcol = 0.30*bcol // Radio de giro de la sección rectangular (5.6.4.3)
 KLr = Kcol*Hc/rcol // Esbeltez
 check KLr <= 100 // Método aproximado aplicable (KLu/r < 100); si no, análisis de segundo orden (5.6.4.3)
@@ -980,8 +1043,8 @@ VuL = max(FeL, FeT)/ncol // Cortante con la fuerza elástica no reducida (R = 1)
 Ag = bcol^2
 Vc = si(Pu3 > 0.10*fc*Ag, 0.083*2*sqrtMPa(fc)*bcol*0.9*(bcol - 7.5 cm), 0 tonf) -> tonf // Vc en zona de rótula (Vc = 0 si Pu < 0.10 f'c Ag)
 est = 5 // Estribo / gancho [4 : 1/2"|5 : 5/8"]
-nr = 5 // Ramas de estribo en cada dirección (estribo perimetral + ganchos)
-se = 10 cm // Espaciamiento en la zona de rótula plástica
+nr = 5 // Ramas de estribo en cada dirección (estribo perimetral + ganchos) [3..8]
+se = 10 cm // Espaciamiento en la zona de rótula plástica [7.5..15]
 dvc = 0.9*(bcol - 7.5 cm) // Peralte efectivo de corte
 Vs = nr*Ab(est)*fy*dvc/se -> tonf
 check VuL <= 0.90*min(Vc + Vs, 0.25*fc*bcol*dvc) // Resistencia a cortante
@@ -1010,6 +1073,18 @@ const neopreno = {
   normas: 'AASHTO LRFD 9.ª ed. Secc. 14 (14.4, 14.6, 14.7.5 Método B, 14.7.6 Método A) · Manual de Puentes MTC 2018 · AASHTO M 251',
   desc: 'Apoyo de 300 × 450 mm con 4 capas internas de 12 mm: factor de forma, compresión (Método A), deformaciones por corte (Método B: axial, rotación y corte, estáticas y cíclicas), estabilidad, zunchos de acero, deflexión y anclaje.',
   titulo: 'Diseño de apoyo elastomérico reforzado con acero — AASHTO LRFD Sección 14',
+  validacion: {
+    fuente: 'Control: AASHTO LRFD 14.7.6 (Método A) y 14.7.5 (Método B) para apoyos elastoméricos zunchados',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Comprobados a mano: S = L·W/(2hri(L + W)) = 300·450/(2·12·750) = 7.5 y σs,st = (PDC + PDW)/(L·W) = 278 kN/135 000 mm².',
+    valores: [
+      { var: 'Si', esperado: 7.5, tol: 0.0005, desc: 'Factor de forma de la capa interior' },
+      { var: 'sst', unidad: 'MPa', esperado: 2.0593, tol: 0.001, desc: 'Esfuerzo de compresión estático' },
+      { var: 'hrt', unidad: 'mm', esperado: 60, tol: 0.0001, desc: 'Espesor total de elastómero' },
+      { var: 'Ds', unidad: 'mm', esperado: 6.536, tol: 0.002, desc: 'Desplazamiento de corte de diseño' },
+      { var: 'gast', esperado: 0.4271, tol: 0.002, desc: 'Deformación por carga axial estática' },
+      { var: 'scr', unidad: 'MPa', esperado: 25.78, tol: 0.002, desc: 'Esfuerzo crítico de estabilidad' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 Apoyo de **neopreno zunchado** (elastómero con láminas de acero vulcanizadas) bajo una viga interior del puente viga-losa de 20 m. El apoyo permite la rotación de la viga y los desplazamientos longitudinales por temperatura, contracción y flujo plástico mediante deformación por corte del elastómero.
@@ -1023,22 +1098,22 @@ Apoyo de **neopreno zunchado** (elastómero con láminas de acero vulcanizadas) 
 Estado límite de **Servicio** (γ = 1.0). Las cargas estáticas (st) son DC + DW; las cíclicas (cy) corresponden a la carga viva. Para las verificaciones de compresión se toma el módulo de corte mínimo del rango de dureza y, para las fuerzas transmitidas, el máximo (14.7.5.2).`),
     calc(`# Datos
 ## Cargas de servicio por apoyo (viga interior, L = 20 m)
-PDC = 255 kN // Reacción por carga muerta DC
-PDW = 23 kN // Reacción por superficie de rodadura DW
-PLL = 342 kN // Reacción por carga viva LL+IM (con factor de distribución de cortante)
-thst = 0.0030 // Rotación estática por cargas permanentes y contraflecha (rad)
-thcy = 0.0020 // Rotación por carga viva (rad)
-Lexp = 10.0 m // Longitud de dilatación (desde el punto fijo, mitad de la luz)
-DT = 35 // Rango de temperatura de diseño (°C, Método A / MTC costa)
-alfa = 10.8e-6 // Coeficiente de dilatación del concreto (1/°C, 5.4.2.2)
+PDC = 255 kN // Reacción por carga muerta DC [50..2000]
+PDW = 23 kN // Reacción por superficie de rodadura DW [5..300]
+PLL = 342 kN // Reacción por carga viva LL+IM (con factor de distribución de cortante) [50..1500]
+thst = 0.0030 // Rotación estática por cargas permanentes y contraflecha (rad) [0..0.010]
+thcy = 0.0020 // Rotación por carga viva (rad) [0..0.010]
+Lexp = 10.0 m // Longitud de dilatación (desde el punto fijo, mitad de la luz) [5..50]
+DT = 35 // Rango de temperatura de diseño (°C, Método A / MTC costa) [20..60]
+alfa = 10.8e-6 // Coeficiente de dilatación del concreto (1/°C, 5.4.2.2) [9e-6..12e-6]
 ## Apoyo
-Lb = 300 mm // Dimensión paralela al eje del puente
-Wb = 450 mm // Dimensión transversal
-hri = 12 mm // Espesor de cada capa interior de elastómero
-nint = 4 // Número de capas interiores
-hrc = 6 mm // Espesor de las capas exteriores (≤ 0.7 hri)
-hs = 3 mm // Espesor de los zunchos de acero
-Fys = 250 MPa // Fluencia de los zunchos (ASTM A36)
+Lb = 300 mm // Dimensión paralela al eje del puente [150..600]
+Wb = 450 mm // Dimensión transversal [200..900]
+hri = 12 mm // Espesor de cada capa interior de elastómero [8..20]
+nint = 4 // Número de capas interiores [2..12]
+hrc = 6 mm // Espesor de las capas exteriores (≤ 0.7 hri) [3..10]
+hs = 3 mm // Espesor de los zunchos de acero [2..5]
+Fys = 250 MPa // Fluencia de los zunchos (ASTM A36) [230..350]
 dur = 60 // Dureza Shore A [50 : 50|60 : 60|70 : 70]
 Gmin = si(dur == 50, 0.66 MPa, si(dur == 60, 0.90 MPa, 1.38 MPa)) // Módulo de corte mínimo (14.7.6.2)
 Gmax = si(dur == 50, 0.90 MPa, si(dur == 60, 1.38 MPa, 2.07 MPa)) // Módulo de corte máximo
@@ -1063,7 +1138,7 @@ check hrt >= 2*Ds // Deformación por corte hrt ≥ 2Δs (14.7.6.3.4-1)
 check Hbt <= min(Lb, Wb)/3 // Estabilidad: espesor total ≤ L/3 y W/3 (14.7.6.3.6)
 # Método B (14.7.5)
 Da = 1.4 // Coeficiente para apoyo rectangular (14.7.5.3.3)
-Dr = 0.5
+Dr = 0.5 // Coeficiente para apoyo rectangular, rotación (14.7.5.3.3)
 thsd = thst + 0.005 // Rotación estática + tolerancia de construcción (14.4.2.1)
 gast = Da*sst/(Gmin*Si) // Deformación por carga axial estática (14.7.5.3.3-3)
 gacy = Da*scy/(Gmin*Si) // Deformación por carga axial cíclica
@@ -1103,6 +1178,18 @@ const sismo = {
   normas: 'AASHTO LRFD 9.ª ed. Art. 3.10, 4.7.4 · Manual de Puentes MTC (2018) 2.4.3.11',
   desc: 'Factores de sitio Fpga, Fa, Fv con interpolación, espectro de diseño Csm (gráfico y tabla), zona sísmica, método de análisis mínimo, factores R, método de carga uniforme para un puente continuo y longitud mínima de apoyo N.',
   titulo: 'Análisis sísmico de puente — AASHTO LRFD 3.10 / Manual de Puentes MTC 2018',
+  validacion: {
+    fuente: 'Control: AASHTO LRFD 3.10.4 (espectro), 4.7.4.3.2 (método de carga uniforme) y 4.7.4.4 (N mínima)',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). SDS = Fa·Ss = 1.08·1.05 y W = 11·50 + 40 = 590 t se comprueban a mano.',
+    valores: [
+      { var: 'SDS', esperado: 1.134, tol: 0.0005, desc: 'SDS = Fa·Ss' },
+      { var: 'W', unidad: 'tonf', esperado: 590, tol: 0.0005, desc: 'Peso sísmico' },
+      { var: 'Tm', unidad: 's', esperado: 0.7184, tol: 0.002, desc: 'Periodo del método de carga uniforme' },
+      { var: 'Csm', esperado: 0.9237, tol: 0.002, desc: 'Coeficiente de respuesta elástica' },
+      { var: 'Fe', unidad: 'tonf', esperado: 545, tol: 0.002, desc: 'Fuerza sísmica elástica' },
+      { var: 'Nreq', unidad: 'cm', esperado: 50.79, tol: 0.002, desc: 'Longitud de apoyo requerida (150 % de N)' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 El Manual de Puentes del MTC (2018) adopta el procedimiento de AASHTO LRFD: los parámetros de peligro **PGA**, **S_s** (0.2 s) y **S_1** (1.0 s) en roca (clase B) se obtienen de los mapas de isoaceleraciones para un periodo de retorno de **1000 años** (7 % de probabilidad de excedencia en 75 años) y se corrigen por la clase de sitio.
@@ -1123,9 +1210,9 @@ El Manual de Puentes del MTC (2018) adopta el procedimiento de AASHTO LRFD: los 
 3. Zona sísmica (Tabla 3.10.6-1), método mínimo de análisis (Tabla 4.7.4.3.1-1) y factores de modificación de respuesta $R$ (Tabla 3.10.7.1-1).
 4. **Método de carga uniforme** (4.7.4.3.2c) en dirección longitudinal y longitud mínima de apoyo $N$ (4.7.4.4).`),
     calc(`# Peligro sísmico y espectro
-PGA = 0.45 // Aceleración pico del terreno en roca (g), mapa MTC Tr = 1000 años
-Ss = 1.05 // Aceleración espectral a 0.2 s en roca (g)
-S1 = 0.42 // Aceleración espectral a 1.0 s en roca (g)
+PGA = 0.45 // Aceleración pico del terreno en roca (g), mapa MTC Tr = 1000 años [0.05..0.60]
+Ss = 1.05 // Aceleración espectral a 0.2 s en roca (g) [0.2..2.5]
+S1 = 0.42 // Aceleración espectral a 1.0 s en roca (g) [0.05..1.0]
 sitio = 4 // Clase de sitio [1 : A roca dura|2 : B roca|3 : C suelo muy denso|4 : D suelo rígido|5 : E suelo blando]
 imp = 2 // Categoría operativa del puente (3.10.5) [1 : Crítico|2 : Esencial|3 : Otros]
 Fpga = FpgaLRFD(PGA, sitio) // Factor de sitio para PGA (Tabla 3.10.3.2-1)
@@ -1147,10 +1234,10 @@ Cv = CsmLRFD(Tv, As, SDS, SD1) // Ordenadas espectrales (g)`),
 - **Combinación direccional** (3.10.8): 100 % de una dirección + 30 % de la ortogonal.`),
     calc(`# Método de carga uniforme — dirección longitudinal (4.7.4.3.2c)
 ## Puente continuo de dos tramos
-Ltot = 50.0 m // Longitud total del puente (2 × 25 m)
-wsup = 11.0 tonf/m // Peso de la superestructura por metro (DC + DW)
-Wsub = 40 tonf // Peso participante de la subestructura (cabezal y mitad de columnas)
-Klong = 4600 tonf/m // Rigidez longitudinal total de los apoyos (pilar con apoyos fijos)
+Ltot = 50.0 m // Longitud total del puente (2 × 25 m) [20..200]
+wsup = 11.0 tonf/m // Peso de la superestructura por metro (DC + DW) [5..30]
+Wsub = 40 tonf // Peso participante de la subestructura (cabezal y mitad de columnas) [10..200]
+Klong = 4600 tonf/m // Rigidez longitudinal total de los apoyos (pilar con apoyos fijos) [500..20000]
 po = 1 tonf/m // Carga uniforme de referencia
 vsmax = po*Ltot/Klong -> m // Desplazamiento bajo po (todas las secciones se desplazan igual)
 Kb = po*Ltot/vsmax -> tonf/m // Rigidez lateral del puente (4.7.4.3.2c-1)
@@ -1168,12 +1255,12 @@ check zona >= 1 and zona <= 4 // Zona sísmica definida
 Fcon1 = si(As < 0.05, 0.15, 0.25)*W // Zona 1: 0.15 o 0.25 de la carga permanente tributaria (3.10.9.2)
 Fcon = si(zona == 1, Fcon1, Fe/0.8) // Zonas 2–4: fuerza elástica / R de conexión (0.8)
 # Longitud mínima de apoyo (4.7.4.4)
-Hpil = 8.0 m // Altura promedio de las columnas que soportan el tramo hasta la junta
+Hpil = 8.0 m // Altura promedio de las columnas que soportan el tramo hasta la junta [3..20]
 skew = 0 deg // Esviaje del apoyo [0 deg|15 deg|30 deg|45 deg]
 Nap = NapLRFD(Ltot, Hpil, skew) // N = (200 + 0.0017L + 0.0067H)(1 + 0.000125S²) mm (4.7.4.4-1)
 pctN = NpctLRFD(zona, As) // Porcentaje de N (Tabla 4.7.4.4-1)
 Nreq = pctN*Nap // Longitud de apoyo requerida en los estribos
-bseat = 0.60 m // Ancho de cajuela disponible
+bseat = 0.60 m // Ancho de cajuela disponible [0.4..1.2]
 check Nreq <= bseat // Longitud de apoyo suficiente`),
     summary(),
   ],
@@ -1207,6 +1294,18 @@ const alcantarilla = {
   normas: 'AASHTO LRFD 9.ª ed. Art. 3.6.1.2.6, 3.11, 12.11 y 5.12.7.3 · Manual de Puentes MTC (2018)',
   desc: 'Alcantarilla de una celda 3.00 × 2.50 m bajo 1.50 m de relleno: cargas EV con interacción suelo-estructura, EH en reposo, LS, HL-93 distribuida a través del relleno (LLDF = 1.15), análisis del marco cerrado por pendiente-deflexión y diseño de losas y muros.',
   titulo: 'Diseño de alcantarilla marco de concreto armado 3.00 × 2.50 m — AASHTO LRFD',
+  validacion: {
+    fuente: 'Control: AASHTO LRFD 3.6.1.2.6, 3.11, 12.11 y Secc. 5 (alcantarilla cajón de concreto armado)',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Fe = 1 + 0.20·Hf/Bc = 1 + 0.2·1.5/3.6 (12.11.2.2.1) se comprueba a mano.',
+    valores: [
+      { var: 'Fe', esperado: 1.08333, tol: 0.0005, desc: 'Factor de interacción suelo-estructura' },
+      { var: 'pEV', unidad: 'tonf/m', esperado: 3.087, tol: 0.002, desc: 'Carga vertical del relleno sobre la losa superior (franja de 1 m)' },
+      { var: 'pLL', unidad: 'tonf/m', esperado: 2.359, tol: 0.002, desc: 'Carga viva distribuida sobre la losa superior (franja de 1 m)' },
+      { var: 'Mu1', unidad: 'tonf*m', esperado: 7.094, tol: 0.002, desc: 'Momento último en la losa superior (centro)' },
+      { var: 'Mu3', unidad: 'tonf*m', esperado: 7.268, tol: 0.002, desc: 'Momento último en la losa inferior' },
+      { var: 'Vu', unidad: 'tonf', esperado: 10.38, tol: 0.002, desc: 'Cortante último' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 Alcantarilla tipo **marco cerrado** de una celda, de concreto armado vaciado in situ, con luz libre de 3.00 m, altura libre de 2.50 m y **1.50 m de relleno** compactado sobre la losa superior, bajo una vía con tránsito HL-93. Se analiza una franja de 1 m en el sentido longitudinal de la alcantarilla.
@@ -1218,17 +1317,17 @@ Alcantarilla tipo **marco cerrado** de una celda, de concreto armado vaciado in 
 ## Modelo
 Marco cerrado simétrico con ejes en el centro de los elementos. Por simetría solo hay dos giros desconocidos (esquinas superior e inferior); se resuelve por **pendiente-deflexión** sin desplazamiento lateral. Reacción del suelo uniforme bajo la losa inferior.`),
     calc(`# Datos
-Bi = 3.00 m // Luz libre interior
-Hi = 2.50 m // Altura libre interior
-tt = 0.30 m // Espesor de la losa superior
-tb = 0.30 m // Espesor de la losa inferior
-tw = 0.30 m // Espesor de los muros
-Hf = 1.50 m // Altura del relleno sobre la losa superior
-gammas = 1.90 tonf/m^3 // Peso unitario del relleno compactado
-phis = 30 deg // Ángulo de fricción del relleno
-gammac = 2.40 tonf/m^3 // Concreto armado
-fc = 280 kgf/cm^2 // f'c
-fy = 4200 kgf/cm^2 // Acero Gr. 60
+Bi = 3.00 m // Luz libre interior [1..6]
+Hi = 2.50 m // Altura libre interior [1..5]
+tt = 0.30 m // Espesor de la losa superior [0.20..0.60]
+tb = 0.30 m // Espesor de la losa inferior [0.20..0.60]
+tw = 0.30 m // Espesor de los muros [0.20..0.60]
+Hf = 1.50 m // Altura del relleno sobre la losa superior [0..8]
+gammas = 1.90 tonf/m^3 // Peso unitario del relleno compactado [1.5..2.2]
+phis = 30 deg // Ángulo de fricción del relleno [20..40]
+gammac = 2.40 tonf/m^3 // Concreto armado [2.2..2.5]
+fc = 280 kgf/cm^2 // f'c [175..420]
+fy = 4200 kgf/cm^2 // Acero Gr. 60 [2800..4200]
 Ec = EcLRFD(fc) -> kgf/cm^2
 # Geometría de cálculo
 Lc = Bi + tw // Luz entre ejes de muros
@@ -1240,9 +1339,9 @@ wwall = gammac*tw*Hcl*1 m -> tonf // Peso de cada muro (DC)
 Fe = min(1 + 0.20*Hf/Bc, 1.15) // Interacción suelo-estructura, relleno compactado (12.11.2.2.1-2)
 pEV = Fe*gammas*Hf*1 m -> tonf/m // Carga vertical de tierra (EV)
 k0 = 1 - sin(phis) // Coeficiente en reposo (3.11.5.2-1)
-heq = 0.60 m // Sobrecarga vehicular equivalente sobre los muros (3.11.6.4)
+heq = 0.60 m // Sobrecarga vehicular equivalente sobre los muros (3.11.6.4) [0.6..1.5]
 ## Carga viva a través del relleno (3.6.1.2.6)
-LLDF = 1.15 // Factor de distribución en relleno granular (Tabla 3.6.1.2.6a-1)
+LLDF = 1.15 // Factor de distribución en relleno granular (Tabla 3.6.1.2.6a-1) [1.0..1.15]
 IMb = IMburLRFD(Hf) // IM = 33(1 − 4.1×10⁻⁴ DE) % (3.6.2.2-1)
 check Hf >= 0.60 m // Relleno ≥ 0.60 m: distribución a través del suelo (3.6.1.2.6)
 Di = Bi // Luz libre interior
@@ -1272,7 +1371,7 @@ ${boxCombo(3, '1.00', '1.00', '1.00', '1.00', '1.00')}
 # Diseño (franja de 1 m)
 phif = 0.90 // Flexión (5.5.4.2)
 bar = 5 // Varilla [5 : 5/8"|6 : 3/4"]
-rec = 5.0 cm // Recubrimiento (Tabla 5.10.1-1, contacto con suelo)
+rec = 5.0 cm // Recubrimiento (Tabla 5.10.1-1, contacto con suelo) [4..7.5]
 ## Losa superior — centro de la luz (acero inferior)
 Mu1 = max(Mt1, Mt2) -> tonf*m
 dts = tt - rec - db(bar)/2
@@ -1339,6 +1438,18 @@ const peatonal = {
   normas: 'AASHTO LRFD Guide Specifications for the Design of Pedestrian Bridges (2009) · AASHTO LRFD 9.ª ed. Secc. 6 · Manual de Puentes MTC (2018)',
   desc: 'Pasarela simplemente apoyada L = 30 m con dos vigas I armadas y losa de concreto: carga peatonal 4.3 kPa, vehículo de mantenimiento H5, Resistencia I, flexión y cortante (AASHTO Secc. 6), deflexión L/360 y frecuencias vertical (≥ 3.0 Hz) y lateral (≥ 1.3 Hz).',
   titulo: 'Diseño de puente peatonal de vigas de acero L = 30.00 m — AASHTO LRFD Pedestrian Bridges',
+  validacion: {
+    fuente: 'Control: AASHTO Guide Specifications for the Design of Pedestrian Bridges (2009) y AASHTO LRFD Secc. 6',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Comprobados a mano: MPL = 4.3·2.5/2·30²/8 y MDC = wDC·L²/8.',
+    valores: [
+      { var: 'MPL', unidad: 'kN*m', esperado: 604.69, tol: 0.001, desc: 'Momento por carga peatonal 90 psf' },
+      { var: 'MDC', unidad: 'kN*m', esperado: 833.6, tol: 0.002, desc: 'Momento por carga muerta' },
+      { var: 'Mu', unidad: 'kN*m', esperado: 2100, tol: 0.002, desc: 'Momento último' },
+      { var: 'fbu', unidad: 'MPa', esperado: 130.9, tol: 0.002, desc: 'Esfuerzo en el ala' },
+      { var: 'dPL', unidad: 'mm', esperado: 24.37, tol: 0.002, desc: 'Deflexión por carga peatonal' },
+      { var: 'fv', unidad: 'Hz', esperado: 3.063, tol: 0.002, desc: 'Frecuencia vertical fundamental' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 Puente peatonal de un tramo simplemente apoyado de **30.00 m** con dos vigas I armadas de acero ASTM A709 Gr. 50 separadas 2.00 m y losa de concreto de 0.12 m (no compuesta) con barandas metálicas. El ancho libre es de 2.50 m.
@@ -1348,21 +1459,21 @@ Puente peatonal de un tramo simplemente apoyado de **30.00 m** con dos vigas I a
 - AASHTO LRFD 9.ª ed., Secc. 6 (6.10.8 flexión con ala comprimida arriostrada continuamente, 6.10.9 cortante) y Tabla 3.4.1-1 (Resistencia I).
 - Manual de Puentes MTC (2018), 2.4.3.7 (carga peatonal) y Rodríguez Serquén, cap. XIV.`),
     calc(`# Datos
-L = 30.0 m // Luz de cálculo
-wb = 2.50 m // Ancho libre del tablero
-nv = 2 // Número de vigas
+L = 30.0 m // Luz de cálculo [15..50]
+wb = 2.50 m // Ancho libre del tablero [1.5..4]
+nv = 2 // Número de vigas [2..4]
 ## Viga I armada (acero A709 Gr. 50)
-Fy = 345 MPa // Fluencia
-Es = 200000 MPa // Módulo de elasticidad (6.4.1)
-D = 1400 mm // Altura del alma
-tw = 12 mm // Espesor del alma
-bf = 350 mm // Ancho de las alas (sección doblemente simétrica)
-tf = 25 mm // Espesor de las alas
+Fy = 345 MPa // Fluencia [250..485]
+Es = 200000 MPa // Módulo de elasticidad (6.4.1) [190000..210000]
+D = 1400 mm // Altura del alma [600..2500]
+tw = 12 mm // Espesor del alma [8..20]
+bf = 350 mm // Ancho de las alas (sección doblemente simétrica) [250..600]
+tf = 25 mm // Espesor de las alas [16..50]
 ## Tablero
-tl = 0.12 m // Espesor de la losa de concreto
-gammac = 23.5 kN/m^3 // Concreto armado
-wbar = 0.50 kN/m // Barandas (cada lado)
-PL = 4.3 kPa // Carga peatonal 90 psf, sin reducción por área ni IM (Guide Spec 3.1)
+tl = 0.12 m // Espesor de la losa de concreto [0.10..0.20]
+gammac = 23.5 kN/m^3 // Concreto armado [22..25]
+wbar = 0.50 kN/m // Barandas (cada lado) [0.3..1.5]
+PL = 4.3 kPa // Carga peatonal 90 psf, sin reducción por área ni IM (Guide Spec 3.1) [3..5]
 check wb >= 2.10 m and wb <= 3.05 m // Vehículo de mantenimiento H5 para anchos libres de 7 a 10 ft; > 10 ft: H10 (Guide Spec 3.2)
 # Propiedades de la viga
 Av = 2*bf*tf + D*tw -> mm^2 // Área
@@ -1400,7 +1511,7 @@ check fbu <= 1.00*Fnc // Ala comprimida (6.10.8.1.1-1, φf = 1.0)
 check fbu <= 1.00*Fy // Ala traccionada (6.10.8.1.2-1)
 ## Cortante (6.10.9)
 Vp = 0.58*Fy*D*tw -> kN
-kv = 5 // Alma sin rigidizadores intermedios
+kv = 5 // Alma sin rigidizadores intermedios [5..20]
 Cv = si(D/tw <= 1.12*sqrt(Es*kv/Fy), 1, si(D/tw <= 1.40*sqrt(Es*kv/Fy), 1.12/(D/tw)*sqrt(Es*kv/Fy), 1.57/(D/tw)^2*(Es*kv/Fy)))
 check Vu <= 1.00*Cv*Vp // Resistencia a cortante, φv = 1.0
 # Servicio

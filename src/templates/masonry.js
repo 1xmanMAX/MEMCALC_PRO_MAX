@@ -371,9 +371,10 @@ Mr = Ptot*Bc/2 + Ep*hc/3 -> tonf*m // Momento resistente
 check Mr/Mv >= 2.0 // Factor de seguridad al volteo ≥ 2 (Art. 31.6)
 mus = tan(phis) // Coeficiente de fricción suelo–concreto
 check (mus*Ptot + Ep)/(Hm + Hcim) >= 1.5 // Factor de seguridad al deslizamiento ≥ 1.5 (Art. 31.6)
-ecc = Bc/2 - (Mr - Mv)/Ptot // Excentricidad de la resultante en la base (incluye el empuje pasivo)
+ecc = Bc/2 - (Mr - Mv)/Ptot -> cm // Excentricidad de la resultante en la base (incluye el empuje pasivo)
 qmax = Ptot/(Bc*1 m)*(1 + 6*abs(ecc)/Bc) -> kgf/cm^2 // Presión máxima en el suelo
-check abs(ecc) <= Bc/6 // Resultante en el tercio central
+ecc_lim = Bc/6 -> cm // Excentricidad límite (tercio central)
+check abs(ecc) <= ecc_lim // Resultante en el tercio central
 check qmax <= 1.33*qadm // Presión en el suelo con sismo (E.050: +33 %)`),
       summary(),
     ],

@@ -1,5 +1,5 @@
 // Pruebas de validación — módulo «peru» (E.020, E.030-2026, E.031)
-import { near, truthy, calc, block, runTemplate, section, done, math } from './helpers.mjs';
+import { near, truthy, calc, block, runTemplate, section, done, math, TEMPLATES } from './helpers.mjs';
 import { jacobiEig, rhoCQC, combine, modalShear } from '../src/blocks/peru.js';
 
 const G = 9.80665;
@@ -361,4 +361,15 @@ section('Plantillas con datos extremos: NO CUMPLE sin errores ni NaN');
   }
 }
 
+section('Rangos usuales [mín..máx] y ejemplos de validación de las plantillas «peru»');
+for (const t of TEMPLATES.filter(x => x.id.startsWith('pe-'))) {
+  const inp = runTemplate(t.id).res.ctx.inputs, rg = inp.filter(i => i.range);
+  const out = rg.filter(i => { let v = parseFloat(i.num); if (i.range.unit && i.unit && i.range.unit !== i.unit) v = math.unit(v, i.unit).toNumber(i.range.unit); return !(v >= i.range.min && v <= i.range.max); });
+  const bad = inp.filter(i => /\.\.|\[/.test(i.label || ''));
+  truthy(`${t.id}: ${rg.length} datos con rango, valores por defecto dentro del rango, etiquetas limpias`, rg.length >= 3 && out.length === 0 && bad.length === 0, out.map(i => i.name + ' = ' + i.num).concat(bad.map(i => i.name)).join(', '));
+  const v = t.validacion;
+  truthy(`${t.id}: tiene «validacion» con fuente, nota y valores`, !!(v && v.fuente && v.nota && Array.isArray(v.valores) && v.valores.length >= 3));
+}
+truthy('Listas desplegables intactas con rango (zona, categoría, sistema; hl y C_pi con rango)', (() => { const f = (id, n) => runTemplate(id).res.ctx.inputs.find(i => i.name === n); return f('pe-e030-estatico', 'zona').options.length === 4 && f('pe-e030-estatico', 'sistema').options.length === 8 && f('pe-e020-metrado', 'hl').options.length === 4 && f('pe-e020-metrado', 'hl').range.max === 0.30 && f('pe-e020-viento', 'C_pi').options.length === 3 && f('pe-e020-viento', 'C_pi').range.max === 0.8; })());
+truthy('Plantilla dinámica: validacion con T1 y Vdin del cálculo independiente (numpy)', TEMPLATES.find(x => x.id === 'pe-e030-dinamico').validacion.valores.some(v => v.var === 'T1' && v.esperado === 0.44102));
 done();

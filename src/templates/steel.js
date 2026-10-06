@@ -18,6 +18,17 @@ export default [
     normas: 'ANSI/AISC 360-16/22 Cap. E (LRFD) · AISC Design Examples v16, Ej. E.1A',
     desc: 'Perfil W articulado: esbeltez, pandeo por flexión (E3), elementos esbeltos por ancho efectivo (E7) y curva φPn–Lc.',
     titulo: 'Diseño de columna de acero a compresión — AISC 360 (LRFD)',
+    validacion: {
+      fuente: 'AISC Design Examples v16, Ej. E.1A: W14×132 A992, L = 30 ft, Pu = 840 kip → Lc/r = 95.7, Fe = 31.2 ksi, Fcr = 25.6 ksi, φcPn = 893 kip',
+      nota: 'Datos por defecto = datos del ejemplo E.1A.',
+      valores: [
+        { var: 'Pu', unidad: 'kip', esperado: 840, tol: 0.0005, desc: 'E.1A: Pu = 1.2·140 + 1.6·420' },
+        { var: 'esb', esperado: 95.7, tol: 0.002, desc: 'E.1A: Lc/ry' },
+        { var: 'Fe', unidad: 'ksi', esperado: 31.2, tol: 0.003, desc: 'E.1A: Fe' },
+        { var: 'Fcr', unidad: 'ksi', esperado: 25.6, tol: 0.003, desc: 'E.1A: Fcr' },
+        { var: 'phiPn', unidad: 'kip', esperado: 893, tol: 0.002, desc: 'E.1A: φcPn' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Se verifica una columna de perfil laminado W de un pórtico arriostrado, **articulada en ambos extremos** y en ambos ejes, sometida a carga axial de gravedad. El procedimiento sigue el **Capítulo E de ANSI/AISC 360-16/22** por el método LRFD; la NTE E.090 (Perú) adopta el mismo enfoque de diseño por factores de carga y resistencia.
@@ -29,13 +40,13 @@ Se verifica una columna de perfil laminado W de un pórtico arriostrado, **artic
       calc(`# Datos de diseño
 ## Materiales
 Fy = 50 ksi // Esfuerzo de fluencia, ASTM A992 (AISC Tabla 2-4) [36 ksi|50 ksi|65 ksi]
-E = 29000 ksi // Módulo de elasticidad del acero (AISC 360 B4.1)
+E = 29000 ksi // Módulo de elasticidad del acero (AISC 360 B4.1) [28000..30000]
 ## Geometría y cargas
-L = 30 ft // Longitud no arriostrada de la columna
+L = 30 ft // Longitud no arriostrada de la columna [8..40]
 Kx = 1.0 // Factor de longitud efectiva eje x (articulado–articulado, App. 7) [0.65|0.8|1.0|1.2|2.0]
 Ky = 1.0 // Factor de longitud efectiva eje y [0.65|0.8|1.0|1.2|2.0]
-P_D = 140 kip // Carga axial muerta de servicio
-P_L = 420 kip // Carga axial viva de servicio
+P_D = 140 kip // Carga axial muerta de servicio [0..2000]
+P_L = 420 kip // Carga axial viva de servicio [0..2000]
 ## Resistencia requerida
 Pu = max(1.4*P_D, 1.2*P_D + 1.6*P_L) // ASCE 7 §2.3.1 / E.090 1.4.1 (LRFD)
 # Pandeo local de los elementos (Tabla B4.1a)
@@ -77,6 +88,16 @@ Pn_lib = PnE3(perfil, Fy, Lcx, Lcy, E) -> kip // Control: función de librería 
     normas: 'ANSI/AISC 360-16/22 Cap. E, F, H (LRFD) · AISC Design Examples v16, Ej. H.1A',
     desc: 'Perfil W en pórtico arriostrado con P, Mx y My: compresión E3, flexión F2/F3/F6 y ecuación de interacción H1-1.',
     titulo: 'Verificación de viga-columna de acero — AISC 360 Cap. H (LRFD)',
+    validacion: {
+      fuente: 'AISC Design Examples v16, Ej. H.1A: W14×99 A992, Lc = Lb = 14 ft, Pu = 400 kip, Mux = 250 kip·ft, Muy = 80 kip·ft → φPn = 1130 kip, φMnx = 642 kip·ft, φMny = 311 kip·ft, relación 0.928',
+      nota: 'Datos por defecto = datos del ejemplo H.1A.',
+      valores: [
+        { var: 'phiPn', unidad: 'kip', esperado: 1130, tol: 0.003, desc: 'H.1A: φcPn (Tabla 6-2)' },
+        { var: 'phiMnx', unidad: 'kip*ft', esperado: 642, tol: 0.003, desc: 'H.1A: φbMnx' },
+        { var: 'phiMny', unidad: 'kip*ft', esperado: 311, tol: 0.003, desc: 'H.1A: φbMny' },
+        { var: 'ratio', esperado: 0.928, tol: 0.003, desc: 'H.1A: ecuación H1-1a' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Se verifica un perfil W de un **pórtico arriostrado** sometido a carga axial de compresión y flexión biaxial. Las solicitaciones provienen de un **análisis de segundo orden** (incluye efectos P-δ y P-Δ, AISC Cap. C), por lo que no se amplifican nuevamente.
@@ -86,13 +107,13 @@ Se verifica un perfil W de un **pórtico arriostrado** sometido a carga axial de
       { type: 'steelsec', perfil: 'W14X99', tabla: true, titulo: '' },
       calc(`# Datos
 Fy = 50 ksi // Fluencia ASTM A992 [36 ksi|50 ksi]
-E = 29000 ksi // Módulo de elasticidad (B4.1)
-L = 14 ft // Longitud no arriostrada (Lb = Lc)
-K = 1.0 // Factor de longitud efectiva (pórtico arriostrado)
-Cb = 1.0 // Factor de gradiente de momento (F1), conservador
-Pu = 400 kip // Carga axial requerida (análisis de 2.º orden)
-Mux = 250 kip*ft // Momento requerido eje mayor
-Muy = 80 kip*ft // Momento requerido eje menor
+E = 29000 ksi // Módulo de elasticidad (B4.1) [28000..30000]
+L = 14 ft // Longitud no arriostrada (Lb = Lc) [8..30]
+K = 1.0 // Factor de longitud efectiva (pórtico arriostrado) [0.65..2.0]
+Cb = 1.0 // Factor de gradiente de momento (F1), conservador [1.0..3.0]
+Pu = 400 kip // Carga axial requerida (análisis de 2.º orden) [0..2000]
+Mux = 250 kip*ft // Momento requerido eje mayor [0..1500]
+Muy = 80 kip*ft // Momento requerido eje menor [0..500]
 # Resistencia a compresión (E3)
 Lc = K*L -> ft // Longitud efectiva (E2)
 esb = max(Lc/rx, Lc/ry) // Esbeltez que controla
@@ -139,6 +160,17 @@ ratio_lib = H1(Pu, phiPn_l, Mux, phiMx_l, Muy, phiMy_l) // Control con funciones
     normas: 'ANSI/AISC 360-16/22 Cap. D, J3, J4 (LRFD) · AISC Design Examples v16, Ej. D.2',
     desc: 'Ángulo L conectado por un ala con una línea de pernos: fluencia y rotura (U de la Tabla D3.1), pernos, aplastamiento y bloque de cortante.',
     titulo: 'Diseño de miembro en tracción con conexión empernada — AISC 360',
+    validacion: {
+      fuente: 'AISC Design Examples v16, Ej. D.2: L4×4×½ A36, una línea de 4 pernos a 3 in → φtPn = 121.5 kip por fluencia, U = 0.869; demás valores de control',
+      nota: 'La geometría (ángulo, 4 pernos a 3 in) es la del ejemplo D.2, pero los pernos (⅞ in) y la carga difieren: solo la fluencia y U son valores publicados. Con pernos de ¾ in la prueba reproduce An = 3.31 in² y φtPn = 125 kip (tests/steel.test.mjs).',
+      valores: [
+        { var: 'phiPy', unidad: 'kip', esperado: 121.5, tol: 0.001, desc: 'D.2: φtPn por fluencia = 0.9·36·3.75' },
+        { var: 'U', esperado: 0.869, tol: 0.001, desc: 'D.2: U = 1 − x̄/l = 1 − 1.18/9' },
+        { var: 'An', unidad: 'in^2', esperado: 3.25, tol: 0.0005, desc: 'Control: An con agujeros de 1 in' },
+        { var: 'phiPr', unidad: 'kip', esperado: 122.8, tol: 0.002, desc: 'Control: φtPn por rotura' },
+        { var: 'Rnbs', unidad: 'kip', esperado: 142.4, tol: 0.002, desc: 'Control: bloque de cortante nominal' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Diagonal de arriostramiento formada por un **ángulo simple** conectado por un ala a una plancha gusset mediante una línea de pernos en agujeros estándar. Se verifican los estados límite del miembro (Cap. D) y de la conexión (J3 pernos, J4 bloque de cortante).
@@ -152,16 +184,16 @@ Fy = 36 ksi // Fluencia del ángulo, ASTM A36 [36 ksi|50 ksi]
 Fu = 58 ksi // Resistencia a la tracción, ASTM A36 [58 ksi|65 ksi]
 grupo = "A325" // Grupo de pernos (Tabla J3.2): "A325", "A490" o "A307"
 ## Cargas
-P_D = 15 kip // Carga muerta de servicio
-P_L = 45 kip // Carga viva de servicio
+P_D = 15 kip // Carga muerta de servicio [0..200]
+P_L = 45 kip // Carga viva de servicio [0..300]
 Pu = max(1.4*P_D, 1.2*P_D + 1.6*P_L) // Resistencia requerida (ASCE 7 §2.3.1)
 ## Conexión
 db = 7/8 in // Diámetro nominal del perno [3/4 in|7/8 in|1 in]
-nb = 4 // Número de pernos en la línea
-sp = 3 in // Separación entre pernos (≥ 3d recomendado, J3.3)
-le = 1.5 in // Distancia al borde extremo en la dirección de la carga
-g = 2.5 in // Gramil del ala conectada (desde el talón)
-Lm = 10 ft // Longitud del miembro
+nb = 4 // Número de pernos en la línea [2..10]
+sp = 3 in // Separación entre pernos (≥ 3d recomendado, J3.3) [2..6]
+le = 1.5 in // Distancia al borde extremo en la dirección de la carga [1..3]
+g = 2.5 in // Gramil del ala conectada (desde el talón) [1.5..3]
+Lm = 10 ft // Longitud del miembro [3..30]
 # Tracción en el área bruta y neta (D2, D3)
 check Lm/rz <= 300 // Esbeltez recomendada L/r ≤ 300 (D1)
 phiPy = 0.90*Fy*A -> kip // Fluencia en el área bruta (D2-1)
@@ -191,7 +223,7 @@ check Pu <= phiRnb // Aplastamiento / desgarramiento
 Agv = (le + (nb - 1)*sp)*t // Área bruta en corte
 Anv = Agv - (nb - 0.5)*dhc*t // Área neta en corte
 Ant = (d - g - 0.5*dhc)*t // Área neta en tracción (ala conectada, del gramil al borde)
-Ubs = 1.0 // Esfuerzo de tracción uniforme (J4.3)
+Ubs = 1.0 // Esfuerzo de tracción uniforme (J4.3) [0.5..1.0]
 Rnbs = min(0.6*Fu*Anv + Ubs*Fu*Ant, 0.6*Fy*Agv + Ubs*Fu*Ant) -> kip // J4-5
 check Pu <= 0.75*Rnbs // Bloque de cortante φ = 0.75`),
       { type: 'boltgroup', filas: '1', columnas: 'nb', sy: 'sp', sx: 'sp', P: 'Pu', ang: '90', ex: '0 in', ey: '0 in', phiRn: 'phirnv', db: 'db', titulo: 'Línea de pernos en el ala conectada: carga axial concéntrica (fuerza igual en cada perno)' },
@@ -208,6 +240,17 @@ check Pu <= 0.75*Rnbs // Bloque de cortante φ = 0.75`),
     normas: 'ANSI/AISC 360-16/22 J2, J3, J4 · AISC Manual Parte 10 (configuración convencional) · NTE E.090',
     desc: 'Placa soldada a la columna y empernada al alma de la viga: grupo de pernos excéntrico (método elástico), aplastamiento, corte, bloque de cortante, flexión de la placa y soldadura.',
     titulo: 'Diseño de conexión simple de corte — placa simple (shear tab)',
+    validacion: {
+      fuente: 'Control: AISC 360-16 J3, J4 y J10; método elástico del grupo de pernos (Manual AISC, Parte 7)',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). La fuerza del perno crítico √(4.5² + (M·y/Ip)²) se comprueba a mano en tests/steel.test.mjs.',
+      valores: [
+        { var: 'Rmax', unidad: 'tonf', esperado: 7.029, tol: 0.002, desc: 'Fuerza en el perno crítico (elástico)' },
+        { var: 'phirn', unidad: 'tonf', esperado: 8.116, tol: 0.002, desc: 'Corte de un perno' },
+        { var: 'phiVy', unidad: 'tonf', esperado: 43.26, tol: 0.002, desc: 'Fluencia por corte de la placa' },
+        { var: 'phiRbs', unidad: 'tonf', esperado: 36.79, tol: 0.002, desc: 'Bloque de cortante de la placa' },
+        { var: 'phiRw', unidad: 'tonf', esperado: 56.35, tol: 0.002, desc: 'Resistencia de las soldaduras' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Conexión simple (articulada) de una viga secundaria al ala de una columna mediante una **placa simple** soldada en taller con filetes a ambos lados y empernada en obra al alma de la viga con pernos ASTM F3125 Gr. A325 en agujeros estándar (conexión tipo aplastamiento, roscas incluidas en el plano de corte, *N*).
@@ -218,23 +261,23 @@ Conexión simple (articulada) de una viga secundaria al ala de una columna media
       { type: 'steelsec', perfil: 'W16X26', tabla: false, titulo: 'Viga soportada W16×26 (ASTM A992)' },
       calc(`# Datos
 ## Solicitación
-Vu = 18 tonf // Reacción factorizada de la viga (1.2D + 1.6L)
+Vu = 18 tonf // Reacción factorizada de la viga (1.2D + 1.6L) [1..40]
 ## Materiales
-Fyp = 2530 kgf/cm^2 // Fluencia de la placa, ASTM A36
-Fup = 4080 kgf/cm^2 // Resistencia a tracción de la placa, ASTM A36
-Fyb = 3515 kgf/cm^2 // Fluencia de la viga, ASTM A992 (50 ksi)
-Fub = 4570 kgf/cm^2 // Resistencia a tracción de la viga, ASTM A992 (65 ksi)
-FEXX = 4920 kgf/cm^2 // Resistencia del electrodo E70XX (70 ksi)
+Fyp = 2530 kgf/cm^2 // Fluencia de la placa, ASTM A36 [2530..3515]
+Fup = 4080 kgf/cm^2 // Resistencia a tracción de la placa, ASTM A36 [4080..4570]
+Fyb = 3515 kgf/cm^2 // Fluencia de la viga, ASTM A992 (50 ksi) [2530..3515]
+Fub = 4570 kgf/cm^2 // Resistencia a tracción de la viga, ASTM A992 (65 ksi) [4080..4570]
+FEXX = 4920 kgf/cm^2 // Resistencia del electrodo E70XX (70 ksi) [4200..5700]
 grupo = "A325" // Grupo de pernos (Tabla J3.2): "A325" o "A490"
 ## Geometría
 db = 19.05 mm // Diámetro del perno [15.88 mm : 5/8"|19.05 mm : 3/4"|22.23 mm : 7/8"|25.4 mm : 1"]
-nb = 4 // Número de pernos (una línea vertical)
-sp = 7.5 cm // Separación vertical entre pernos
-lev = 3.75 cm // Distancia vertical del perno extremo al borde de la placa
-leh = 4 cm // Distancia horizontal del perno al borde de la placa
-a = 7.5 cm // Distancia de la línea de pernos a la soldadura (cara del apoyo)
+nb = 4 // Número de pernos (una línea vertical) [2..12]
+sp = 7.5 cm // Separación vertical entre pernos [5..10]
+lev = 3.75 cm // Distancia vertical del perno extremo al borde de la placa [2.5..6]
+leh = 4 cm // Distancia horizontal del perno al borde de la placa [2.5..6]
+a = 7.5 cm // Distancia de la línea de pernos a la soldadura (cara del apoyo) [5..10]
 tp = 9.5 mm // Espesor de la placa [6.35 mm : 1/4"|7.9 mm : 5/16"|9.5 mm : 3/8"|12.7 mm : 1/2"]
-w = 6 mm // Tamaño del filete (a cada lado de la placa)
+w = 6 mm // Tamaño del filete (a cada lado de la placa) [5..12]
 Lp = (nb - 1)*sp + 2*lev // Altura de la placa
 # Configuración convencional (Manual AISC, Parte 10)
 check nb <= 12 // Número de pernos 2 a 12
@@ -291,6 +334,17 @@ phiRw_lib = 0.75*2*RnFilete(w, Lp, FEXX, 0 deg) -> tonf // Control con la funci�
     normas: 'AISC Design Guide 1 (2.ª ed.) · ANSI/AISC 360-16/22 J8 · ACI 318-19 Cap. 17 · NTE E.090, E.060',
     desc: 'Placa base de columna W con carga axial de compresión y cortante: aplastamiento del concreto (J8), espesor por flexión (método de Thornton, DG1), anclajes y fricción.',
     titulo: 'Diseño de placa base de columna — AISC Design Guide 1',
+    validacion: {
+      fuente: 'Control: AISC Design Guide 1 (2.ª ed.) y ACI 318-19 Cap. 17 (anclajes); Ase y Abrg de ¾ in tabulados (ACI R17.6.1.2: 0.334 in²; DG1 Tabla 3.2: 0.91 in²)',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). φPp, tp,req y φNcbg se comprueban a mano en tests/steel.test.mjs.',
+      valores: [
+        { var: 'Ase', unidad: 'in^2', esperado: 0.334, tol: 0.005, desc: 'ACI R17.6.1.2: Ase de varilla ¾"-10 UNC' },
+        { var: 'Pu', unidad: 'tonf', esperado: 124, tol: 0.0005, desc: 'Carga axial última 1.2D + 1.6L' },
+        { var: 'phiPp', unidad: 'tonf', esperado: 252.2, tol: 0.002, desc: 'Aplastamiento del concreto' },
+        { var: 'tpreq', unidad: 'mm', esperado: 27.44, tol: 0.002, desc: 'Espesor requerido de la placa' },
+        { var: 'phiNcbg', unidad: 'tonf', esperado: 9.14, tol: 0.002, desc: 'Arrancamiento del concreto del grupo' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Placa base de una columna de acero apoyada sobre un pedestal de concreto armado mediante mortero de nivelación (*grout*), sometida a compresión axial concéntrica y a un cortante horizontal pequeño. El diseño sigue la **AISC Design Guide 1 — Base Connection Design for Steel Structures** (2.ª ed., §3.1 «cargas axiales de compresión concéntricas»), con la resistencia al aplastamiento del concreto de **AISC 360 J8** y el espesor de la placa por el **método unificado de Thornton** (voladizos *m*, *n* y λn').
@@ -300,23 +354,23 @@ Placa base de una columna de acero apoyada sobre un pedestal de concreto armado 
       { type: 'steelsec', perfil: 'W10X49', tabla: false, titulo: 'Columna W10×49 (ASTM A992)' },
       calc(`# Datos
 ## Cargas de servicio
-P_D = 50 tonf // Carga axial muerta
-P_L = 40 tonf // Carga axial viva
-V_D = 1.5 tonf // Cortante por carga muerta
-V_L = 1.0 tonf // Cortante por carga viva
+P_D = 50 tonf // Carga axial muerta [0..300]
+P_L = 40 tonf // Carga axial viva [0..300]
+V_D = 1.5 tonf // Cortante por carga muerta [0..30]
+V_L = 1.0 tonf // Cortante por carga viva [0..30]
 ## Materiales
 fc = 210 kgf/cm^2 // Resistencia del concreto del pedestal (E.060) [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2]
-Fyp = 2530 kgf/cm^2 // Fluencia de la placa, ASTM A36
+Fyp = 2530 kgf/cm^2 // Fluencia de la placa, ASTM A36 [2530..3515]
 ## Placa y pedestal
-Np = 45 cm // Longitud de la placa (paralela al peralte d)
-Bp = 35 cm // Ancho de la placa (paralelo a bf)
+Np = 45 cm // Longitud de la placa (paralela al peralte d) [20..100]
+Bp = 35 cm // Ancho de la placa (paralelo a bf) [20..100]
 tp = 31.75 mm // Espesor de la placa [19.05 mm : 3/4"|22.23 mm : 7/8"|25.4 mm : 1"|31.75 mm : 1 1/4"|38.1 mm : 1 1/2"]
-Np2 = 60 cm // Pedestal: dimensión paralela a N
-Bp2 = 50 cm // Pedestal: dimensión paralela a B
+Np2 = 60 cm // Pedestal: dimensión paralela a N [30..150]
+Bp2 = 50 cm // Pedestal: dimensión paralela a B [30..150]
 na = 4 // Número de pernos de anclaje [4|6|8]
 da = 19.05 mm // Diámetro de los pernos de anclaje [19.05 mm : 3/4"|22.23 mm : 7/8"|25.4 mm : 1"]
-ed = 5 cm // Distancia del eje del perno al borde de la placa
-hef = 30 cm // Longitud de empotramiento
+ed = 5 cm // Distancia del eje del perno al borde de la placa [3..10]
+hef = 30 cm // Longitud de empotramiento [15..60]
 ## Solicitaciones de diseño
 Pu = max(1.4*P_D, 1.2*P_D + 1.6*P_L) // Compresión factorizada (E.090 1.4.1)
 Vu = 1.2*V_D + 1.6*V_L // Cortante factorizado
@@ -345,9 +399,9 @@ check ed >= 1.5*da // Distancia del perno al borde de la placa ≥ 1.5da (práct
 check hef >= 12*da // Empotramiento ≥ 12da (práctica recomendada DG1 §2.5)
 check (Np2 - Np)/2 + ed >= 6*da // Distancia del anclaje al borde del pedestal ≥ 6da (ACI 318-19 17.9.2, anclajes con torque)
 ## Resistencia de los anclajes a tracción y corte (ACI 318-19 Cap. 17; DG1 §3.2–3.5)
-Nua = 4 tonf // Tracción de diseño en el grupo de anclajes (combinación de levante 0.9D − 1.3W u otra condición; dato)
-futa = 4080 kgf/cm^2 // Resistencia a tracción ASTM F1554 Gr. 36 (58 ksi)
-fya = 2530 kgf/cm^2 // Fluencia ASTM F1554 Gr. 36 (36 ksi)
+Nua = 4 tonf // Tracción de diseño en el grupo de anclajes (combinación de levante 0.9D − 1.3W u otra condición; dato) [0..50]
+futa = 4080 kgf/cm^2 // Resistencia a tracción ASTM F1554 Gr. 36 (58 ksi) [4080..8790]
+fya = 2530 kgf/cm^2 // Fluencia ASTM F1554 Gr. 36 (36 ksi) [2530..7380]
 nt = 10 // Hilos por pulgada UNC [10 : 3/4"|9 : 7/8"|8 : 1"]
 check futa <= min(1.9*fya, 8790 kgf/cm^2) // futa ≤ 1.9fya y ≤ 125 ksi (17.6.1.2)
 Ase = AseACI(da, nt) -> cm^2 // Área efectiva a tracción π/4·(da − 0.9743/nt)² (R17.6.1.2)
@@ -362,7 +416,7 @@ hefp = si(max(ca1, ca2) < 1.5*hef, min(hef, max(max(ca1, ca2)/1.5, max(s1, s2)/3
 ANc = (2*min(ca1, 1.5*hefp) + s1)*(2*min(ca2, 1.5*hefp) + s2) -> cm^2 // Área proyectada del cono del grupo (17.6.2.1)
 ANco = 9*hefp^2 -> cm^2 // Área proyectada de un anclaje aislado (17.6.2.1.4)
 psied = si(min(ca1, ca2) >= 1.5*hefp, 1, 0.7 + 0.3*min(ca1, ca2)/(1.5*hefp)) // Efecto de borde ψed,N (17.6.2.4)
-psic = 1.0 // Concreto fisurado ψc,N (17.6.2.5); anclaje preinstalado ψcp,N = 1
+psic = 1.0 // Concreto fisurado ψc,N (17.6.2.5); anclaje preinstalado ψcp,N = 1 [1.0..1.4]
 Nb = NbACI(fc, hefp, 10) -> tonf // Arrancamiento básico Nb = kc·λa·√f′c·h′ef^1.5, kc = 10 SI (17.6.2.2.1)
 phiNcbg = 0.70*ANc/ANco*psied*psic*Nb -> tonf // Arrancamiento del grupo, preinstalado, condición B φ = 0.70 (17.6.2.1, Tabla 17.5.3)
 check Nua <= phiNcbg // Arrancamiento del concreto (si no cumple: refuerzo de anclaje, 17.5.2.1a)
@@ -373,7 +427,7 @@ check min(ca1, ca2) >= 0.4*hef // ca,min ≥ 0.4hef: no se requiere verificar el
 phiVsa = 0.65*0.8*0.6*Ase*futa*na -> tonf // Corte en el acero con mortero de nivelación (17.7.1.2b y 17.7.1.2.1), respaldo si no hay fricción
 check Vu <= phiVsa // Corte en los anclajes (respaldo de la fricción)
 # Transferencia del cortante por fricción (DG1 §3.5)
-mu = 0.55 // Coeficiente de fricción acero–grout (ACI 318-19 Tabla 22.9.4.2)
+mu = 0.55 // Coeficiente de fricción acero–grout (ACI 318-19 Tabla 22.9.4.2) [0.40..0.70]
 phiVf = 0.75*mu*Pumin -> tonf // Resistencia de diseño por fricción
 check Vu <= phiVf // Cortante resistido por fricción (no se requiere llave de corte)
 # Soldadura columna–placa
@@ -391,6 +445,17 @@ wcol = max(wminJ2(tf), 5 mm) // Filete perimetral mínimo (Tabla J2.4): la compr
     normas: 'AISI S100-16 (Apéndice 1, F, G, H, I6.2.1) · NTE E.020 (cargas y viento) · NTE E.090 1.4 (combinaciones)',
     desc: 'Correa C atiesada simplemente apoyada entre pórticos: metrado de cobertura, viento E.020 con succión, ancho efectivo, flexión biaxial, método R por levante, cortante, deflexión y templadores.',
     titulo: 'Diseño de correas de techo de perfil conformado en frío',
+    validacion: {
+      fuente: 'Control: AISI S100-16 (sección C con labios, ancho efectivo) y NTE E.020 (viento)',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). La presión de viento 0.005·C·V² = 28.1 kgf/m² y Mux = wu·cosθ·L²/8 se comprueban a mano.',
+      valores: [
+        { var: 'ph', unidad: 'kgf/m^2', esperado: 28.125, tol: 0.0005, desc: 'Presión dinámica 0.005·75²' },
+        { var: 'Mux', unidad: 'kgf*m', esperado: 337.9, tol: 0.002, desc: 'Momento último eje fuerte' },
+        { var: 'phiMnx', unidad: 'kgf*m', esperado: 559.8, tol: 0.002, desc: 'Resistencia a flexión eje fuerte' },
+        { var: 'phiMnu', unidad: 'kgf*m', esperado: 391.9, tol: 0.002, desc: 'Resistencia con succión (método R)' },
+        { var: 'phiVn', unidad: 'kgf', esperado: 3813, tol: 0.002, desc: 'Resistencia a cortante' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Las correas soportan la cobertura liviana (plancha de acero aluzinc / TR-4) y apoyan sobre los pórticos principales. Se diseñan como vigas **simplemente apoyadas** de perfil **C atiesado conformado en frío**, con el ala superior arriostrada por la cobertura atornillada (*through-fastened*) y **templadores** (tirantes) a los tercios de la luz para tomar la componente de la carga paralela a la pendiente.
@@ -401,23 +466,23 @@ Las correas soportan la cobertura liviana (plancha de acero aluzinc / TR-4) y ap
       { type: 'steelsec', perfil: 'CF150X50X15X2', tabla: true, titulo: 'Correa C 150×50×15×2 mm (esquinas rectas)' },
       calc(`# Datos
 ## Geometría
-Lc = 6 m // Luz de la correa (separación entre pórticos)
-sc = 1.20 m // Separación entre correas (medida en la pendiente)
-theta = 10 deg // Pendiente del techo
+Lc = 6 m // Luz de la correa (separación entre pórticos) [4..9]
+sc = 1.20 m // Separación entre correas (medida en la pendiente) [0.8..2.0]
+theta = 10 deg // Pendiente del techo [3..30]
 nt = 2 // Número de líneas de templadores por tramo [1|2]
-ncw = 5 // Correas por agua que cuelgan de un templador
-hz = 7 m // Altura de la edificación
+ncw = 5 // Correas por agua que cuelgan de un templador [2..10]
+hz = 7 m // Altura de la edificación [3..15]
 ## Material (plancha laminada en caliente ASTM A36)
 Fy = 2530 kgf/cm^2 // Esfuerzo de fluencia [2320 kgf/cm^2|2530 kgf/cm^2|3515 kgf/cm^2]
-Fu = 4080 kgf/cm^2 // Resistencia a tracción
-E = 2070000 kgf/cm^2 // Módulo de elasticidad (AISI: 29 500 ksi)
+Fu = 4080 kgf/cm^2 // Resistencia a tracción [3500..5000]
+E = 2070000 kgf/cm^2 // Módulo de elasticidad (AISI: 29 500 ksi) [2000000..2100000]
 ## Cargas (E.020)
-wcob = 5 kgf/m^2 // Cobertura de acero aluzinc TR-4 e = 0.40 mm (catálogo)
-wacc = 5 kgf/m^2 // Accesorios, luminarias e instalaciones
-WLr = 30 kgf/m^2 // Carga viva de techo liviano, cualquier pendiente (E.020 Art. 7.1 b)
-Vv = 75 km/h // Velocidad básica de viento a 10 m (E.020 Anexo 2; mínimo 75 km/h)
+wcob = 5 kgf/m^2 // Cobertura de acero aluzinc TR-4 e = 0.40 mm (catálogo) [3..15]
+wacc = 5 kgf/m^2 // Accesorios, luminarias e instalaciones [0..20]
+WLr = 30 kgf/m^2 // Carga viva de techo liviano, cualquier pendiente (E.020 Art. 7.1 b) [30..100]
+Vv = 75 km/h // Velocidad básica de viento a 10 m (E.020 Anexo 2; mínimo 75 km/h) [75..130]
 Cext = -0.7 // Factor de forma exterior, superficie inclinada ≤ 15°, succión (E.020 Tabla 4)
-Cint = 0.3 // Presión interior por aberturas (E.020 Art. 12.5, ±0.3)
+Cint = 0.3 // Presión interior por aberturas (E.020 Art. 12.5, ±0.3) [-0.3..0.3]
 # Presión de viento (E.020 Art. 12)
 Vh = Vv*max(1, (hz/(10 m))^0.22) // Velocidad de diseño Vh = V(h/10)^0.22 ≥ V (E.020 12.3)
 ph = 0.005*abs(Cext - Cint)*(Vh/(1 km/h))^2*1 kgf/m^2 -> kgf/m^2 // Presión de succión neta ph = 0.005·C·Vh² (E.020 12.4)
@@ -445,7 +510,7 @@ k_f = kLabioAISI(wf/t, D/wf, dl/t, Fy, E) // k del ala con labio: S = 1.28√(E/
 RI = RIAISI(wf/t, D/wf, dl/t, Fy, E) // Relación Is/Ia ≤ 1 (labio adecuado si RI = 1)
 rho_f = rhoAISI(wf/t, Fy, E, k_f) // Ala comprimida (Ap. 1, 1.1-1 a 1.1-4)
 rho_l = rhoAISI(dl/t, Fy, E, 0.43) // Labio no atiesado, k = 0.43 (Ap. 1 §1.3: ds = d′s·RI)
-psi = 1 // |f2/f1| en el alma (flexión simétrica)
+psi = 1 // |f2/f1| en el alma (flexión simétrica) [0..1]
 kw = 4 + 2*(1 + psi)^3 + 2*(1 + psi) // Coeficiente de pandeo del alma con gradiente (Ap. 1, Ec. 1.2-1)
 rho_w = rhoAISI((d - 2*t)/t, Fy, E, kw) // Alma
 check rho_w == 1 // Alma totalmente efectiva (hipótesis del cálculo simplificado)
@@ -465,11 +530,11 @@ check d <= 165 mm // R = 0.70 válido para C o Z simplemente apoyada con d ≤ 6
 check d/t >= 60 and d/t <= 170 // Límites del método R: 60 ≤ d/t ≤ 170 (I6.2.1)
 check d/bf >= 2.8 and d/bf <= 5.5 // 2.8 ≤ d/b ≤ 5.5 (I6.2.1)
 check bf/t >= 16 and bf/t <= 43 // 16 ≤ b/t ≤ 43 (I6.2.1)
-Rr = 0.70 // Factor de reducción R (Tabla I6.2.1-1)
+Rr = 0.70 // Factor de reducción R (Tabla I6.2.1-1) [0.4..0.7]
 phiMnu = phib*Rr*Se*Fy -> kgf*m // Resistencia con ala inferior libre (I6.2.1-1)
 check Mup <= phiMnu // Flexión por levante 0.9D − 1.3W
 # Cortante (AISI S100-16 G2.1)
-kv = 5.34 // Alma sin atiesadores
+kv = 5.34 // Alma sin atiesadores [5..10]
 ht = (d - 2*t)/t // Esbeltez del alma
 lv = sqrt(E*kv/Fy) // Límite de esbeltez del alma √(Ekv/Fy)
 Fv2 = 0.6*sqrt(E*kv*Fy)/ht // Pandeo inelástico (G2.1-3)
@@ -498,6 +563,17 @@ check Tr <= phiTr // Resistencia del templador`),
     normas: 'ANSI/AISC 360-16/22 Cap. D, E (E3, E5) · NTE E.090 · NTE E.020',
     desc: 'Armadura Pratt simplemente apoyada: cargas en nudos, fuerzas por el método de las secciones (cuerdas y montantes) y de los nudos (diagonal), diseño de cuerdas HSS y alma de ángulos (E5), levante por viento y flecha.',
     titulo: 'Diseño de vigueta metálica de techo (armadura Pratt)',
+    validacion: {
+      fuente: 'Control: armadura Pratt de cuerdas paralelas (método de los nudos) y AISC 360-16 E3, E5, D2',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Comprobados a mano: cuerda superior wL²/(8h) = 0.36·144/(8·0.8) y diagonal extrema (R − P/2)/sen α.',
+      valores: [
+        { var: 'Fcs', unidad: 'tonf', esperado: 8.1, tol: 0.0005, desc: 'Cuerda superior wL²/(8h)' },
+        { var: 'Fd', unidad: 'tonf', esperado: 4.01625, tol: 0.0005, desc: 'Diagonal extrema (R − P/2)/sen α' },
+        { var: 'phiPcs', unidad: 'tonf', esperado: 10.52, tol: 0.002, desc: 'Compresión de la cuerda superior' },
+        { var: 'phiPdc', unidad: 'tonf', esperado: 2.6, tol: 0.002, desc: 'Compresión de la diagonal (levante)' },
+        { var: 'dv', unidad: 'cm', esperado: 2.195, tol: 0.002, desc: 'Deflexión por carga viva' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Vigueta metálica de **cuerdas paralelas tipo Pratt** (diagonales traccionadas bajo gravedad), simplemente apoyada en su cuerda inferior, con montantes en cada nudo. Las correas apoyan sobre los nudos de la cuerda superior, de modo que las cargas se aplican como **fuerzas en los nudos** y las barras trabajan a fuerza axial.
@@ -509,21 +585,21 @@ Vigueta metálica de **cuerdas paralelas tipo Pratt** (diagonales traccionadas b
       { type: 'steelsec', perfil: 'L2X2X3/16', sufijo: 'd', tabla: false, titulo: 'Diagonales y montantes: L 2×2×3/16' },
       calc(`# Datos
 ## Geometría
-Lt = 12 m // Luz de la vigueta
-ht = 0.80 m // Peralte entre ejes de cuerdas
-np = 8 // Número de paneles (par)
-st = 5 m // Separación entre viguetas (ancho tributario)
-Lbr = 3 m // Separación de arriostres de la cuerda inferior
-lw = 6 cm // Longitud de soldadura longitudinal de cada ángulo
+Lt = 12 m // Luz de la vigueta [6..30]
+ht = 0.80 m // Peralte entre ejes de cuerdas [0.4..2.5]
+np = 8 // Número de paneles (par) [4..16]
+st = 5 m // Separación entre viguetas (ancho tributario) [3..8]
+Lbr = 3 m // Separación de arriostres de la cuerda inferior [1..6]
+lw = 6 cm // Longitud de soldadura longitudinal de cada ángulo [4..20]
 ## Materiales
 Fyc = 3235 kgf/cm^2 // Fluencia HSS ASTM A500 Gr. B (46 ksi) [3235 kgf/cm^2|3515 kgf/cm^2]
-Fya = 2530 kgf/cm^2 // Fluencia de ángulos ASTM A36
-Fua = 4080 kgf/cm^2 // Resistencia a tracción de ángulos ASTM A36
-E = 2039000 kgf/cm^2 // Módulo de elasticidad (29 000 ksi)
+Fya = 2530 kgf/cm^2 // Fluencia de ángulos ASTM A36 [2530..3515]
+Fua = 4080 kgf/cm^2 // Resistencia a tracción de ángulos ASTM A36 [4080..4570]
+E = 2039000 kgf/cm^2 // Módulo de elasticidad (29 000 ksi) [2000000..2100000]
 ## Cargas sobre la proyección horizontal (E.020)
-wD = 20 kgf/m^2 // Muerta: cobertura, correas, vigueta y arriostres
-wLr = 30 kgf/m^2 // Viva de techo liviano (E.020 7.1 b)
-pW = 28 kgf/m^2 // Succión neta de viento sobre la cubierta (E.020 12.4, ver memoria de correas)
+wD = 20 kgf/m^2 // Muerta: cobertura, correas, vigueta y arriostres [10..50]
+wLr = 30 kgf/m^2 // Viva de techo liviano (E.020 7.1 b) [30..100]
+pW = 28 kgf/m^2 // Succión neta de viento sobre la cubierta (E.020 12.4, ver memoria de correas) [10..80]
 # Cargas de diseño (E.090 1.4.1)
 wu = (1.2*wD + 1.6*wLr)*st -> tonf/m // 1.2D + 1.6Lr por metro de vigueta
 wup = (1.3*pW - 0.9*wD)*st -> tonf/m // Levante neto 0.9D − 1.3W
@@ -601,6 +677,18 @@ check abs(Nv - Fv0) <= 0.001*Fv0 // Montante extremo: ambos métodos coinciden`)
     normas: 'NTE E.020 (cargas, viento) · NTE E.090 1.4 · ANSI/AISC 360-16/22 (C, E, F, G, H, App. 7 y 8) · AISI S100-16 · NTE E.030-2018',
     desc: 'Pórtico biarticulado a dos aguas de perfiles W: metrado, viento E.020 con presión interior ±0.3, correas conformadas en frío, análisis por rigidez (bloque Pórtico 2D) contrastado con Kleinlogel, B2, diseño de viga y columnas, flecha, deriva por viento y sismo E.030.',
     titulo: 'Memoria de cálculo — nave metálica de un piso (pórticos a dos aguas)',
+    validacion: {
+      fuente: 'Control: pórtico a dos aguas por rigidez (frame2d), Kleinlogel (empuje bajo CM), AISC 360-16 App. 7 y 8, NTE E.020/E.030',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). El empuje bajo CM coincide con la fórmula de Kleinlogel (HKL) y V = ZUCS·P/R se comprueba a mano.',
+      valores: [
+        { var: 'HKL', unidad: 'tonf', esperado: 0.2234, tol: 0.002, desc: 'Empuje de Kleinlogel bajo CM' },
+        { var: 'abs(R1x_CM)', unidad: 'tonf', esperado: 0.2233, tol: 0.002, desc: 'Empuje del modelo matricial bajo CM' },
+        { var: 'Kx', esperado: 2.159, tol: 0.002, desc: 'K del pórtico no arriostrado (GA = 10)' },
+        { var: 'B2', esperado: 1.025, tol: 0.002, desc: 'Amplificación B2 (App. 8)' },
+        { var: 'Vsis', unidad: 'tonf', esperado: 0.6553, tol: 0.002, desc: 'Cortante sísmico ZUCS·P/R' },
+        { var: 'p0', unidad: 'kgf/m^2', esperado: 28.125, tol: 0.0005, desc: 'Presión dinámica 0.005·75²' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Edificación metálica de un piso (taller, almacén o cobertura de vivienda) con **pórticos a dos aguas biarticulados** de perfiles W, espaciados *sf*, con **techo liviano** de plancha aluzinc sobre **correas conformadas en frío**. En la dirección longitudinal la estabilidad se confía a arriostres en cruz de techo y de muro (no incluidos en esta memoria).
@@ -614,25 +702,25 @@ Edificación metálica de un piso (taller, almacén o cobertura de vivienda) con
       { type: 'steelsec', perfil: 'W12X26', sufijo: 'c', tabla: false, titulo: 'Columnas del pórtico W12×26' },
       calc(`# Datos generales
 ## Geometría
-Lf = 10 m // Luz del pórtico (entre ejes de columnas)
-hc = 4.5 m // Altura de columnas (base al eje del cabio en el alero)
-pend = 0.10 // Pendiente del techo (10 %)
-sf = 6 m // Separación entre pórticos
-sc = 1.20 m // Separación de correas
-lfb = 2.0 m // Separación de tornapuntas (arriostre del ala inferior del cabio)
+Lf = 10 m // Luz del pórtico (entre ejes de columnas) [8..30]
+hc = 4.5 m // Altura de columnas (base al eje del cabio en el alero) [3..10]
+pend = 0.10 // Pendiente del techo (10 %) [0.05..0.30]
+sf = 6 m // Separación entre pórticos [4..9]
+sc = 1.20 m // Separación de correas [0.8..2.0]
+lfb = 2.0 m // Separación de tornapuntas (arriostre del ala inferior del cabio) [1..4]
 fr = pend*Lf/2 -> m // Altura de la cumbrera sobre el alero
 alpha = atan(pend) -> deg // Inclinación del cabio
 sr = sqrt((Lf/2)^2 + fr^2) // Longitud de cada cabio
 ## Materiales
 Fy = 2530 kgf/cm^2 // Fluencia ASTM A36 [2530 kgf/cm^2|3515 kgf/cm^2]
-E = 2039000 kgf/cm^2 // Módulo de elasticidad (29 000 ksi)
+E = 2039000 kgf/cm^2 // Módulo de elasticidad (29 000 ksi) [2000000..2100000]
 ## Cargas de techo (E.020)
-wcob = 5 kgf/m^2 // Cobertura TR-4 aluzinc e = 0.40 mm
-wcor = 5 kgf/m^2 // Correas y templadores
-wacc = 10 kgf/m^2 // Arriostres, instalaciones y luminarias
-WLr = 30 kgf/m^2 // Carga viva de techo liviano (E.020 Art. 7.1 b)
+wcob = 5 kgf/m^2 // Cobertura TR-4 aluzinc e = 0.40 mm [3..15]
+wcor = 5 kgf/m^2 // Correas y templadores [3..15]
+wacc = 10 kgf/m^2 // Arriostres, instalaciones y luminarias [0..20]
+WLr = 30 kgf/m^2 // Carga viva de techo liviano (E.020 Art. 7.1 b) [30..100]
 ## Viento (E.020 Art. 12)
-Vv = 75 km/h // Velocidad básica a 10 m (E.020 Anexo 2; mínimo 75 km/h)
+Vv = 75 km/h // Velocidad básica a 10 m (E.020 Anexo 2; mínimo 75 km/h) [75..130]
 Vh = Vv*max(1, ((hc + fr)/(10 m))^0.22) // Velocidad de diseño (E.020 12.3)
 p0 = 0.005*(Vh/(1 km/h))^2*1 kgf/m^2 -> kgf/m^2 // Presión dinámica 0.005·Vh² (E.020 12.4)
 Cbar = 0.8 // Muro a barlovento, presión (E.020 Tabla 4)
@@ -670,9 +758,9 @@ Pacero = 2*sr*peso_v + 2*(hc/2)*peso_c -> tonf // Peso de cabios y media altura 
 Psis = (wD + 0.25*wLr)*Lf + Pacero -> tonf // Peso sísmico: CM + 25 % de la CV de techo (Art. 26 d)
 Zs = 0.45 // Factor de zona (Zona 4, Tabla N° 1) [0.10|0.25|0.35|0.45]
 Us = 1.0 // Factor de uso (categoría C, Tabla N° 5) [1.0|1.3|1.5]
-Ss = 1.05 // Factor de suelo (S2, Zona 4, Tabla N° 3)
-Tp = 0.6 s // Período TP (S2, Tabla N° 4)
-Tl = 2.0 s // Período TL (S2, Tabla N° 4)
+Ss = 1.05 // Factor de suelo (S2, Zona 4, Tabla N° 3) [0.8..2.0]
+Tp = 0.6 s // Período TP (S2, Tabla N° 4) [0.3..1.0]
+Tl = 2.0 s // Período TL (S2, Tabla N° 4) [1.6..3.0]
 R0s = 4 // Coeficiente básico (Tabla N° 7): pórtico ordinario resistente a momentos OMF [8|5|4]
 Rs = R0s*1*1 // R = R0·Ia·Ip, estructura regular (Art. 22)
 Ts = (hc + fr)/(35 m)*1 s // Período T = hn/CT, CT = 35 pórticos de acero sin arriostres (Art. 28.4.1)
@@ -736,7 +824,7 @@ check Vmax_VIG <= phiVnv // Cortante en el cabio
 dcum = abs(deltay_3) -> cm // Descenso de la cumbrera bajo CV de techo (servicio)
 check dcum <= Lf/240 // Flecha L/240 (techo sin cielo raso frágil)
 # Diseño de las columnas (AISC 360 E3, F2, H1)
-GA = 10 // Base articulada (Comentario App. 7)
+GA = 10 // Base articulada (Comentario App. 7) [1..10]
 GB = (Ix_c/hc)/(Ix_v/Lf) // Nudo superior (cabio equivalente de luz L en el modo con desplazamiento)
 Kx = sqrt((1.6*GA*GB + 4*(GA + GB) + 7.5)/(GA + GB + 7.5)) // K de pórtico no arriostrado (aproximación del nomograma, Comentario App. 7)
 Lcx = Kx*hc -> m // Longitud efectiva en el plano del pórtico (App. 7)
@@ -765,6 +853,17 @@ check Dw <= hc/100 // Deriva de servicio por viento h/100 (AISC Design Guide 3)
     normas: 'ANSI/AISC 360-16/22 Cap. I (I3.1, I3.2, I8.2) · Comentario I3 (inercia de límite inferior) · NTE E.090 · NTE E.020',
     desc: 'Viga W no apuntalada con losa sobre placa colaborante perpendicular: etapa constructiva, ancho efectivo, conectores tipo perno (Qn), compuesta parcial con eje neutro plástico, cortante y flecha con ILB.',
     titulo: 'Diseño de viga compuesta acero–concreto — AISC 360 Cap. I',
+    validacion: {
+      fuente: 'Control: AISC 360-16 Cap. I (I3.2a, I8.2a) con losa colaborante',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Qn = Rg·Rp·Asa·Fu (I8-1) y φMn = 28.7 t·m se comprueban a mano en tests/steel.test.mjs.',
+      valores: [
+        { var: 'Qn', unidad: 'tonf', esperado: 7.815, tol: 0.002, desc: 'Resistencia de un conector (I8-1)' },
+        { var: 'SQn', unidad: 'tonf', esperado: 117.2, tol: 0.002, desc: 'Σ Qn de media luz' },
+        { var: 'phiMn', unidad: 'tonf*m', esperado: 28.7, tol: 0.003, desc: 'Resistencia a flexión compuesta' },
+        { var: 'Mu', unidad: 'tonf*m', esperado: 24.38, tol: 0.002, desc: 'Momento último' },
+        { var: 'dL', unidad: 'cm', esperado: 1.834, tol: 0.002, desc: 'Deflexión por carga viva (ILB)' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Viga secundaria de entrepiso, simplemente apoyada, de perfil W **no apuntalado** durante el vaciado, que actúa en sección compuesta con una losa de concreto sobre **placa colaborante** (tipo Acero-Deck) con nervios **perpendiculares** a la viga. La conexión de corte se materializa con **conectores tipo perno** (*headed studs*) de ¾" soldados a través de la placa, uno por nervio.
@@ -775,25 +874,25 @@ Viga secundaria de entrepiso, simplemente apoyada, de perfil W **no apuntalado**
       { type: 'steelsec', perfil: 'W12X19', tabla: true, titulo: 'Perfil de acero W12×19 (ASTM A992)' },
       calc(`# Datos
 ## Geometría
-Lv = 9 m // Luz de la viga
-sv = 3 m // Separación entre vigas
-hr = 6 cm // Altura del nervio de la placa colaborante
-tc = 6 cm // Espesor de concreto sobre la cresta
-wr = 15 cm // Ancho medio del nervio
-ss = 30 cm // Separación de conectores (uno por nervio)
+Lv = 9 m // Luz de la viga [5..15]
+sv = 3 m // Separación entre vigas [1.5..4.5]
+hr = 6 cm // Altura del nervio de la placa colaborante [3.8..7.6]
+tc = 6 cm // Espesor de concreto sobre la cresta [5..12]
+wr = 15 cm // Ancho medio del nervio [5..20]
+ss = 30 cm // Separación de conectores (uno por nervio) [15..80]
 ## Materiales
-Fy = 3515 kgf/cm^2 // Fluencia ASTM A992 (50 ksi)
-E = 2039000 kgf/cm^2 // Módulo de elasticidad del acero
+Fy = 3515 kgf/cm^2 // Fluencia ASTM A992 (50 ksi) [2530..3515]
+E = 2039000 kgf/cm^2 // Módulo de elasticidad del acero [2000000..2100000]
 fc = 210 kgf/cm^2 // Resistencia del concreto [210 kgf/cm^2|280 kgf/cm^2]
-wc = 145 lbf/ft^3 // Peso unitario del concreto (≈ 2320 kgf/m³)
+wc = 145 lbf/ft^3 // Peso unitario del concreto (≈ 2320 kgf/m³) [90..155]
 dsa = 19.05 mm // Diámetro del conector [15.88 mm : 5/8"|19.05 mm : 3/4"]
-Fusa = 4570 kgf/cm^2 // Resistencia a tracción del conector (ASTM A108, 65 ksi)
+Fusa = 4570 kgf/cm^2 // Resistencia a tracción del conector (ASTM A108, 65 ksi) [4220..4570]
 ## Cargas (E.020)
-wdeck = 10 kgf/m^2 // Placa colaborante calibre 22
+wdeck = 10 kgf/m^2 // Placa colaborante calibre 22 [7..20]
 wcon = 2400 kgf/m^3*(tc + hr/2) -> kgf/m^2 // Concreto de la losa (nervios de sección media)
-wsd = 100 kgf/m^2 // Muerta sobreimpuesta: acabados y tabiquería móvil
-wL = 250 kgf/m^2 // Carga viva de oficinas (E.020 Tabla 1)
-wcons = 50 kgf/m^2 // Carga de construcción (ASCE 37)
+wsd = 100 kgf/m^2 // Muerta sobreimpuesta: acabados y tabiquería móvil [50..250]
+wL = 250 kgf/m^2 // Carga viva de oficinas (E.020 Tabla 1) [200..500]
+wcons = 50 kgf/m^2 // Carga de construcción (ASCE 37) [50..100]
 # Etapa constructiva (perfil solo, AISC F2)
 wu1 = 1.2*((wdeck + wcon)*sv + peso) + 1.6*wcons*sv -> tonf/m // 1.2D + 1.6Lc
 Mu1 = wu1*Lv^2/8 -> tonf*m
@@ -814,8 +913,8 @@ Asa = pi*dsa^2/4 -> cm^2 // Área del conector
 check hr <= 7.5 cm // Altura del nervio hr ≤ 3 in (I3.2c)
 check wr >= 5 cm // Ancho medio del nervio ≥ 2 in (I3.2c)
 check tc >= 5 cm // Concreto sobre la placa ≥ 2 in (I3.2c)
-Rg = 1.0 // Un conector por nervio, placa perpendicular (Tabla I8.1)
-Rp = 0.6 // Conector en posición débil, placa perpendicular (Tabla I8.1)
+Rg = 1.0 // Un conector por nervio, placa perpendicular (Tabla I8.1) [0.85..1.0]
+Rp = 0.6 // Conector en posición débil, placa perpendicular (Tabla I8.1) [0.6..0.75]
 Qn = min(0.5*Asa*sqrt(fc*Ec), Rg*Rp*Asa*Fusa) -> tonf // Resistencia de un conector (I8-1)
 nq = floor(Lv/(2*ss)) // Conectores entre el apoyo y el centro de luz
 SQn = nq*Qn -> tonf // Fuerza de corte horizontal transferida
@@ -856,6 +955,17 @@ check dL <= Lv/360 // Límite L/360 para carga viva (IBC Tabla 1604.3)
     normas: 'ANSI/AISC 360-16/22 F2, G2, J10 · NTE E.090 (Cap. F, LRFD 1999) · NTE E.020',
     desc: 'Viga IPE simplemente apoyada con arriostre lateral intermedio: pandeo lateral-torsional por AISC 360 F2 y por E.090 (X1, X2, FL), cortante, cargas concentradas en el alma (J10) y flecha.',
     titulo: 'Diseño de viga de acero IPE — AISC 360-16 / NTE E.090',
+    validacion: {
+      fuente: 'Control: AISC 360-16 F2 y NTE E.090 con perfil IPE 300 S275',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Lp, Lr (F2-5, F2-6) y Cb = 12.5M/(2.5M + 3MA + 4MB + 3MC) se comprueban a mano en tests/steel.test.mjs.',
+      valores: [
+        { var: 'Lp', unidad: 'm', esperado: 1.59, tol: 0.003, desc: 'Lp (F2-5)' },
+        { var: 'Lr', unidad: 'm', esperado: 5.097, tol: 0.003, desc: 'Lr (F2-6)' },
+        { var: 'Cb', esperado: 1.299, tol: 0.001, desc: 'Cb del tramo central' },
+        { var: 'phiMn', unidad: 'tonf*m', esperado: 15.86, tol: 0.002, desc: 'Resistencia a flexión' },
+        { var: 'Mu', unidad: 'tonf*m', esperado: 13.68, tol: 0.0005, desc: 'Momento último wL²/8' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Viga de entrepiso de **perfil europeo IPE** (EN 10365), acero S275JR, simplemente apoyada sobre vigas principales y arriostrada lateralmente en el centro de la luz por una viga secundaria. Se verifica la flexión con pandeo lateral-torsional según **AISC 360-16/22 Sección F2** y, como comparación, según la **NTE E.090 (2006)** — basada en AISC LRFD 1999 —, que usa los parámetros X1, X2 y FL = Fy − Fr.
@@ -865,13 +975,13 @@ Viga de entrepiso de **perfil europeo IPE** (EN 10365), acero S275JR, simplement
       { type: 'steelsec', perfil: 'IPE300', tabla: true, titulo: '' },
       calc(`# Datos
 Fy = 2804 kgf/cm^2 // Fluencia S275 (275 MPa) [2396 kgf/cm^2|2804 kgf/cm^2|3620 kgf/cm^2]
-E = 2039000 kgf/cm^2 // Módulo de elasticidad (200 GPa en EN; 29 000 ksi en AISC)
-G = 784000 kgf/cm^2 // Módulo de corte (11 200 ksi)
-Lv = 6 m // Luz de la viga
-Lb = 3 m // Longitud no arriostrada (arriostre en el centro)
-wDs = 1.2 tonf/m // Carga muerta de servicio
-wLs = 1.0 tonf/m // Carga viva de servicio
-lbr = 10 cm // Longitud de apoyo en los extremos
+E = 2039000 kgf/cm^2 // Módulo de elasticidad (200 GPa en EN; 29 000 ksi en AISC) [2000000..2100000]
+G = 784000 kgf/cm^2 // Módulo de corte (11 200 ksi) [770000..820000]
+Lv = 6 m // Luz de la viga [3..12]
+Lb = 3 m // Longitud no arriostrada (arriostre en el centro) [0.5..12]
+wDs = 1.2 tonf/m // Carga muerta de servicio [0..5]
+wLs = 1.0 tonf/m // Carga viva de servicio [0..5]
+lbr = 10 cm // Longitud de apoyo en los extremos [5..30]
 # Solicitaciones (E.090 1.4.1)
 wu = max(1.4*wDs, 1.2*wDs + 1.6*wLs) -> tonf/m
 Mu = wu*Lv^2/8 -> tonf*m // Momento máximo (centro)
@@ -892,7 +1002,7 @@ Mn = si(Lb <= Lp, Mp, si(Lb <= Lr, Minel, Mel)) -> tonf*m // F2-1 a F2-3
 phiMn = 0.90*Mn -> tonf*m
 check Mu <= phiMn // Flexión AISC 360 (F1)
 # Flexión — NTE E.090 (F1.1, perfiles compactos)
-Fr = 69 MPa // Esfuerzo residual en perfiles laminados (E.090 F1.1)
+Fr = 69 MPa // Esfuerzo residual en perfiles laminados (E.090 F1.1) [69..114]
 FL = Fy - Fr // Esfuerzo FL = Fy − Fr
 X1 = pi/Sx*sqrt(E*G*J*A/2) // E.090 Ec. F1-8
 X2 = 4*Cw/Iy*(Sx/(G*J))^2 // E.090 Ec. F1-9
@@ -929,6 +1039,17 @@ check dT <= Lv/240 // L/240`),
     normas: 'NTE E.020 · NTE E.030-2018 (Tabla N° 7: OMF R0 = 4, OCBF R0 = 4) · NTE E.090 1.4 · ANSI/AISC 360-16/22 · AISC 341-16 (OCBF) · ANSI/SDI C-2017 (losa colaborante)',
     desc: 'Vivienda de 2 pisos: losa sobre placa colaborante (etapas constructiva y compuesta), pórtico resistente a momentos en X (análisis matricial frame2d con CM, CV, viento y sismo), columnas HSS (E3, F7, H1), vigas W (F2) y arriostres concéntricos HSS en cruz en Y, derivas E.030.',
     titulo: 'Memoria de cálculo — vivienda de dos pisos en estructura metálica',
+    validacion: {
+      fuente: 'Control: ANSI/SDI C-2017 (losa colaborante), AISC 360-16 y NTE E.030 (V = ZUCS·P/R)',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). V = 0.45·1·2.5·1.05/4·P y la fracción del pórtico de borde 1/4 + 0.05·9·4.5/45 = 0.295 se comprueban a mano.',
+      valores: [
+        { var: 'Psis', unidad: 'tonf', esperado: 40.5, tol: 0.002, desc: 'Peso sísmico' },
+        { var: 'Vx', unidad: 'tonf', esperado: 11.96, tol: 0.002, desc: 'Cortante basal ZUCS·P/R' },
+        { var: 'ft', esperado: 0.295, tol: 0.0005, desc: 'Fracción de cortante del pórtico de borde' },
+        { var: 'phiMs', unidad: 'kgf*m', esperado: 1316, tol: 0.002, desc: 'Resistencia de la losa compuesta por metro' },
+        { var: 'Fbr', unidad: 'tonf', esperado: 4.499, tol: 0.002, desc: 'Fuerza en el arriostre en cruz' },
+      ],
+    },
     blocks: [
       text(`# Generalidades
 Vivienda unifamiliar de **dos pisos** en estructura metálica liviana: columnas de **tubo HSS cuadrado** (ASTM A500 Gr. B), vigas de perfil **W** (ASTM A572 Gr. 50), entrepiso de **losa de concreto sobre placa colaborante** (tipo Acero-Deck AD-600, nervios perpendiculares a las vigas de pórtico) y techo liviano de cobertura metálica sobre correas.
@@ -942,34 +1063,34 @@ Vivienda unifamiliar de **dos pisos** en estructura metálica liviana: columnas 
       { type: 'steelsec', perfil: 'HSS3X3X1/4', sufijo: 'b', tabla: false, titulo: 'Arriostres en cruz: HSS 3×3×1/4 (ASTM A500 Gr. B)' },
       calc(`# Datos
 ## Geometría
-Lx = 8 m // Longitud en planta, dirección X (2 vanos)
-Ly = 9 m // Longitud en planta, dirección Y (3 vanos)
-bx = 4 m // Vano de los pórticos X
-by = 3 m // Separación de pórticos X (luz de la losa colaborante)
-nfx = 4 // Número de pórticos en X (ejes A–D)
-h1 = 2.8 m // Altura del 1.er piso
-h2 = 2.6 m // Altura del 2.º piso
+Lx = 8 m // Longitud en planta, dirección X (2 vanos) [6..20]
+Ly = 9 m // Longitud en planta, dirección Y (3 vanos) [6..20]
+bx = 4 m // Vano de los pórticos X [3..8]
+by = 3 m // Separación de pórticos X (luz de la losa colaborante) [2..4]
+nfx = 4 // Número de pórticos en X (ejes A–D) [2..8]
+h1 = 2.8 m // Altura del 1.er piso [2.4..4]
+h2 = 2.6 m // Altura del 2.º piso [2.4..4]
 ## Materiales
-Fyc = 3235 kgf/cm^2 // Fluencia HSS ASTM A500 Gr. B (46 ksi)
-Fyv = 3515 kgf/cm^2 // Fluencia W ASTM A572 Gr. 50 / A992 (50 ksi)
-E = 2039000 kgf/cm^2 // Módulo de elasticidad del acero
-fc = 210 kgf/cm^2 // Concreto de la losa colaborante
+Fyc = 3235 kgf/cm^2 // Fluencia HSS ASTM A500 Gr. B (46 ksi) [2950..3515]
+Fyv = 3515 kgf/cm^2 // Fluencia W ASTM A572 Gr. 50 / A992 (50 ksi) [2530..3515]
+E = 2039000 kgf/cm^2 // Módulo de elasticidad del acero [2000000..2100000]
+fc = 210 kgf/cm^2 // Concreto de la losa colaborante [175..280]
 ## Placa colaborante AD-600 calibre 22 (datos del catálogo del fabricante, por metro de ancho)
-hr = 6 cm // Altura del nervio
-tc = 5 cm // Concreto sobre la cresta
-Asd = 9.0 cm^2 // Área de acero de la placa por metro
-Ssd = 17 cm^3 // Módulo de sección de la placa por metro (momento positivo)
-Isd = 60 cm^4 // Inercia de la placa por metro
-Fyd = 2320 kgf/cm^2 // Fluencia de la placa ASTM A653 Gr. 33
+hr = 6 cm // Altura del nervio [3.8..7.6]
+tc = 5 cm // Concreto sobre la cresta [5..12]
+Asd = 9.0 cm^2 // Área de acero de la placa por metro [5..20]
+Ssd = 17 cm^3 // Módulo de sección de la placa por metro (momento positivo) [8..40]
+Isd = 60 cm^4 // Inercia de la placa por metro [20..200]
+Fyd = 2320 kgf/cm^2 // Fluencia de la placa ASTM A653 Gr. 33 [2320..3515]
 nap = 1 // Líneas de apuntalamiento temporal por paño durante el vaciado [0|1|2]
 ## Cargas (E.020)
 wlosa = 2400 kgf/m^3*(tc + hr/2) + 8 kgf/m^2 -> kgf/m^2 // Losa: concreto (nervios de sección media) + placa
-wacab = 100 kgf/m^2 // Piso terminado
-wtab = 100 kgf/m^2 // Tabiquería liviana (drywall)
-wL = 200 kgf/m^2 // Carga viva de vivienda (E.020 Tabla 1)
-wtecho = 40 kgf/m^2 // Techo: cobertura, correas, cielo raso e instalaciones
-WLr = 50 kgf/m^2 // Carga viva de techo (E.020 Art. 7.1 a, techo con acceso ocasional)
-wcons = 100 kgf/m^2 // Carga de construcción durante el vaciado (ANSI/SDI C-2017, 20 psf)
+wacab = 100 kgf/m^2 // Piso terminado [50..150]
+wtab = 100 kgf/m^2 // Tabiquería liviana (drywall) [50..250]
+wL = 200 kgf/m^2 // Carga viva de vivienda (E.020 Tabla 1) [200..250]
+wtecho = 40 kgf/m^2 // Techo: cobertura, correas, cielo raso e instalaciones [20..80]
+WLr = 50 kgf/m^2 // Carga viva de techo (E.020 Art. 7.1 a, techo con acceso ocasional) [50..100]
+wcons = 100 kgf/m^2 // Carga de construcción durante el vaciado (ANSI/SDI C-2017, 20 psf) [50..150]
 # Losa sobre placa colaborante (ANSI/SDI C-2017)
 ## Etapa constructiva: la placa sola resiste el concreto fresco
 Lsd = by/(nap + 1) // Luz libre de la placa entre apoyos/puntales
@@ -1000,9 +1121,9 @@ P2 = (wtecho + 0.25*WLr + 20 kgf/m^2)*Ap -> tonf // Peso del techo: CM + 25 % CV
 Psis = P1 + P2 -> tonf
 Zs = 0.45 // Factor de zona (Zona 4) [0.10|0.25|0.35|0.45]
 Us = 1.0 // Categoría C, vivienda (Tabla N° 5) [1.0|1.3|1.5]
-Ss = 1.05 // Suelo S2, Zona 4 (Tabla N° 3)
-Tp = 0.6 s // (Tabla N° 4, S2)
-Tl = 2.0 s // (Tabla N° 4, S2)
+Ss = 1.05 // Suelo S2, Zona 4 (Tabla N° 3) [0.8..2.0]
+Tp = 0.6 s // Período TP del suelo (Tabla N° 4, S2) [0.3..1.0]
+Tl = 2.0 s // Período TL del suelo (Tabla N° 4, S2) [1.6..3.0]
 hn = h1 + h2 // Altura total
 Rx = 4*1*1 // Dirección X: OMF, R0 = 4 (Tabla N° 7), regular
 Ry = 4*1*1 // Dirección Y: OCBF, R0 = 4 (Tabla N° 7), regular
@@ -1019,7 +1140,7 @@ ft = 1/nfx + 0.05*Ly*(Ly/2)/(nfx*(nfx^2 - 1)*by^2/12) // Fracción del cortante:
 F1x = ft*a1*Vx -> tonf // Fuerza en el 1.er nivel del pórtico X crítico
 F2x = ft*a2*Vx -> tonf // Fuerza en el techo del pórtico X crítico
 # Viento (E.020 Art. 12) — fachada perpendicular a X
-Vh = 75 km/h // V ≥ 75 km/h, h < 10 m: Vh = V (Art. 12.3)
+Vh = 75 km/h // V ≥ 75 km/h, h < 10 m: Vh = V (Art. 12.3) [75..130]
 pw = 0.005*(0.8 + 0.6)*(Vh/(1 km/h))^2*1 kgf/m^2 -> kgf/m^2 // Barlovento 0.8 + sotavento 0.6 (Tabla 4)
 W1x = pw*(h1 + h2)/2*Ly/nfx -> tonf // Fuerza de viento en el 1.er nivel por pórtico
 W2x = pw*h2/2*Ly/nfx -> tonf // Fuerza de viento en el techo por pórtico`),
@@ -1045,7 +1166,7 @@ phiVnv = phivG2(perfil_v, Fyv, E)*VnG2(perfil_v, Fyv, E) -> tonf // Cortante (G2
 check Vmax_VIG <= phiVnv // Cortante en las vigas
 # Diseño de las columnas HSS (AISC 360 E3, F7, H1)
 check lambdaf_c <= 1.40*sqrt(E/Fyc) // Pared no esbelta en compresión (Tabla B4.1a caso 6)
-GA = 1.0 // Base empotrada (Comentario App. 7)
+GA = 1.0 // Base empotrada (Comentario App. 7) [1..10]
 GB = 2*(Ix_c/h1)/(Ix_v/bx) // Nudo del 1.er nivel, columna interior: columnas arriba y abajo, vigas a ambos lados
 Kc = sqrt((1.6*GA*GB + 4*(GA + GB) + 7.5)/(GA + GB + 7.5)) // K de pórtico no arriostrado (Comentario App. 7)
 Lcx = Kc*h1 -> m // Longitud efectiva en el plano del pórtico X
@@ -1057,7 +1178,7 @@ check ratioc <= 1.0 // Columnas: flexocompresión (H1-1)
 check Vmax_COL <= 0.9*VnG2(perfil_c, Fyc, E) // Cortante en las columnas (G4)
 "Columna fuerte–viga débil: no es exigido en OMF (AISC 341-16 E1); las conexiones viga–columna se diseñan para 1.1RyMp de la viga o para la combinación con sobrerresistencia Ω0 = 3 (AISC 341-16 E1.6b).
 # Arriostres concéntricos en cruz — dirección Y (OCBF)
-nby = 2 // Paños arriostrados en Y (uno en cada fachada)
+nby = 2 // Paños arriostrados en Y (uno en cada fachada) [1..4]
 ba = by // Ancho del paño arriostrado
 ftY = 1/nby + 0.05*Lx/Lx // Fracción por fachada con torsión accidental (ea = 0.05Lx, brazo Lx/2, Σx² = 2(Lx/2)²)
 VY1 = ftY*Vy -> tonf // Cortante del 1.er piso en un paño (máximo)

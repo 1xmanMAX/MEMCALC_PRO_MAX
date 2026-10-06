@@ -1,5 +1,5 @@
 // Pruebas de validación — módulo «japan» (BSL, AIJ, JRA)
-import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES } from './helpers.mjs';
+import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES, math } from './helpers.mjs';
 
 section('BSL — coeficientes sísmicos (Notif. 1793)');
 {
@@ -218,4 +218,15 @@ section('Plantillas con datos extremos: deben pasar a NO CUMPLE sin errores ni N
     for (const l of labels) truthy(`${id}: «${l}» pasa a NO CUMPLE`, malos.some(m => m.includes(l)), malos.join(' | '));
   }
 }
+section('Rangos usuales [mín..máx] y ejemplos de validación de las plantillas «japan»');
+for (const t of TEMPLATES.filter(x => x.id.startsWith('jp-'))) {
+  const inp = runTemplate(t.id).res.ctx.inputs, rg = inp.filter(i => i.range);
+  const out = rg.filter(i => { let v = parseFloat(i.num); if (i.range.unit && i.unit && i.range.unit !== i.unit) v = math.unit(v, i.unit).toNumber(i.range.unit); return !(v >= i.range.min && v <= i.range.max); });
+  const bad = inp.filter(i => /\.\.|\[/.test(i.label || ''));
+  truthy(`${t.id}: ${rg.length} datos con rango, valores por defecto dentro del rango, etiquetas limpias`, rg.length >= 3 && out.length === 0 && bad.length === 0, out.map(i => i.name + ' = ' + i.num).concat(bad.map(i => i.name)).join(', '));
+  const v = t.validacion;
+  truthy(`${t.id}: tiene «validacion» con fuente, nota y valores`, !!(v && v.fuente && v.nota && Array.isArray(v.valores) && v.valores.length >= 3));
+}
+truthy('Listas desplegables intactas con rango (suelo, rangos FA–FD/WA–WD, Fc)', (() => { const f = (id, n) => runTemplate(id).res.ctx.inputs.find(i => i.name === n); return f('jp-bsl-ruta3', 'suelo').options.length === 3 && f('jp-bsl-ruta3', 'rF').options.length === 4 && f('jp-bsl-ruta3', 'rF').range.max === 4 && f('jp-bsl-ruta12', 'Fc').options.length === 5 && f('jp-bsl-ruta12', 'Fc').range.min === 18; })());
+truthy('Viento: validacion con el ejemplo publicado de la Notif. 1454 (Er = 0.794, q ≈ 1095 N/m²)', TEMPLATES.find(x => x.id === 'jp-bsl-viento-nieve').validacion.valores.some(v => v.var === 'Er' && v.esperado === 0.794));
 done();

@@ -588,3 +588,27 @@ details.hint[open] summary{border-bottom:1px solid var(--bd);border-radius:8px 8
 .vt td small{display:block;color:var(--mut);font-size:11px}
 .vt .vst{font-weight:700;text-align:center}.vt tr.ok .vst{color:var(--ok)}.vt tr.bad .vst{color:var(--bad)}.vt tr.bad td{background:rgba(198,40,40,.05)}
 body.mc-locked .tab[data-tab="bloques"],body.mc-locked .tab[data-tab="vars"],body.mc-locked .bnav [data-v="bloques"],body.mc-locked .bnav [data-v="vars"],body.mc-locked .ied [data-code]{display:none!important}
+
+/* --- Usabilidad (ux4) --- */
+/* ejemplos grises de los campos de bloques: que no parezcan valores ya cargados */
+.fg .fld input::placeholder,.fg .fld textarea::placeholder{font-style:italic;color:var(--mut);opacity:.55}
+/* ayuda de parámetros en el editor: f(a, b, …) con el argumento actual subrayado */
+.sighint{position:fixed;z-index:71;background:var(--panel);border:1px solid var(--bd);border-radius:8px;box-shadow:var(--shadow);padding:5px 9px;max-width:min(460px,calc(100vw - 16px));font:12px/1.35 Inter,"Segoe UI",system-ui,sans-serif;color:var(--mut);pointer-events:none;animation:popin .1s ease-out}
+.sighint code{display:block;font:12.5px/1.4 "Cascadia Mono",Consolas,monospace;color:var(--tx);white-space:normal;overflow-wrap:anywhere}
+.sighint code b{color:#7c3aed}
+.sighint code u{text-decoration:none;background:var(--acc-s);color:var(--acc-t);border-radius:3px;padding:0 2px;font-weight:700}
+.sighint span{display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.libact{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+.libact .btn svg{width:15px;height:15px}
+@media print{.sighint{display:none!important}}
+/* opciones avanzadas plegables en bloques de análisis con muchos campos */
+details.bkopt{grid-column:1/-1;border:1px solid var(--bd);border-radius:8px;background:var(--panel2)}
+details.bkopt summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:7px;padding:7px 10px;font-size:12.5px;font-weight:600;color:var(--tx);user-select:none;border-radius:8px}
+details.bkopt summary::-webkit-details-marker{display:none}
+details.bkopt summary:hover{background:var(--hover)}
+details.bkopt summary svg{width:15px;height:15px;flex-shrink:0;color:var(--mut)}
+details.bkopt summary em{font-style:normal;font-weight:400;color:var(--mut);font-size:12px}
+details.bkopt summary::after{content:"";margin-left:auto;width:7px;height:7px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg) translateY(-2px);transition:transform .15s}
+details.bkopt[open] summary::after{transform:rotate(-135deg) translateY(-1px)}
+details.bkopt[open] summary{border-bottom:1px solid var(--bd);border-radius:8px 8px 0 0}
+details.bkopt>.fg{padding:10px;background:var(--panel);border-radius:0 0 8px 8px}

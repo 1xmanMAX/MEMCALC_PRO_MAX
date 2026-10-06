@@ -14,7 +14,7 @@ perfil = 2 // Perfil de suelo (E.030 Art. 12) [1 : S1 roca o suelo muy rígido|2
 S = si(perfil == 1, 1.00, si(perfil == 2, si(zona == 4, 1.05, si(zona == 3, 1.15, si(zona == 2, 1.20, 1.60))), si(zona == 4, 1.10, si(zona == 3, 1.20, si(zona == 2, 1.40, 2.00))))) // Factor de suelo (E.030-2018 Tabla N° 3)
 PGA = Z*S // Aceleración máxima del terreno en la superficie (AASHTO 11.6.5.2: kh0 = Fpga·PGA)
 kh = khWall(PGA) // kh = 0.5·kh0: el muro puede desplazarse 25–50 mm (AASHTO 11.6.5.2.2)
-kv = 0 // Coeficiente vertical: se desprecia (AASHTO 11.6.5.2.2)`;
+kv = 0 // Coeficiente vertical: se desprecia (AASHTO 11.6.5.2.2) [0..0.15]`;
 
 // =====================================================================
 //  1) MURO EN VOLADIZO CON SISMO
@@ -25,6 +25,20 @@ const voladizo = {
   normas: 'RNE — NTE E.020, E.030, E.050 (39.13), E.060; AASHTO LRFD 11.6',
   desc: 'Estabilidad estática y sísmica (Mononobe–Okabe + inercia) con dentellón, diseño de pantalla, punta y talón por flexión y cortante (E.060), corte de barras y refuerzo de temperatura.',
   titulo: 'Diseño de muro de contención en voladizo H = 5.00 m con sismo',
+  validacion: {
+    fuente: 'Control: Rankine (Das, Principios de Ing. de Cimentaciones, cap. 7) + AASHTO 11.6.5 + E.060; motor validado con Das Ej. 8.1 y Sağlam P1 (tests/walls.test.mjs)',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Comprobados a mano: kh = 0.5·0.45·1.05, Ka = tan²(45° − 32°/2) y Ea = ½Ka·γ·H² + Ka·ws·H.',
+    valores: [
+      { var: 'kh', esperado: 0.23625, tol: 0.0005, desc: 'kh = 0.5·Z·S (AASHTO 11.6.5.2.2)' },
+      { var: 'Ka', esperado: 0.30726, tol: 0.0005, desc: 'Ka de Rankine, φ = 32°' },
+      { var: 'Pa', unidad: 'tonf/m', esperado: 8.834, tol: 0.002, desc: 'Empuje activo estático' },
+      { var: 'FSv', esperado: 6.09, tol: 0.002, desc: 'FS al volteo, estático' },
+      { var: 'FSd', esperado: 3.258, tol: 0.002, desc: 'FS al deslizamiento, estático' },
+      { var: 'FSvs', esperado: 2.093, tol: 0.002, desc: 'FS al volteo con sismo' },
+      { var: 'FSds', esperado: 1.296, tol: 0.002, desc: 'FS al deslizamiento con sismo' },
+      { var: 'As', unidad: 'cm^2/m', esperado: 16.75, tol: 0.002, desc: 'Acero vertical en la base de la pantalla' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 ## Descripción
@@ -44,34 +58,34 @@ Muro de contención de concreto armado en voladizo (T invertida) que sostiene un
 4. Diseño por resistencia (E.060) de la pantalla, la punta y el talón; corte de barras y refuerzo mínimo.`),
     calc(`# Datos de diseño
 ## Geometría (por metro lineal)
-H = 5.00 m // Altura total: fondo de cimentación a corona (E.050 39.13.5)
-hz = 0.60 m // Espesor de la zapata (predimensionado ≈ H/10 a H/12)
-B = 4.50 m // Ancho de la base (0.5H a 0.7H estático, Das 8.2; ≈ 0.9H por el sismo de zona 4 con pasivo reducido)
-Lp = 0.90 m // Longitud de la punta (≈ B/4 a B/3)
-t1 = 0.25 m // Espesor de la pantalla en la corona (≥ 0.20 m)
-t2 = 0.50 m // Espesor de la pantalla en la base (≈ H/10)
-bk = 0.50 m // Ancho del dentellón (bajo la pantalla)
-hk = 1.20 m // Profundidad del dentellón bajo la zapata
-Df = 1.20 m // Altura del suelo frente a la punta, desde el fondo de la zapata
+H = 5.00 m // Altura total: fondo de cimentación a corona (E.050 39.13.5) [2..10]
+hz = 0.60 m // Espesor de la zapata (predimensionado ≈ H/10 a H/12) [0.3..1.2]
+B = 4.50 m // Ancho de la base (0.5H a 0.7H estático, Das 8.2; ≈ 0.9H por el sismo de zona 4 con pasivo reducido) [2..8]
+Lp = 0.90 m // Longitud de la punta (≈ B/4 a B/3) [0.3..2.5]
+t1 = 0.25 m // Espesor de la pantalla en la corona (≥ 0.20 m) [0.20..0.40]
+t2 = 0.50 m // Espesor de la pantalla en la base (≈ H/10) [0.25..1.0]
+bk = 0.50 m // Ancho del dentellón (bajo la pantalla) [0.3..1.0]
+hk = 1.20 m // Profundidad del dentellón bajo la zapata [0..2]
+Df = 1.20 m // Altura del suelo frente a la punta, desde el fondo de la zapata [0.6..2.5]
 fp = 0.50 // Fracción del empuje pasivo que se considera (AASHTO Tabla 11.5.7-1: φep = 0.50; el pasivo requiere desplazamientos grandes y el suelo puede excavarse) [0 : despreciar el pasivo|0.50 : 50 % (recomendado)|1.00 : pasivo completo]
 hp = H - hz // Altura de la pantalla
 Lt = B - Lp - t2 // Longitud del talón
 ## Relleno (parámetros del EMS, E.050 16.2.9)
-gammas = 1.90 tonf/m^3 // Peso unitario del relleno granular compactado
-phis = 32 deg // Ángulo de fricción interna del relleno
-beta = 0 deg // Inclinación de la superficie del relleno
-ws = 1.00 tonf/m^2 // Sobrecarga sobre el relleno (tránsito peatonal y vehicular liviano, E.020)
+gammas = 1.90 tonf/m^3 // Peso unitario del relleno granular compactado [1.5..2.2]
+phis = 32 deg // Ángulo de fricción interna del relleno [20..40]
+beta = 0 deg // Inclinación de la superficie del relleno [0..30]
+ws = 1.00 tonf/m^2 // Sobrecarga sobre el relleno (tránsito peatonal y vehicular liviano, E.020) [0..2]
 ## Suelo de cimentación
-gammaf = 1.85 tonf/m^3 // Peso unitario del suelo frente al muro
-phif = 30 deg // Ángulo de fricción del suelo de cimentación
-mu = 0.55 // Coeficiente de fricción concreto–suelo tan δ (EMS, E.050 16.2.9 k)
-qa = 2.50 kgf/cm^2 // Presión admisible (FS = 3.0, E.050 Art. 21–22)
+gammaf = 1.85 tonf/m^3 // Peso unitario del suelo frente al muro [1.5..2.2]
+phif = 30 deg // Ángulo de fricción del suelo de cimentación [20..40]
+mu = 0.55 // Coeficiente de fricción concreto–suelo tan δ (EMS, E.050 16.2.9 k) [0.30..0.70]
+qa = 2.50 kgf/cm^2 // Presión admisible (FS = 3.0, E.050 Art. 21–22) [0.5..6]
 ## Materiales
 fc = 210 kgf/cm^2 // Resistencia del concreto [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2]
-fy = 4200 kgf/cm^2 // Acero ASTM A615 Grado 60
-gammac = 2.40 tonf/m^3 // Peso unitario del concreto armado (E.020 Anexo 1)
-rec = 5 cm // Recubrimiento de la pantalla, concreto expuesto al suelo (E.060 7.7.1 b)
-recz = 7.5 cm // Recubrimiento de la zapata vaciada contra el suelo (E.060 7.7.1 a)
+fy = 4200 kgf/cm^2 // Acero ASTM A615 Grado 60 [2800..4200]
+gammac = 2.40 tonf/m^3 // Peso unitario del concreto armado (E.020 Anexo 1) [2.2..2.5]
+rec = 5 cm // Recubrimiento de la pantalla, concreto expuesto al suelo (E.060 7.7.1 b) [2..7.5]
+recz = 7.5 cm // Recubrimiento de la zapata vaciada contra el suelo (E.060 7.7.1 a) [5..10]
 ${SISMO}
 ## Coeficientes de empuje
 Ka = KaRankine(phis, beta) // Activo de Rankine (Das, Principios, cap. 7, relleno inclinado; β = 0 → tan²(45° − φ/2))
@@ -178,6 +192,19 @@ const gravedad = {
   normas: 'RNE — NTE E.030, E.050 (39.13), E.060 Cap. 22 (concreto simple); Das; Calavera',
   desc: 'Empuje de Coulomb y Mononobe–Okabe, estabilidad estática y sísmica y esfuerzos de tracción, compresión y corte en secciones horizontales del cuerpo (concreto simple, E.060 Cap. 22).',
   titulo: 'Diseño de muro de gravedad de concreto ciclópeo H = 4.00 m',
+  validacion: {
+    fuente: 'Control: Coulomb y Mononobe–Okabe (Das cap. 7; Kramer §11.6) + E.060 Cap. 22; motor validado con Das Ej. 7.6 y Sağlam P2',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). kh = 0.5·Z·S se comprueba a mano.',
+    valores: [
+      { var: 'kh', esperado: 0.23625, tol: 0.0005, desc: 'kh = 0.5·Z·S' },
+      { var: 'Ka', esperado: 0.4873, tol: 0.002, desc: 'Ka de Coulomb (trasdós inclinado, δ = 2φ/3)' },
+      { var: 'Kae', esperado: 0.7481, tol: 0.002, desc: 'Kae de Mononobe–Okabe' },
+      { var: 'FSv', esperado: 3.623, tol: 0.002, desc: 'FS al volteo, estático' },
+      { var: 'FSd', esperado: 2.412, tol: 0.002, desc: 'FS al deslizamiento, estático' },
+      { var: 'FSds', esperado: 1.277, tol: 0.002, desc: 'FS al deslizamiento con sismo' },
+      { var: 'ft1e', unidad: 'kgf/cm^2', esperado: 2.178, tol: 0.002, desc: 'Tracción por flexión en la base del cuerpo, sismo' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 ## Descripción
@@ -192,30 +219,30 @@ Muro de gravedad de **concreto ciclópeo** (concreto $f'_c = 140$ kgf/cm² con 3
 El empuje activo se calcula con la teoría de **Coulomb** sobre el plano que une el extremo del talón (en el fondo) con la corona del trasdós; el suelo entre ese plano y el muro se incluye en el peso estabilizante. El empuje actúa inclinado $\\delta + \\theta$ respecto a la horizontal.`),
     calc(`# Datos de diseño
 ## Geometría
-H = 4.00 m // Altura total (fondo de cimiento a corona)
-hz = 0.60 m // Altura del cimiento
-B = 2.80 m // Ancho de la base (≈ 0.5H a 0.7H, Das 8.2)
-Lp = 0.40 m // Punta del cimiento
-b1 = 0.40 m // Ancho de la corona (≥ 0.30 m)
-b2 = 1.80 m // Ancho del cuerpo en su base
-ie = 0.35 m // Proyección horizontal del talud frontal (paramento)
+H = 4.00 m // Altura total (fondo de cimiento a corona) [1.5..6]
+hz = 0.60 m // Altura del cimiento [0.4..1.2]
+B = 2.80 m // Ancho de la base (≈ 0.5H a 0.7H, Das 8.2) [1..5]
+Lp = 0.40 m // Punta del cimiento [0.2..1.0]
+b1 = 0.40 m // Ancho de la corona (≥ 0.30 m) [0.30..0.80]
+b2 = 1.80 m // Ancho del cuerpo en su base [0.8..3.5]
+ie = 0.35 m // Proyección horizontal del talud frontal (paramento) [0..1.0]
 ib = b2 - b1 - ie // Proyección horizontal del talud posterior (trasdós)
 hp = H - hz // Altura del cuerpo
-Df = 1.00 m // Altura de suelo frente al muro desde el fondo del cimiento
+Df = 1.00 m // Altura de suelo frente al muro desde el fondo del cimiento [0.6..2.5]
 fp = 0.50 // Fracción del empuje pasivo que se considera (AASHTO Tabla 11.5.7-1: φep = 0.50; el pasivo requiere desplazamientos grandes y el suelo puede excavarse) [0 : despreciar el pasivo|0.50 : 50 % (recomendado)|1.00 : pasivo completo]
-bk = 0.50 m // Ancho del dentellón (uña) bajo el cimiento
-hk = 0.60 m // Profundidad del dentellón
+bk = 0.50 m // Ancho del dentellón (uña) bajo el cimiento [0.3..1.0]
+hk = 0.60 m // Profundidad del dentellón [0..1.5]
 ## Relleno y suelo de cimentación (EMS)
-gammas = 1.90 tonf/m^3 // Peso unitario del relleno
-phis = 32 deg // Ángulo de fricción del relleno
+gammas = 1.90 tonf/m^3 // Peso unitario del relleno [1.5..2.2]
+phis = 32 deg // Ángulo de fricción del relleno [20..40]
 delta = 2/3*phis // Fricción muro–relleno (Das: 2φ/3 para concreto rugoso)
-ws = 0.50 tonf/m^2 // Sobrecarga sobre el relleno (E.020)
-gammaf = 1.85 tonf/m^3 // Peso unitario del suelo de cimentación
-phif = 30 deg // Fricción del suelo de cimentación
-mu = 0.55 // Coeficiente de fricción en la base (EMS)
-qa = 2.00 kgf/cm^2 // Presión admisible (E.050 Art. 22)
+ws = 0.50 tonf/m^2 // Sobrecarga sobre el relleno (E.020) [0..2]
+gammaf = 1.85 tonf/m^3 // Peso unitario del suelo de cimentación [1.5..2.2]
+phif = 30 deg // Fricción del suelo de cimentación [20..40]
+mu = 0.55 // Coeficiente de fricción en la base (EMS) [0.30..0.70]
+qa = 2.00 kgf/cm^2 // Presión admisible (E.050 Art. 22) [0.5..6]
 ## Material
-gammac = 2.30 tonf/m^3 // Peso unitario del concreto ciclópeo
+gammac = 2.30 tonf/m^3 // Peso unitario del concreto ciclópeo [2.2..2.5]
 fc = 140 kgf/cm^2 // Resistencia del concreto ciclópeo (matriz f'c 140 + 30 % P.G.) [100 kgf/cm^2|140 kgf/cm^2|175 kgf/cm^2]
 ${SISMO}
 qas = qaSismoE050(qa) // Presión admisible sísmica (E.050 Art. 21)
@@ -282,6 +309,19 @@ const contrafuertes = {
   normas: 'RNE — NTE E.030, E.050 (39.13), E.060; Huntington; Calavera; Bowles',
   desc: 'Estabilidad estática y sísmica, pantalla como losa continua apoyada en contrafuertes (franjas horizontales y momento vertical de Huntington), diseño del contrafuerte en T con acero inclinado y tirantes de unión.',
   titulo: 'Diseño de muro de contención con contrafuertes H = 8.00 m',
+  validacion: {
+    fuente: 'Control: Rankine + M-O (Das cap. 7), AASHTO 11.6.5 y E.060; motor validado con Das Ej. 8.1',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). kh = 0.5·Z·S = 0.5·0.35·1.15 se comprueba a mano.',
+    valores: [
+      { var: 'kh', esperado: 0.20125, tol: 0.0005, desc: 'kh = 0.5·Z·S' },
+      { var: 'Pa', unidad: 'tonf/m', esperado: 21.14, tol: 0.002, desc: 'Empuje activo estático' },
+      { var: 'FSv', esperado: 5.381, tol: 0.002, desc: 'FS al volteo, estático' },
+      { var: 'FSd', esperado: 2.848, tol: 0.002, desc: 'FS al deslizamiento, estático' },
+      { var: 'FSds', esperado: 1.278, tol: 0.002, desc: 'FS al deslizamiento con sismo' },
+      { var: 'Mneg', unidad: 'tonf*m/m', esperado: 4.939, tol: 0.002, desc: 'Momento negativo de la pantalla en el contrafuerte' },
+      { var: 'Asdis', unidad: 'cm^2', esperado: 26.22, tol: 0.002, desc: 'Acero de tracción del contrafuerte' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 ## Descripción
@@ -296,33 +336,33 @@ Para alturas mayores de 6–7 m el muro en voladizo resulta antieconómico; los 
 La estabilidad se calcula por metro de muro despreciando el peso de los contrafuertes (conservador). Contrafuertes separados $S_c$ entre ejes con espesor $t_c$; luz libre de las losas $L_n = S_c - t_c$.`),
     calc(`# Datos de diseño
 ## Geometría
-H = 8.00 m // Altura total
-hz = 0.70 m // Espesor de la zapata
-B = 6.50 m // Ancho de la base (≈ 0.8H por sismo)
-Lp = 1.30 m // Longitud de la punta
-tp = 0.30 m // Espesor de la pantalla (constante)
-Sc = 3.00 m // Separación de contrafuertes entre ejes (≈ H/3 a H/2)
-tc = 0.35 m // Espesor de los contrafuertes
-bk = 0.50 m // Ancho del dentellón
-hk = 1.40 m // Profundidad del dentellón
-Df = 1.50 m // Suelo frente a la punta desde el fondo
+H = 8.00 m // Altura total [6..12]
+hz = 0.70 m // Espesor de la zapata [0.5..1.2]
+B = 6.50 m // Ancho de la base (≈ 0.8H por sismo) [3..10]
+Lp = 1.30 m // Longitud de la punta [0.5..2.5]
+tp = 0.30 m // Espesor de la pantalla (constante) [0.20..0.50]
+Sc = 3.00 m // Separación de contrafuertes entre ejes (≈ H/3 a H/2) [2..5]
+tc = 0.35 m // Espesor de los contrafuertes [0.20..0.60]
+bk = 0.50 m // Ancho del dentellón [0.3..1.0]
+hk = 1.40 m // Profundidad del dentellón [0..2]
+Df = 1.50 m // Suelo frente a la punta desde el fondo [0.6..2.5]
 fp = 0.50 // Fracción del empuje pasivo que se considera (AASHTO Tabla 11.5.7-1: φep = 0.50; el pasivo requiere desplazamientos grandes y el suelo puede excavarse) [0 : despreciar el pasivo|0.50 : 50 % (recomendado)|1.00 : pasivo completo]
 hp = H - hz // Altura de la pantalla
 Lt = B - Lp - tp // Longitud del talón
 Ln = Sc - tc // Luz libre de la pantalla y del talón entre contrafuertes
 ## Suelos (EMS)
-gammas = 1.90 tonf/m^3 // Peso unitario del relleno
-phis = 32 deg // Fricción del relleno
-ws = 1.00 tonf/m^2 // Sobrecarga (E.020)
-gammaf = 1.90 tonf/m^3 // Suelo de cimentación
-phif = 32 deg // Fricción del suelo de cimentación
-mu = 0.55 // Coeficiente de fricción en la base
-qa = 3.00 kgf/cm^2 // Presión admisible
+gammas = 1.90 tonf/m^3 // Peso unitario del relleno [1.5..2.2]
+phis = 32 deg // Fricción del relleno [20..40]
+ws = 1.00 tonf/m^2 // Sobrecarga (E.020) [0..2]
+gammaf = 1.90 tonf/m^3 // Suelo de cimentación [1.5..2.2]
+phif = 32 deg // Fricción del suelo de cimentación [20..40]
+mu = 0.55 // Coeficiente de fricción en la base [0.30..0.70]
+qa = 3.00 kgf/cm^2 // Presión admisible [0.5..6]
 ## Materiales
 fc = 210 kgf/cm^2 // Concreto [210 kgf/cm^2|280 kgf/cm^2]
-fy = 4200 kgf/cm^2 // Acero de refuerzo
-gammac = 2.40 tonf/m^3
-rec = 5 cm // Recubrimiento en pantalla y contrafuertes (E.060 7.7.1)
+fy = 4200 kgf/cm^2 // Acero de refuerzo [2800..4200]
+gammac = 2.40 tonf/m^3 // Peso unitario del concreto armado (E.020 Anexo 1) [2.2..2.5]
+rec = 5 cm // Recubrimiento en pantalla y contrafuertes (E.060 7.7.1) [2..7.5]
 ${SISMO.replace('zona = 4 //', 'zona = 3 //')}
 qas = qaSismoE050(qa)
 ## Coeficientes de empuje
@@ -417,21 +457,32 @@ const sotano = {
   normas: 'RNE — NTE E.020, E.030, E.050, E.060; Calavera; Wood (1973)',
   desc: 'Empuje en reposo K0 (Jaky), modelo de viga apoyada en la losa y empotrada en el cimiento, sismo por Wood para muros rígidos, diseño por flexión de ambas caras, cortante, refuerzo mínimo y conexión con la losa por cortante-fricción.',
   titulo: 'Diseño de muro de sótano de concreto armado',
+  validacion: {
+    fuente: 'Control: empuje en reposo de Jaky (K0 = 1 − sen φ) + Seed–Whitman, viga apoyada-empotrada (E.060)',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). K0 = 1 − sen 30° = 0.5 y kh = 0.5·0.45·1.05 se comprueban a mano.',
+    valores: [
+      { var: 'K0', esperado: 0.5, tol: 0.0005, desc: 'K0 de Jaky, φ = 30°' },
+      { var: 'kh', esperado: 0.23625, tol: 0.0005, desc: 'kh = 0.5·Z·S' },
+      { var: 'Mub', unidad: 'tonf*m/m', esperado: 7.525, tol: 0.002, desc: 'Momento último en la base' },
+      { var: 'Vu', unidad: 'tonf/m', esperado: 12.86, tol: 0.002, desc: 'Cortante último' },
+      { var: 'Asb', unidad: 'cm^2/m', esperado: 8.521, tol: 0.002, desc: 'Acero en la base (cara del suelo)' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 Los muros de sótano están arriostrados en su borde superior por la losa del primer piso, por lo que **no pueden desplazarse** lo suficiente para movilizar el estado activo: se diseñan con el **empuje en reposo** $K_0$ (Jaky). El muro se modela como una franja vertical de 1 m **apoyada** en la losa y **empotrada** en el cimiento (Calavera, *Muros de contención y muros de sótano*, cap. 9). El sismo se considera con la solución de **Wood (1973)** para muros rígidos: incremento uniforme $\\Delta p = k_h\\,\\gamma\\,H$ con $k_h = PGA$ (sin reducción por desplazamiento).
 
 **Normas:** RNE NTE E.020 (sobrecarga), E.030 (PGA = Z·S), E.050 16.2.9 (K0 del EMS), E.060 9.2.5, 10.5, 11, 11.7 (cortante-fricción), 14.3.`),
     calc(`# Datos
-hs = 3.20 m // Altura del muro entre el cimiento y la losa del primer piso
-tw = 0.30 m // Espesor del muro
-gammas = 1.90 tonf/m^3 // Peso unitario del suelo retenido
-phis = 30 deg // Fricción del suelo
-OCR = 1 // Relación de sobreconsolidación (relleno normalmente consolidado)
-ws = 1.00 tonf/m^2 // Sobrecarga en la vereda/pista contigua (E.020)
-fc = 210 kgf/cm^2 // [210 kgf/cm^2|280 kgf/cm^2]
-fy = 4200 kgf/cm^2
-rec = 5 cm // Recubrimiento cara del suelo (E.060 7.7.1)
+hs = 3.20 m // Altura del muro entre el cimiento y la losa del primer piso [2.4..4.5]
+tw = 0.30 m // Espesor del muro [0.20..0.50]
+gammas = 1.90 tonf/m^3 // Peso unitario del suelo retenido [1.5..2.2]
+phis = 30 deg // Fricción del suelo [20..40]
+OCR = 1 // Relación de sobreconsolidación (relleno normalmente consolidado) [1..4]
+ws = 1.00 tonf/m^2 // Sobrecarga en la vereda/pista contigua (E.020) [0..2]
+fc = 210 kgf/cm^2 // Resistencia del concreto [210 kgf/cm^2|280 kgf/cm^2]
+fy = 4200 kgf/cm^2 // Acero ASTM A615 Grado 60 [2800..4200]
+rec = 5 cm // Recubrimiento cara del suelo (E.060 7.7.1) [2..7.5]
 ${SISMO}
 ## Empujes
 K0 = K0Jaky(phis, OCR) // Reposo: K0 = (1 − sen φ)·OCR^sen φ (Jaky 1944; Mayne y Kulhawy 1982)
@@ -485,6 +536,18 @@ const comparativo = {
   normas: 'Das; AASHTO LRFD 3.11.5 y A11.3; Seed y Whitman (1970); Jaky (1944)',
   desc: 'Cálculo y comparación gráfica de K0, Ka y Kp de Rankine y Coulomb, Kae y Kpe de Mononobe–Okabe y el incremento dinámico de Seed–Whitman en función de φ y kh.',
   titulo: 'Coeficientes de empuje de tierras — comparación de teorías',
+  validacion: {
+    fuente: 'B. M. Das, Principles of Foundation Engineering (7.ª ed.), Ej. 7.6 (φ = 30°, δ = 15°, kh = 0.2, kv = 0 → Kae = 0.452) y tabla de Ka de Coulomb (φ = 30°, δ = 15° → 0.3014)',
+    nota: 'Datos por defecto = datos del Ej. 7.6 de Das (Kae con δ = φ/2 = 15°). K0, Ka y Kp de Rankine para φ = 30° son valores exactos (0.5, 1/3 y 3).',
+    valores: [
+      { var: 'Kae', esperado: 0.452, tol: 0.002, desc: 'Das Ej. 7.6: Kae' },
+      { var: 'KaC1', esperado: 0.3014, tol: 0.002, desc: 'Das, tabla de Coulomb: Ka (δ = 15°)' },
+      { var: 'K0', esperado: 0.5, tol: 0.0005, desc: 'Jaky: 1 − sen 30°' },
+      { var: 'KaR', esperado: 0.33333, tol: 0.0005, desc: 'Rankine: Ka = 1/3' },
+      { var: 'KpR', esperado: 3, tol: 0.0005, desc: 'Rankine: Kp = 3' },
+      { var: 'DKSW', esperado: 0.15, tol: 0.0005, desc: 'Seed–Whitman: ¾kh' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 - **Reposo** (Jaky 1944): $K_0 = (1-\\sin\\phi)\\,OCR^{\\sin\\phi}$.
@@ -494,10 +557,10 @@ const comparativo = {
 - **Seed y Whitman** (1970): $\\Delta K_{ae} \\approx \\tfrac34 k_h$, aplicado a $0.6H$.`),
     calc(`# Datos
 phi = 30 deg // Ángulo de fricción del relleno [28 deg|30 deg|32 deg|34 deg|36 deg]
-beta = 0 deg // Talud del relleno
-theta = 0 deg // Inclinación del trasdós respecto a la vertical
-kh = 0.20 // Coeficiente sísmico horizontal
-kv = 0 // Coeficiente sísmico vertical
+beta = 0 deg // Talud del relleno [0..30]
+theta = 0 deg // Inclinación del trasdós respecto a la vertical [-20..20]
+kh = 0.20 // Coeficiente sísmico horizontal [0..0.40]
+kv = 0 // Coeficiente sísmico vertical [0..0.15]
 # Coeficientes
 K0 = K0Jaky(phi) // Reposo (Jaky)
 KaR = KaRankine(phi, beta) // Activo de Rankine
@@ -532,6 +595,18 @@ const gaviones = {
   normas: 'RNE — NTE E.030, E.050 (39.13); Maccaferri; Das; AASHTO LRFD 11.6',
   desc: 'Muro de gravedad de gaviones escalonados: peso con porosidad, estabilidad estática y sísmica por hiladas (vectores), verificación de la junta entre hiladas (φ* y σ admisible de Maccaferri) y presiones en la base.',
   titulo: 'Diseño de muro de gaviones H = 4.00 m',
+  validacion: {
+    fuente: 'Control: Rankine + M-O (Das cap. 7) y manual Maccaferri (peso del gavión γp(1 − n))',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). γg = 2.6·(1 − 0.30) = 1.82 t/m³ y Ka = 1/3 se comprueban a mano.',
+    valores: [
+      { var: 'gammag', unidad: 'tonf/m^3', esperado: 1.82, tol: 0.0005, desc: 'Peso unitario del gavión γp(1 − n)' },
+      { var: 'Ka', esperado: 0.33333, tol: 0.0005, desc: 'Ka de Rankine, φ = 30°' },
+      { var: 'FSv', esperado: 3.597, tol: 0.002, desc: 'FS al volteo, estático' },
+      { var: 'FSd', esperado: 2.202, tol: 0.002, desc: 'FS al deslizamiento, estático' },
+      { var: 'FSds', esperado: 1.303, tol: 0.002, desc: 'FS al deslizamiento con sismo' },
+      { var: 'qmax', unidad: 'tonf/m^2', esperado: 13.34, tol: 0.002, desc: 'Presión máxima en la base' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 Muro de gravedad formado por **gaviones caja** de malla hexagonal de doble torsión (alambre galvanizado/PVC) rellenos de piedra, en 4 hiladas de 1.00 m con escalones hacia el relleno. Es una estructura flexible y permeable: tolera asentamientos diferenciales y no genera presión de agua si se coloca un geotextil filtrante entre el relleno y los gaviones.
@@ -540,24 +615,24 @@ Muro de gravedad formado por **gaviones caja** de malla hexagonal de doble torsi
 
 > En zonas sísmicas 3 y 4 la inercia del propio muro suele gobernar el deslizamiento: se recomienda ensanchar la base o inclinar el muro 6° hacia el relleno.`),
     calc(`# Datos
-h = 1.00 m // Altura de cada hilada (gavión caja de 1.0 m)
-b1 = 3.00 m // Ancho de la hilada 1 (base)
-b2 = 2.50 m // Ancho de la hilada 2
-b3 = 2.00 m // Ancho de la hilada 3
-b4 = 1.50 m // Ancho de la hilada 4 (corona)
+h = 1.00 m // Altura de cada hilada (gavión caja de 1.0 m) [0.5..1.0]
+b1 = 3.00 m // Ancho de la hilada 1 (base) [1.5..5]
+b2 = 2.50 m // Ancho de la hilada 2 [1..4.5]
+b3 = 2.00 m // Ancho de la hilada 3 [1..4]
+b4 = 1.50 m // Ancho de la hilada 4 (corona) [1..3]
 bv = [b1, b2, b3, b4] // Anchos de abajo hacia arriba (paramento vertical, escalones hacia el relleno)
-nh = 4 // Número de hiladas
+nh = 4 // Número de hiladas [2..8]
 H = nh*h // Altura total
 B = b1 // Ancho de la base
 ## Materiales y suelos
-gammap = 2.60 tonf/m^3 // Peso específico de la piedra (andesita/granito)
-np = 0.30 // Porosidad del relleno de piedra (Maccaferri: 0.30–0.40)
+gammap = 2.60 tonf/m^3 // Peso específico de la piedra (andesita/granito) [2.2..2.9]
+np = 0.30 // Porosidad del relleno de piedra (Maccaferri: 0.30–0.40) [0.30..0.40]
 gammag = gammap*(1 - np) // Peso específico del gavión
-gammas = 1.80 tonf/m^3 // Peso unitario del relleno
-phis = 30 deg // Fricción del relleno
-ws = 1.00 tonf/m^2 // Sobrecarga (E.020)
-mu = 0.62 // Coeficiente de fricción gavión–suelo de fundación tan φf (EMS)
-qa = 2.00 kgf/cm^2 // Presión admisible
+gammas = 1.80 tonf/m^3 // Peso unitario del relleno [1.5..2.2]
+phis = 30 deg // Fricción del relleno [20..40]
+ws = 1.00 tonf/m^2 // Sobrecarga (E.020) [0..2]
+mu = 0.62 // Coeficiente de fricción gavión–suelo de fundación tan φf (EMS) [0.30..0.70]
+qa = 2.00 kgf/cm^2 // Presión admisible [0.5..6]
 ${SISMO.replace('zona = 4 //', 'zona = 2 //')}
 qas = qaSismoE050(qa)
 # Empujes
@@ -635,6 +710,18 @@ const mse = {
   normas: 'AASHTO LRFD 11.10 (MSE), 3.4.1, 3.11; FHWA-NHI-10-024; RNE E.030, E.050',
   desc: 'Estabilidad externa por LRFD (deslizamiento, excentricidad, capacidad portante con Meyerhof y caso sísmico) y estabilidad interna capa por capa: rotura (Tal con factores de reducción) y arranque (F*, α, Le) con vectores.',
   titulo: 'Muro de suelo mecánicamente estabilizado con geomallas H = 6.00 m',
+  validacion: {
+    fuente: 'Control: AASHTO LRFD 11.10 (estabilidad externa e interna de muros MSE con geomallas)',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). Kaf = tan²(45° − 15°) = 1/3 y F1 = ½·Kaf·γf·H² se comprueban a mano.',
+    valores: [
+      { var: 'Kaf', esperado: 0.33333, tol: 0.0005, desc: 'Ka del relleno retenido, φ = 30°' },
+      { var: 'F1', unidad: 'tonf/m', esperado: 11.4, tol: 0.001, desc: 'Empuje del relleno retenido ½Ka·γ·H²' },
+      { var: 'Pdrv', unidad: 'tonf/m', esperado: 21.3, tol: 0.002, desc: 'Fuerza horizontal mayorada' },
+      { var: 'sigv', unidad: 'tonf/m^2', esperado: 24.48, tol: 0.002, desc: 'Presión vertical de Meyerhof' },
+      { var: 'Tal', unidad: 'tonf/m', esperado: 3.89, tol: 0.002, desc: 'Resistencia admisible de la geomalla' },
+      { var: 'max(DCr)', esperado: 0.8475, tol: 0.002, desc: 'D/C de rotura de la capa más cargada' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 Muro de **suelo mecánicamente estabilizado** (MSE) con refuerzo extensible de **geomalla** de HDPE/PET y paramento de bloques prefabricados. Se diseña por **LRFD** según AASHTO LRFD Bridge Design Specifications, art. 11.10 (y FHWA-NHI-10-024):
@@ -642,26 +729,26 @@ Muro de **suelo mecánicamente estabilizado** (MSE) con refuerzo extensible de *
 - **Interna** (11.10.6): método simplificado; esfuerzo horizontal $\\sigma_H = K_r\\,\\sigma_v$ con $K_r/K_a = 1$ para geosintéticos; tracción máxima $T_{max} = \\sigma_H S_v$; **rotura** con $T_{al} = T_{ult}/RF$ y **arranque** con $P_r = F^*\\alpha\\,\\sigma_v\\,C\\,L_e$ en la zona resistente, más allá de la superficie de Rankine $45° + \\phi_r/2$.
 - Factores de carga (Tabla 3.4.1-1/2): $\\gamma_{EV} = 1.35$ (máx.) / $1.00$ (mín.), $\\gamma_{EH} = 1.50$, $\\gamma_{LS} = 1.75$; resistencia (Tabla 11.5.7-1): deslizamiento $\\phi_\\tau = 1.0$, capacidad portante $\\phi_b = 0.65$, rotura de geosintético $\\phi = 0.90$, arranque $\\phi = 0.90$.`),
     calc(`# Datos
-H = 6.00 m // Altura del muro
-L = 4.50 m // Longitud del refuerzo (≥ 0.7H y ≥ 2.4 m)
-Sv = 0.60 m // Separación vertical de las geomallas
-nr = 10 // Número de capas
+H = 6.00 m // Altura del muro [3..12]
+L = 4.50 m // Longitud del refuerzo (≥ 0.7H y ≥ 2.4 m) [2.4..10]
+Sv = 0.60 m // Separación vertical de las geomallas [0.2..0.8]
+nr = 10 // Número de capas [4..20]
 zr = Sv*(1:nr) - Sv/2 // Profundidad de cada capa bajo la corona
 ## Suelos
-gammar = 2.00 tonf/m^3 // Relleno reforzado (granular seleccionado)
-phir = 34 deg // Fricción del relleno reforzado
-gammaf = 1.90 tonf/m^3 // Relleno retenido
-phif = 30 deg // Fricción del relleno retenido
-phib = 30 deg // Fricción del suelo de fundación
-qn = 60 tonf/m^2 // Capacidad portante nominal del suelo de fundación (EMS)
-ws = 1.20 tonf/m^2 // Sobrecarga viva de tránsito: heq = 0.60 m (AASHTO Tabla 3.11.6.4-2)
+gammar = 2.00 tonf/m^3 // Relleno reforzado (granular seleccionado) [1.7..2.3]
+phir = 34 deg // Fricción del relleno reforzado [30..40]
+gammaf = 1.90 tonf/m^3 // Relleno retenido [1.5..2.2]
+phif = 30 deg // Fricción del relleno retenido [25..40]
+phib = 30 deg // Fricción del suelo de fundación [25..40]
+qn = 60 tonf/m^2 // Capacidad portante nominal del suelo de fundación (EMS) [20..150]
+ws = 1.20 tonf/m^2 // Sobrecarga viva de tránsito: heq = 0.60 m (AASHTO Tabla 3.11.6.4-2) [0..2]
 ## Geomalla
-Tult = 120 kN/m // Resistencia última a la tracción (ASTM D6637)
-RFID = 1.10 // Factor de daño de instalación
-RFCR = 2.60 // Factor de fluencia (creep), 75 años (HDPE)
-RFD = 1.10 // Factor de durabilidad
+Tult = 120 kN/m // Resistencia última a la tracción (ASTM D6637) [20..200]
+RFID = 1.10 // Factor de daño de instalación [1.05..3.0]
+RFCR = 2.60 // Factor de fluencia (creep), 75 años (HDPE) [1.6..5.0]
+RFD = 1.10 // Factor de durabilidad [1.1..2.0]
 alphar = alphaAASHTO(3) // Factor de escala α para geomallas (Tabla 11.10.6.3.2-1)
-Cr = 2 // Perímetro efectivo (refuerzo en forma de lámina)
+Cr = 2 // Perímetro efectivo (refuerzo en forma de lámina) [1..2]
 check L >= max(0.7*H, 2.4 m) // Longitud mínima del refuerzo (11.10.2.1)
 # Estabilidad externa (11.10.5)
 Kaf = KaRankine(phif) // Empuje del relleno retenido (δ = β = 0)
@@ -726,18 +813,29 @@ const tablestaca = {
   normas: 'Blum (1931); USS Steel Sheet Piling Design Manual; Das cap. 9; Bowles §13; RNE E.050',
   desc: 'Profundidad de empotramiento por el método simplificado de Blum (ΣM = 0 en el punto de giro, D = 1.2 D0), punto de cortante nulo, momento máximo y módulo resistente de la tablestaca, con verificación numérica.',
   titulo: 'Tablestaca metálica en voladizo — excavación de 4.00 m',
+  validacion: {
+    fuente: 'Control: método de Blum para tablestaca en voladizo en arena (Das cap. 9; USS Steel Sheet Piling Design Manual)',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). El bloque sheetpile comprueba Mmax con la solución cerrada (tests/walls.test.mjs).',
+    valores: [
+      { var: 'Ka', esperado: 0.30726, tol: 0.0005, desc: 'Ka de Rankine, φ = 32°' },
+      { var: 'D0', unidad: 'm', esperado: 4.925, tol: 0.002, desc: 'Empotramiento teórico de Blum' },
+      { var: 'D', unidad: 'm', esperado: 6, tol: 0.0001, desc: 'Empotramiento adoptado 1.2·D0 redondeado' },
+      { var: 'Mmax', unidad: 'tonf*m/m', esperado: 21.81, tol: 0.002, desc: 'Momento máximo' },
+      { var: 'Sreq', unidad: 'cm^3/m', esperado: 954.7, tol: 0.002, desc: 'Módulo resistente requerido' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 Tablestaca (o muro pantalla) **en voladizo** que sostiene una excavación de altura $H$ en arena seca. Por debajo del fondo la pared gira alrededor de un punto $O$ a la profundidad $D_0$: sobre ella actúan el empuje activo detrás (en toda la altura $H + D_0$) y el pasivo delante; bajo $O$ se desarrolla una contrafuerza $R$ que **Blum** concentra en $O$. Equilibrio de momentos respecto a $O$:
 $$\\tfrac16 K_{pd}\\,\\gamma D_0^3 = \\tfrac16 K_a\\gamma (H+D_0)^3 + \\tfrac12 K_a q (H+D_0)^2$$
 y para desarrollar $R$ se prolonga la tablestaca: $D = 1.2\\,D_0$ (Blum; USS *Steel Sheet Piling Design Manual*). El coeficiente pasivo se reduce con un factor de seguridad $FS_p = 1.5$ (USS: 1.5–2.0). Sin nivel freático (para agua, usar pesos sumergidos y la presión neta del agua).`),
     calc(`# Datos
-H = 4.00 m // Altura libre de la excavación
-gammas = 1.80 tonf/m^3 // Peso unitario de la arena
-phis = 32 deg // Ángulo de fricción
-ws = 1.00 tonf/m^2 // Sobrecarga en el borde de la excavación (E.020)
-FSp = 1.50 // Factor de seguridad sobre el empuje pasivo (USS 1.5–2.0)
-fys = 3515 kgf/cm^2 // Acero de la tablestaca ASTM A572 Gr 50
+H = 4.00 m // Altura libre de la excavación [2..6]
+gammas = 1.80 tonf/m^3 // Peso unitario de la arena [1.5..2.2]
+phis = 32 deg // Ángulo de fricción [20..40]
+ws = 1.00 tonf/m^2 // Sobrecarga en el borde de la excavación (E.020) [0..2]
+FSp = 1.50 // Factor de seguridad sobre el empuje pasivo (USS 1.5–2.0) [1.5..2.0]
+fys = 3515 kgf/cm^2 // Acero de la tablestaca ASTM A572 Gr 50 [2530..4570]
 Sx = 1300 cm^3/m // Módulo resistente del perfil (catálogo) ${PERFILES}
 # Coeficientes
 Ka = KaRankine(phis) // Activo (δ = 0, conservador)
@@ -776,24 +874,35 @@ const anclada = {
   normas: 'USS Steel Sheet Piling Design Manual; Das cap. 9; Bowles §13; AISC 360 (tirante y viga de reparto)',
   desc: 'Empotramiento por el método del apoyo libre (free earth support), fuerza en el anclaje, momento máximo, tablestaca, tirante, viga de reparto y ubicación del muerto de anclaje fuera de la cuña activa.',
   titulo: 'Tablestaca anclada — excavación de 6.00 m',
+  validacion: {
+    fuente: 'Control: método de apoyo libre (free earth support) y muerto de anclaje (Das cap. 9)',
+    nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). La fuerza del anclaje y el momento se comprueban por integración numérica dentro de la propia memoria.',
+    valores: [
+      { var: 'D', unidad: 'm', esperado: 2.942, tol: 0.002, desc: 'Empotramiento teórico (apoyo libre)' },
+      { var: 'Ta', unidad: 'tonf/m', esperado: 7.959, tol: 0.002, desc: 'Fuerza en el anclaje por metro' },
+      { var: 'Mmax', unidad: 'tonf*m/m', esperado: 14.92, tol: 0.002, desc: 'Momento máximo' },
+      { var: 'Sreq', unidad: 'cm^3/m', esperado: 653, tol: 0.002, desc: 'Módulo resistente requerido' },
+      { var: 'FSdm', esperado: 2.083, tol: 0.002, desc: 'FS del muerto de anclaje' },
+    ],
+  },
   blocks: [
     text(`# Generalidades
 Con un nivel de anclaje (tirante y muerto, o ancla inyectada) cerca de la corona, la tablestaca se comporta como una viga apoyada en el anclaje y en el suelo pasivo. En el **método del apoyo libre** (*free earth support*) la punta puede rotar; la profundidad $D$ se obtiene con $\\Sigma M = 0$ respecto al anclaje:
 $$\\tfrac12 K_{pd}\\gamma D^2\\left(H + \\tfrac23 D - a\\right) = \\tfrac12 K_a\\gamma (H+D)^2\\left[\\tfrac23(H+D) - a\\right] + K_a q (H+D)\\left[\\tfrac12(H+D) - a\\right]$$
 y la fuerza del anclaje con $\\Sigma F_h = 0$. Se aplica $FS_p = 1.5$ al pasivo (USS). No se aplica la reducción de momentos de Rowe (conservador).`),
     calc(`# Datos
-H = 6.00 m // Altura libre de la excavación
-a = 1.20 m // Profundidad del anclaje bajo la corona
-sa = 2.40 m // Separación horizontal de los tirantes
-gammas = 1.80 tonf/m^3 // Peso unitario de la arena
-phis = 32 deg // Ángulo de fricción
-ws = 1.00 tonf/m^2 // Sobrecarga
-FSp = 1.50 // Factor de seguridad del pasivo
-fys = 3515 kgf/cm^2 // Tablestaca ASTM A572 Gr 50
+H = 6.00 m // Altura libre de la excavación [4..10]
+a = 1.20 m // Profundidad del anclaje bajo la corona [0.5..2.0]
+sa = 2.40 m // Separación horizontal de los tirantes [1.5..4.0]
+gammas = 1.80 tonf/m^3 // Peso unitario de la arena [1.5..2.2]
+phis = 32 deg // Ángulo de fricción [20..40]
+ws = 1.00 tonf/m^2 // Sobrecarga [0..2]
+FSp = 1.50 // Factor de seguridad del pasivo [1.5..2.0]
+fys = 3515 kgf/cm^2 // Tablestaca ASTM A572 Gr 50 [2530..4570]
 Sx = 1300 cm^3/m // Módulo resistente del perfil ${PERFILES}
-fyt = 4200 kgf/cm^2 // Tirante: barra ASTM A615 Gr 60
+fyt = 4200 kgf/cm^2 // Tirante: barra ASTM A615 Gr 60 [2800..4200]
 bart = 11 // Barra del tirante [8 : 1"|9 : 1 1/8"|10 : 1 1/4"|11 : 1 3/8"|14 : 1 3/4"]
-hd = 2.50 m // Altura del muerto de anclaje (bloque continuo de concreto desde la superficie)
+hd = 2.50 m // Altura del muerto de anclaje (bloque continuo de concreto desde la superficie) [1..4]
 # Empotramiento y fuerza en el anclaje
 Ka = KaRankine(phis)
 Kp = KpRankine(phis)

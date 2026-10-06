@@ -14,6 +14,19 @@ export default [
   // ------------------------------------------------------------------
   {
     id: 'ge-portante', pais: 'PE', cat: 'Geotecnia', icon: 'soil',
+    validacion: {
+      fuente: 'B. M. Das, Principios de ingeniería de cimentaciones (7.ª ed.), Tabla 3.3 (φ = 30°: Nc = 30.14, Nq = 18.40) y Nγ de Meyerhof (E.050 Art. 20.4) = 15.67; resto, valores de control',
+      nota: 'Los factores de capacidad de carga son los publicados para φ = 30° (dato por defecto). Las presiones, el área efectiva (B′ = B − 2e con Q = P + γm·B·L·Df) y los asentamientos son valores de control. El procedimiento reproduce los ejemplos 3.1 y 3.7 de Das en tests/geotech.test.mjs.',
+      valores: [
+        { var: 'Nc', esperado: 30.14, tol: 0.002, desc: 'Das Tabla 3.3: Nc (φ = 30°)' },
+        { var: 'Nq', esperado: 18.4, tol: 0.002, desc: 'Das Tabla 3.3: Nq (φ = 30°)' },
+        { var: 'Ngamma', esperado: 15.67, tol: 0.002, desc: 'Meyerhof / E.050: Nγ = (Nq − 1)tan(1.4φ)' },
+        { var: 'Bp', unidad: 'm', esperado: 2.555, tol: 0.002, desc: 'Control: ancho efectivo B′' },
+        { var: 'qult', unidad: 'tonf/m^2', esperado: 66.02, tol: 0.002, desc: 'Control: capacidad última (E.050 Art. 20)' },
+        { var: 'qadm', unidad: 'kgf/cm^2', esperado: 2.2007, tol: 0.002, desc: 'Control: presión admisible' },
+        { var: 'St', unidad: 'mm', esperado: 17.562, tol: 0.002, desc: 'Control: asentamiento total' },
+      ],
+    },
     name: 'Capacidad portante y asentamientos (E.050)',
     normas: E050 + ' (Art. 17–23, 26, 28, 29) · Meyerhof (1963) · Vesic (1973) · Hansen (1970) · Bowles (1996)',
     desc: 'Ecuación general con nivel freático, carga excéntrica e inclinada (área efectiva), asentamiento elástico (Steinbrenner) y por consolidación; qadm por resistencia y por asentamiento.',
@@ -30,25 +43,25 @@ La capacidad última se evalúa con la ecuación general de Meyerhof (1963) con 
 Los asentamientos se estiman como la suma del asentamiento elástico inmediato del estrato granular (Bowles 1987, factores de Steinbrenner) y la consolidación primaria del estrato arcilloso subyacente (Terzaghi), con el incremento de esfuerzos de Boussinesq (Newmark).`),
       calc(`# Datos
 ## Cargas de servicio (E.050 Art. 17.1)
-P = 110 tonf // Carga vertical de servicio (CM + CV) de la columna
-ML = 6 tonf*m // Momento de servicio en la dirección L
-MB = 3 tonf*m // Momento de servicio en la dirección B
-Hh = 5 tonf // Fuerza horizontal de servicio (carga inclinada, Art. 29)
-gammam = 2.0 tonf/m^3 // Peso unitario promedio zapata + relleno sobre ella
+P = 110 tonf // Carga vertical de servicio (CM + CV) de la columna [5..1000]
+ML = 6 tonf*m // Momento de servicio en la dirección L [0..100]
+MB = 3 tonf*m // Momento de servicio en la dirección B [0..100]
+Hh = 5 tonf // Fuerza horizontal de servicio (carga inclinada, Art. 29) [0..100]
+gammam = 2.0 tonf/m^3 // Peso unitario promedio zapata + relleno sobre ella [1.6..2.4]
 ## Geometría de la cimentación
-B = 2.60 m // Ancho de la zapata
-L = 3.00 m // Largo de la zapata
-Df = 1.50 m // Profundidad de desplante
+B = 2.60 m // Ancho de la zapata [0.6..10]
+L = 3.00 m // Largo de la zapata [0.6..20]
+Df = 1.50 m // Profundidad de desplante [0.8..5.0]
 ## Parámetros del suelo (Estudio de Mecánica de Suelos)
-phi = 30 deg // Ángulo de fricción interna efectivo φ' [28 deg|30 deg|32 deg|34 deg|36 deg]
-c = 0 tonf/m^2 // Cohesión efectiva c'
-gamma1 = 1.80 tonf/m^3 // Peso unitario sobre el nivel freático
-gammasat = 2.00 tonf/m^3 // Peso unitario saturado
-gammaw = 1.00 tonf/m^3 // Peso unitario del agua
-Dw = 2.50 m // Profundidad del nivel freático desde la superficie
-N60 = 20 // N-SPT corregido (N60) promedio en la zona activa (≈ B bajo la base)
+phi = 30 deg // Ángulo de fricción interna efectivo φ' [28 deg|30 deg|32 deg|34 deg|36 deg] [0..45]
+c = 0 tonf/m^2 // Cohesión efectiva c' [0..20]
+gamma1 = 1.80 tonf/m^3 // Peso unitario sobre el nivel freático [1.4..2.2]
+gammasat = 2.00 tonf/m^3 // Peso unitario saturado [1.6..2.3]
+gammaw = 1.00 tonf/m^3 // Peso unitario del agua [1.0..1.03]
+Dw = 2.50 m // Profundidad del nivel freático desde la superficie [0..30]
+N60 = 20 // N-SPT corregido (N60) promedio en la zona activa (≈ B bajo la base) [1..60]
 metodo = 1 // Factor $N_\\gamma$ [1 : Meyerhof (E.050 Art. 20.4)|2 : Vesic (1973)|3 : Hansen (1970)]
-FS = 3.0 // Factor de seguridad por corte para cargas estáticas (E.050 Art. 21.1)
+FS = 3.0 // Factor de seguridad por corte para cargas estáticas (E.050 Art. 21.1) [2.5..3.5]
 check Df >= 0.80 m // Profundidad mínima de cimentación (E.050 Art. 26.2)
 check Df/B <= 5 // Cimentación superficial: Df/B ≤ 5 (E.050 Art. 23.1)
 ## Excentricidad y área efectiva (E.050 Art. 28)
@@ -89,7 +102,7 @@ qu2 = sc*Fci*c*Nc + Fqi*qs*Nq + 0.5*sg*Fgi*gamma2*B1*Ngamma -> tonf/m^2 // qd = 
 qult = min(qu1, qu2) -> tonf/m^2 // Se adopta el menor valor (criterio conservador)
 qadm1 = qult/FS -> kgf/cm^2 // Presión admisible por corte (Art. 22.2.1)
 ## Presión admisible por asentamiento (Meyerhof 1965 modificada; Das, cap. 5)
-Sadm = 25 mm // Asentamiento tolerable adoptado en el EMS (Art. 19.1)
+Sadm = 25 mm // Asentamiento tolerable adoptado en el EMS (Art. 19.1) [10..50]
 qn_s = qaSPT(N60, B, Df, Sadm) -> tonf/m^2 // Presión neta que produce Sadm en arena (N60, Fd = 1 + 0.33 Df/B ≤ 1.33)
 qadm2 = qn_s + gamma1*min(Dw, Df) + gammasat*max(Df - Dw, 0 m) -> kgf/cm^2 // Presión bruta admisible por asentamiento: neta + σv total en Df (Art. 22.2.2)
 qadm = min(qadm1, qadm2) -> kgf/cm^2 // Presión admisible: la menor (Art. 22.2)
@@ -105,20 +118,20 @@ check q1 <= qadm // Presión máxima de contacto ≤ presión admisible (Art. 22
       calc(`# Asentamientos (E.050 Art. 18 y 19)
 ## Asentamiento elástico inmediato (Bowles 1987 — Steinbrenner 1934)
 Es = EsSPT(N60, 10) -> kgf/cm^2 // Módulo de elasticidad: Es = 10·pa·N60, arena limpia NC (Kulhawy y Mayne 1990)
-mu = 0.30 // Coeficiente de Poisson de la arena
-Hs = 5.0 m // Espesor del estrato granular bajo la base (hasta la arcilla)
+mu = 0.30 // Coeficiente de Poisson de la arena [0.1..0.5]
+Hs = 5.0 m // Espesor del estrato granular bajo la base (hasta la arcilla) [0..50]
 qn = q0 - (gamma1*min(Dw, Df) + gammasat*max(Df - Dw, 0 m)) -> tonf/m^2 // Presión neta aplicada (descuenta el σv total excavado)
 mp = L/B // m' = L/B (centro: cuatro rectángulos B/2 × L/2)
 np = Hs/(B/2) // n' = H/(B/2)
 Is = IsStein(mp, np, mu) // Is = F1 + (1 − 2μ)/(1 − μ)·F2 (Steinbrenner)
 Se = 0.93*qn*4*(B/2)*(1 - mu^2)/Es*Is -> mm // Se = 0.93·q·(4·B/2)(1 − μ²)/Es·Is (zapata rígida; If = 1, conservador)
 ## Consolidación primaria del estrato de arcilla (Terzaghi)
-Hc = 3.0 m // Espesor del estrato de arcilla
-Cc = 0.28 // Índice de compresión
-Cr = 0.05 // Índice de recompresión
-e0 = 0.90 // Relación de vacíos inicial
-gammac = 1.85 tonf/m^3 // Peso unitario saturado de la arcilla
-OCR = 1.5 // Razón de sobreconsolidación
+Hc = 3.0 m // Espesor del estrato de arcilla [0..30]
+Cc = 0.28 // Índice de compresión [0.05..1.5]
+Cr = 0.05 // Índice de recompresión [0.005..0.2]
+e0 = 0.90 // Relación de vacíos inicial [0.3..3.0]
+gammac = 1.85 tonf/m^3 // Peso unitario saturado de la arcilla [1.4..2.2]
+OCR = 1.5 // Razón de sobreconsolidación [1..10]
 zc = Hs + Hc/2 // Profundidad del centro de la arcilla bajo la base
 sigma0 = gamma1*Dw + (gammasat - gammaw)*(Df + Hs - Dw) + (gammac - gammaw)*Hc/2 -> tonf/m^2 // Esfuerzo efectivo inicial σ'0 en el centro
 sigmac = OCR*sigma0 // Presión de preconsolidación σ'c
@@ -128,7 +141,7 @@ Sc = ScCons(Cc, Cr, e0, Hc, sigma0, sigmaz, sigmac) -> mm // Cr·H/(1+e0)·log(�
 ## Asentamiento total y distorsión angular
 St = Se + Sc -> mm // Asentamiento total
 check St <= Sadm // Asentamiento total ≤ asentamiento tolerable (Art. 19.1)
-Lc = 7.0 m // Distancia entre columnas adyacentes
+Lc = 7.0 m // Distancia entre columnas adyacentes [2..15]
 dd = 0.75*St -> mm // Asentamiento diferencial: 75 % del total en suelos granulares (Art. 19.2)
 dist = dd/Lc // Distorsión angular α = δ/L
 check dist <= 1/500 // α ≤ 1/500: límite seguro para edificios en los que no se permiten grietas (Tabla 8)
@@ -142,6 +155,18 @@ check dist <= 1/500 // α ≤ 1/500: límite seguro para edificios en los que no
   // ------------------------------------------------------------------
   {
     id: 'ge-combinada', pais: 'PE', cat: 'Cimentaciones', icon: 'footing',
+    validacion: {
+      fuente: 'NTE E.050-2018 Art. 22 y NTE E.060-2009 (Cap. 11 y 15) — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. R = 75 + 110 = 185 tonf; xR = 0.60 + 110·5/185 = 3.573 m; L = 2·xR redondeado a 7.15 m.',
+      valores: [
+        { var: 'R', unidad: 'tonf', esperado: 185, tol: 0.001, desc: 'Control: resultante de servicio' },
+        { var: 'xR', unidad: 'm', esperado: 3.573, tol: 0.002, desc: 'Control: posición de la resultante' },
+        { var: 'Lz', unidad: 'm', esperado: 7.15, tol: 0.001, desc: 'Control: longitud de la zapata' },
+        { var: 'Bz', unidad: 'm', esperado: 1.6, tol: 0.001, desc: 'Control: ancho de la zapata' },
+        { var: 'Mneg_u', unidad: 'tonf*m', esperado: -94.103, tol: 0.002, desc: 'Control: momento negativo último' },
+        { var: 'Vmax_u', unidad: 'tonf', esperado: 103.62, tol: 0.002, desc: 'Control: cortante máximo' },
+      ],
+    },
     name: 'Zapata combinada (método rígido)',
     normas: E050 + ' · NTE E.060 Concreto Armado (Cap. 9, 11, 15) · ACI 336.2R',
     desc: 'Dimensionamiento con la resultante en el centroide, diagrama de presiones, V y M en la viga longitudinal, punzonamiento, cortante y flexión longitudinal y transversal.',
@@ -153,25 +178,25 @@ Zapata combinada rectangular que soporta dos columnas cuando las zapatas aislada
 El diseño estructural sigue la NTE E.060: combinación $1.4\\,CM + 1.7\\,CV$ (Art. 9.2.1), punzonamiento (Art. 11.12), cortante por flexión a $d$ de la cara (Art. 11.3) y flexión con acero mínimo $0.0018\\,b\\,h$ (Art. 9.7). La presión admisible proviene del EMS (E.050 Art. 22).`),
       calc(`# Datos
 ## Cargas de servicio
-PD1 = 55 tonf // Carga muerta de la columna 1 (exterior)
-PL1 = 20 tonf // Carga viva de la columna 1
-PD2 = 80 tonf // Carga muerta de la columna 2 (interior)
-PL2 = 30 tonf // Carga viva de la columna 2
+PD1 = 55 tonf // Carga muerta de la columna 1 (exterior) [0..500]
+PL1 = 20 tonf // Carga viva de la columna 1 [0..300]
+PD2 = 80 tonf // Carga muerta de la columna 2 (interior) [0..500]
+PL2 = 30 tonf // Carga viva de la columna 2 [0..300]
 ## Geometría
-t1 = 0.40 m // Lado de la columna 1 en la dirección longitudinal
-b1 = 0.40 m // Lado de la columna 1 en la dirección transversal
-t2 = 0.50 m // Lado de la columna 2 (longitudinal)
-b2 = 0.50 m // Lado de la columna 2 (transversal)
-l12 = 5.00 m // Distancia entre ejes de columnas
-a1 = 0.60 m // Distancia del borde izquierdo al eje de la columna 1 (límite de propiedad)
+t1 = 0.40 m // Lado de la columna 1 en la dirección longitudinal [0.25..1.5]
+b1 = 0.40 m // Lado de la columna 1 en la dirección transversal [0.25..1.5]
+t2 = 0.50 m // Lado de la columna 2 (longitudinal) [0.25..1.5]
+b2 = 0.50 m // Lado de la columna 2 (transversal) [0.25..1.5]
+l12 = 5.00 m // Distancia entre ejes de columnas [2..12]
+a1 = 0.60 m // Distancia del borde izquierdo al eje de la columna 1 (límite de propiedad) [0.2..2.0]
 ## Suelo y materiales
-qa = 2.0 kgf/cm^2 // Presión admisible del suelo (EMS, E.050 Art. 22)
-Df = 1.50 m // Profundidad de desplante
-gammam = 2.0 tonf/m^3 // Peso unitario promedio suelo–concreto
-spiso = 0.40 tonf/m^2 // Sobrecarga sobre el piso
-fc = 210 kgf/cm^2 // Resistencia del concreto [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2]
-fy = 4200 kgf/cm^2 // Fluencia del acero
-hz = 0.80 m // Peralte de la zapata
+qa = 2.0 kgf/cm^2 // Presión admisible del suelo (EMS, E.050 Art. 22) [0.5..6.0]
+Df = 1.50 m // Profundidad de desplante [0.8..5.0]
+gammam = 2.0 tonf/m^3 // Peso unitario promedio suelo–concreto [1.6..2.4]
+spiso = 0.40 tonf/m^2 // Sobrecarga sobre el piso [0.2..1.0]
+fc = 210 kgf/cm^2 // Resistencia del concreto [175 kgf/cm^2|210 kgf/cm^2|280 kgf/cm^2] [140..420]
+fy = 4200 kgf/cm^2 // Fluencia del acero [2800..5000]
+hz = 0.80 m // Peralte de la zapata [0.5..2.0]
 bar = 6 // Varilla longitudinal [5 : 5/8"|6 : 3/4"|8 : 1"]
 bart = 5 // Varilla transversal [4 : 1/2"|5 : 5/8"|6 : 3/4"]
 ## Dimensionamiento (resultante en el centroide)
@@ -246,6 +271,17 @@ check min(st1, st2) >= db(bart) + 2.5 cm // Espaciamiento mínimo: libre ≥ db 
   // ------------------------------------------------------------------
   {
     id: 'ge-conectada', pais: 'PE', cat: 'Cimentaciones', icon: 'footing',
+    validacion: {
+      fuente: 'NTE E.050-2018 Art. 22 y NTE E.060-2009 — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios.',
+      valores: [
+        { var: 'R1', unidad: 'tonf', esperado: 63.47, tol: 0.002, desc: 'Control: reacción en la zapata exterior' },
+        { var: 'Bz1', unidad: 'm', esperado: 1.45, tol: 0.001, desc: 'Control: ancho de la zapata exterior' },
+        { var: 'Bz2', unidad: 'm', esperado: 2.4, tol: 0.001, desc: 'Control: lado de la zapata interior' },
+        { var: 'Muv', unidad: 'tonf*m', esperado: 42.975, tol: 0.002, desc: 'Control: momento en la viga de conexión' },
+        { var: 'Vup', unidad: 'tonf', esperado: 112.27, tol: 0.002, desc: 'Control: punzonamiento de la zapata interior' },
+      ],
+    },
     name: 'Zapata conectada (medianera + viga de conexión)',
     normas: E050 + ' · NTE E.060 Concreto Armado · Morales, R. «Diseño en concreto armado» (ICG)',
     desc: 'Zapata excéntrica en límite de propiedad unida a la zapata interior con viga de cimentación: reacciones, presiones, diseño de la viga y de las zapatas.',
@@ -258,21 +294,21 @@ $$R_1 = \\frac{P_1\\,l}{l - e}$$
 
 y la zapata interior se descarga en $R_1 - P_1$. La viga se diseña a flexión y cortante (E.060) y las zapatas como voladizos transversales.`),
       calc(`# Datos
-PD1 = 40 tonf // Carga muerta de la columna exterior
-PL1 = 15 tonf // Carga viva de la columna exterior
-PD2 = 70 tonf // Carga muerta de la columna interior
-PL2 = 25 tonf // Carga viva de la columna interior
-t1 = 0.40 m // Columna exterior: lado perpendicular al lindero
-b1 = 0.40 m // Columna exterior: lado paralelo al lindero
-c2 = 0.50 m // Columna interior (cuadrada)
-l12 = 6.00 m // Distancia entre ejes de columnas
-qa = 2.0 kgf/cm^2 // Presión admisible (EMS)
-Df = 1.50 m // Profundidad de desplante
-gammam = 2.0 tonf/m^3 // Peso unitario promedio suelo–concreto
-spiso = 0.40 tonf/m^2 // Sobrecarga sobre el piso
-fc = 210 kgf/cm^2 // Resistencia del concreto
-fy = 4200 kgf/cm^2 // Fluencia del acero
-hz = 0.60 m // Peralte de las zapatas
+PD1 = 40 tonf // Carga muerta de la columna exterior [0..500]
+PL1 = 15 tonf // Carga viva de la columna exterior [0..300]
+PD2 = 70 tonf // Carga muerta de la columna interior [0..500]
+PL2 = 25 tonf // Carga viva de la columna interior [0..300]
+t1 = 0.40 m // Columna exterior: lado perpendicular al lindero [0.25..1.5]
+b1 = 0.40 m // Columna exterior: lado paralelo al lindero [0.25..1.5]
+c2 = 0.50 m // Columna interior (cuadrada) [0.25..1.5]
+l12 = 6.00 m // Distancia entre ejes de columnas [2..12]
+qa = 2.0 kgf/cm^2 // Presión admisible (EMS) [0.5..6.0]
+Df = 1.50 m // Profundidad de desplante [0.8..5.0]
+gammam = 2.0 tonf/m^3 // Peso unitario promedio suelo–concreto [1.6..2.4]
+spiso = 0.40 tonf/m^2 // Sobrecarga sobre el piso [0.2..1.0]
+fc = 210 kgf/cm^2 // Resistencia del concreto [140..420]
+fy = 4200 kgf/cm^2 // Fluencia del acero [2800..5000]
+hz = 0.60 m // Peralte de las zapatas [0.5..2.0]
 ## Zapata exterior
 qn = qa - gammam*Df - spiso -> tonf/m^2 // Presión neta
 P1 = PD1 + PL1
@@ -352,6 +388,17 @@ check s2 <= min(3*hz, 40 cm) // Espaciamiento zapata interior`),
   // ------------------------------------------------------------------
   {
     id: 'ge-medianera', pais: 'PE', cat: 'Cimentaciones', icon: 'footing',
+    validacion: {
+      fuente: 'NTE E.050-2018 y NTE E.060-2009 — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Momento de excentricidad Mt = P·ec y fuerza de restitución T = Mt/hs.',
+      valores: [
+        { var: 'Bz', unidad: 'm', esperado: 1.05, tol: 0.001, desc: 'Control: ancho perpendicular al lindero' },
+        { var: 'Lz', unidad: 'm', esperado: 2.05, tol: 0.001, desc: 'Control: lado paralelo al lindero' },
+        { var: 'Mt', unidad: 'tonf*m', esperado: 15.275, tol: 0.002, desc: 'Control: momento de excentricidad' },
+        { var: 'T', unidad: 'tonf', esperado: 3.8188, tol: 0.002, desc: 'Control: fuerza en el techo' },
+        { var: 'qmax_u', unidad: 'tonf/m^2', esperado: 32.242, tol: 0.002, desc: 'Control: presión última' },
+      ],
+    },
     name: 'Zapata excéntrica (medianera) aislada',
     normas: E050 + ' (Art. 28) · NTE E.060 Concreto Armado (Art. 11.12, 15)',
     desc: 'Zapata en lindero sin viga de conexión: presión trapezoidal/triangular o uniforme con tensor en el primer techo; fricción, punzonamiento con perímetro de 3 lados y flexión.',
@@ -365,19 +412,19 @@ Zapata de columna ubicada en el límite de propiedad. La carga actúa con excent
 
 El diseño estructural sigue la NTE E.060 (punzonamiento con perímetro crítico de tres lados y $\\alpha_s = 30$).`),
       calc(`# Datos
-PD = 35 tonf // Carga muerta de servicio
-PL = 12 tonf // Carga viva de servicio
-t = 0.40 m // Lado de la columna perpendicular al lindero
-bc = 0.40 m // Lado de la columna paralelo al lindero
-qa = 2.5 kgf/cm^2 // Presión admisible (EMS)
-Df = 1.50 m // Profundidad de desplante
-gammam = 2.0 tonf/m^3 // Peso unitario promedio suelo–concreto
+PD = 35 tonf // Carga muerta de servicio [0..2000]
+PL = 12 tonf // Carga viva de servicio [0..1000]
+t = 0.40 m // Lado de la columna perpendicular al lindero [0.25..1.5]
+bc = 0.40 m // Lado de la columna paralelo al lindero [0.25..1.5]
+qa = 2.5 kgf/cm^2 // Presión admisible (EMS) [0.5..6.0]
+Df = 1.50 m // Profundidad de desplante [0.8..5.0]
+gammam = 2.0 tonf/m^3 // Peso unitario promedio suelo–concreto [1.6..2.4]
 caso = 2 // Esquema estructural [1 : Sin restricción (presión variable)|2 : Con tensor en el primer techo]
-hs = 4.0 m // Distancia de la base al primer techo (brazo del par)
-muf = 0.45 // Coeficiente de fricción suelo–concreto (tan δ)
-fc = 210 kgf/cm^2 // Resistencia del concreto
-fy = 4200 kgf/cm^2 // Fluencia del acero
-hz = 0.60 m // Peralte de la zapata
+hs = 4.0 m // Distancia de la base al primer techo (brazo del par) [2.5..6.0]
+muf = 0.45 // Coeficiente de fricción suelo–concreto (tan δ) [0.3..0.7]
+fc = 210 kgf/cm^2 // Resistencia del concreto [140..420]
+fy = 4200 kgf/cm^2 // Fluencia del acero [2800..5000]
+hz = 0.60 m // Peralte de la zapata [0.5..2.0]
 bar = 5 // Varilla [4 : 1/2"|5 : 5/8"|6 : 3/4"]
 ## Dimensionamiento
 qn = qa - gammam*Df -> tonf/m^2 // Presión neta
@@ -434,6 +481,17 @@ check max(sB, sL) <= min(3*hz, 40 cm) // Espaciamiento máximo
   // ------------------------------------------------------------------
   {
     id: 'ge-platea', pais: 'PE', cat: 'Cimentaciones', icon: 'slab',
+    validacion: {
+      fuente: 'NTE E.050-2018 Art. 26 y método rígido convencional (Das cap. 6) — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios.',
+      valores: [
+        { var: 'Q', unidad: 'tonf', esperado: 1610, tol: 0.001, desc: 'Control: carga total' },
+        { var: 'ex', unidad: 'm', esperado: 0.26087, tol: 0.002, desc: 'Control: excentricidad en x' },
+        { var: 'qmx', unidad: 'tonf/m^2', esperado: 11.329, tol: 0.002, desc: 'Control: presión máxima' },
+        { var: 'qmn', unidad: 'tonf/m^2', esperado: 7.7242, tol: 0.002, desc: 'Control: presión mínima' },
+        { var: 'Vu', unidad: 'tonf', esperado: 467.06, tol: 0.002, desc: 'Control: punzonamiento de la columna interior' },
+      ],
+    },
     name: 'Platea de cimentación (método rígido)',
     normas: E050 + ' (Art. 23, 26.3) · ACI 336.2R · Das, cap. 6 · NTE E.060',
     desc: 'Resultante y excentricidades, presiones en puntos q = Q/A ± My·x/Iy ± Mx·y/Ix, franja de diseño con cargas modificadas, punzonamiento y flexión.',
@@ -446,18 +504,18 @@ $$q = \\frac{Q}{A} \\pm \\frac{M_y\\,x}{I_y} \\pm \\frac{M_x\\,y}{I_x}$$
 
 con $M_x = Q\\,e_y$, $M_y = Q\\,e_x$. La losa se divide en franjas; en cada franja se promedian la carga de columnas y la reacción del suelo, y las cargas de columna se modifican para lograr el equilibrio. La E.050 (Art. 26.3) exige que la platea tenga una **viga perimetral** de peralte mínimo 0.40 m (0.80 m si el relleno controlado supera 0.80 m).`),
       calc(`# Datos
-Lx = 13.0 m // Dimensión de la platea en x
-Ly = 13.0 m // Dimensión de la platea en y
+Lx = 13.0 m // Dimensión de la platea en x [5..100]
+Ly = 13.0 m // Dimensión de la platea en y [5..100]
 xc = [0.5, 6.5, 12.5, 0.5, 6.5, 12.5, 0.5, 6.5, 12.5] m // Coordenadas x de las columnas desde el borde
 yc = [0.5, 0.5, 0.5, 6.5, 6.5, 6.5, 12.5, 12.5, 12.5] m // Coordenadas y de las columnas
 Pc = [120, 200, 140, 190, 320, 220, 110, 180, 130] tonf // Cargas de servicio de las columnas
-qa = 1.2 kgf/cm^2 // Presión admisible (EMS)
-hpl = 0.90 m // Espesor de la losa
-hvp = 0.80 m // Peralte de la viga perimetral (E.050 Art. 26.3)
-c = 0.60 m // Lado de las columnas (cuadradas)
-fc = 280 kgf/cm^2 // Resistencia del concreto
-fy = 4200 kgf/cm^2 // Fluencia del acero
-fu = 1.55 // Factor de carga promedio (1.4 CM + 1.7 CV)/(CM + CV)
+qa = 1.2 kgf/cm^2 // Presión admisible (EMS) [0.5..6.0]
+hpl = 0.90 m // Espesor de la losa [0.3..2.0]
+hvp = 0.80 m // Peralte de la viga perimetral (E.050 Art. 26.3) [0.4..2.0]
+c = 0.60 m // Lado de las columnas (cuadradas) [0.25..1.50]
+fc = 280 kgf/cm^2 // Resistencia del concreto [140..420]
+fy = 4200 kgf/cm^2 // Fluencia del acero [2800..5000]
+fu = 1.55 // Factor de carga promedio (1.4 CM + 1.7 CV)/(CM + CV) [1.4..1.7]
 check hvp >= 0.40 m // Peralte mínimo de la viga perimetral (E.050 Art. 26.3)
 ## Resultante y excentricidades
 @modo corto
@@ -488,7 +546,7 @@ check qmx <= qa // Presión máxima ≤ presión admisible (E.050 Art. 22)
 check qmn > 0 tonf/m^2 // Toda la platea en compresión`),
       { type: 'table', columnas: 'Columna = 1:9\nx [m] = xc\ny [m] = yc\nP [tonf] = Pc\nq [tonf/m^2] = qcol', titulo: 'Presión de contacto bajo cada columna (método rígido)' },
       calc(`# Franja central en la dirección x (y = 3.5 a 9.5 m)
-B1 = 6.0 m // Ancho de la franja
+B1 = 6.0 m // Ancho de la franja [1..20]
 Fs = Pc[4] + Pc[5] + Pc[6] // Suma de cargas de columnas en la franja
 qav = (qcol[4] + qcol[5] + qcol[6])/3 -> tonf/m^2 // Presión promedio en la franja
 Rs = qav*B1*Lx -> tonf // Reacción del suelo en la franja
@@ -547,6 +605,17 @@ check Vudf <= phiVcf // Cortante unidireccional`),
   // ------------------------------------------------------------------
   {
     id: 'ge-winkler', pais: 'PE', cat: 'Cimentaciones', icon: 'beam',
+    validacion: {
+      fuente: 'Hetényi (1946), viga sobre fundación elástica; balasto de Vesic (1961) — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. La solución numérica se valida con las soluciones cerradas de Hetényi (viga infinita y viga finita libre) en tests/geotech.test.mjs.',
+      valores: [
+        { var: 'ks', unidad: 'kgf/cm^3', esperado: 0.90189, tol: 0.002, desc: 'Control: balasto de Vesic' },
+        { var: 'lambdaL', esperado: 2.6426, tol: 0.002, desc: 'Control: rigidez relativa λL' },
+        { var: 'wmax_s', unidad: 'mm', esperado: 15.524, tol: 0.002, desc: 'Control: asentamiento máximo de servicio' },
+        { var: 'qmax_s', unidad: 'tonf/m^2', esperado: 14.001, tol: 0.002, desc: 'Control: presión máxima de servicio' },
+        { var: 'Mneg_u', unidad: 'tonf*m', esperado: -96.427, tol: 0.002, desc: 'Control: momento negativo último' },
+      ],
+    },
     name: 'Viga de cimentación sobre suelo elástico (Winkler)',
     normas: E050 + ' · Hetényi (1946) · Vesic (1961) · Bowles (1996, cap. 9) · NTE E.060',
     desc: 'Cimiento corrido / viga de cimentación con varias columnas sobre lecho de Winkler (elementos finitos): presiones, asentamientos, V y M; comparación con el método rígido y diseño E.060.',
@@ -557,24 +626,24 @@ La viga de cimentación se modela como una viga de Euler–Bernoulli apoyada en 
 
 El coeficiente de balasto se estima con la expresión de **Vesic (1961)** a partir del módulo de elasticidad del suelo y se contrasta con la recomendación de **Bowles (1996)** $k_s \\approx 40\\,(FS)\\,q_a$. Las presiones de servicio se comparan con la presión admisible (E.050 Art. 22) y los momentos y cortantes últimos se usan en el diseño E.060.`),
       calc(`# Datos
-Lv = 13.0 m // Longitud de la viga de cimentación
-Bv = 1.60 m // Ancho de contacto (ala de la zapata)
-hv = 0.90 m // Peralte de la viga (sección rectangular equivalente)
-fc = 210 kgf/cm^2 // Resistencia del concreto
-fy = 4200 kgf/cm^2 // Fluencia del acero
-PD1 = 40 tonf // Columna A (x = 0.5 m): carga muerta
-PL1 = 15 tonf // Columna A: carga viva
-PD2 = 75 tonf // Columna B (x = 6.5 m): carga muerta
-PL2 = 30 tonf // Columna B: carga viva
-PD3 = 45 tonf // Columna C (x = 12.5 m): carga muerta
-PL3 = 18 tonf // Columna C: carga viva
-MD1 = 3 tonf*m // Momento de servicio en la columna A (horario)
-xA = 0.5 m // Posición de la columna A
-xB = 6.5 m // Posición de la columna B
-xC = 12.5 m // Posición de la columna C
-qa = 1.5 kgf/cm^2 // Presión admisible (EMS)
-Es = 250 kgf/cm^2 // Módulo de elasticidad del suelo (EMS)
-mu = 0.30 // Coeficiente de Poisson del suelo
+Lv = 13.0 m // Longitud de la viga de cimentación [3..50]
+Bv = 1.60 m // Ancho de contacto (ala de la zapata) [0.5..5.0]
+hv = 0.90 m // Peralte de la viga (sección rectangular equivalente) [0.4..2.5]
+fc = 210 kgf/cm^2 // Resistencia del concreto [140..420]
+fy = 4200 kgf/cm^2 // Fluencia del acero [2800..5000]
+PD1 = 40 tonf // Columna A (x = 0.5 m): carga muerta [0..500]
+PL1 = 15 tonf // Columna A: carga viva [0..300]
+PD2 = 75 tonf // Columna B (x = 6.5 m): carga muerta [0..500]
+PL2 = 30 tonf // Columna B: carga viva [0..300]
+PD3 = 45 tonf // Columna C (x = 12.5 m): carga muerta [0..500]
+PL3 = 18 tonf // Columna C: carga viva [0..300]
+MD1 = 3 tonf*m // Momento de servicio en la columna A (horario) [0..50]
+xA = 0.5 m // Posición de la columna A [0..50]
+xB = 6.5 m // Posición de la columna B [0..50]
+xC = 12.5 m // Posición de la columna C [0..50]
+qa = 1.5 kgf/cm^2 // Presión admisible (EMS) [0.5..6.0]
+Es = 250 kgf/cm^2 // Módulo de elasticidad del suelo (EMS) [20..2000]
+mu = 0.30 // Coeficiente de Poisson del suelo [0.1..0.5]
 ksop = 1 // Coeficiente de balasto [1 : Vesic (1961)|2 : Bowles 40·FS·qa]
 ## Rigidez de la viga y del suelo
 Ec = 15000*sqrtfc(fc) // Módulo del concreto (E.060 Art. 8.5)
@@ -623,6 +692,16 @@ sest = rounddown(min(si(Vs > 0 tonf, 4*Ab(4)*fy*d/Vs, d/2), d/2, 60 cm), 2.5 cm)
   // ------------------------------------------------------------------
   {
     id: 'ge-corrido', pais: 'PE', cat: 'Cimentaciones', icon: 'wall',
+    validacion: {
+      fuente: 'NTE E.050-2018 y NTE E.060-2009 Cap. 22 (concreto simple) — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Ancho = w/qn redondeado a 1.15 m; φMn = 0.65·1.34√f\'c·Sm con h − 5 cm (Art. 22.4.8).',
+      valores: [
+        { var: 'Bc', unidad: 'm', esperado: 1.15, tol: 0.001, desc: 'Control: ancho del cimiento' },
+        { var: 'qs', unidad: 'tonf/m^2', esperado: 11.58, tol: 0.002, desc: 'Control: presión de servicio' },
+        { var: 'Mu', unidad: 'tonf*m', esperado: 1.3825, tol: 0.002, desc: 'Control: momento último en la cara' },
+        { var: 'phiMn', unidad: 'tonf*m', esperado: 9.6617, tol: 0.002, desc: 'Control: φMn de concreto simple' },
+      ],
+    },
     name: 'Cimiento corrido para muros de albañilería',
     normas: E050 + ' (Art. 23, 26) · NTE E.070 Albañilería · NTE E.060 Cap. 22 (concreto estructural simple)',
     desc: 'Ancho por presión admisible, profundidad mínima 0.80 m, verificación del concreto ciclópeo a flexión y cortante y presión en la base.',
@@ -631,17 +710,17 @@ sest = rounddown(min(si(Vs > 0 tonf, 4*Ab(4)*fy*d/Vs, d/2), d/2, 60 cm), 2.5 cm)
       text(`# Generalidades
 Cimiento corrido continuo ($L > 10B$, E.050 Art. 23.3) de **concreto ciclópeo** (concreto simple con 30 % de piedra grande) bajo un muro portante de albañilería. Se analiza por metro lineal: el ancho se fija con la presión admisible neta y el peralte se verifica como **concreto estructural simple** (NTE E.060 Cap. 22) a flexión (ec. 22-2, $M_n = 0.42\\sqrt{f'_c}\\,S_m$ en MPa) y cortante como viga (ec. 22-9, $V_n = 0.11\\sqrt{f'_c}\\,b\\,h$), con $\\phi = 0.65$ (Art. 9.3.2.8) y un peralte de cálculo 50 mm menor que el real por estar vaciado contra el suelo (Art. 22.4.8). La resistencia mínima del concreto simple estructural es 14 MPa (Art. 22.2.4). La profundidad mínima de cimentación es 0.80 m (E.050 Art. 26.2).`),
       calc(`# Datos (por metro lineal de muro)
-wD = 8.5 tonf/m // Carga muerta de servicio del muro y techos
-wL = 2.0 tonf/m // Carga viva de servicio
-tm = 0.25 m // Espesor del muro (aparejo de cabeza/soga)
-bs = 0.25 m // Ancho del sobrecimiento
-hs = 0.50 m // Altura del sobrecimiento (sobre el cimiento)
-qa = 1.2 kgf/cm^2 // Presión admisible (EMS)
-Df = 1.00 m // Profundidad de desplante
-gammas = 1.80 tonf/m^3 // Peso unitario del suelo
-gammacc = 2.30 tonf/m^3 // Peso unitario del concreto ciclópeo
-fc = 140 kgf/cm^2 // Resistencia del concreto ciclópeo (≥ 14 MPa, E.060 Art. 22.2.4)
-hc = 0.80 m // Peralte del cimiento
+wD = 8.5 tonf/m // Carga muerta de servicio del muro y techos [1..30]
+wL = 2.0 tonf/m // Carga viva de servicio [0..10]
+tm = 0.25 m // Espesor del muro (aparejo de cabeza/soga) [0.13..0.30]
+bs = 0.25 m // Ancho del sobrecimiento [0.13..0.30]
+hs = 0.50 m // Altura del sobrecimiento (sobre el cimiento) [0.2..1.0]
+qa = 1.2 kgf/cm^2 // Presión admisible (EMS) [0.5..6.0]
+Df = 1.00 m // Profundidad de desplante [0.8..5.0]
+gammas = 1.80 tonf/m^3 // Peso unitario del suelo [1.4..2.2]
+gammacc = 2.30 tonf/m^3 // Peso unitario del concreto ciclópeo [2.2..2.4]
+fc = 140 kgf/cm^2 // Resistencia del concreto ciclópeo (≥ 14 MPa, E.060 Art. 22.2.4) [140..420]
+hc = 0.80 m // Peralte del cimiento [0.4..3.0]
 check Df >= 0.80 m // Profundidad mínima (E.050 Art. 26.2)
 check bs >= tm // El sobrecimiento es al menos tan ancho como el muro
 check fc >= 140 kgf/cm^2 // Resistencia mínima del concreto simple estructural: 14 MPa ≈ 140 kgf/cm² (E.060 Art. 22.2.4)
@@ -673,6 +752,18 @@ check hc >= v // Proporción recomendada: peralte ≥ volado (ángulo de difusi�
   // ------------------------------------------------------------------
   {
     id: 'ge-pilote', pais: 'PE', cat: 'Cimentaciones', icon: 'column',
+    validacion: {
+      fuente: 'B. M. Das, Principios de ingeniería de cimentaciones, Tabla 11.5 (Nq* de Meyerhof, φ = 34° → 115); resto, valores de control',
+      nota: 'Nq* es el valor tabulado por Das para φ′ = 34° (dato por defecto). Las capacidades, el asentamiento (Vesic) y la carga lateral (Broms) son valores de control; el método de punta se valida con el Ej. 11.1 de Das en tests/geotech.test.mjs.',
+      valores: [
+        { var: 'Nqs', esperado: 115, tol: 0.001, desc: 'Das Tabla 11.5: Nq* (φ = 34°)' },
+        { var: 'Qp', unidad: 'tonf', esperado: 64.117, tol: 0.002, desc: 'Control: capacidad de punta' },
+        { var: 'Qs', unidad: 'tonf', esperado: 57.434, tol: 0.002, desc: 'Control: capacidad por fuste' },
+        { var: 'Qadm', unidad: 'tonf', esperado: 60.775, tol: 0.002, desc: 'Control: carga admisible (FS = 2)' },
+        { var: 'Se', unidad: 'mm', esperado: 16.444, tol: 0.002, desc: 'Control: asentamiento del pilote' },
+        { var: 'Hu', unidad: 'tonf', esperado: 13.207, tol: 0.002, desc: 'Control: capacidad lateral de Broms' },
+      ],
+    },
     name: 'Pilote individual: capacidad por punta y fuste',
     normas: E050 + ' (Art. 15, 32) · Meyerhof (1976) · API RP2A (método α) · Burland (1973, método β) · Vesic (1977) · Broms (1964) · Das cap. 11',
     desc: 'Pilote hincado en suelo estratificado: punta por Meyerhof (Nq*, límite ql) y SPT, fuste por métodos α y β, fricción negativa, FS ≥ 2, asentamiento elástico (Vesic) y capacidad lateral (Broms).',
@@ -682,25 +773,25 @@ check hc >= v // Proporción recomendada: peralte ≥ volado (ángulo de difusi�
 Capacidad última de un pilote hincado de concreto según la E.050 Art. 32.3: $Q_u = Q_p + \\sum Q_f$. La **punta** se evalúa con la teoría de Meyerhof (1976) $q_p = q'\\,N_q^* \\le q_l = 0.5\\,p_a\\,N_q^*\\tan\\phi$ y con la correlación SPT de Meyerhof, adoptando el menor valor. La **fricción lateral** en arcilla se calcula con el método α (API RP2A, $\\alpha$ función de $\\psi = c_u/\\sigma'_v$) y en arena con el método β ($\\beta = (1-\\sin\\phi)\\tan\\phi$, Burland 1973) y la correlación SPT de Meyerhof, adoptando el menor. Si la arcilla blanda se consolida (relleno nuevo o descenso del nivel freático) se produce **fricción negativa** (E.050 Art. 32.3.4 e): se calcula con el método β hasta el plano neutro (tope de la arena), no se cuenta la fricción positiva de la arcilla y el arrastre $Q_n$ se suma a la carga (Art. 32.3.4 f). La capacidad admisible usa $FS \\ge 2.0$ para pilotes individuales (E.050 Art. 32.3.4 c-1). El asentamiento se estima con el método de Vesic (1977; Das, cap. 11): acortamiento elástico, punta y fuste. La **capacidad lateral última** se evalúa con el método de Broms (1964) para suelo cohesivo, como el menor entre los mecanismos de pilote corto, intermedio y largo (rótula plástica con el momento de fluencia $M_y$).`),
       { type: 'soilprofile', estratos: '2.0 CL 1.75 1.80 Arcilla blanda gris\n4.0 CL 1.80 1.80 Arcilla blanda saturada\n14.0 SP 1.95 2.00 Arena densa pobremente gradada', nf: '2.0 m', spt: '1.0 4\n3.0 3\n5.0 4\n7.0 26\n9.0 29\n11.0 30\n13.0 32\n15.0 34\n17.0 36\n19.0 38', ER: '60', zref: '14 m', zona: '6 16', tabla: false, titulo: 'Perfil estratigráfico del sondeo y ensayos SPT' },
       calc(`# Datos
-Dp = 0.40 m // Lado del pilote cuadrado de concreto hincado
-Lpil = 14.0 m // Longitud del pilote (punta en la arena densa)
-P = 45 tonf // Carga de servicio por pilote
-fc = 350 kgf/cm^2 // Resistencia del concreto del pilote
-H1 = 2.0 m // Arcilla sobre el NF
-H2 = 4.0 m // Arcilla bajo el NF
-cu1 = 3.0 tonf/m^2 // Resistencia no drenada de la arcilla 1
-cu2 = 3.0 tonf/m^2 // Resistencia no drenada de la arcilla 2
-gammac1 = 1.75 tonf/m^3 // γ arcilla 1
-gammac2 = 1.80 tonf/m^3 // γsat arcilla 2
-gammas3 = 2.00 tonf/m^3 // γsat arena
-gammaw = 1.0 tonf/m^3 // Peso unitario del agua
-phis = 34 deg // φ' de la arena densa
-FSp = 2.0 // Factor de seguridad, pilote individual (E.050 Art. 32.3.4 c-1)
-pexp = 20.0 m // Profundidad alcanzada por el sondeo
+Dp = 0.40 m // Lado del pilote cuadrado de concreto hincado [0.25..2.0]
+Lpil = 14.0 m // Longitud del pilote (punta en la arena densa) [5..60]
+P = 45 tonf // Carga de servicio por pilote [5..1000]
+fc = 350 kgf/cm^2 // Resistencia del concreto del pilote [140..420]
+H1 = 2.0 m // Arcilla sobre el NF [0..30]
+H2 = 4.0 m // Arcilla bajo el NF [0..30]
+cu1 = 3.0 tonf/m^2 // Resistencia no drenada de la arcilla 1 [1..30]
+cu2 = 3.0 tonf/m^2 // Resistencia no drenada de la arcilla 2 [1..30]
+gammac1 = 1.75 tonf/m^3 // γ arcilla 1 [1.4..2.2]
+gammac2 = 1.80 tonf/m^3 // γsat arcilla 2 [1.4..2.2]
+gammas3 = 2.00 tonf/m^3 // γsat arena [1.6..2.3]
+gammaw = 1.0 tonf/m^3 // Peso unitario del agua [1.0..1.03]
+phis = 34 deg // φ' de la arena densa [25..45]
+FSp = 2.0 // Factor de seguridad, pilote individual (E.050 Art. 32.3.4 c-1) [2..3]
+pexp = 20.0 m // Profundidad alcanzada por el sondeo [3..60]
 check pexp >= Lpil + 6 m // Profundidad mínima de exploración p = Df + z, z = 6 m (E.050 Art. 15, c-2)
 fneg = 1 // Fricción negativa [1 : No — la arcilla no se consolida|2 : Sí — relleno nuevo o descenso del NF]
-qrel = 2.0 tonf/m^2 // Sobrecarga del relleno sobre la arcilla (solo si hay fricción negativa)
-phic = 22 deg // φ' de la arcilla blanda (método β para la fricción negativa)
+qrel = 2.0 tonf/m^2 // Sobrecarga del relleno sobre la arcilla (solo si hay fricción negativa) [0..20]
+phic = 22 deg // φ' de la arcilla blanda (método β para la fricción negativa) [15..35]
 Ap = Dp^2 // Área de la punta
 per = 4*Dp // Perímetro
 Lb = Lpil - H1 - H2 // Empotramiento en la arena
@@ -747,8 +838,8 @@ check Lpil/Dp >= 10 // Cimentación por pilotes: d/b ≥ 10 (E.050 Art. 5.23)
 # Asentamiento del pilote (Vesic 1977; E.050 Art. 32.3.5 b)
 Ep = 15000*sqrtfc(fc) // Módulo del concreto
 Esb = EsSPT(N60p, 10) -> tonf/m^2 // Es de la arena bajo la punta (Kulhawy y Mayne)
-mus = 0.30 // Poisson de la arena
-xi = 0.62 // Distribución de la fricción (Vesic: 0.5 uniforme – 0.67 triangular)
+mus = 0.30 // Poisson de la arena [0.2..0.45]
+xi = 0.62 // Distribución de la fricción (Vesic: 0.5 uniforme – 0.67 triangular) [0.5..0.67]
 Qwp = P*Qp/Qu // Carga de trabajo por punta (proporcional)
 Qws = P - Qwp // Carga de trabajo por fuste
 Se1 = (Qwp + xi*Qws)*Lpil/(Ap*Ep) -> mm // Acortamiento elástico del pilote
@@ -758,15 +849,15 @@ Se3 = Qws/(per*Lpil)*Dp/Esb*(1 - mus^2)*Iws -> mm // Asentamiento por el fuste
 Se = Se1 + Se2 + Se3 -> mm // Asentamiento total del pilote
 check Se <= 25 mm // Asentamiento ≤ tolerable (EMS)
 # Capacidad lateral (Broms 1964; E.050 Art. 32.1: cargas sísmicas)
-Hs = 1.5 tonf // Fuerza horizontal de servicio por pilote (sismo)
+Hs = 1.5 tonf // Fuerza horizontal de servicio por pilote (sismo) [0..20]
 cab = 2 // Condición de la cabeza [1 : Libre|2 : Empotrada en el cabezal]
-ebr = 0 m // Altura de aplicación de la carga sobre el terreno (cabeza libre)
-Myp = 8.0 tonf*m // Momento de fluencia de la sección del pilote (diagrama de interacción con P)
+ebr = 0 m // Altura de aplicación de la carga sobre el terreno (cabeza libre) [0..10]
+Myp = 8.0 tonf*m // Momento de fluencia de la sección del pilote (diagrama de interacción con P) [1..200]
 cul = min(cu1, cu2) // cu de la arcilla superior (la reacción lateral se moviliza en los primeros diámetros)
 Hu = HuBromsC(cul, Dp, Lpil, ebr, Myp, cab) -> tonf // Carga lateral última de Broms en suelo cohesivo (9·cu·D bajo 1.5D)
 fH = Hu/(9*cul*Dp) -> m // Profundidad de la reacción plástica bajo 1.5D
 check 1.5*Dp + fH <= H1 + H2 // La zona de reacción lateral queda dentro de la arcilla (hipótesis de suelo homogéneo)
-FSH = 2.5 // Factor de seguridad lateral (sismo, criterio del Art. 21.2)
+FSH = 2.5 // Factor de seguridad lateral (sismo, criterio del Art. 21.2) [2..3]
 check Hs <= Hu/FSH // Carga lateral de servicio ≤ Hu/FS
 "Mecanismo de Broms que gobierna: pilote {modoBromsC(cul, Dp, Lpil, ebr, Myp, cab)} ({si(cab == 2, 1, 0)} = cabeza empotrada). La respuesta lateral en servicio (desplazamientos) debe verificarse con un modelo de reacción horizontal p–y o de Winkler lateral.`),
       summary(),
@@ -777,6 +868,17 @@ check Hs <= Hu/FSH // Carga lateral de servicio ≤ Hu/FS
   // ------------------------------------------------------------------
   {
     id: 'ge-grupo', pais: 'PE', cat: 'Cimentaciones', icon: 'grid',
+    validacion: {
+      fuente: 'Converse–Labarre; Das cap. 11 (bloque, Skempton) y NTE E.050 Art. 32 — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. η = 1 − θ·[(n1 − 1)n2 + (n2 − 1)n1]/(90·n1·n2) con θ = atan(D/s).',
+      valores: [
+        { var: 'eta', esperado: 0.79206, tol: 0.001, desc: 'Control: eficiencia de Converse–Labarre' },
+        { var: 'Qg1', unidad: 'tonf', esperado: 1104.7, tol: 0.002, desc: 'Control: η·n·Qu' },
+        { var: 'Qga', unidad: 'tonf', esperado: 368.24, tol: 0.002, desc: 'Control: capacidad admisible del grupo' },
+        { var: 'Pmax', unidad: 'tonf', esperado: 39.494, tol: 0.002, desc: 'Control: carga máxima por pilote' },
+        { var: 'Scg', unidad: 'mm', esperado: 11.385, tol: 0.002, desc: 'Control: asentamiento de consolidación' },
+      ],
+    },
     name: 'Grupo de pilotes y diseño del cabezal',
     normas: E050 + ' (Art. 32.3.4 b–d, Tabla 9, 32.3.5 d) · Converse–Labarre · Das cap. 11 · NTE E.060 (Art. 11.12, 15.5)',
     desc: 'Pilotes de fricción en arcilla: eficiencia de Converse–Labarre, falla en bloque, FS de grupo, cargas por pilote con momentos, consolidación por zapata equivalente y diseño del cabezal.',
@@ -785,20 +887,20 @@ check Hs <= Hu/FSH // Carga lateral de servicio ≤ Hu/FS
       text(`# Generalidades
 Grupo de pilotes de fricción hincados en arcilla (E.050 Art. 32.3.4 b-1: «se analiza el efecto de grupo»). La capacidad del grupo es la menor entre la suma de capacidades individuales afectada por la **eficiencia de Converse–Labarre** y la capacidad como **bloque** (Terzaghi y Peck 1967; Das, cap. 11). La admisible usa $FS \\ge 3.0$ para cargas estáticas (Art. 32.3.4 c-1). El asentamiento por consolidación se estima con una **zapata equivalente a 2/3 de la longitud** (Art. 32.3.5 d). El espaciamiento mínimo es el de la Tabla 9 y no menor que 1.20 m para pilotes de fricción. El cabezal se diseña a punzonamiento (columna y pilote), cortante y flexión (E.060).`),
       calc(`# Datos
-n1 = 3 // Pilotes en la dirección x
-n2 = 3 // Pilotes en la dirección y
-Dp = 0.60 m // Diámetro del pilote (vaciado)
-sp = 2.40 m // Espaciamiento entre ejes
-Lp = 20.0 m // Longitud de los pilotes
-cu = 6.0 tonf/m^2 // Resistencia no drenada promedio en el fuste
-cub = 8.0 tonf/m^2 // Resistencia no drenada bajo la punta
-gammac = 1.85 tonf/m^3 // Peso unitario saturado de la arcilla
-gammaw = 1.0 tonf/m^3
-Dw = 0.0 m // Nivel freático en la superficie (desfavorable)
-PD = 180 tonf // Carga muerta de la columna
-PL = 60 tonf // Carga viva de la columna
-Mx = 20 tonf*m // Momento de servicio alrededor de x
-My = 15 tonf*m // Momento de servicio alrededor de y
+n1 = 3 // Pilotes en la dirección x [1..10]
+n2 = 3 // Pilotes en la dirección y [1..10]
+Dp = 0.60 m // Diámetro del pilote (vaciado) [0.25..2.0]
+sp = 2.40 m // Espaciamiento entre ejes [0.75..6]
+Lp = 20.0 m // Longitud de los pilotes [5..60]
+cu = 6.0 tonf/m^2 // Resistencia no drenada promedio en el fuste [1..30]
+cub = 8.0 tonf/m^2 // Resistencia no drenada bajo la punta [1..50]
+gammac = 1.85 tonf/m^3 // Peso unitario saturado de la arcilla [1.4..2.2]
+gammaw = 1.0 tonf/m^3 // Peso unitario del agua [1.0..1.03]
+Dw = 0.0 m // Nivel freático en la superficie (desfavorable) [0..30]
+PD = 180 tonf // Carga muerta de la columna [0..2000]
+PL = 60 tonf // Carga viva de la columna [0..1000]
+Mx = 20 tonf*m // Momento de servicio alrededor de x [0..300]
+My = 15 tonf*m // Momento de servicio alrededor de y [0..300]
 ## Separación mínima (E.050 Tabla 9)
 smin = si(Lp < 10 m, 3*Dp, si(Lp < 25 m, 4*Dp, 5*Dp)) // 3b, 4b o 5b según la longitud
 check sp >= max(smin, 1.20 m) // Espaciamiento ≥ Tabla 9 y ≥ 1.20 m (pilotes de fricción, Art. 32.3.4 d-2)
@@ -819,11 +921,11 @@ Bg = (n2 - 1)*sp + Dp // Lado del bloque en y
 Ncs = 5*(1 + 0.2*min(Lp/Bg, 2.5))*(1 + 0.2*Bg/Lg) // Nc* del bloque (Skempton 1951): D/B ≤ 2.5 → máx. 7.5(1 + 0.2B/L) ≤ 9
 Qg2 = Lg*Bg*cub*Ncs + 2*(Lg + Bg)*cu*Lp -> tonf // Falla en bloque (Terzaghi y Peck)
 Qgu = min(Qg1, Qg2) -> tonf // Capacidad última del grupo
-FSg = 3.0 // FS de grupo, cargas estáticas (E.050 Art. 32.3.4 c-1)
+FSg = 3.0 // FS de grupo, cargas estáticas (E.050 Art. 32.3.4 c-1) [2.5..3.0]
 Qga = Qgu/FSg -> tonf // Capacidad admisible del grupo
 ## Cabezal y cargas por pilote
-ed = 0.45 m // Distancia del eje del pilote al borde del cabezal
-hc = 1.20 m // Peralte del cabezal
+ed = 0.45 m // Distancia del eje del pilote al borde del cabezal [0.15..1.0]
+hc = 1.20 m // Peralte del cabezal [0.4..3.0]
 Lc = (n1 - 1)*sp + 2*ed // Largo del cabezal
 Bc = (n2 - 1)*sp + 2*ed // Ancho del cabezal
 Wc = Lc*Bc*hc*2.4 tonf/m^3 // Peso del cabezal
@@ -838,11 +940,11 @@ Pmin = Ptot/np - My*xmax/Sx2 - Mx*ymax/Sy2 -> tonf
 check Pmax <= Qu1/2 // Pilote más cargado ≤ Qu/2 (FS individual ≥ 2.0)
 check Pmin >= 0 tonf // Sin tracción en los pilotes
 ## Asentamiento por consolidación (zapata equivalente a 2/3 L, Art. 32.3.5 d)
-Hcl = 12.0 m // Espesor de arcilla compresible bajo la zapata equivalente
-Cc = 0.25 // Índice de compresión
-Cr = 0.04 // Índice de recompresión
-e0 = 0.95 // Relación de vacíos inicial
-OCR = 1.3 // Razón de sobreconsolidación (arcilla rígida)
+Hcl = 12.0 m // Espesor de arcilla compresible bajo la zapata equivalente [0..50]
+Cc = 0.25 // Índice de compresión [0.05..1.5]
+Cr = 0.04 // Índice de recompresión [0.005..0.2]
+e0 = 0.95 // Relación de vacíos inicial [0.3..3.0]
+OCR = 1.3 // Razón de sobreconsolidación (arcilla rígida) [1..10]
 zeq = 2/3*Lp // Profundidad de la zapata equivalente
 zm = Hcl/2 // Profundidad del centro de la capa bajo la zapata equivalente
 sigma0 = (gammac - gammaw)*(zeq + zm) -> tonf/m^2 // σ'0 en el centro de la capa
@@ -851,9 +953,9 @@ Scg = ScCons(Cc, Cr, e0, Hcl, sigma0, sigmaz, OCR*sigma0) -> mm // Consolidació
 check Scg <= 50 mm // Asentamiento del grupo ≤ tolerable (EMS)`),
       { type: 'pilegroup', n1: 'n1', n2: 'n2', s: 'sp', D: 'Dp', borde: 'ed', hc: 'hc', Lp: 'Lp', c1: '0.70 m', c2: '0.70 m', d: 'hc - 15 cm', Df: '1.6 m', estratos: '22 Arcilla limosa rígida (cu = 6 t/m²)', titulo: 'Grupo de 3 × 3 pilotes y cabezal' },
       calc(`# Diseño del cabezal (E.060)
-fc = 280 kgf/cm^2 // Resistencia del concreto del cabezal
-fy = 4200 kgf/cm^2
-cc = 0.70 m // Lado de la columna (cuadrada)
+fc = 280 kgf/cm^2 // Resistencia del concreto del cabezal [140..420]
+fy = 4200 kgf/cm^2 // Fluencia del acero [2800..5000]
+cc = 0.70 m // Lado de la columna (cuadrada) [0.3..2.0]
 dc = hc - 15 cm // Peralte efectivo (pilotes empotrados 10 cm + recubrimiento)
 Pu = 1.4*PD + 1.7*PL // Carga última de la columna
 Pup = Pu/np + 1.5*(My*xmax/Sx2 + Mx*ymax/Sy2) // Reacción última del pilote más cargado (momentos de sismo/servicio × 1.5)
@@ -885,6 +987,16 @@ check sb <= min(3*hc, 40 cm) // Espaciamiento máximo`),
   // ------------------------------------------------------------------
   {
     id: 'ge-licuacion', pais: 'PE', cat: 'Geotecnia', icon: 'quake',
+    validacion: {
+      fuente: 'Youd et al. (2001), NCEER; Cetin et al. (2004); NTE E.050-2018 Art. 38 — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. MSF = 10^2.24/Mw^2.56 = 0.847 para Mw = 8.0 (Youd et al.).',
+      valores: [
+        { var: 'MSF', esperado: 0.8474, tol: 0.001, desc: 'Youd et al. (2001): MSF (Mw = 8.0)' },
+        { var: 'N60prom', esperado: 31.467, tol: 0.002, desc: 'Control: N60 promedio' },
+        { var: 'FSLmin', esperado: 1.3768, tol: 0.002, desc: 'Control: FS mínimo contra licuación' },
+        { var: 'PLmax', esperado: 0.029147, tol: 0.01, desc: 'Control: probabilidad máxima de Cetin' },
+      ],
+    },
     name: 'Potencial de licuación por SPT (E.050 Art. 38)',
     normas: E050 + ' (Art. 5.27–5.29, 38) · Youd et al. (2001, NCEER) · Idriss y Boulanger (2008) · Cetin et al. (2004)',
     desc: 'Método simplificado Seed–Idriss/NCEER por profundidad: N60, (N1)60, corrección por finos, rd, CSR, CRR7.5, MSF, FS_L y probabilidad de licuación PL.',
@@ -899,12 +1011,12 @@ Según la E.050 Art. 38.5.1 el potencial de licuación de suelos granulares sume
 - Factor de seguridad $FS_L = CRR_M/CSR$ con el mínimo de la Tabla 13A según la categoría E.030, y probabilidad de licuación $P_L$ (Cetin et al. 2004, con su propio $r_d$ función de $V^*_{s,12}$, Art. 38.5.3) que debe ser $\\le 10\\,\\%$ para cimentar (Art. 38.6.2).`),
       { type: 'soilprofile', estratos: '1.5 RELL 1.70 1.85 Relleno arenoso compactado\n4.5 SP 1.85 2.00 Arena pobremente gradada densa\n5.0 SM 1.85 1.95 Arena limosa densa\n4.0 GP 2.00 2.15 Grava arenosa muy densa', nf: '3.0 m', spt: '1.0 14\n2.0 18\n3.0 26\n4.0 25\n5.0 27\n6.0 32\n7.0 32\n8.0 34\n9.0 35\n10.0 37\n11.0 38\n12.0 40\n13.0 42\n14.0 45\n15.0 48', ER: '60', CB: '1.0', CS: '1.0', barra: '1.0 m', zref: '3 m', tabla: true, titulo: 'Perfil estratigráfico, SPT y correcciones (E.050 Art. 5.27)' },
       calc(`# Parámetros sísmicos
-amax = 0.30 // Aceleración máxima horizontal en la superficie amax/g (Art. 38.5.4)
-Mw = 8.0 // Magnitud momento del sismo de diseño
-Dw = 3.0 m // Profundidad del nivel freático (la del perfil)
-FSreq = 1.25 // FS_L mínimo según la categoría E.030 [1.25 : A (esencial)|1.15 : B (importante)|1.00 : C (común)]
+amax = 0.30 // Aceleración máxima horizontal en la superficie amax/g (Art. 38.5.4) [0.05..0.6]
+Mw = 8.0 // Magnitud momento del sismo de diseño [5..9.5]
+Dw = 3.0 m // Profundidad del nivel freático (la del perfil) [0..30]
+FSreq = 1.25 // FS_L mínimo según la categoría E.030 [1.25 : A (esencial)|1.15 : B (importante)|1.00 : C (común)] [1.0..1.25]
 FC = [10, 10, 10, 8, 6, 6, 6, 18, 20, 20, 22, 22, 5, 5, 5] // Contenido de finos (% < 75 μm) por ensayo
-Vs12 = 250 m/s // Velocidad media de ondas de corte en los 12 m superiores V*s,12 (Art. 38.5.3)
+Vs12 = 250 m/s // Velocidad media de ondas de corte en los 12 m superiores V*s,12 (Art. 38.5.3) [80..600]
 # Cálculo por profundidad
 z = zSPT // Profundidades de los ensayos
 rd = rdYoud(z) // Coeficiente de reducción de esfuerzos (Youd et al. 2001)
@@ -938,6 +1050,16 @@ check PLmax <= 0.10 // P_L ≤ 10 %: potencial de licuación bajo, se permite ci
   // ------------------------------------------------------------------
   {
     id: 'ge-talud', pais: 'PE', cat: 'Geotecnia', icon: 'soil',
+    validacion: {
+      fuente: 'Bishop simplificado y Fellenius con búsqueda del círculo crítico — valores de control; el algoritmo se valida con Rocscience Slide2 (ACADS 1(a), Arai y Tagyo, Yamagami y Ueta) en tests/geotech.test.mjs',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios.',
+      valores: [
+        { var: 'FS_est', esperado: 1.8288, tol: 0.005, desc: 'Control: FS estático (Bishop)' },
+        { var: 'FSf_est', esperado: 1.7053, tol: 0.005, desc: 'Control: FS estático (Fellenius)' },
+        { var: 'FS_sis', esperado: 1.2899, tol: 0.005, desc: 'Control: FS seudoestático (kh = 0.15)' },
+        { var: 'Rc_est', unidad: 'm', esperado: 21.383, tol: 0.02, desc: 'Control: radio del círculo crítico' },
+      ],
+    },
     name: 'Estabilidad de taludes (Fellenius / Bishop)',
     normas: E050 + ' (Art. 30) · Fellenius (1936) · Bishop (1955) · Das cap. 15 · Duncan y Wright (2005)',
     desc: 'Método de dovelas con búsqueda del círculo crítico en malla de centros, estratos, nivel freático y sobrecarga; condición estática (FS ≥ 1.5) y seudoestática (FS ≥ 1.25).',
@@ -957,19 +1079,19 @@ $$FS = \\frac{\\sum \\left[c\\,b + (W - u\\,b)\\tan\\phi\\right]/m_\\alpha}{\\su
 El círculo crítico se busca en una malla de centros, optimizando el radio en cada centro y refinando por búsqueda de patrones. La condición seudoestática aplica una fuerza horizontal $k_h W$ en el centro de gravedad de cada dovela.`),
       calc(`# Parámetros
 ## Estrato 1: arcilla arenosa (CL)
-c1 = 3.5 tonf/m^2 // Cohesión efectiva
-phi1 = 29 deg // Ángulo de fricción efectivo
-g1 = 1.85 tonf/m^3 // Peso unitario natural
-gs1 = 1.95 tonf/m^3 // Peso unitario saturado
+c1 = 3.5 tonf/m^2 // Cohesión efectiva [0..20]
+phi1 = 29 deg // Ángulo de fricción efectivo [15..45]
+g1 = 1.85 tonf/m^3 // Peso unitario natural [1.4..2.3]
+gs1 = 1.95 tonf/m^3 // Peso unitario saturado [1.5..2.3]
 ## Estrato 2: arena densa (SP), desde la cota 2.0 m
-c2 = 0.5 tonf/m^2 // Cohesión efectiva (estrato 2)
-phi2 = 33 deg // Ángulo de fricción efectivo (estrato 2)
-g2 = 1.95 tonf/m^3 // Peso unitario natural (estrato 2)
-gs2 = 2.05 tonf/m^3 // Peso unitario saturado (estrato 2)
+c2 = 0.5 tonf/m^2 // Cohesión efectiva (estrato 2) [0..20]
+phi2 = 33 deg // Ángulo de fricción efectivo (estrato 2) [15..45]
+g2 = 1.95 tonf/m^3 // Peso unitario natural (estrato 2) [1.4..2.3]
+gs2 = 2.05 tonf/m^3 // Peso unitario saturado (estrato 2) [1.5..2.3]
 ## Nivel freático, sobrecarga y sismo
-ynf = 3.0 m // Cota del nivel freático
-qsc = 2.0 tonf/m^2 // Sobrecarga de la edificación en la corona (E.050 Art. 30.2)
-kh = 0.15 // Coeficiente sísmico horizontal (≈ 0.5·amax/g)
+ynf = 3.0 m // Cota del nivel freático [0..30]
+qsc = 2.0 tonf/m^2 // Sobrecarga de la edificación en la corona (E.050 Art. 30.2) [0..10]
+kh = 0.15 // Coeficiente sísmico horizontal (≈ 0.5·amax/g) [0..0.3]
 "Geometría: talud de 10 m de altura con inclinación 2H:1V entre las abscisas 12 m y 32 m; la edificación (sobrecarga $q$) se ubica entre 2 m y 10 m.`),
       { type: 'slope', superficie: '0 10\n12 10\n32 0\n50 0', estratos: '10 c1 phi1 g1 gs1 Arcilla arenosa (CL)\n2 c2 phi2 g2 gs2 Arena densa (SP)', nf: 'ynf', kh: '0', sobrecarga: '2 10 qsc', malla: '14 36 12 34 10', ybase: '-4', metodo: 'bishop', ndov: '30', unidades: 't', tabla: true, sufijo: 'est', titulo: 'Condición estática — círculo crítico (Bishop simplificado)' },
       { type: 'slope', superficie: '0 10\n12 10\n32 0\n50 0', estratos: '10 c1 phi1 g1 gs1 Arcilla arenosa (CL)\n2 c2 phi2 g2 gs2 Arena densa (SP)', nf: 'ynf', kh: 'kh', sobrecarga: '2 10 qsc', malla: '14 36 12 34 10', ybase: '-4', metodo: 'bishop', ndov: '30', unidades: 't', tabla: false, sufijo: 'sis', titulo: 'Condición seudoestática (kh) — círculo crítico (Bishop simplificado)' },
@@ -988,6 +1110,17 @@ check FSs >= 1.25 // FS sísmico ≥ 1.25 (E.050 Art. 30.3)
   // ------------------------------------------------------------------
   {
     id: 'ge-spt', pais: 'PE', cat: 'Geotecnia', icon: 'table',
+    validacion: {
+      fuente: 'NTE E.050-2018 Art. 5.27; Peck et al., Hatanaka y Uchida, Meyerhof — valores de control',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. φ′ (Peck) = 27.1 + 0.3N60 − 0.00054N60².',
+      valores: [
+        { var: 'N60a', esperado: 13.358, tol: 0.002, desc: 'Control: N60 promedio en la zona activa' },
+        { var: 'N160a', esperado: 18.834, tol: 0.002, desc: 'Control: (N1)60' },
+        { var: 'phiP', unidad: 'deg', esperado: 31.011, tol: 0.002, desc: 'Control: φ′ de Peck' },
+        { var: 'Dr', esperado: 0.63986, tol: 0.002, desc: 'Control: densidad relativa' },
+        { var: 'qn25', unidad: 'kgf/cm^2', esperado: 2.7037, tol: 0.002, desc: 'Control: presión neta para 25 mm (Meyerhof)' },
+      ],
+    },
     name: 'Correlaciones SPT y perfil estratigráfico',
     normas: E050 + ' (Art. 5.27, 15, Anexo) · Peck-Hanson-Thornburn (1974) · Hatanaka y Uchida (1996) · Kulhawy y Mayne (1990) · Meyerhof (1965)',
     desc: 'Perfil estratigráfico SUCS con N-SPT y esfuerzos efectivos; N60, (N1)60, φ\', Dr, Es y cu por correlaciones; profundidad mínima de exploración y qadm por asentamiento.',
@@ -997,9 +1130,9 @@ check FSs >= 1.25 // FS sísmico ≥ 1.25 (E.050 Art. 30.3)
 Se interpreta el sondeo con ensayos de penetración estándar (SPT, NTP 339.133) del Estudio de Mecánica de Suelos. Las correcciones siguen la E.050 Art. 5.27: $N_{60} = N\\,C_E C_B C_S C_R$ con $C_E = ER/60$ y $(N_1)_{60} = C_N N_{60}$, $C_N = (100\\,\\mathrm{kPa}/\\sigma'_v)^{0.5}$. A partir de ellas se estiman parámetros por correlaciones de uso extendido (Das cap. 2; Kulhawy y Mayne 1990): ángulo de fricción, densidad relativa y módulo de elasticidad de arenas, resistencia no drenada de arcillas y la presión neta admisible por asentamiento (Meyerhof 1965). Se verifica también la **profundidad mínima de exploración** $p = D_f + 1.5B$ (E.050 Art. 15).`),
       { type: 'soilprofile', estratos: '0.8 RELL 1.60 1.80 Relleno limoso con restos de ladrillo\n2.2 SM 1.75 1.95 Arena limosa medianamente densa\n4.0 SP 1.85 2.00 Arena pobremente gradada densa\n3.0 GP 2.05 2.15 Grava arenosa muy densa', nf: '4.0 m', spt: '1.0 7\n2.0 10\n3.0 14\n4.0 17\n5.0 22\n6.0 25\n7.0 28\n8.0 36\n9.0 45\n10.0 50', ER: '70', CB: '1.0', CS: '1.0', barra: '1.0 m', zref: '1.5 m', zona: '1.5 4.5', tabla: true, titulo: 'Perfil estratigráfico del sondeo SPT-1' },
       calc(`# Parámetros de diseño
-Bz = 2.0 m // Ancho de la cimentación prevista de mayor área
-Df = 1.50 m // Profundidad de desplante
-pexp = 10.0 m // Profundidad alcanzada por el sondeo
+Bz = 2.0 m // Ancho de la cimentación prevista de mayor área [0.5..20]
+Df = 1.50 m // Profundidad de desplante [0.8..5.0]
+pexp = 10.0 m // Profundidad alcanzada por el sondeo [3..60]
 check pexp >= max(Df + 1.5*Bz, 3 m) // Profundidad mínima de exploración p = Df + 1.5B ≥ 3 m (E.050 Art. 15)
 check Df >= 0.80 m // Profundidad mínima de cimentación (Art. 26.2)
 ## Correlaciones en la zona activa (Df a Df + 1.5B)
