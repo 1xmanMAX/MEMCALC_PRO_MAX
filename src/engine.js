@@ -620,11 +620,25 @@ function splitComment(line) {
   return [line.slice(0, i), line.slice(i + 2).trim()];
 }
 
+// Comentario de un dato: «Etiqueta [a|b|c] [mín..máx]».
+//  · [a|b|c]  lista de opciones (opcional «valor : etiqueta»)
+//  · [175..420], [0.10..0.45], [175..420 kgf/cm^2] o [1 m..3 m]  rango usual (solo aviso; no se imprime)
+const RANGE_RE = /\s*\[\s*(-?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*([^\]|]*?)\s*\.\.\s*(-?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*([^\]|]*?)\s*\]/;
+export function parseRange(comment) {
+  const m = RANGE_RE.exec(comment || '');
+  if (!m) return { rest: comment, range: null };
+  let min = parseFloat(m[1]), max = parseFloat(m[3]);
+  if (min > max) [min, max] = [max, min];
+  const unit = (m[4] || m[2] || '').trim();
+  return { rest: ((comment.slice(0, m.index) + ' ' + comment.slice(m.index + m[0].length)).replace(/\s+/g, ' ').trim()), range: { min, max, unit } };
+}
 export function parseOptions(comment) {
+  const { rest, range } = parseRange(comment);
+  comment = rest;
   const m = /\[([^\]]*\|[^\]]*)\]\s*$/.exec(comment || '');
-  if (!m) return { label: comment, options: null };
+  if (!m) return { label: comment, options: null, range };
   const opts = m[1].split('|').map(s => s.trim()).map(o => { const k = o.indexOf(' : '); return k > 0 ? { v: o.slice(0, k).trim(), t: o.slice(k + 3).trim() } : { v: o, t: '' }; });
-  return { label: comment.slice(0, m.index).trim(), options: opts.map(o => o.v), optLabels: opts.map(o => o.t) };
+  return { label: comment.slice(0, m.index).trim(), options: opts.map(o => o.v), optLabels: opts.map(o => o.t), range };
 }
 
 /**
@@ -704,7 +718,7 @@ export function runCalc(src, ctx) {
       if (st.hidden) continue;
 
       const dec = st.dec;
-      const { label, options, optLabels } = parseOptions(comment);
+      const { label, options, optLabels, range } = parseOptions(comment);
       let eq;
       let isInput = false;
       if (node.type === 'AssignmentNode' && node.object.type === 'SymbolNode') {
@@ -717,7 +731,7 @@ export function runCalc(src, ctx) {
           eq = lhs + ' = ' + (target ? valTex(value, dec) : tex(rhs, { mode: 'sym', scope: S, dec }));
           if (options && optLabels) { const k = options.map(x => x.replace(/\s+/g, ' ')).indexOf(code.slice(code.indexOf('=') + 1).trim().replace(/\s+/g, ' ')); if (k >= 0 && optLabels[k]) eq += '\\quad\\text{(' + optLabels[k].replace(/[{}\\$&#%_^~]/g, '') + ')}'; }
           const m = /^([^=]+)=\s*(-?\d*\.?\d+(?:[eE][-+]?\d+)?)\s*(.*)$/.exec(code);
-          ctx.inputs.push({ block: ctx.blockId, line: li, name, tex: lhs, num: m ? m[2] : '', unit: m ? m[3] : '', label, options, optLabels, raw: code });
+          ctx.inputs.push({ block: ctx.blockId, line: li, name, tex: lhs, num: m ? m[2] : '', unit: m ? m[3] : '', label, options, optLabels, range, raw: code });
         } else {
           const parts = [lhs];
           const symT = tex(rhs, { mode: 'sym', scope: S, dec });
