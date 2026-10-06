@@ -309,4 +309,26 @@ section('Segunda opinión — tercera tanda B (armadura, nave, voladizo)');
   const Ms = 1.2 * 1.8 ** 2 / 2 + 0.6 * 1.8, MsL = 0.4 * 1.8 ** 2 / 2;
   near('Voladizo: Mu = máx(1.4CM + 1.7CV; 1.25(CM + CV) + Fv(CM + 0.25CV))', v('Mu', 'tonf*m'), Math.max(1.4 * (Ms - MsL) + 1.7 * MsL, 1.25 * Ms + 0.32 * (Ms - MsL + 0.25 * MsL)), 1e-4);
 }
+section('Segunda opinión — rótulos de frame2d dentro del viewBox');
+// rótulos SVG (sin rotar) dentro del viewBox: ancho estimado 0.5·fs por carácter
+const svgOut = (html) => { const out = [];
+  for (const m of html.matchAll(/<svg[^>]*viewBox="0 0 ([\d.]+) ([\d.]+)"[^>]*>([\s\S]*?)<\/svg>/g)) {
+    const W = +m[1], H = +m[2];
+    for (const t of m[3].matchAll(/<text x="([-\d.]+)" y="([-\d.]+)" font-size="([\d.]+)"[^>]*?text-anchor="(\w+)"([^>]*)>([^<]*)<\/text>/g)) {
+      if (/rotate/.test(t[5])) continue;
+      const x = +t[1], y = +t[2], fs = +t[3], w = t[6].length * fs * 0.5, x0 = t[4] === 'middle' ? x - w / 2 : t[4] === 'end' ? x - w : x;
+      if (x0 < -0.5 || x0 + w > W + 0.5 || y - fs * 0.8 < -0.5 || y > H + 0.5) out.push(t[6]);
+    }
+  }
+  return out; };
+{
+  const sec2 = 'S 2.2e6 tonf/m^2 0.12 m^2 0.0016 m^4';
+  const fr = block('frame2d', { nudos: '1 0 0\n2 0 3\n3 6 3\n4 6 0', secciones: sec2, barras: '1 1 2\n2 2 3\n3 4 3', apoyos: '1 E\n4 E', cargas: 'N 1 2.25 -3.125\nN 4 -2.5 -1.75 1.5\nN 2 0.125 0', deflim: '100000' });
+  const o = svgOut(fr.html);
+  truthy('frame2d: cargas nodales en los apoyos (Fx, Fy y Mz en el nudo extremo) con rótulos dentro de la figura', o.length === 0 && /1\.5 t·m/.test(fr.html), o.join(' | '));
+  for (const id of ['an-portico-ca', 'an-nave', 'an-modal-pdelta', 'st-nave', 'st-casa']) {
+    const r = runTemplate(id).res; const html = (r.html || r.out || '') + '';
+    truthy(`${id}: ningún rótulo fuera del viewBox`, svgOut(html).length === 0, svgOut(html).join(' | '));
+  }
+}
 done();

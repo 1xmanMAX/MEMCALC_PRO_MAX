@@ -237,27 +237,30 @@ check Pu <= 0.75*Rnbs // Bloque de cortante φ = 0.75`),
   // ------------------------------------------------------------------
   {
     id: 'st-shear-tab', pais: 'PE', cat: CAT, icon: 'steel', settings: TEC,
-    name: 'Conexión de corte con placa simple (shear tab) empernada y soldada',
-    normas: 'ANSI/AISC 360-16/22 J2, J3, J4 · AISC Manual Parte 10 (configuración convencional) · NTE E.090',
-    desc: 'Placa soldada a la columna y empernada al alma de la viga: grupo de pernos excéntrico (método elástico), aplastamiento, corte, bloque de cortante, flexión de la placa y soldadura.',
+    name: 'Conexión de corte con placa simple (shear tab) a viga con ala recortada',
+    normas: 'ANSI/AISC 360-16/22 J2, J3, J4 · AISC Manual Parte 9 (vigas recortadas) y Parte 10 (configuración convencional) · NTE E.090',
+    desc: 'Placa soldada al apoyo y empernada al alma de una viga con el ala superior recortada: grupo de pernos excéntrico (método elástico), aplastamiento y desgarramiento, placa (corte, bloque, flexión), alma recortada (corte, bloque de cortante, pandeo local), soldadura y apoyo.',
     titulo: 'Diseño de conexión simple de corte — placa simple (shear tab)',
     validacion: {
-      fuente: 'Control: AISC 360-16 J3, J4 y J10; método elástico del grupo de pernos (Manual AISC, Parte 7)',
-      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). La fuerza del perno crítico √(4.5² + (M·y/Ip)²) se comprueba a mano en tests/steel.test.mjs.',
+      fuente: 'Control: AISC 360-16 J3, J4 y J10; método elástico del grupo de pernos (Manual AISC, Parte 7); viga recortada según Manual AISC Parte 9 (Dowswell y Whyte, EJ 2018 Q4)',
+      nota: 'Los datos por defecto no reproducen un ejemplo publicado: son valores de control de esta implementación (regresión). La fuerza del perno crítico √(4.5² + (M·y/Ip)²) se comprueba a mano en tests/steel.test.mjs. Revisión 2026-10 (segunda opinión): se agregaron el recorte del ala superior y los estados límite del alma recortada (desgarramiento con la componente horizontal, bloque de cortante, corte y pandeo local en la cara del recorte) y la verificación del apoyo; los cinco valores anteriores no cambian y se añadieron dos de control (bloque de cortante del alma recortada y φMn en la cara del recorte). La función MnCope reproduce el ejemplo de Dowswell y Whyte (W18×35: Mn = 1 030 kip·in, φRn = 116 kip), ver tests/steel.test.mjs.',
       valores: [
         { var: 'Rmax', unidad: 'tonf', esperado: 7.029, tol: 0.002, desc: 'Fuerza en el perno crítico (elástico)' },
         { var: 'phirn', unidad: 'tonf', esperado: 8.116, tol: 0.002, desc: 'Corte de un perno' },
         { var: 'phiVy', unidad: 'tonf', esperado: 43.26, tol: 0.002, desc: 'Fluencia por corte de la placa' },
         { var: 'phiRbs', unidad: 'tonf', esperado: 36.79, tol: 0.002, desc: 'Bloque de cortante de la placa' },
         { var: 'phiRw', unidad: 'tonf', esperado: 56.35, tol: 0.002, desc: 'Resistencia de las soldaduras' },
+        { var: 'phiRbsw', unidad: 'tonf', esperado: 32.04, tol: 0.002, desc: 'Control: bloque de cortante del alma recortada' },
+        { var: '0.9*Mnr', unidad: 'tonf*m', esperado: 7.701, tol: 0.002, desc: 'Control: φMn en la cara del recorte (Manual Parte 9)' },
       ],
     },
     blocks: [
       text(`# Generalidades
-Conexión simple (articulada) de una viga secundaria al ala de una columna mediante una **placa simple** soldada en taller con filetes a ambos lados y empernada en obra al alma de la viga con pernos ASTM F3125 Gr. A325 en agujeros estándar (conexión tipo aplastamiento, roscas incluidas en el plano de corte, *N*).
+Conexión simple (articulada) de una viga secundaria a un apoyo (alma de una viga principal o ala de una columna) mediante una **placa simple** soldada en taller con filetes a ambos lados y empernada en obra al alma de la viga con pernos ASTM F3125 Gr. A325 en agujeros estándar (conexión tipo aplastamiento, roscas incluidas en el plano de corte, *N*). La viga secundaria tiene el **ala superior recortada** (*coped beam*) para librar el ala del apoyo; el recorte reduce la sección del alma en el extremo y agrega estados límite propios (Manual Parte 9).
 
 - **Normas:** AISC 360-16/22 (J2 soldaduras, J3 pernos, J4 elementos de conexión); procedimiento del AISC *Steel Construction Manual*, Parte 10, **configuración convencional** (Tabla 10-9); RNE NTE E.090.
 - **Método:** LRFD. La excentricidad del grupo de pernos se considera conservadoramente igual a la distancia *a* de la línea de pernos a la soldadura (método elástico, Manual Parte 7).
+- **Estados límite** (Manual, Partes 9 y 10): corte de los pernos; aplastamiento y desgarramiento en la placa y en el alma de la viga, incluida la componente horizontal del perno crítico hacia el extremo de la viga; placa: fluencia y rotura por cortante, bloque de cortante, flexión; **alma recortada**: fluencia y rotura por cortante en la sección reducida, bloque de cortante (plano vertical hasta el borde recortado y plano horizontal hasta el extremo), flexión y pandeo local en la cara del recorte (Ec. 9-6 a 9-14); soldadura y metal base del apoyo.
 - **Materiales:** placa ASTM A36; viga ASTM A992; electrodo E70XX.`),
       { type: 'steelsec', perfil: 'W16X26', tabla: false, titulo: 'Viga soportada W16×26 (ASTM A992)' },
       calc(`# Datos
@@ -280,14 +283,31 @@ a = 7.5 cm // Distancia de la línea de pernos a la soldadura (cara del apoyo) [
 tp = 9.5 mm // Espesor de la placa [6.35 mm : 1/4"|7.9 mm : 5/16"|9.5 mm : 3/8"|12.7 mm : 1/2"]
 w = 6 mm // Tamaño del filete (a cada lado de la placa) [5..12]
 Lp = (nb - 1)*sp + 2*lev // Altura de la placa
+## Extremo de la viga y recorte del ala superior
+sb = 1.3 cm // Holgura (setback) entre el extremo de la viga y la cara del apoyo [1..2]
+leb = 4 cm // Distancia horizontal de la línea de pernos al extremo de la viga [3..6]
+levb = 5 cm // Distancia vertical del perno superior al borde recortado del alma [3..10]
+dc = 3.5 cm // Profundidad del recorte del ala superior [2..10]
+cr = 12.5 cm // Longitud del recorte, medida desde el extremo de la viga [5..30]
+Es = 29000 ksi // Módulo de elasticidad del acero
+ho = d - dc // Altura de la sección recortada
+## Elemento de apoyo
+tsop = 15 mm // Espesor del elemento de apoyo (alma de la viga principal o ala de la columna) [6..50]
+Fus = 4570 kgf/cm^2 // Resistencia a tracción del elemento de apoyo [4080..4570]
 # Configuración convencional (Manual AISC, Parte 10)
 check nb <= 12 // Número de pernos 2 a 12
 check a <= 8.89 cm // a ≤ 3½ in
 check tp <= db/2 + 1.59 mm // tp ≤ db/2 + 1/16 in (ductilidad rotacional)
-check leh >= 2*db // Distancia horizontal al borde ≥ 2db
+check leh >= 2*db // Distancia horizontal al borde de la placa ≥ 2db (Tabla 10-9)
+check leb >= 2*db // Distancia horizontal al extremo de la viga ≥ 2db (Tabla 10-9)
+check leb <= a - sb // El extremo de la viga queda separado del apoyo (holgura sb)
 check lev >= 25.4 mm // Distancia mínima al borde, Tabla J3.4 (¾ in → 1 in)
 check sp >= 2.67*db // Separación mínima (J3.3)
-check Lp <= d - 2*kdes // La placa cabe en la altura plana del alma T
+check levb >= lev // La placa no sobresale por encima del borde recortado del alma
+check levb - lev + Lp <= ho - kdes // La placa cabe en el alma recortada, sobre el filete del ala inferior
+check Lp >= (d - 2*kdes)/2 // Longitud de la placa ≥ T/2 (estabilidad, Manual Parte 10)
+check Lp >= ho/2 // Longitud de la placa ≥ ho/2: evita el pandeo por bloque de cortante del alma recortada (Manual Parte 9)
+check dc <= d/2 and cr >= leb + sb // Recorte: dc ≤ d/2 y su longitud alcanza la línea de pernos
 check w >= 0.625*tp // Filete ≥ 5/8 tp: la placa fluye antes que la soldadura
 # Resistencia de un perno (J3.6)
 Fnv = FnvJ3(grupo, "N") // Esfuerzo nominal de corte (Tabla J3.2)
@@ -299,8 +319,14 @@ dh = dhJ3(db) // Agujero estándar (Tabla J3.3)
 lc = lev - dh/2 // Distancia libre al borde de la placa (perno extremo)
 phirp = 0.75*min(1.2*lc*tp*Fup, 2.4*db*tp*Fup) -> tonf // Placa, perno extremo (J3-6a, J3-6c)
 check Rmax <= phirp // Aplastamiento en la placa
-phirw = 0.75*2.4*db*tw*Fub -> tonf // Alma de la viga (sin borde en la dirección de la fuerza) (J3-6a)
-check Rmax <= phirw // Aplastamiento en el alma de la viga
+## Alma de la viga: componente horizontal del perno crítico (Manual Parte 10)
+Rhx = Mo*(nb - 1)*sp/(2*Ip) -> tonf // Componente horizontal en el perno extremo, M·y/Ip (método elástico)
+Rvy = Vu/nb -> tonf // Componente vertical, V/n
+phirwh = 0.75*min(1.2*(leb - dh/2)*tw*Fub, 2.4*db*tw*Fub) -> tonf // Desgarramiento hacia el extremo de la viga (J3-6a, J3-6c)
+check Rhx <= phirwh // Desgarramiento horizontal del alma hacia el extremo de la viga
+lcb = min(leb, levb) - dh/2 // Distancia libre mínima al extremo o al borde recortado (cualquier dirección)
+phirw = 0.75*min(1.2*lcb*tw*Fub, 2.4*db*tw*Fub) -> tonf // Perno crítico con la menor distancia al borde (conservador) (J3-6a, J3-6c)
+check Rmax <= phirw // Aplastamiento y desgarramiento de la resultante en el alma de la viga
 # Resistencia de la placa (J4)
 phiVy = 1.00*0.6*Fyp*Lp*tp -> tonf // Fluencia por cortante (J4-3)
 check Vu <= phiVy // Fluencia por cortante de la placa
@@ -324,7 +350,42 @@ check (Vu/phiVy)^2 + (Mu/phiMn)^2 <= 1 // Interacción corte–flexión (Manual 
 check w >= wminJ2(tp) // Tamaño mínimo (Tabla J2.4)
 phiRw = 0.75*2*0.6*FEXX*0.707*w*Lp -> tonf // Dos filetes de longitud Lp (J2-4)
 check Vu <= phiRw // Resistencia de la soldadura
-phiRw_lib = 0.75*2*RnFilete(w, Lp, FEXX, 0 deg) -> tonf // Control con la función de librería`),
+phiRw_lib = 0.75*2*RnFilete(w, Lp, FEXX, 0 deg) -> tonf // Control con la función de librería
+phiRsop = 0.75*0.6*Fus*tsop*Lp -> tonf // Metal base del apoyo en la línea de soldadura (J4-4; equivale a tmín = 6.19D/Fu, Manual Ec. 9-3)
+check Vu <= phiRsop // Rotura por cortante del elemento de apoyo
+# Alma de la viga recortada (Manual AISC Parte 9; J4)
+## Corte en la sección reducida (J4.2)
+phiVyb = 1.00*0.6*Fyb*ho*tw -> tonf // Fluencia por cortante en la altura ho (J4-3)
+check Vu <= phiVyb // Fluencia por cortante del alma recortada
+Anvw = (ho - nb*dhc)*tw // Área neta en corte en la línea de pernos
+phiVrb = 0.75*0.6*Fub*Anvw -> tonf // Rotura por cortante (J4-4)
+check Vu <= phiVrb // Rotura por cortante del alma recortada
+## Bloque de cortante del alma recortada (J4.3)
+"Plano de corte vertical por la línea de pernos, del borde recortado al perno inferior, y plano de tracción horizontal del perno inferior al extremo de la viga (una línea de pernos: $U_{bs} = 1$).
+Agvw = (levb + (nb - 1)*sp)*tw // Área bruta en corte
+Anvbw = Agvw - (nb - 0.5)*dhc*tw // Área neta en corte
+Antw = (leb - 0.5*dhc)*tw // Área neta en tracción
+Rbsw_1 = 0.6*Fub*Anvbw + Fub*Antw -> tonf // Rotura en corte + rotura en tracción
+Rbsw_2 = 0.6*Fyb*Agvw + Fub*Antw -> tonf // Fluencia en corte + rotura en tracción (límite)
+phiRbsw = 0.75*min(Rbsw_1, Rbsw_2) -> tonf // Bloque de cortante (J4-5)
+check Vu <= phiRbsw // Bloque de cortante del alma recortada
+## Flexión y pandeo local del alma en la cara del recorte (Ec. 9-5 a 9-14)
+ec = cr + sb // Distancia de la cara del apoyo a la cara del recorte (Ec. 9-5)
+Mur = Vu*ec -> tonf*m // Momento requerido en la cara del recorte (Ec. 9-5a)
+Snet = SnetCope(perfil, dc) // Módulo elástico de la sección T remanente
+Znet = ZnetCope(perfil, dc) // Módulo plástico de la sección T remanente
+lambdac = ho/tw // Esbeltez del alma recortada (Ec. 9-11)
+kcop = si(cr/ho <= 1, 2.2*(ho/cr)^1.65, 2.2*ho/cr) // Coeficiente de pandeo de placa (Ec. 9-13a/b)
+fcop = si(cr/d <= 1, 2*cr/d, min(1 + cr/d, 3)) // Factor de ajuste por cortante (Ec. 9-14a/b)
+k1c = max(fcop*kcop, 1.61) // Coeficiente modificado (Ec. 9-10)
+lambdapc = 0.475*sqrt(k1c*Es/Fyb) // Esbeltez límite del alma compacta (Ec. 9-12)
+Mpr = Fyb*Znet -> tonf*m // Momento plástico de la sección recortada
+Myr = Fyb*Snet -> tonf*m // Momento de fluencia de la sección recortada
+Fcrc = 0.903*Es*k1c/lambdac^2 -> kgf/cm^2 // Esfuerzo crítico de pandeo elástico (Ec. 9-9)
+Mnr = si(lambdac <= lambdapc, Mpr, si(lambdac <= 2*lambdapc, Mpr - (Mpr - Myr)*(lambdac/lambdapc - 1), Fcrc*Snet)) -> tonf*m // Ec. 9-6, 9-7 o 9-8
+check Mur <= 0.90*Mnr // Flexión y pandeo local en la cara del recorte, φb = 0.90
+Mnr_lib = MnCope(perfil, dc, cr, Fyb, Es) -> tonf*m // Control con la función de librería`),
+      text(`> **Notas.** El momento en la cara del recorte usa $e$ = distancia de la cara del apoyo a la cara del recorte (Manual Parte 9, sin reducción por la posición del punto de inflexión). Si el recorte es también inferior (doble recorte) o la viga recibe carga axial, este procedimiento no aplica: use las Ec. 9-15 a 9-20 y la interacción del Cap. H. Con apoyo en el alma de una viga principal verifique además la viga principal (corte local y, si hay vigas a ambos lados, la suma de reacciones).`),
       summary(),
     ],
   },
@@ -895,7 +956,7 @@ Viga secundaria de entrepiso, simplemente apoyada, de perfil W **no apuntalado**
 
 - **Etapa constructiva:** el perfil solo resiste el peso del concreto fresco y una carga de construcción de 50 kgf/m² (ASCE 37), con el ala superior arriostrada por la placa.
 - **Etapa compuesta:** resistencia plástica a flexión (AISC I3.2a) con compuesta parcial ΣQn < AsFy; el concreto por debajo de la cresta de los nervios se desprecia (I3.2c).
-- **Servicio:** flecha por carga viva con la **inercia de límite inferior** ILB (Comentario I3, Ec. C-I3-1) y **vibración por caminar** (AISC Design Guide 11, criterio de oficinas ap/g ≤ 0.5 %), que en vigas de entrepiso de 8–10 m suele gobernar el perfil.`),
+- **Servicio:** flecha por carga viva con la **inercia de límite inferior** ILB (Comentario I3, Ec. C-I3-1) y **vibración por caminar** (Guía de Diseño AISC 11, criterio de oficinas ap/g ≤ 0.5 %), que en vigas de entrepiso de 8–10 m suele gobernar el perfil.`),
       { type: 'steelsec', perfil: 'W16X31', tabla: true, titulo: 'Perfil de acero W16×31 (ASTM A992)' },
       calc(`# Datos
 ## Geometría
@@ -970,7 +1031,7 @@ YENA = (A*d/2 + SQn/Fy*(d + d1))/(A + SQn/Fy) // Eje neutro elástico desde la c
 ILB = Ix + A*(YENA - d/2)^2 + SQn/Fy*(d + d1 - YENA)^2 -> cm^4 // Inercia de límite inferior (C-I3-1)
 dL = 5*wL*sv*Lv^4/(384*E*ILB) -> cm // Flecha por carga viva
 check dL <= Lv/360 // Límite L/360 para carga viva (IBC Tabla 1604.3)
-# Vibraciones de piso por caminar (AISC Design Guide 11, 2.ª ed., Cap. 3 y 4)
+# Vibraciones de piso por caminar (Guía de Diseño AISC 11, 2.ª ed., Cap. 3 y 4)
 "Modo de la viga con las vigas principales supuestas rígidas (apoyo en muros o vigas peraltadas); si la viga se apoya en vigas principales flexibles debe combinarse con su modo (DG11 Ec. 4-4).
 Bpiso = 18 m // Ancho del piso perpendicular a las vigas (límite Bj ≤ 2/3 del ancho) [6..60]
 beta_v = 0.03 // Amortiguamiento: oficina con cielo raso y ductos (DG11 Tabla 4-2) [0.02..0.05]

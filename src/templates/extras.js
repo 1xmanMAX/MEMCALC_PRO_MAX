@@ -534,9 +534,9 @@ check deltad <= 2*Ddrift // Diafragma no flexible (δ ≤ 2Δ): se acepta la hip
 // ---------------------------------------------------------------------
 const paseAereo = {
   id: 'ex-pase-aereo', pais: 'PE', cat: 'Puentes', icon: 'bridge',
-  normas: 'Teoría del cable parabólico (Irvine 1981) · NTE E.020 (viento) · ' + E060 + ' (torres y cámaras) · Guías de pases aéreos del PNSR / MVCS · NTE E.050',
+  normas: 'Teoría del cable parabólico (Irvine 1981) · NTE E.020 (viento, Art. 21 y 22) · ' + E060 + ' (torres, zapatas y cámaras) · ACI 318-19 Cap. 17 · Guías de pases aéreos del PNSR / MVCS · NTE E.050',
   name: 'Pase aéreo de tubería (cable, péndolas, torres y cámaras de anclaje)',
-  desc: 'Cable principal parabólico: tensión horizontal, tensión máxima, longitud, selección del cable 6×19 por factor de seguridad, péndolas, torres de concreto con flexocompresión y esbeltez, fiadores y cámaras de anclaje por deslizamiento y arrancamiento.',
+  desc: 'Cable principal parabólico: tensión horizontal, tensión máxima, longitud, selección del cable 6×19 por factor de seguridad, péndolas, torres de concreto con flexocompresión y esbeltez, zapata de la torre (presiones, volteo, deslizamiento, punzonamiento y acero) y cámaras de anclaje (deslizamiento, arrancamiento, volteo, presiones, placa y cono de arrancamiento).',
   titulo: 'Diseño estructural de pase aéreo de tubería',
   validacion: {
     fuente: 'Control: cable parabólico H = (wL²/8 + PL/4)/f, V = wL/2 + P/2, Tmáx = √(H² + V²)',
@@ -575,11 +575,21 @@ fc = 210 kgf/cm^2 // Concreto [175..420]
 fy = 4200 kgf/cm^2 // Acero [2800..4200]
 nbt = 8 // Barras longitudinales, repartidas en las 4 caras [4|8|12|16]
 bart = 6 // Barra [5 : 5/8"|6 : 3/4"|8 : 1"]
+## Zapata de la torre
+Bz = 1.40 m // Lado de la zapata cuadrada [0.8..4]
+hz = 0.60 m // Peralte de la zapata (≥ ldg de las barras de la torre + 7.5 cm) [0.4..1.5]
+Df = 1.20 m // Profundidad del fondo de la zapata [0.8..3]
+gsu = 1.8 tonf/m^3 // Peso unitario del relleno sobre la zapata [1.5..2.2]
+qa = 1.5 kgf/cm^2 // Capacidad admisible del suelo (EMS, E.050) [0.5..6]
+barz = 5 // Barra de la zapata [4 : 1/2"|5 : 5/8"|6 : 3/4"]
 ## Cámara de anclaje
 BA = 1.8 m // Ancho [0.5..5]
 LA = 1.8 m // Largo [0.5..5]
 HA = 1.5 m // Altura [0.5..4]
 mu = 0.55 // Coeficiente de fricción concreto–suelo (E.050; tan δ) [0.3..0.7]
+ha0 = 0.30 m // Altura de la placa de anclaje de la barra sobre el fondo de la cámara [0.15..1.5]
+fcc = 140 kgf/cm^2 // Concreto ciclópeo de la cámara (f'c de la matriz) [100..210]
+bpl = 15 cm // Lado de la placa de anclaje de la barra [10..40]
 # Cargas sobre el cable
 wcab = cablePeso(dcab) // Peso del cable principal
 wv = wtub + wacc + wcab -> kgf/m // Carga vertical uniforme
@@ -630,14 +640,70 @@ Atr = (nbt/4 + 1)*Ab(bart) // Acero de la cara en tracción (nbt/4 + 1 barras po
 phiMn = 0.9*Atr*fy*(dt - Atr*fy/(1.7*fc*bt)) -> tonf*m // φMn con solo la cara traccionada (despreciando P y las barras intermedias, conservador)
 check dlt*Mul/phiMn + dlt*Mut/phiMn <= 1 // Flexión biaxial en la base (interacción lineal Mx/φMnx + My/φMny ≤ 1, conservadora; E.060 10.13)
 check Pu <= phiPn // Compresión (E.060 10.3.6.2)
+# Zapata de la torre
+"Cargas de servicio en el fondo de la zapata (E.050): la torre transmite N, el cortante y el momento longitudinal del desequilibrio de la silla y, en la dirección transversal, el viento sobre media luz de tubería (en la silla) y sobre la propia torre.
+Wz = 2.4 tonf/m^3*Bz^2*hz + gsu*(Bz^2 - bt^2)*(Df - hz) -> tonf // Peso de la zapata y del relleno
+Ns = Pv + Wt + Wz -> tonf // Carga vertical de servicio en el fondo
+Hs = Hd -> tonf // Cortante longitudinal (desequilibrio en la silla)
+Ms = Hd*(ht + Df) -> tonf*m // Momento longitudinal en el fondo
+Vts = wh*Lc/2 + qt*ht -> tonf // Cortante transversal (viento E.020)
+Mts = wh*Lc/2*(ht + Df) + qt*ht*(ht/2 + Df) -> tonf*m // Momento transversal en el fondo
+el = Ms/Ns // Excentricidad longitudinal
+et = Mts/Ns // Excentricidad transversal
+check 6*el/Bz + 6*et/Bz <= 1 // Resultante en el núcleo central: toda la base en compresión (flexión biaxial)
+qmax = Ns/Bz^2*(1 + 6*el/Bz + 6*et/Bz) -> kgf/cm^2 // Presión máxima (esquina más cargada)
+check qmax <= qa // Presión admisible del suelo (E.050; sin incremento por viento, conservador)
+FSvol = Ns*Bz/2/max(Ms, Mts) // Volteo en la dirección más desfavorable
+check FSvol >= 1.5 // FS al volteo ≥ 1.5 (E.020 Art. 21)
+FSdz = mu*Ns/sqrt(Hs^2 + Vts^2) // Deslizamiento con la resultante horizontal (sin empuje pasivo)
+check FSdz >= 1.25 // FS al deslizamiento ≥ 1.25 (E.020 Art. 22)
+## Diseño de la zapata (E.060 Cap. 15; U = 1.4 CM y 1.25(CM + CV) con viento)
+dz = hz - 7.5 cm - db(barz) // Peralte efectivo (recubrimiento 7.5 cm, capa inferior de la dirección más desfavorable)
+Mlz = Hd*(ht + hz) // Momento longitudinal en la base de la zapata (desde la cara superior)
+Mtz = wh*Lc/2*(ht + hz) + qt*ht*(ht/2 + hz) // Momento transversal en la base de la zapata
+qu1 = 1.4*((Pv + Wt)/Bz^2 + 6*Mlz/Bz^3) -> tonf/m^2 // U = 1.4 CM
+qu2 = 1.25*((Pv + Wt)/Bz^2 + 6*(Mlz + Mtz)/Bz^3) -> tonf/m^2 // U = 1.25(CM + CV) con viento
+qu = max(qu1, qu2) // Presión última máxima, aplicada uniforme (conservador)
+Vpz = qu*(Bz^2 - (bt + dz)^2) -> tonf // Cortante de punzonamiento
+phiVpz = 0.85*1.06*sqrtfc(fc)*4*(bt + dz)*dz -> tonf // φVc con βc = 1 (E.060 11.12.2.1 c)
+check Vpz <= phiVpz // Punzonamiento de la torre (E.060 11.12)
+Vuz = qu*Bz*max((Bz - bt)/2 - dz, 0 m) -> tonf // Cortante a d de la cara de la torre
+phiVcz = 0.85*0.53*sqrtfc(fc)*Bz*dz -> tonf // φVc (E.060 11.3.1.1)
+check Vuz <= phiVcz // Cortante como viga (E.060 11.12.1.1 a)
+Muz = qu*Bz*((Bz - bt)/2)^2/2 -> tonf*m // Momento en la cara de la torre
+Asz = max(asFlex(Muz, Bz, dz, fc, fy), 0.0018*Bz*hz) // Acero requerido en cada dirección (mínimo 0.0018 b h, E.060 10.5.4 y 9.7.2)
+sz = rounddown(max(min(Ab(barz)*Bz/Asz, 30 cm), 10 cm), 2.5 cm) // Espaciamiento adoptado
+check Ab(barz)*Bz/sz >= Asz // Acero colocado en cada dirección (E.060 10.5)
+check sz <= min(3*hz, 40 cm) // Espaciamiento máximo (E.060 9.7.3)
+ldg = max(0.075*fy/sqrtfc(fc)*db(bart), 8*db(bart), 15 cm) // Desarrollo con gancho estándar de las barras de la torre (E.060 12.5.2)
+check ldg <= hz - 7.5 cm // Anclaje de las barras de la torre dentro de la zapata (E.060 12.5)
 # Cámara de anclaje (estabilidad)
 WA = 2.3 tonf/m^3*BA*LA*HA -> tonf // Peso de concreto ciclópeo
 T2 = Tmax // Tensión del fiador (silla sin fricción)
-FSdes = mu*(WA - T2*sin(a2))/(T2*cos(a2)) // Deslizamiento (sin empuje pasivo, conservador)
+Tx = T2*cos(a2) -> tonf // Componente horizontal (hacia la torre)
+Tz = T2*sin(a2) -> tonf // Componente vertical (arrancamiento)
+FSdes = mu*(WA - Tz)/Tx // Deslizamiento (sin empuje pasivo, conservador)
 check FSdes >= 1.5 // FS al deslizamiento ≥ 1.5 (práctica para bloques de anclaje; la E.020 Art. 22 exige ≥ 1.25)
-FSarr = WA/(T2*sin(a2)) // Arrancamiento vertical
-check FSarr >= 2.0 // FS al arrancamiento ≥ 2.0 (práctica para bloques de anclaje; E.020 Art. 21 exige ≥ 1.5 al volteo)
-check T2 <= 0.5*fy*Ab(8) // Barra de anclaje de 1" (lisa con ojo): σ ≤ 0.5 fy (esfuerzo admisible ≈ 0.5 fy, práctica)`),
+FSarr = WA/Tz // Arrancamiento vertical
+check FSarr >= 2.0 // FS al arrancamiento ≥ 2.0 (práctica para bloques de anclaje)
+FSva = WA*LA/2/(Tx*ha0 + Tz*LA/2) // Volteo alrededor de la arista inferior del lado de la torre (placa en el eje del bloque)
+check FSva >= 1.5 // FS al volteo ≥ 1.5 (E.020 Art. 21)
+NA = WA - Tz -> tonf // Carga vertical neta sobre el suelo
+eA = Tx*ha0/NA // Excentricidad respecto al centro de la base
+check eA <= LA/6 // Resultante en el núcleo central de la base
+qA = NA/(BA*LA)*(1 + 6*eA/LA) -> kgf/cm^2 // Presión máxima bajo la cámara
+check qA <= qa // Presión admisible del suelo bajo la cámara (E.050)
+## Barra de anclaje y placa
+check T2 <= 0.5*fy*Ab(8) // Barra de anclaje de 1" (lisa con ojo): σ ≤ 0.5 fy (esfuerzo admisible ≈ 0.5 fy, práctica)
+TuA = 1.4*T2 -> tonf // Tensión última del fiador (cables como CM, E.060 9.2.1)
+check TuA <= 0.65*0.85*fcc*bpl^2 // Aplastamiento del concreto sobre la placa (E.060 10.17; φ = 0.65)
+hefA = min(HA - ha0, 0.635 m) // Profundidad efectiva de la placa (recubrimiento vertical, conservador; ACI 17.6.2.2 cubre hasta 635 mm)
+NbA = 10*sqrtMPa(fcc)/(1 MPa)*(hefA/(1 mm))^1.5*1 N -> tonf // Cono de arrancamiento básico (ACI 318-19 17.6.2.2.1, kc = 10; menor que 3.9√f'c hef^5/3)
+ANcA = min(BA, 3*hefA)*min(LA, 3*hefA) // Área proyectada del cono limitada por la cámara (17.6.2.1)
+psicA = 1.0 // ψc,N: 1.0 concreto fisurado (conservador); 1.25 si se demuestra que no se fisura en servicio (17.6.2.5) [1.0|1.25] [1..1.25]
+phiNcA = 0.70*min(ANcA/(9*hefA^2), 1)*psicA*NbA -> tonf // Resistencia de diseño al cono (φ = 0.70, condición B)
+check TuA <= phiNcA // Arrancamiento del cono de concreto sobre la placa (ACI 318-19 17.6.2)
+"No se cuenta el empuje pasivo frente a la cámara ni la fricción lateral (conservador). Zapata de la torre de {Bz} × {Bz} × {hz} con barras de diámetro {db(barz)} @ {sz} en ambas direcciones.`),
     { type: 'exCable', L: 'Lc', f: 'fcab', ht: 'ht', Lf: 'Lf', sp: 'sp', H: 'Hc', Tmax: 'Tmax', titulo: '' },
     summary(),
   ],
@@ -650,7 +716,7 @@ const muroAnclado = {
   id: 'ex-muro-anclado', pais: 'PE', cat: 'Muros de contención', icon: 'wall',
   normas: 'FHWA-IF-99-015 (GEC-4) Ground Anchors and Anchored Systems · PTI DC35.1-14 · NTE E.050 · ' + E060,
   name: 'Muro anclado para sótanos (anclajes postensados)',
-  desc: 'Envolvente aparente trapezoidal (Terzaghi–Peck / GEC-4), cargas por anclaje por áreas tributarias, número de torones, longitud libre más allá de la cuña activa, longitud de bulbo por adherencia, pantalla de concreto a flexión y punzonamiento bajo la placa.',
+  desc: 'Envolvente aparente trapezoidal (Terzaghi–Peck / GEC-4), cargas por anclaje por áreas tributarias, número de torones, longitud libre más allá de la cuña activa, longitud de bulbo por adherencia, pantalla de concreto a flexión y punzonamiento bajo la placa, y capacidad portante de la base de la pantalla con la componente vertical de los anclajes.',
   titulo: 'Diseño de muro anclado con anclajes postensados',
   validacion: {
     fuente: 'Control: FHWA GEC-4 (Sabatini et al. 1999) Fig. 26 (carga total 0.65·Ka·γ·H², método del área tributaria)',
@@ -670,6 +736,7 @@ Muro pantalla de concreto armado construido por paños descendentes (método tí
 2. Cargas por anclaje por el **método de las áreas tributarias** (GEC-4 Fig. 26).
 3. Longitud libre que sobrepasa la cuña activa $45° + \\phi/2$ en $\\max(1.5\\,m,\\,0.2H)$ y ≥ 4.5 m; bulbo por adherencia con FS = 2.0 y entre 4.5 y 12 m.
 4. Torones de 0.6": carga de diseño ≤ 0.60 $f_{pu}$, bloqueo ≤ 0.70 $f_{pu}$, prueba 1.33 DL ≤ 0.80 $f_{pu}$.
+5. **Capacidad axial de la pantalla** (GEC-4 5.8): la componente vertical de los anclajes inclinados, $T\,\tan\theta$ por metro, más el peso de la pantalla bajan a la base, que debe soportarlos con la capacidad admisible del suelo $q_a$ — en la etapa final, sobre la zapata corrida del pie, y durante la excavación, sobre el borde inferior del último paño vaciado. Se desprecia la fricción suelo–pantalla en el trasdós (conservador).
 
 La estabilidad global (Kranz, superficie profunda) y el empotramiento bajo el fondo se verifican aparte con el estudio de suelos (NTE E.050).`),
     calc(`# Datos
@@ -692,6 +759,12 @@ tw = 30 cm // Espesor de la pantalla [20..60]
 fc = 210 kgf/cm^2 // Concreto [175..350]
 fy = 4200 kgf/cm^2 // Acero [2800..4200]
 cpl = 30 cm // Lado de la placa de apoyo del anclaje [20..50]
+## Base de la pantalla (EMS, E.050)
+qa = 5.0 kgf/cm^2 // Capacidad admisible del suelo al nivel del fondo (grava densa de Lima 4–6 kg/cm²) [1..8]
+Bz = 0.80 m // Ancho de la zapata corrida al pie de la pantalla [0.3..2]
+hzp = 0.50 m // Peralte de la zapata corrida [0.3..1.2]
+ez = 0.10 m // Excentricidad del eje de la pantalla respecto al centro de la zapata (zapata desplazada hacia la excavación) [0..0.6]
+gammac = 2.4 tonf/m^3 // Peso unitario del concreto armado [2.3..2.5]
 # Envolvente aparente de presiones (GEC-4 5.2)
 Ka = KaRankine(phis) // Coeficiente activo de Rankine
 sv = (H - H1 - Hb)/(nf - 1) // Separación vertical entre filas
@@ -735,7 +808,32 @@ Pu = 1.7*DL -> tonf // Carga de diseño amplificada con el factor de empuje (E.0
 bo = 4*(cpl + dw) // Perímetro crítico
 phiVc = 0.85*1.06*sqrtfc(fc)*bo*dw -> tonf // Resistencia al punzonamiento (11.12.2.1 c)
 check Pu <= phiVc // Punzonamiento (E.060 11.12.2.1)
-"Anclajes de {nto} torones de 0.6\\" @ {sh} en {nf} filas; longitud libre {Lfree} (fila 1) y {Lfreen} (última fila); bulbo {Lbd} de Ø {Db}. Pantalla de {tw} con 5/8\\" @ {sepw} en ambas caras y direcciones (refuerzo adicional en las zonas de anclaje).`),
+# Carga vertical en la base de la pantalla (GEC-4 5.8; E.050)
+ThS = T1 + (nf - 2)*Ti + Tn -> tonf/m // Suma de las cargas horizontales de los anclajes por metro
+TvS = ThS*tan(theta) -> tonf/m // Componente vertical de los anclajes, T sen α por anclaje (T tan α por metro de la horizontal)
+Ww = gammac*tw*H -> tonf/m // Peso propio de la pantalla
+## Etapa final: zapata corrida al pie
+Wzp = gammac*Bz*hzp -> tonf/m // Peso de la zapata
+Nz = Ww + TvS + Wzp -> tonf/m // Carga vertical de servicio en el fondo
+eN = ez*(Ww + TvS)/Nz // Excentricidad de la resultante (la zapata está centrada en su propio peso)
+check eN <= Bz/6 // Resultante en el núcleo central de la zapata
+Bef = Bz - 2*eN // Ancho efectivo (Meyerhof)
+qz = Nz/Bef -> kgf/cm^2 // Presión media sobre el ancho efectivo
+check qz <= qa // Capacidad portante bajo la zapata de la pantalla (E.050; GEC-4 5.8)
+## Etapa constructiva: último paño antes de vaciar la zapata
+Ncon = gammac*tw*(H - Hb) + TvS -> tonf/m // Pantalla hasta la última fila, con todos los anclajes bloqueados (DL)
+qcon = Ncon/tw -> kgf/cm^2 // Presión bajo el borde inferior del paño (ancho tw)
+check qcon <= qa // Hundimiento del paño durante la excavación (GEC-4 5.8; sin fricción en el trasdós)
+## Zapata corrida (E.060; empuje 1.7 y peso 1.4, E.060 9.2.1 y 9.2.4)
+quz = (1.4*(Ww + Wzp) + 1.7*TvS)/Bef -> tonf/m^2 // Presión última sobre el ancho efectivo
+cvz = (Bz - tw)/2 + ez // Volado hacia la excavación
+dzp = hzp - 7.5 cm - 0.8 cm // Peralte efectivo
+Vuzp = quz*max(cvz - dzp, 0 m)*1 m -> tonf // Cortante a d de la cara de la pantalla, por metro
+check Vuzp <= 0.85*0.53*sqrtfc(fc)*100 cm*dzp // Cortante en el volado (E.060 11.3.1.1)
+Muzp = quz*cvz^2/2*1 m -> tonf*m // Momento en la cara de la pantalla, por metro
+Aszp = max(asFlex(Muzp, 100 cm, dzp, fc, fy), 0.0018*100 cm*hzp) // Acero transversal por metro (mínimo 0.0018 b h)
+check Ab(5)/(20 cm)*100 cm >= Aszp // 5/8" @ 20 cm en la cara inferior (E.060 10.5)
+"Anclajes de {nto} torones de 0.6\\" @ {sh} en {nf} filas; longitud libre {Lfree} (fila 1) y {Lfreen} (última fila); bulbo {Lbd} de Ø {Db}. Pantalla de {tw} con 5/8\\" @ {sepw} en ambas caras y direcciones (refuerzo adicional en las zonas de anclaje). Zapata corrida de {Bz} × {hzp} con 5/8\\" @ 20 cm; presión {qz} en la etapa final y {qcon} bajo el último paño durante la excavación ($q_a$ = {qa}). La reacción horizontal del fondo $R_b$ = {Rb} la toman el empotramiento y la losa de fondo.`),
     { type: 'exAnclado', H: 'H', H1: 'H1', n: 'nf', sv: 'sv', theta: 'theta', phi: 'phis', Lf: 'Lfree', Lb: 'Lbd', p: 'pt', titulo: '' },
     { type: 'table', columnas: 'Fila = [1, "intermedias", nf]\nProfundidad [m] = [H1, "—", H - Hb]\nT horizontal [tonf/m] = [T1, Ti, Tn]\nCarga por anclaje [tonf] = [T1*sh/cos(theta), Ti*sh/cos(theta), Tn*sh/cos(theta)]', dec: '2', titulo: 'Cargas en los anclajes por áreas tributarias' },
     summary(),

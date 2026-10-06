@@ -339,4 +339,23 @@ section('Segunda opinión — tercera tanda B (columna esbelta biaxial)');
   const e2 = runTemplate('co-colesbelta', subT([['bar = 8 //', 'bar = 6 //']]));
   truthy('Columna esbelta con 12 Ø 3/4": cumple cada dirección por separado pero NO CUMPLE la biaxial (D/C ≈ 1.12)', e2('DCpmg_x') <= 1 && e2('DCpmg_y') <= 1 && e2('DCpmg_xy') > 1.05, e2('DCpmg_xy').toFixed(3));
 }
+section('Segunda opinión — rótulo de demanda de pmgen dentro del viewBox');
+// rótulos SVG (sin rotar) dentro del viewBox: ancho estimado 0.5·fs por carácter
+const svgOut = (html) => { const out = [];
+  for (const m of html.matchAll(/<svg[^>]*viewBox="0 0 ([\d.]+) ([\d.]+)"[^>]*>([\s\S]*?)<\/svg>/g)) {
+    const W = +m[1], H = +m[2];
+    for (const t of m[3].matchAll(/<text x="([-\d.]+)" y="([-\d.]+)" font-size="([\d.]+)"[^>]*?text-anchor="(\w+)"([^>]*)>([^<]*)<\/text>/g)) {
+      if (/rotate/.test(t[5])) continue;
+      const x = +t[1], y = +t[2], fs = +t[3], w = t[6].length * fs * 0.5, x0 = t[4] === 'middle' ? x - w / 2 : t[4] === 'end' ? x - w : x;
+      if (x0 < -0.5 || x0 + w > W + 0.5 || y - fs * 0.8 < -0.5 || y > H + 0.5) out.push(t[6]);
+    }
+  }
+  return out; };
+{
+  const lab = 'Combinación de diseño muy larga 1.25(CM + CV) + CS en X con excentricidad accidental positiva';
+  const p = block('pmgen', { geom: '0 0 40 40', barras: 'R 6 6 34 34 3 3 6', fc: '210 kgf/cm^2', fy: '4200 kgf/cm^2', dir: 'X', demandas: '100 tonf, 15 tonf*m // ' + lab + '\n60 tonf, -14 tonf*m // ' + lab });
+  truthy('pmgen: rótulos largos recortados con elipsis y dentro de la figura', svgOut(p.html).length === 0 && /…<\/text>/.test(p.html), svgOut(p.html).join(' | '));
+  const q = block('pmgen', { geom: '0 0 40 40', barras: 'R 6 6 34 34 3 3 6', fc: '210 kgf/cm^2', fy: '4200 kgf/cm^2', dir: 'XY', demandas: '100 tonf, 12 tonf*m, 8 tonf*m // ' + lab });
+  truthy('pmgen XY: rótulo del contorno de carga dentro de la figura', svgOut(q.html).length === 0, svgOut(q.html).join(' | '));
+}
 done();

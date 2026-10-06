@@ -407,48 +407,104 @@ function solveTruss(nodes, bars, sup, loads) {
   const Rv = [...fixed].map(d => { let r = -Fv[d]; for (let j = 0; j < nd; j++) r += K[d][j] * u[j]; return [d, r]; });
   return { u, R: Rv };
 }
+// cargas de viento normales a los faldones (E.020 Art. 12): q > 0 presión (hacia la cubierta), q < 0 succión.
+// qb = faldón de barlovento, qs = faldón de sotavento [fuerza por unidad de longitud inclinada del faldón].
+function windLoads(nodes, top, n, L, qb, qs, fromLeft) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const A = nodes[top[i]], B = nodes[top[i + 1]], Ls = Math.hypot(B.x - A.x, B.y - A.y);
+    const left = (A.x + B.x) / 2 < L / 2, wind = left === fromLeft ? qb : qs;
+    // normal hacia la cubierta: (t_y, −t_x) con t = (B − A)/Ls; en el faldón izquierdo (sen θ, −cos θ), en el derecho (−sen θ, −cos θ)
+    const tx = (B.x - A.x) / Ls, ty = (B.y - A.y) / Ls, f = wind * Ls / 2;
+    out.push([top[i], f * ty, -f * tx], [top[i + 1], f * ty, -f * tx]);
+  }
+  return out;
+}
 registerBlock('tijeral', {
   name: 'Tijeral (armadura) de madera', icon: 'beam', group: 'Madera',
   fields: [
     F('L', 'Luz del tijeral L', 'Lt'), F('H', 'Altura en la cumbrera', 'Ht'), F('n', 'Número de paneles (par)', '6'),
     F('tipo', 'Tipo de armadura', 'Howe', 'select', ['Howe', 'Pratt']),
     F('P', 'Carga por nudo de la cuerda superior P (aleros: P/2)', 'P'), F('Pb', 'Carga por nudo de la cuerda inferior (cielo raso)', '0'),
+    F('PD', 'Parte permanente (D) de P; vacío = todo P es permanente', ''),
+    F('W1', 'Viento caso 1 (presión): «q barlovento, q sotavento» por m de faldón, + presión / − succión', ''),
+    F('W2', 'Viento caso 2 (succión): «q barlovento, q sotavento»', ''),
+    F('comb', 'Combinaciones de servicio (esfuerzos admisibles)', 'D + Lr\nD + W\nD + 0.75Lr + 0.75W\n0.6D + W', 'area'),
+    F('combu', 'Combinación última para anclajes (levantamiento)', '0.9D + 1.25W'),
     F('titulo', 'Título', ''),
   ],
-  hint: 'Tijeral triangular tipo Howe o Pratt con n paneles iguales, cargas en los nudos y apoyos simples (fijo y móvil). Resuelve por el método de rigidez y dibuja las fuerzas axiales (azul tracción, rojo compresión). Exporta <b>Ncs, Lcs</b> (compresión máxima y longitud de la cuerda superior), <b>Nti</b> (tracción máx. cuerda inferior), <b>Ndc, Ldc</b> (compresión máx. y longitud de diagonal/montante), <b>Ndt</b> (tracción máx. en diagonales/montantes), <b>Ra</b> (reacción) y <b>Lpan</b>.',
+  hint: 'Tijeral triangular tipo Howe o Pratt con n paneles iguales, cargas en los nudos y apoyos simples (fijo y móvil). Resuelve por el método de rigidez los casos D, Lr y viento (W1 y W2 en ambos sentidos, normales a los faldones) y combina. Exporta las envolventes <b>Ncs, Lcs</b> (compresión y longitud de la cuerda superior), <b>Nts</b> (tracción de la cuerda superior), <b>Nti</b> / <b>Nci</b> (tracción / compresión de la cuerda inferior), <b>Ndc, Ldc</b> (compresión máx. y longitud de diagonal/montante), <b>Ndt</b> (tracción máx. en diagonales/montantes), <b>Ra</b> (reacción D + Lr), <b>Rup</b> y <b>Hup</b> (levantamiento y empuje horizontal en el apoyo, servicio), <b>Rupu</b> y <b>Hupu</b> (ídem con la combinación última) y <b>Lpan</b>.',
   def: { L: '8 m', H: '2 m', n: '6', tipo: 'Howe', P: '0.4 tonf', Pb: '0' },
   render(b, ctx) {
     const S = ctx.scope;
     const L = evalParam(b.L, S, 'm', 8), Hc = evalParam(b.H, S, 'm', 2), n = Math.round(evalParam(b.n, S, '', 6)), P = evalParam(b.P, S, 'tonf', 0.4), Pb = evalParam(b.Pb, S, 'tonf', 0);
+    const PD = b.PD && String(b.PD).trim() ? evalParam(b.PD, S, 'tonf', P) : P;
     pos({ L, Hc });
+    if (PD > P + 1e-9 || PD < 0) throw new Error('La parte permanente PD debe estar entre 0 y P');
+    const pair = (txt) => { if (!txt || !String(txt).trim()) return null; const q = String(txt).split(/[;,](?![^()]*\))/).map(x => x.trim()).filter(Boolean); if (q.length !== 2) throw new Error('Viento: use «q barlovento, q sotavento»'); return q.map(x => evalParam(x, S, 'tonf/m')); };
+    const w1 = pair(b.W1), w2 = pair(b.W2);
     const { nodes, bars, top } = trussGeom(L, Hc, n, b.tipo || 'Howe');
-    const loads = [];
-    top.forEach((ni, i) => { const f = i === 0 || i === n ? 0.5 : 1; loads.push([ni, 0, -P * f]); });
-    for (let i = 1; i < n; i++) loads.push([i, 0, -Pb]);
-    const sol = solveTruss(nodes, bars, [0, 1, 2 * n + 1], loads);
-    const grp = (g) => bars.filter(x => x.g === g);
-    const minN = (a) => a.reduce((m, x) => (x.N < m.N ? x : m), { N: 0, L: 0 }), maxN = (a) => a.reduce((m, x) => (x.N > m.N ? x : m), { N: 0, L: 0 });
-    const sup = minN(grp('sup')), inf = maxN(grp('inf')), web = [...grp('dia'), ...grp('mon')], wc = minN(web), wt = maxN(web);
+    const sup = [0, 1, 2 * n + 1];
+    const solve = (loads) => { const r = solveTruss(nodes, bars, sup, loads); const N = bars.map(x => x.N); const R = Object.fromEntries(r.R); return { N, R0: R[1], Rn: R[2 * n + 1], H0: R[0] }; };
+    // casos elementales
+    const LD = [], LL = [];
+    top.forEach((ni, i) => { const f = i === 0 || i === n ? 0.5 : 1; LD.push([ni, 0, -PD * f]); LL.push([ni, 0, -(P - PD) * f]); });
+    for (let i = 1; i < n; i++) LD.push([i, 0, -Pb]);
+    const cs = { D: solve(LD), Lr: solve(LL) };
+    const wc = [];
+    if (w1) { wc.push(solve(windLoads(nodes, top, n, L, w1[0], w1[1], true))); wc.push(solve(windLoads(nodes, top, n, L, w1[0], w1[1], false))); }
+    if (w2) { wc.push(solve(windLoads(nodes, top, n, L, w2[0], w2[1], true))); wc.push(solve(windLoads(nodes, top, n, L, w2[0], w2[1], false))); }
+    // combinaciones «a·D + b·Lr + c·W»
+    const parseComb = (txt) => { const fac = { D: 0, Lr: 0, W: 0 }; const t = String(txt).replace(/\s+/g, ''); if (!t) return null;
+      for (const m of t.matchAll(/([+-]?)(\d*\.?\d*)\*?(Lr|D|W)/g)) { if (!m[0]) continue; fac[m[3]] += (m[1] === '-' ? -1 : 1) * (m[2] === '' ? 1 : parseFloat(m[2])); }
+      if (!/^([+-]?(\d*\.?\d*)\*?(Lr|D|W))+$/.test(t)) throw new Error('Combinación «' + txt + '»: use términos como 0.75Lr, 0.6D, W'); return { txt: String(txt).trim(), ...fac }; };
+    const combs = String(b.comb || 'D + Lr').split('\n').map(parseComb).filter(Boolean);
+    const comb = (c, w) => {
+      const N = bars.map((_, j) => c.D * cs.D.N[j] + c.Lr * cs.Lr.N[j] + (w ? c.W * w.N[j] : 0));
+      const R0 = c.D * cs.D.R0 + c.Lr * cs.Lr.R0 + (w ? c.W * w.R0 : 0), Rn = c.D * cs.D.Rn + c.Lr * cs.Lr.Rn + (w ? c.W * w.Rn : 0), H0 = (w ? c.W * w.H0 : 0);
+      return { N, R0, Rn, H0, name: c.txt }; };
+    const sets = [];
+    for (const c of combs) { if (c.W && wc.length) wc.forEach((w, k) => sets.push(comb(c, w))); else if (!c.W) sets.push(comb(c, null)); }
+    if (!sets.length) sets.push(comb({ D: 1, Lr: 1, W: 0, txt: 'D + Lr' }, null));
+    const grpIdx = (g) => bars.map((x, j) => (x.g === g ? j : -1)).filter(j => j >= 0);
+    const ext = (idx, sgn) => { let best = { N: 0, L: 0, c: '' }; for (const s of sets) for (const j of idx) { const v = sgn * s.N[j]; if (v > best.N + 1e-12) best = { N: v, L: bars[j].L, c: s.name }; } return best; };
+    const iS = grpIdx('sup'), iI = grpIdx('inf'), iW = [...grpIdx('dia'), ...grpIdx('mon')];
+    const csup = ext(iS, -1), tsup = ext(iS, 1), tinf = ext(iI, 1), cinf = ext(iI, -1), wcm = ext(iW, -1), wtm = ext(iW, 1);
     const Ra = (P * n + Pb * (n - 1)) / 2;
-    setVar(ctx, 'Ncs', U(-sup.N, 'tonf')); setVar(ctx, 'Lcs', U(sup.L || L / n, 'm')); setVar(ctx, 'Nti', U(inf.N, 'tonf'));
-    setVar(ctx, 'Ndc', U(Math.max(0, -wc.N), 'tonf')); setVar(ctx, 'Ldc', U(wc.L || Hc, 'm')); setVar(ctx, 'Ndt', U(Math.max(0, wt.N), 'tonf'));
+    // reacciones: levantamiento (reacción vertical negativa) y empuje horizontal, servicio y último
+    const upl = (list) => { let R = 0, H = 0; for (const s of list) { R = Math.max(R, -s.R0, -s.Rn); H = Math.max(H, Math.abs(s.H0)); } return { R, H }; };
+    const sv = upl(sets);
+    const cu = parseComb(b.combu || '0.9D + 1.25W');
+    const uSets = cu ? (wc.length ? wc.map(w => comb(cu, w)) : [comb(cu, null)]) : [];
+    const ul = upl(uSets);
+    setVar(ctx, 'Ncs', U(csup.N, 'tonf')); setVar(ctx, 'Lcs', U(bars[iS[0]].L, 'm')); setVar(ctx, 'Nts', U(tsup.N, 'tonf'));
+    setVar(ctx, 'Nti', U(tinf.N, 'tonf')); setVar(ctx, 'Nci', U(cinf.N, 'tonf'));
+    setVar(ctx, 'Ndc', U(wcm.N, 'tonf')); setVar(ctx, 'Ldc', U(wcm.L || Hc, 'm')); setVar(ctx, 'Ndt', U(wtm.N, 'tonf'));
     setVar(ctx, 'Ra', U(Ra, 'tonf')); setVar(ctx, 'Lpan', U(L / n, 'm'));
-    // dibujo
+    setVar(ctx, 'Rup', U(sv.R, 'tonf')); setVar(ctx, 'Hup', U(sv.H, 'tonf')); setVar(ctx, 'Rupu', U(ul.R, 'tonf')); setVar(ctx, 'Hupu', U(ul.H, 'tonf'));
+    // dibujo: fuerzas de la primera combinación (gravedad) y, si hay viento, el rango (máx. tracción / máx. compresión)
+    const N1 = sets[0].N;
     const Wd = 720, Hd = 330, sc = Math.min(620 / L, 200 / Hc), ox = (Wd - L * sc) / 2, oy = 250;
     const X = (x) => ox + x * sc, Y = (y) => oy - y * sc;
     let g = arrowDefs;
-    const Nmax = Math.max(...bars.map(x => Math.abs(x.N)), 1e-9);
-    for (const br of bars) {
-      const A = nodes[br.a], B = nodes[br.b], col = Math.abs(br.N) < 1e-6 * Nmax ? C.axis : br.N > 0 ? C.blue : C.red;
-      g += Lne(X(A.x), Y(A.y), X(B.x), Y(B.y), col, 1.2 + 3 * Math.abs(br.N) / Nmax);
+    const Nmax = Math.max(...N1.map(Math.abs), 1e-9);
+    bars.forEach((br, j) => {
+      const A = nodes[br.a], B = nodes[br.b], Nj = N1[j], col = Math.abs(Nj) < 1e-6 * Nmax ? C.axis : Nj > 0 ? C.blue : C.red;
+      g += Lne(X(A.x), Y(A.y), X(B.x), Y(B.y), col, 1.2 + 3 * Math.abs(Nj) / Nmax);
       const mx = (X(A.x) + X(B.x)) / 2, my = (Y(A.y) + Y(B.y)) / 2;
-      g += `<rect x="${(mx - 17).toFixed(1)}" y="${(my - 7).toFixed(1)}" width="34" height="12" rx="2" fill="#fff" opacity=".85"/>` + T(mx, my + 2.5, f2(br.N, 2), { fs: 9, c: col });
-    }
+      g += `<rect x="${(mx - 17).toFixed(1)}" y="${(my - 7).toFixed(1)}" width="34" height="12" rx="2" fill="#fff" opacity=".85"/>` + T(mx, my + 2.5, f2(Nj, 2), { fs: 9, c: col });
+    });
     nodes.forEach(nd => { g += circ(X(nd.x), Y(nd.y), 2.6, '#fff', C.ink, 1); });
     top.forEach((ni, i) => { const f = i === 0 || i === n ? 0.5 : 1, nd = nodes[ni]; if (P > 0) g += arrow(X(nd.x), Y(nd.y) - 30, X(nd.x), Y(nd.y) - 5) + T(X(nd.x), Y(nd.y) - 33, f2(P * f, 2), { fs: 9 }); });
     g += `<path d="M${X(0)},${Y(0) + 3} l-8,13 h16 z" fill="none" stroke="${C.ink}"/><path d="M${X(L)},${Y(0) + 3} l-8,13 h16 z" fill="none" stroke="${C.ink}"/>` + Lne(X(L) - 9, Y(0) + 19, X(L) + 9, Y(0) + 19);
     g += dimH(X(0), X(L), Y(0) + 38, 'L = ' + f2(L) + ' m (' + n + ' paneles de ' + f2(L / n) + ' m)') + Lne(X(0) - 30, Y(Hc), X(L / 2) - 4, Y(Hc), C.grid, 0.8, '3 3') + dimV(X(0) - 26, Y(Hc), Y(0), 'H = ' + f2(Hc) + ' m');
-    g += T(Wd / 2, 18, `Tijeral ${/howe/i.test(b.tipo || 'Howe') ? 'Howe' : 'Pratt'} · fuerzas axiales en tonf (+ tracción, − compresión) · R = ${f2(Ra, 2)} t`, { fs: 10.5, b: 1 });
-    return `<div class="figure">${svgWrap(Wd, Hd, g)}${caption(ctx, b.titulo || 'Geometría del tijeral y fuerzas axiales en las barras')}</div>`;
+    g += T(Wd / 2, 18, `Tijeral ${/howe/i.test(b.tipo || 'Howe') ? 'Howe' : 'Pratt'} · fuerzas axiales en tonf para ${sets[0].name} (+ tracción, − compresión) · R = ${f2(Ra, 2)} t`, { fs: 10.5, b: 1 });
+    let tb = '';
+    if (wc.length) {
+      const row = (nm, idx) => { const t = ext(idx, 1), c = ext(idx, -1); const inv = t.N > 1e-9 && c.N > 1e-9; return `<tr><td>${nm}</td><td>${f2(t.N, 3)}</td><td>${esc(t.c || '—')}</td><td>${f2(-c.N, 3)}</td><td>${esc(c.c || '—')}</td><td>${inv ? 'Sí' : 'No'}</td></tr>`; };
+      ctx.tab = (ctx.tab || 0) + 1;
+      tb = `<div class="cap">Tabla ${ctx.tab}: Envolvente de fuerzas axiales por grupo de barras (tonf; viento en ambos sentidos, casos W1 y W2)</div><table class="tbl"><thead><tr><th>Grupo</th><th>Tracción máx.</th><th>Combinación</th><th>Compresión máx.</th><th>Combinación</th><th>Inversión</th></tr></thead><tbody>${row('Cuerda superior', iS)}${row('Cuerda inferior', iI)}${row('Diagonales y montantes', iW)}</tbody></table><div class="kv" style="font-size:12px">Reacciones: levantamiento máx. (servicio) ${f2(sv.R, 3)} t · empuje horizontal ${f2(sv.H, 3)} t · con ${esc(cu ? cu.txt : '—')}: ${f2(ul.R, 3)} t y ${f2(ul.H, 3)} t</div>`;
+    }
+    return `<div class="figure">${svgWrap(Wd, Hd, g)}${caption(ctx, b.titulo || 'Geometría del tijeral y fuerzas axiales en las barras')}</div>${tb ? `<div class="figure">${tb}</div>` : ''}`;
   },
 });

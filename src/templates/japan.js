@@ -456,58 +456,94 @@ check delta <= dlim // Deflexión de largo plazo`),
   {
     id: 'jp-madera-kaberyo', pais: 'JP', cat: 'Madera y tierra', icon: 'wall', settings: { sys: 'si' },
     validacion: {
-      fuente: 'BSL Order Art. 46-4 (cantidad de muros, tablas 1 y 3) y Notif. 1352 (yonbun-wari) — valores de control',
-      nota: 'Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control (calculados con la plantilla y comprobados a mano donde se indica) para detectar cambios. Coeficientes de piso de la tabla del Art. 46-4 (techo ligero, 2 pisos): 29 cm/m² en el 1F y 15 cm/m² en el 2F.',
+      fuente: 'MLIT, material complementario del nuevo criterio de cantidad de muros (8-07-2024, p. 3 y 5) y hoja oficial del HOWTEC ver. 1.2 (Lw = Ai·C0·Σwi/(0.0196·Afi)); Order Art. 46-4 y Notif. 1352 — valores de control',
+      nota: 'Revisión 2026-10 (segunda opinión, M5): c_w pasa por defecto al procedimiento vigente desde abril de 2025 (antes, tabla anterior: 29 y 15 cm/m²). Los datos por defecto no reproducen un ejemplo publicado: los valores esperados son de control. El procedimiento sí se valida contra el ejemplo del MLIT (2F 2.86 m, 1F 3.00 m, 50 + 50 m², teja sin barro, siding y paneles solares → 46 y 28 cm/m²) en tests/japan.test.mjs, sustituyendo esos datos en la plantilla. LeX y bX no cambian; LreqX = LreqY = 32 cm/m² × 79.50 m² = 25.44 m (antes 23.05 m en X y 24.75 m en Y por viento): con el peso real de los paneles solares el sismo pasa a gobernar también en Y.',
       valores: [
-        { var: 'cw1', unidad: 'cm/m^2', esperado: 29, tol: 0.001, desc: 'Order Art. 46-4: 1F, techo ligero, 2 pisos' },
-        { var: 'cw2', unidad: 'cm/m^2', esperado: 15, tol: 0.001, desc: 'Order Art. 46-4: 2F, techo ligero, 2 pisos' },
-        { var: 'LreqX', unidad: 'm', esperado: 23.054, tol: 0.002, desc: 'Control: longitud requerida en X' },
+        { var: 'cw1', unidad: 'cm/m^2', esperado: 32, tol: 0.001, desc: 'Control: Lw del 1F (cubierta metálica, siding, paneles, Rf = 0.667)' },
+        { var: 'cw2', unidad: 'cm/m^2', esperado: 22, tol: 0.001, desc: 'Control: Lw del 2F' },
+        { var: 'cw1a', unidad: 'cm/m^2', esperado: 29, tol: 0.001, desc: 'Tabla anterior (Art. 46-4): 1F, techo ligero, 2 pisos' },
+        { var: 'LreqX', unidad: 'm', esperado: 25.44, tol: 0.002, desc: 'Control: longitud requerida en X' },
         { var: 'LeX', unidad: 'm', esperado: 35.49, tol: 0.002, desc: 'Control: longitud efectiva en X' },
-        { var: 'LreqY', unidad: 'm', esperado: 24.75, tol: 0.002, desc: 'Control: longitud requerida en Y (rige viento)' },
+        { var: 'LreqY', unidad: 'm', esperado: 25.44, tol: 0.002, desc: 'Control: longitud requerida en Y' },
         { var: 'bX', esperado: 0.75, tol: 0.002, desc: 'Control: relación de balance en X' },
       ],
     },
     name: 'Casa de madera — cantidad de muros (kabe-ryo) y balance 1/4',
-    normas: 'Building Standard Law · Enforcement Order Art. 46 · Notif. MOC 1352 (2000, yonbun-wari) · Notif. MOC 1100 (multiplicadores de muro)',
-    desc: 'Método de cantidad de muros por sismo (longitud por m² de planta) y por viento (50 cm/m² de área proyectada), con multiplicadores de muro y balance por cuartos (yonbun-wari).',
+    normas: 'Building Standard Law · Enforcement Order Art. 46 (reforma de abril de 2025) · Notif. MOC 1100 (1981, parte 3 revisada: Lw = Ai·C0·Σwi/(0.0196·Afi); multiplicadores) · Notif. MOC 1352 (2000, yonbun-wari) · Notif. 1793 (Ai)',
+    desc: 'Método de cantidad de muros vigente desde 2025: longitud requerida por sismo según el peso real (cubierta, muros, aislamiento, paneles solares) y por viento, con multiplicadores de muro (hasta 7.0) y balance por cuartos (yonbun-wari). Incluye la tabla anterior para comparación.',
     titulo: 'Verificación de muros resistentes de casa de madera de 2 pisos (método de cantidad de muros, kabe-ryo keisan)',
     blocks: [
       text(`# Generalidades
 Las viviendas de madera de entramado de postes y vigas (*zairai jikugumi koho*) de hasta 2 pisos se verifican con el **método de cantidad de muros** (*kabe-ryo keisan*, Enforcement Order Art. 46):
 
-1. **Longitud efectiva** de muros por dirección: $L_e = \\sum k \\cdot L$, con $k$ el **multiplicador de muro** (*kabe-bairitsu*): arriostre 45×90 simple 2.0, doble 4.0; tablero estructural de 9 mm (N50 @ 150) 2.5; placa de yeso 12.5 mm 0.9 (Order Art. 46 tabla 1; Notif. 1100). La suma por muro no excede 5.0.
-2. **Requisito sísmico**: $L_{req} = c_w\\,A_{piso}$, con $c_w$ según el tipo de techo y el número de pisos (Art. 46-4, tabla 2).
-3. **Requisito por viento**: $L_{req} = 50\\ \\text{cm/m}^2 \\times$ área de fachada proyectada por encima de 1.35 m del nivel del piso (Art. 46-4, tabla 3).
-4. **Balance por cuartos** (*yonbun-wari-ho*, Notif. 1352): en las franjas extremas de 1/4 de la planta, la **suficiencia** (longitud efectiva/requerida) debe superar 1.0 en ambas, o la relación entre la menor y la mayor debe ser ≥ 0.5. La longitud requerida de cada franja usa su propia área y el coeficiente $c_w$ que corresponde al número de pisos **de esa franja** (si sobre la franja no hay 2F, se usa el valor de 1 piso).
+1. **Longitud efectiva** de muros por dirección: $L_e = \\sum k \\cdot L$, con $k$ el **multiplicador de muro** (*kabe-bairitsu*): arriostre 45×90 simple 2.0, doble 4.0; tablero estructural de 9 mm (N50 @ 150) 2.5; placa de yeso 12.5 mm 0.9 (Order Art. 46 tabla 1; Notif. 1100). Desde la reforma de 2025 la suma por muro puede llegar a **7.0** (antes 5.0) y pueden sumarse muros secundarios (*jun-tairyoku-kabe*, antepechos y dinteles), que esta memoria no considera (del lado de la seguridad).
+2. **Requisito sísmico vigente** (reforma de abril de 2025, Notif. 1100 parte 3): $L_w = \\dfrac{A_i\\,C_0\\,\\Sigma w_i}{0.0196\\,A_{fi}}$ [cm/m²], donde 0.0196 kN/cm es la resistencia de 1 cm de muro de multiplicador 1 (1.96 kN/m), $\\Sigma w_i$ el peso sísmico que soporta el piso (cargas reales de cubierta, muros, aislamiento, paneles solares, piso y 600 N/m² de carga viva) y $A_i$ la distribución de la Notif. 1793 con $T = 0.03h$. Se usan las cargas unitarias y supuestos de la hoja oficial del HOWTEC (Japan Housing and Wood Technology Center). Las clases «techo ligero / pesado» quedaron derogadas.
+3. **Requisito por viento**: $L_{req} = 50\\ \\text{cm/m}^2 \\times$ área de fachada proyectada por encima de 1.35 m del nivel del piso (Art. 46-4, tabla 3); no cambió en 2025.
+4. **Balance por cuartos** (*yonbun-wari-ho*, Notif. 1352): en las franjas extremas de 1/4 de la planta, la **suficiencia** (longitud efectiva/requerida) debe superar 1.0 en ambas, o la relación entre la menor y la mayor debe ser ≥ 0.5. La longitud requerida de cada franja usa su propia área y el coeficiente del piso.
 
-Vivienda de 2 pisos, techo ligero de lámina metálica, planta del 1F de 10.92 × 7.28 m (módulo 910 mm).
-> **Vigencia.** Desde abril de 2025 la reforma de la BSL reemplazó la tabla de $c_w$ por valores que dependen del peso real de la edificación (cubierta, aislamiento, paneles solares) y elevó el límite del multiplicador de muro. La tabla anterior, que es la que reproduce la función *kabeBSL*, solo se admite en el régimen transitorio de la reforma. En un expediente nuevo ingrese en $c_{w1,v}$ y $c_{w2,v}$ los valores obtenidos con el procedimiento vigente; la memoria usa el mayor de ambos.`),
+Vivienda de 2 pisos, cubierta de lámina metálica con paneles solares, revestimiento de siding, planta del 1F de 10.92 × 7.28 m (módulo 910 mm).
+> **Vigencia.** La tabla anterior de $c_w$ (función *kabeBSL*) solo se admitió durante el régimen transitorio de un año (hasta el 31-03-2026). La memoria la calcula como **comparación** y permite elegirla en los datos («c_w por sismo») únicamente para revisar expedientes de ese régimen.`),
       calc(`# Datos de la vivienda
-techo = 1 // Tipo de techo [1 : Ligero (lámina metálica, pizarra)|2 : Pesado (teja cerámica)]
-niv = 2 // Número de pisos [1 : 1 piso|2 : 2 pisos|3 : 3 pisos]
+metodo = 2 // c_w por sismo [1 : Tabla anterior a abril de 2025 (solo comparación o régimen transitorio)|2 : Procedimiento vigente desde abril de 2025]
+niv = 2 // Número de pisos [1 : 1 piso|2 : 2 pisos]
+cub = 1 // Cubierta [1 : Lámina metálica (kinzokuban-buki)|2 : Pizarra o fibrocemento (sureto)|3 : Teja cerámica sin barro (kawara)]
+muroext = 3 // Revestimiento exterior [1 : Muro de barro (tsuchi-kabe)|2 : Mortero|3 : Siding|4 : Chapa metálica|5 : Tablas de madera]
+solar = 1 // Paneles solares en la cubierta [0 : No|1 : Sí (0.20 kN/m² de cubierta)]
 Lx = 10.92 m // Largo de la planta del 1F (dirección X) [3..30]
 Ly = 7.28 m // Ancho de la planta del 1F (dirección Y) [3..30]
 A1 = Lx*Ly // Área de piso del 1F
-cw1v = 0 cm/m^2 // c_w del 1F según el procedimiento vigente (reforma de 2025); 0 = solo la tabla anterior [0..100]
-cw2v = 0 cm/m^2 // c_w del 2F según el procedimiento vigente (reforma de 2025); 0 = solo la tabla anterior [0..100]
-cw1 = max(kabeBSL(techo, niv, 1), cw1v) // Longitud requerida por sismo, 1F (Order Art. 46-4, tabla 2, o valor vigente si es mayor)
-cw2 = max(kabeBSL(techo, niv, 2), cw2v) // Longitud requerida por sismo, 2F
+A2 = 7.28 m*7.28 m // Área de piso del 2F
+h1 = 2.9 m // Altura del 1F (del durmiente a la cara superior de la viga del 2F) [2.4..3.6]
+h2 = 2.8 m // Altura del 2F (de la viga del 2F a la cara superior de la viga del techo) [2.4..3.6]
+C0 = 0.2 // Coeficiente de corte basal [0.2 : General|0.3 : Suelo muy blando designado (Order Art. 88-2)]
 cv = 50 cm/m^2 // Longitud requerida por viento (Order Art. 46-4, tabla 3) [50 cm/m^2 : Zona general|75 cm/m^2 : Zona de vientos fuertes]
 AvX = 31.0 m^2 // Área de fachada proyectada que recibe viento en X (por encima de 1.35 m del 1F) [5..300]
 AvY = 49.5 m^2 // Área de fachada proyectada que recibe viento en Y [5..300]
+# Longitud requerida por sismo — procedimiento vigente (Notif. 1100 parte 3, 2025)
+## Cargas por m² (hoja oficial del HOWTEC, tablas 1-3 y 1-5)
+Gr = GrBSL25(cub) // Cubierta + estructura del techo + cielorraso por m² de planta (×1.3 por aleros y pendiente)
+D1 = 0.10 kN/m^2 // Aislamiento del cielorraso (lana de vidrio 24K, ≈ 400 mm)
+D2 = solar*0.26 kN/m^2 // Paneles solares: 0.20 kN/m² de cubierta × 1.3
+Gw = GwBSL25(muroext) // Muro exterior por m² de muro
+D3 = 0.07 kN/m^2 // Aislamiento del muro por m² de muro
+Dv = 0.40 kN/m^2 // Ventanas de triple vidrio por m² de abertura
+rab = 0.09 // Proporción de aberturas en la fachada (hoja oficial)
+Gi = 0.20 kN/m^2 // Tabiques de yeso por m² de planta, para 2.8 m de altura
+Gf = 0.61 kN/m^2 // Piso del 2F (tatami, vigas y cielorraso; Order Art. 84)
+P1 = 0.60 kN/m^2 // Carga viva para sismo, vivienda (Order Art. 85)
+kp1 = 2*(6 m + 16.5 m)*h1/(6 m*16.5 m) // Área de fachada del 1F por m² de planta (planta tipo 6 × 16.5 m de la hoja oficial)
+kp2 = 2*(6 m + 16.5 m)*h2/(6 m*16.5 m) // Área de fachada del 2F por m² de planta
+Gow1 = roundup(Gw*kp1*(1 - rab), 0.01 kN/m^2) + roundup(D3*kp1*(1 - rab), 0.01 kN/m^2) + roundup(Dv*kp1*rab, 0.01 kN/m^2) + Gi*h1/(2.8 m) -> kN/m^2 // Muros del 1F por m² de planta
+Gow2 = roundup(Gw*kp2*(1 - rab), 0.01 kN/m^2) + roundup(D3*kp2*(1 - rab), 0.01 kN/m^2) + roundup(Dv*kp2*rab, 0.01 kN/m^2) + Gi*h2/(2.8 m) -> kN/m^2 // Muros del 2F por m² de planta
+## Peso sísmico y distribución Ai (Order Art. 88; Notif. 1793)
+W2 = (Gr + D1 + D2)*A2 + 0.5*Gow2*A2 -> kN // Peso que soporta el 2F: techo + mitad superior de los muros del 2F
+W1 = si(niv == 2, (Gr + D1 + D2)*max(A1, A2) + Gow2*A2 + 0.5*Gow1*A1 + (Gf + P1)*A2, (Gr + D1 + D2)*A1 + 0.5*Gow1*A1) -> kN // Peso que soporta el 1F (incluye el techo del 1F fuera del 2F)
+hb = 0.5 m + h1 + si(niv == 2, h2, 0 m) + 0.9 m // Altura del edificio: cimiento 0.5 m + pisos + mitad de la cubierta 0.9 m (hoja oficial)
+Tn = 0.03*hb/(1 m) // Periodo fundamental T = 0.03h [s] (Notif. 1793, madera)
+alpha2 = W2/W1 // Relación de pesos del 2F
+Ai2 = 1 + (1/sqrt(alpha2) - alpha2)*2*Tn/(1 + 3*Tn) // Distribución Ai del 2F (Notif. 1793)
+Lw1 = roundup(C0*W1/(0.0196 kN/cm*A1), 1 cm/m^2) -> cm/m^2 // Lw del 1F, con A1 = 1 (Notif. 1100 parte 3)
+Lw2 = roundup(Ai2*C0*W2/(0.0196 kN/cm*A2), 1 cm/m^2) -> cm/m^2 // Lw del 2F
+Lw1_lib = kabeBSL25(1, niv, cub, muroext, solar, h1, h2, A2/A1, C0) // Control con la función de librería
+## Comparación con la tabla anterior y valores de diseño
+techo = si(cub == 3, 2, 1) // Clase de la tabla anterior: 1 = ligero (metálica, pizarra), 2 = pesado (teja)
+cw1a = kabeBSL(techo, niv, 1) // Tabla anterior, 1F (Order Art. 46-4 antes de 2025)
+cw2a = kabeBSL(techo, niv, niv) // Tabla anterior, 2F
+cw1 = si(metodo == 1, cw1a, Lw1) -> cm/m^2 // Longitud requerida por sismo de diseño, 1F
+cw2 = si(metodo == 1, cw2a, si(niv == 2, Lw2, Lw1)) -> cm/m^2 // Longitud requerida por sismo de diseño, 2F
+kmax = si(metodo == 1, 5, 7) // Multiplicador máximo por muro (Order Art. 46: 7.0 desde 2025)
 ## Longitudes requeridas en el 1F
 LsX = cw1*A1 -> m // Requisito sísmico (igual en X e Y)
 LwX = cv*AvX -> m // Requisito por viento en X
 LwY = cv*AvY -> m // Requisito por viento en Y
 LreqX = max(LsX, LwX) // Longitud requerida en X
 LreqY = max(LsX, LwY) // Longitud requerida en Y`),
-      { type: 'kaberyo', Lx: 'Lx', Ly: 'Ly', coef: 'cw1', coefLado: 'cw1', muros: '0 0 2.73 0 2.5 // fachada sur, tablero 9 mm\n8.19 0 10.92 0 2.5\n0 7.28 3.64 7.28 2.5 // fachada norte\n7.28 7.28 10.92 7.28 2.5\n5.46 3.64 7.28 3.64 2.0 // muro interior, arriostre 45×90\n0 0 0 2.73 2.5 // fachada oeste\n0 4.55 0 7.28 2.5\n10.92 0 10.92 1.82 2.5 // fachada este\n10.92 4.55 10.92 7.28 2.5\n4.55 3.64 4.55 7.28 2.0 // tabique interior, arriostre 45×90\n7.28 0 7.28 1.82 2.0', titulo: 'Planta del 1F: muros resistentes y franjas de 1/4 (yonbun-wari, Notif. 1352)' },
+      { type: 'kaberyo', Lx: 'Lx', Ly: 'Ly', coef: 'cw1', coefLado: 'cw1', kmax: 'kmax', muros: '0 0 2.73 0 2.5 // fachada sur, tablero 9 mm\n8.19 0 10.92 0 2.5\n0 7.28 3.64 7.28 2.5 // fachada norte\n7.28 7.28 10.92 7.28 2.5\n5.46 3.64 7.28 3.64 2.0 // muro interior, arriostre 45×90\n0 0 0 2.73 2.5 // fachada oeste\n0 4.55 0 7.28 2.5\n10.92 0 10.92 1.82 2.5 // fachada este\n10.92 4.55 10.92 7.28 2.5\n4.55 3.64 4.55 7.28 2.0 // tabique interior, arriostre 45×90\n7.28 0 7.28 1.82 2.0', titulo: 'Planta del 1F: muros resistentes y franjas de 1/4 (yonbun-wari, Notif. 1352)' },
       calc(`# Verificación de cantidad de muros del 1F (Order Art. 46-4)
-"El 2F (7.28 × 7.28 m) no cubre toda la planta del 1F; en las cuatro franjas se usó del lado de la seguridad $c_w$ de 2 pisos ({cw1}). Si sobre una franja no hay 2F puede usarse el valor de 1 piso.
+"El 2F (7.28 × 7.28 m) no cubre toda la planta del 1F; en las cuatro franjas se usó del lado de la seguridad el $c_w$ del 1F de la vivienda de 2 pisos ({cw1}). Si sobre una franja no hay 2F puede usarse el valor de 1 piso.
 check LeX >= LreqX // Longitud efectiva en X ≥ requerida (sismo y viento)
 check LeY >= LreqY // Longitud efectiva en Y ≥ requerida (sismo y viento)
 # Verificación simplificada del 2F
-A2 = 7.28 m*7.28 m // Área de piso del 2F
 Le2X = 21.8 m // Longitud efectiva de muros del 2F en X (Σk·L) [0..200]
 Le2Y = 23.7 m // Longitud efectiva de muros del 2F en Y (Σk·L) [0..200]
 Av2X = 14.5 m^2 // Área de fachada del 2F que recibe viento en X [0..200]
@@ -516,7 +552,7 @@ Lreq2X = max(cw2*A2, cv*Av2X) -> m // Longitud requerida del 2F en X (sismo o vi
 Lreq2Y = max(cw2*A2, cv*Av2Y) -> m // Longitud requerida del 2F en Y (sismo o viento)
 check Le2X >= Lreq2X // 2F en X (Order Art. 46-4)
 check Le2Y >= Lreq2Y // 2F en Y (Order Art. 46-4)
-"Complementariamente deben verificarse los herrajes de columnas (Notif. 1460, método del valor N) y, para 3 pisos o más de 500 m², el cálculo estructural (Order Art. 82).`),
+"Complementariamente deben verificarse los herrajes de columnas (Notif. 1460, método del valor N), la sección de las columnas con el criterio de 2025 (Order Art. 43, Notif. 1349) y, para más de 300 m² o más de 16 m de altura, el cálculo estructural (Order Art. 82). Para el grado 2 o 3 del sistema de desempeño (*seino hyoji*) multiplique $L_w$ por 1.25 o 1.5 e incluya el coeficiente de zona Z.`),
       summary(),
     ],
   },

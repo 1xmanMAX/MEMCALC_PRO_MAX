@@ -369,7 +369,7 @@ for (const [id, a, b] of [
   ['ma-armada', 'Me = 50 tonf*m', 'Me = 150 tonf*m'], ['ma-cerco', 'ha = 2.40 m', 'ha = 4.00 m'],
   ['ma-adobe', 'zona = 2 //', 'zona = 4 //'], ['ma-vigamadera', 'Lv = 4.20 m', 'Lv = 7.00 m'],
   ['ma-colmadera', 'lc = 2.60 m', 'lc = 8.00 m'], ['ma-colmadera', 'Nd = 6.0 tonf', 'Nd = 40 tonf'],
-  ['ma-tijeral', 'wsc = 50 kgf/m^2', 'wsc = 600 kgf/m^2'], ['ma-reservorio', 'tw = 0.30 m', 'tw = 0.15 m'],
+  ['ma-tijeral', 'wsc = 50 kgf/m^2', 'wsc = 600 kgf/m^2'], ['ma-tijeral', 'V = 100 km/h', 'V = 130 km/h'], ['ma-reservorio', 'tw = 0.30 m', 'tw = 0.15 m'],
   ['ma-reservorio', 'D = 9.00 m', 'D = 25.00 m'], ['ma-cisterna', 'tw = 0.20 m', 'tw = 0.10 m'],
   ['ma-cisterna', 'Hc = 2.50 m', 'Hc = 5.00 m'], ['ma-elevado', 'Hf = 12.0 m', 'Hf = 35.0 m'], ['ma-elevado', 'tf = 0.25 m', 'tf = 0.10 m']]) {
   let hit = false;
@@ -408,4 +408,24 @@ section('Segunda opinión — segunda tanda (ma-cerco)');
   const r1 = runTemplate('ma-cerco', sub2([['Z = 0.45 //', 'Z = 0.10 //'], ['S = 1.05 //', 'S = 2.00 //']]));
   truthy('Cerco en zona 1 con S = 2.0: cs usa 0.8·0.5·ZUS (gobierna) y no hay falsas fallas de excentricidad', Math.abs(r1('cs') - 0.08) < 1e-9 && r1.res.ctx.checks.every(c => c.ok));
 }
+section('Segunda opinión — tijeral con viento E.020 (inversión y anclajes)');
+{ // succión uniforme q normal a ambos faldones: levantamiento total q·L (las componentes horizontales se anulan)
+  const q = 0.2, P = 0.1, n = 6, L = 8;
+  const t = block('tijeral', { L: '8 m', H: '2 m', n: '6', tipo: 'Howe', P: P + ' tonf', Pb: '0', W2: `-${q} tonf/m, -${q} tonf/m`, comb: 'D + Lr\n0.6D + W', combu: '0.9D + 1.25W' });
+  near('Tijeral: levantamiento por apoyo (0.6D + W) = qL/2 − 0.6·nP/2', t('Rup', 'tonf'), q * L / 2 - 0.6 * n * P / 2, 1e-6);
+  near('Tijeral: levantamiento último (0.9D + 1.25W) = 1.25qL/2 − 0.9·nP/2', t('Rupu', 'tonf'), 1.25 * q * L / 2 - 0.9 * n * P / 2, 1e-6);
+  truthy('Tijeral: succión simétrica sin empuje horizontal y con inversión (cuerda inferior comprimida, superior traccionada)', Math.abs(t('Hup', 'tonf')) < 1e-9 && t('Nci', 'tonf') > 0.1 && t('Nts', 'tonf') > 0.1 && /Inversión/.test(t.html)); }
+{ const r = runTemplate('ma-tijeral');
+  near('Tijeral: ph = 0.005·Vh² = 50 kgf/m² (V = 100 km/h, h ≤ 10 m)', r('ph', 'kgf/m^2'), 50, 1e-9);
+  near('Tijeral: qb1 = (0.7 + 0.3)·ph·st (Tabla 4, 15° < θ ≤ 60°)', r('qb1', 'kgf/m'), 50, 1e-9);
+  near('Tijeral: qs2 = (−0.6 − 0.3)·ph·st', r('qs2', 'kgf/m'), -45, 1e-9);
+  truthy('Tijeral: con V = 100 km/h hay levantamiento (0.6D + W) y compresión en la cuerda inferior', r('Rup', 'kgf') > 0 && r('Nci', 'tonf') > 0);
+  // NDS 2018 Tabla 12.3.1A, doble cizallamiento, placas de acero: D = 3/8", lm = 4 cm, ls = 0.476 cm, G = 0.56
+  const D = 0.375, lm = 4 / 2.54, ls = 0.476 / 2.54, Fes = 1.5 * 4080 / 0.070307, Fyb = 3160 / 0.070307;
+  const Z = (Fe, Kt) => { const Re = Fe / Fes, k3 = -1 + Math.sqrt(2 * (1 + Re) / Re + 2 * Fyb * (2 + Re) * D * D / (3 * Fe * ls * ls));
+    return Math.min(D * lm * Fe / (4 * Kt), 2 * D * ls * Fes / (4 * Kt), 2 * k3 * D * ls * Fe / ((2 + Re) * 3.6 * Kt), 2 * D * D / (3.6 * Kt) * Math.sqrt(2 * Fe * Fyb / (3 * (1 + Re)))) * 0.45359237; };
+  near('Tijeral: Z⊥ del perno (NDS, Fe⊥ = 6100 G^1.45/√D) [kgf]', r('Zpe', 'kgf'), Z(6100 * 0.56 ** 1.45 / Math.sqrt(D), 1.25), 1e-4);
+  near('Tijeral: Z∥ del perno (Fe∥ = 11200 G) [kgf]', r('Zpa', 'kgf'), Z(11200 * 0.56, 1), 1e-4);
+  const r2 = runTemplate('ma-tijeral', d => { for (const b of d.blocks) if (b.src) b.src = b.src.replace('V = 100 km/h', 'V = 160 km/h'); });
+  truthy('Tijeral con V = 160 km/h: NO CUMPLE la unión empernada del apoyo', r2.res.ctx.errors.length === 0 && r2.res.ctx.checks.some(c => !c.ok && /Unión empernada/.test(c.label))); }
 done();

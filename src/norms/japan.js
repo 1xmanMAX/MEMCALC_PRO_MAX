@@ -180,6 +180,33 @@ function khc0J(T, g, tipo) { // nivel 2: khc = cs·cz·khc0 ≥ 0.4·cz
 }
 const Tpos = (T) => { const t = n0(T, 's'); chk(t >= 0, 'El periodo debe ser ≥ 0'); return Math.max(t, 1e-6); };
 
+// ---------------------------------------------------------------------
+//  Cantidad de muros vigente desde abril de 2025 (Order Art. 46-4; Notif. MOC 1100 de 1981, parte 3, revisada)
+//  Reproduce el «método ①» de la hoja de cálculo oficial del HOWTEC (ver. 1.2), con la que el MLIT publica el
+//  ejemplo del material complementario (2F 2.86 m, 1F 3.00 m, 50 + 50 m², teja sin barro, siding, paneles → 46 y 28 cm/m²).
+// ---------------------------------------------------------------------
+const BSL25_ROOF = { 1: 0.65, 2: 1.00, 3: 1.30 };                          // kN/m² de planta (incluye ×1.3 y cielorraso)
+const BSL25_WALL = { 1: 1.00, 2: 0.89, 3: 0.60, 4: 0.50, 5: 0.35 };          // kN/m² de muro
+function kabe25(piso, pisos, cub, muro, solar, h1, h2, Rf, C0) {
+  const p = Math.round(piso), n = Math.round(pisos);
+  chk(n === 1 || n === 2, 'El método de cantidad de muros vigente se aplica a viviendas de 1 o 2 pisos (3 pisos: cálculo estructural)');
+  chk(p >= 1 && p <= n, 'Piso: 1 o 2 y ≤ número de pisos');
+  const Gr = BSL25_ROOF[Math.round(cub)], Gw = BSL25_WALL[Math.round(muro)];
+  chk(Gr && Gw, 'Cubierta 1 a 3 y muro exterior 1 a 5');
+  const D2 = math.isUnit(solar) ? 1.3 * solar.toNumber('kN/m^2') : (n0(solar) ? 0.26 : 0);
+  const H1 = math.isUnit(h1) ? h1.toNumber('m') : n0(h1), H2 = n === 2 ? (math.isUnit(h2) ? h2.toNumber('m') : n0(h2)) : 0;
+  chk(H1 > 0 && (n === 1 || H2 > 0), 'Alturas de piso positivas');
+  const rf = n === 2 ? n0(Rf) : 1, c0 = C0 === undefined ? 0.2 : n0(C0);
+  chk(rf > 0, 'Rf = A2/A1 positivo');
+  const ru = (x) => Math.ceil(x / 10 - 1e-9) * 10;                          // la hoja redondea a 10 N/m²
+  const wall = (h) => { const k = 45 * h / 99; return (ru(Gw * 1000 * k * 0.91) + ru(70 * k * 0.91) + ru(400 * k * 0.09) + 200 * h / 2.8) / 1000; };
+  const R = Gr + 0.10 + D2;
+  if (n === 1) { const w = R + 0.5 * wall(H1); return { Lw: Math.ceil(c0 * w / 0.0196 - 1e-9), w1: w, Ai: 1 }; }
+  const w2 = (R + 0.5 * wall(H2)) * rf, w1 = R * Math.max(rf, 1) + wall(H2) * rf + 1.21 * rf + 0.5 * wall(H1);
+  const T = 0.03 * (0.5 + H1 + H2 + 0.9), a = w2 / w1, Ai = 1 + (1 / Math.sqrt(a) - a) * 2 * T / (1 + 3 * T);
+  return p === 1 ? { Lw: Math.ceil(c0 * w1 / 0.0196 - 1e-9), w1, Ai: 1 } : { Lw: Math.ceil(Ai * c0 * w2 / rf / 0.0196 - 1e-9), w2, Ai };
+}
+
 defineFns({
   // ----- Sismo BSL -----
   ZBSL: { fn: (z) => { const v = ZONAS[Math.round(n0(z))]; chk(v, 'Zona sísmica BSL: 1 (Z=1.0), 2 (0.9), 3 (0.8) o 4 (Okinawa 0.7)'); return v; }, tex: 'Z', desc: 'Coef. de zona sísmica Z (Notif. 1793 Art. 1): zona 1→1.0, 2→0.9, 3→0.8, 4 (Okinawa)→0.7', args: 'zona' },
@@ -259,7 +286,13 @@ defineFns({
     chk(n >= 1 && n <= 3 && p >= 1 && p <= n, 'Pisos: 1 a 3 y piso ≤ número de pisos');
     const tab = { 1: { 1: [11], 2: [29, 15], 3: [46, 34, 18] }, 2: { 1: [15], 2: [33, 21], 3: [50, 39, 24] } };
     return mkUnit(tab[t][n][p - 1], 'cm/m^2');
-  }, tex: 'c_w', desc: 'Longitud de muro requerida por sismo por m² de planta (Order Art. 46-4, tabla 2, versión previa a 2025)', args: 'techo, pisos, piso' },
+  }, tex: 'c_w', desc: 'Longitud de muro requerida por sismo por m² de planta, tabla del Order Art. 46-4 ANTERIOR a la reforma de abril de 2025 (techo 1 = ligero, 2 = pesado). Derogada: solo para comparación o expedientes del régimen transitorio (hasta el 31-03-2026); use kabeBSL25', args: 'techo, pisos, piso' },
+  // ----- Reforma de abril de 2025 (Notif. MOC 1100 de 1981, parte 3, revisada; Order Art. 46-4) -----
+  //  Lw = Ai·C0·Σwi/(0.0196·Afi) [cm/m²], con Σwi según las cargas reales (cubierta, muros, aislamiento, paneles
+  //  solares) y los supuestos de la herramienta oficial del HOWTEC (ver kabeBSL25).
+  GrBSL25: { fn: (cub) => { const v = BSL25_ROOF[Math.round(n0(cub))]; chk(v, 'Cubierta: 1 = lámina metálica, 2 = pizarra/fibrocemento, 3 = teja cerámica sin barro'); return mkUnit(v, 'kN/m^2'); }, tex: 'G_r', desc: 'Peso de la cubierta + estructura del techo + cielorraso por m² de planta, ya multiplicado por 1.3 (aleros de 450–600 mm, pendiente 5/10): 1 metálica 0.65, 2 pizarra 1.00, 3 teja sin barro 1.30 kN/m² (herramienta HOWTEC de la reforma de 2025, tabla 1-3)', args: 'cubierta' },
+  GwBSL25: { fn: (m) => { const v = BSL25_WALL[Math.round(n0(m))]; chk(v, 'Muro exterior: 1 barro, 2 mortero, 3 siding, 4 chapa metálica, 5 tablas de madera'); return mkUnit(v, 'kN/m^2'); }, tex: 'G_{w}', desc: 'Peso del muro exterior por m² de muro: 1 barro 1.00, 2 mortero 0.89, 3 siding 0.60, 4 chapa metálica 0.50, 5 tablas 0.35 kN/m² (herramienta HOWTEC de la reforma de 2025, tabla 1-5)', args: 'muro' },
+  kabeBSL25: { fn: (piso, pisos, cub, muro, solar, h1, h2, Rf, C0) => mkUnit(kabe25(n0(piso), n0(pisos), n0(cub), n0(muro), solar, h1, h2, Rf, C0).Lw, 'cm/m^2'), tex: 'L_w', desc: 'Longitud de muro requerida por sismo por m² de planta VIGENTE desde abril de 2025: Lw = Ai·C0·Σwi/(0.0196·Afi), redondeada al entero superior, con las cargas de la herramienta oficial (HOWTEC): planta tipo 6 × 16.5 m, 9 % de aberturas, aislamiento 0.10/0.07 kN/m², piso 0.61 + 0.60 kN/m², h = 0.5 + Σh + 0.9 m, T = 0.03h. solar: 0 = no, 1 = sí (0.20 kN/m² de cubierta) o carga por m² de cubierta; Rf = A2/A1 (2 pisos); C0 = 0.2 (0.3 suelo blando designado)', args: 'piso, pisos, cubierta, muro, solar, h1, h2, Rf, C0' },
   // ----- Puentes JRA -----
   SJRA1: { fn: (T, s) => jra(Tpos(T), n0(s), 1), tex: 'S_{0}', desc: 'Espectro estándar nivel 1 JRA [gal], suelo 1–3 (Parte V, 4.1)', args: 'T, suelo' },
   SJRA2I: { fn: (T, s) => jra(Tpos(T), n0(s), 21), tex: 'S_{I0}', desc: 'Espectro estándar nivel 2 tipo I (subducción) JRA 2012 [gal] (revisado en 2012; se combina con el coef. regional cIz)', args: 'T, suelo' },

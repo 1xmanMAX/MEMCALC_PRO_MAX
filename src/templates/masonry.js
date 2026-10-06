@@ -586,12 +586,14 @@ check ic < 1 // N/Nadm + km|M|/(Z fm) < 1`),
   // ===================================================================
   {
     id: 'ma-tijeral', pais: 'PE', cat: 'Madera y tierra', icon: 'beam',
-    name: 'Tijeral de madera (E.010 / JUNAC)', normas: 'RNE — NTE E.010 Madera (texto vigente 2021; antes DS 005-2014), E.020; Manual JUNAC (Cap. 11 Armaduras)',
-    desc: 'Armadura Howe/Pratt a dos aguas: cargas por nudo, análisis por rigidez, diseño de cuerda superior a flexocompresión, cuerda inferior a tracción y diagonales a compresión.',
+    name: 'Tijeral de madera (E.010 / JUNAC)', normas: 'RNE — NTE E.010 Madera (texto vigente 2021; antes DS 005-2014), E.020 (cargas y viento, Art. 12), E.060 9.2.4; Manual JUNAC (Cap. 11 Armaduras); NDS 2018 Cap. 12 (uniones empernadas); ACI 318-19 Cap. 17 (anclajes)',
+    desc: 'Armadura Howe/Pratt a dos aguas con viento E.020: casos D, Lr y W (presión y succión según la pendiente), combinaciones con levantamiento 0.6D + W, inversión de esfuerzos en las barras y anclaje del tijeral a la viga solera.',
     titulo: 'Diseño de tijeral de madera para cobertura liviana',
     blocks: [
       text(`# Generalidades
-Tijeral de madera a dos aguas para cobertura liviana (teja andina de fibrocemento sobre correas), con cielo raso colgado de la cuerda inferior. La armadura se analiza con nudos articulados y cargas aplicadas en los nudos (JUNAC Cap. 11); la cuerda superior se verifica además a flexocompresión por la carga repartida de las correas entre nudos, y la longitud efectiva en el plano se toma como 0.9 veces la longitud entre nudos (E.010 Art. 43.2; el Manual JUNAC admitía 0.8 l).`),
+Tijeral de madera a dos aguas para cobertura liviana (teja andina de fibrocemento sobre correas), con cielo raso colgado de la cuerda inferior. La armadura se analiza con nudos articulados y cargas aplicadas en los nudos (JUNAC Cap. 11); la cuerda superior se verifica además a flexocompresión por la carga repartida de las correas entre nudos, y la longitud efectiva en el plano se toma como 0.9 veces la longitud entre nudos (E.010 Art. 43.2; el Manual JUNAC admitía 0.8 l).
+
+En una cobertura liviana el **viento** (E.020 Art. 12) puede superar el peso propio: la succión sobre los faldones invierte los esfuerzos (la cuerda inferior y las diagonales traccionadas pasan a compresión) y levanta el tijeral de sus apoyos. La E.010 trabaja con esfuerzos admisibles y no fija combinaciones con viento; se adoptan las de esfuerzos admisibles de ASCE 7-05 2.4.1 (D + Lr, D + W, D + 0.75Lr + 0.75W y **0.6D + W** para el levantamiento), las mismas que usa la plantilla de viento E.020, sin incrementar los esfuerzos admisibles de la madera (conservador). El anclaje al concreto se diseña por resistencia con U = 0.9 CM + 1.25 CV (E.060 9.2.4).`),
       calc(`# Datos
 grupo = 2 // Grupo estructural ${GRUPO}
 Lt = 8.00 m // Luz del tijeral [4.00 m..15.00 m]
@@ -603,9 +605,24 @@ wcr = 30 kgf/m^2 // Cielo raso [10..50]
 wsc = 50 kgf/m^2 // Sobrecarga de techo inclinado (E.020 Art. 7.1: ≥ 50 kg/m²) [30..100]
 theta = atan(Ht/(Lt/2)) -> deg // Pendiente del techo
 Lpan = Lt/np // Longitud horizontal del panel
-P = (wcob + wsc)*st*Lpan -> tonf // Carga por nudo de la cuerda superior
-Pb = wcr*st*Lpan -> tonf // Carga por nudo de la cuerda inferior`),
-      { type: 'tijeral', L: 'Lt', H: 'Ht', n: 'np', tipo: 'Howe', P: 'P', Pb: 'Pb', titulo: '' },
+P = (wcob + wsc)*st*Lpan -> tonf // Carga por nudo de la cuerda superior (D + Lr)
+PDn = wcob*st*Lpan -> tonf // Parte permanente (D) de la carga por nudo
+Pb = wcr*st*Lpan -> tonf // Carga por nudo de la cuerda inferior (D)
+## Viento (E.020 Art. 12)
+V = 100 km/h // Velocidad básica a 10 m (mapa eólico, Anexo 2; ≥ 75 km/h) [75..130]
+he = 5.0 m // Altura de la cumbrera sobre el terreno [2.5 m..15 m]
+Vh = VhE020(V, he) // Velocidad de diseño (Art. 12.3; Vh = V si h ≤ 10 m)
+ph = PhE020(1, Vh) // Presión dinámica con C = 1 (Art. 12.4)
+Cbp = si(theta <= 15 deg, 0.3, si(theta <= 60 deg, 0.7, 0.8)) // Barlovento, presión (Tabla 4)
+Cbs = si(theta <= 15 deg, -0.7, si(theta <= 60 deg, -0.3, 0.8)) // Barlovento, succión (Tabla 4; sobre 60° solo presión)
+Cso = -0.6 // Sotavento (Tabla 4)
+Cpi = 0.3 // Presión o succión interior por aberturas (Art. 12.5, Tabla 5: ±0.3) [0..0.8]
+qb1 = (Cbp + Cpi)*ph*st -> kgf/m // W1 barlovento: presión exterior con succión interior
+qs1 = (Cso + Cpi)*ph*st -> kgf/m // W1 sotavento
+qb2 = (Cbs - Cpi)*ph*st -> kgf/m // W2 barlovento: succión exterior con presión interior
+qs2 = (Cso - Cpi)*ph*st -> kgf/m // W2 sotavento
+"Cargas normales a los faldones por metro de longitud inclinada (+ presión hacia la cubierta, − succión). El bloque aplica cada caso con el viento desde la izquierda y desde la derecha.`),
+      { type: 'tijeral', L: 'Lt', H: 'Ht', n: 'np', tipo: 'Howe', P: 'P', Pb: 'Pb', PD: 'PDn', W1: 'qb1, qs1', W2: 'qb2, qs2', comb: 'D + Lr\nD + W\nD + 0.75Lr + 0.75W\n0.6D + W', combu: '0.9D + 1.25W', titulo: '' },
       calc(`# Propiedades de la madera (E.010 Tablas 3 y 4)
 Emin = EminE010(grupo)
 fc = fcE010(grupo)
@@ -624,26 +641,88 @@ lambda1b = lc1/b1 // Esbeltez fuera del plano (correas como arriostre, Art. 43.1
 check max(lambda1, lambda1b) <= 50 // Esbeltez máxima en compresión (Art. 43.5)
 check lambda1b <= lambda1 // Separación de correas: esbeltez fuera del plano ≤ en el plano (Art. 43.4)
 Nadm1 = min(NadmE010(fc, Emin, A1, lambda1, Ck), NadmE010(fc, Emin, A1, lambda1b, Ck)) -> tonf // Carga admisible
-w1 = (wcob + wsc)*st -> kgf/m // Carga repartida de las correas
+wvp = max(qb1, 0 kgf/m)/cos(theta)^2 // Presión de viento equivalente en proyección horizontal (M = q Ls²/10 = q Lpan²/(10 cos²θ))
+wa1 = (wcob + wsc)*st -> kgf/m // D + Lr
+wa2 = wcob*st + wvp -> kgf/m // D + W
+wa3 = (wcob + 0.75*wsc)*st + 0.75*wvp -> kgf/m // D + 0.75Lr + 0.75W
+w1 = max(wa1, wa2, wa3) // Carga repartida de las correas (envolvente)
 M1 = w1*(Lpan)^2/10 -> kgf*m // Momento entre nudos (cuerda continua)
 Ncr1 = pi^2*Emin*b1*d1^3/12/lef1^2 -> tonf
 km1 = kmE010(Ncs, Ncr1)
-ic1 = Ncs/Nadm1 + km1*M1/(Z1*fm) // Interacción
+ic1 = Ncs/Nadm1 + km1*M1/(Z1*fm) // Interacción (Ncs: envolvente de compresión)
 check ic1 < 1 // Flexocompresión de la cuerda superior (E.010 Art. 31 y 41.6)
-# Cuerda inferior — tracción (JUNAC 11.4)
+## Inversión: flexotracción por succión (0.6D + W2)
+wsu = max(-(0.6*wcob*st + min(qb2, qs2)/cos(theta)^2), 0 kgf/m) -> kgf/m // Carga neta hacia arriba entre nudos
+M1s = wsu*Lpan^2/10 -> kgf*m // Momento entre nudos con la succión
+it1 = Nts/(0.85*A1*ft) + M1s/(Z1*fm) // Interacción flexotracción N/(An ft) + M/(Z fm)
+check it1 < 1 // Flexotracción de la cuerda superior con succión (E.010, flexotracción)
+# Cuerda inferior — tracción y compresión por inversión (JUNAC 11.4)
 b2 = 4 cm // Ancho [4..9]
 d2 = 9 cm // Sección 2" × 4" [6.5..19]
 An2 = 0.85*b2*d2 // Área neta (descuento por perforaciones de pernos)
 check Nti/An2 <= ft // Tracción en la cuerda inferior (E.010 Art. 23)
 check Lpan/b2 <= 80 // Esbeltez máxima en tracción (lef/b ≤ 80, Art. 43.5)
-# Diagonales y montantes — compresión
+Lbci = 1.40 m // Arriostre lateral de la cuerda inferior (viguetas del cielo raso o riostras longitudinales) [0.40 m..3.00 m]
+lambda2 = max(0.9*Lpan/d2, Lbci/b2) // Esbeltez: en el plano 0.9 l/d; fuera del plano Lbci/b
+check lambda2 <= 50 // Esbeltez máxima en compresión (Art. 43.5): la cuerda inferior se comprime con la succión
+Nadm2 = NadmE010(fc, Emin, b2*d2, lambda2, Ck) -> tonf
+check Nci <= Nadm2 // Compresión por inversión en la cuerda inferior (0.6D + W; E.010 Art. 30 y 43)
+# Diagonales y montantes — compresión y tracción (envolvente)
 b3 = 4 cm // Ancho [4..9]
 d3 = 6.5 cm // Sección 2" × 3" [6.5..14]
 lambda3 = max(0.9*Ldc/d3, Ldc/b3) // Esbeltez: en el plano 0.9 l/d; fuera del plano l/b (sin arriostre intermedio)
 check lambda3 <= 50 // Esbeltez máxima de la diagonal (Art. 43.5)
 Nadm3 = NadmE010(fc, Emin, b3*d3, lambda3, Ck) -> tonf
-check Ndc <= Nadm3 // Compresión en la diagonal más cargada (E.010 Art. 30 y 43)
+check Ndc <= Nadm3 // Compresión en la diagonal o montante más cargado, con inversión (E.010 Art. 30 y 43)
 check Ndt/(0.85*b3*d3) <= ft // Tracción en montantes y diagonales
+# Anclaje del tijeral a la viga solera
+"En cada apoyo la cuerda inferior se fija con un perno pasante a dos ángulos de acero A36, uno a cada lado, anclados a la viga solera con un perno de anclaje cada uno. Levantamiento máximo por apoyo: {Rup} en servicio (0.6D + W) y {Rupu} último (0.9D + 1.25W); empuje horizontal en el apoyo fijo: {Hup} y {Hupu}. El peso del muro y de la solera bajo el apoyo equilibra el levantamiento con amplitud.
+## Perno pasante en doble cizallamiento (NDS 2018 12.3, placas laterales de acero)
+dpe = 0.375 in // Diámetro del perno pasante [0.375 in|0.5 in|0.625 in] [0.375 in..0.75 in]
+tpl = 0.476 cm // Espesor del ángulo (3/16") [0.3..1.0]
+Gb = 0.56 // Densidad básica (E.010: grupo B 0.56–0.70; usar el límite inferior) [0.40..0.90]
+Fyb = 3160 kgf/cm^2 // Fluencia en flexión del perno A307 (45 ksi, NDS Tabla I1) [2500..6500]
+Fes = 1.5*4080 kgf/cm^2 // Aplastamiento del acero: 1.5 Fu del A36 (NDS 12.3.3)
+Fepe = 6100*Gb^1.45/sqrt(dpe/(1 inch))*1 psi -> kgf/cm^2 // Aplastamiento perpendicular a las fibras (NDS Tabla 12.3.3, nota 2)
+Fepa = 11200*Gb*1 psi -> kgf/cm^2 // Aplastamiento paralelo a las fibras (NDS Tabla 12.3.3, nota 2)
+k3(Fe) = -1 + sqrt(2*(1 + Fe/Fes)/(Fe/Fes) + 2*Fyb*(2 + Fe/Fes)*dpe^2/(3*Fe*tpl^2)) // Coeficiente k3 (Re = Fe/Fes)
+Z1(Fe, Kt) = min(dpe*b2*Fe/(4*Kt), 2*dpe*tpl*Fes/(4*Kt)) // Modos Im e Is (Rd = 4Kθ)
+Z3(Fe, Kt) = 2*k3(Fe)*dpe*tpl*Fe/((2 + Fe/Fes)*3.6*Kt) // Modo IIIs (Rd = 3.6Kθ)
+Z4(Fe, Kt) = 2*dpe^2/(3.6*Kt)*sqrt(2*Fe*Fyb/(3*(1 + Fe/Fes))) // Modo IV
+Zb(Fe, Kt) = min(Z1(Fe, Kt), Z3(Fe, Kt), Z4(Fe, Kt))
+Zpe = Zb(Fepe, 1.25) -> kgf // Valor de diseño perpendicular a las fibras: mín. de los modos Im, Is, IIIs y IV (Kθ = 1.25)
+Zpa = Zb(Fepa, 1) -> kgf // Valor de diseño paralelo a las fibras (Kθ = 1)
+CD = 1.6 // Factor de duración de carga para viento (NDS 2.3.2)
+check Rup/(CD*Zpe) + Hup/(CD*Zpa) <= 1 // Unión empernada: levantamiento ⊥ y empuje ∥ a las fibras (interacción lineal, conservadora)
+check 4*dpe <= d2/2 // Distancia al borde cargado ≥ 4D con el perno a media altura (NDS Tabla 12.5.1A, carga perpendicular)
+## Pernos de anclaje en la viga solera (ACI 318-19 Cap. 17; U = 0.9 CM + 1.25 CV, E.060 9.2.4)
+na = 2 // Pernos de anclaje por apoyo (uno por ángulo) [1|2]
+Ase = 0.915 cm^2 // Área efectiva en tracción del perno de 1/2" (0.142 in²) [0.3..3]
+futa = 4220 kgf/cm^2 // Resistencia a la tracción del perno A307 (60 ksi) [4220..8800]
+Abrg = 1.88 cm^2 // Área de apoyo de la tuerca hexagonal pesada de 1/2" (0.291 in²) [1..6]
+hef = 15 cm // Empotramiento efectivo [10..30]
+sa = 12 cm // Separación entre los pernos a lo largo de la solera [6..30]
+bsol = 25 cm // Ancho de la viga solera [15..40]
+hsol = 20 cm // Peralte de la viga solera [15..40]
+fcs = 175 kgf/cm^2 // Concreto de la viga solera [175..280]
+ca = bsol/2 // Distancia al borde (perno al centro de la solera)
+phiNsa = 0.75*na*Ase*futa -> tonf // Acero en tracción (17.6.1.2; φ = 0.75, acero dúctil)
+Nb = 10*sqrtMPa(fcs)/(1 MPa)*(hef/(1 mm))^1.5*1 N -> tonf // Arrancamiento básico, perno preinstalado (17.6.2.2.1, kc = 10)
+ANc = 2*min(ca, 1.5*hef)*(3*hef + (na - 1)*min(sa, 3*hef)) // Área proyectada del grupo (17.6.2.1)
+psied = si(ca < 1.5*hef, 0.7 + 0.3*ca/(1.5*hef), 1) // Efecto de borde (17.6.2.4)
+phiNcb = 0.70*ANc/(9*hef^2)*psied*Nb -> tonf // Arrancamiento del concreto, concreto fisurado (17.6.2; φ = 0.70, condición B)
+phiNpn = 0.70*na*8*Abrg*fcs -> tonf // Extracción por deslizamiento de la cabeza (17.6.3.2.2; ψc,P = 1)
+phiNn = min(phiNsa, phiNcb, phiNpn) // Resistencia de diseño en tracción
+check Rupu <= phiNn // Levantamiento último del apoyo (ACI 318-19 17.6)
+phiVsa = 0.65*na*0.6*Ase*futa -> tonf // Acero en cortante (17.7.1.2b; φ = 0.65)
+da = 0.5 inch // Diámetro del perno de anclaje
+Vbs = min(0.6*(min(hef, 8*da)/da)^0.2*sqrt(da/(1 mm))*sqrtMPa(fcs)/(1 MPa)*(ca/(1 mm))^1.5, 3.7*sqrtMPa(fcs)/(1 MPa)*(ca/(1 mm))^1.5)*1 N -> tonf // Desprendimiento básico hacia el borde (17.7.2.2.1)
+Avc = (3*ca + (na - 1)*min(sa, 3*ca))*min(1.5*ca, hsol) // Área proyectada en cortante (17.7.2.1)
+psih = max(1, sqrt(1.5*ca/hsol)) // Elemento de poco espesor (17.7.2.6)
+phiVcb = 0.70*Avc/(4.5*ca^2)*psih*Vbs -> tonf // Desprendimiento del borde de la solera (17.7.2; φ = 0.70)
+phiVn = min(phiVsa, phiVcb)
+check Hupu <= phiVn // Empuje horizontal último en el apoyo fijo (ACI 318-19 17.7)
+check Rupu/phiNn + Hupu/phiVn <= 1.2 // Interacción tracción–cortante (ACI 318-19 17.8.3)
 # Deflexión y contraflecha (E.010 Art. 42)
 "Deflexión admisible de armaduras igual a la de elementos en flexión (Art. 42.2: L/300 con cielo raso de yeso, incluyendo la deformación de los nudos); armaduras de más de 8 m llevan contraflecha mínima L/300 = {Lt/300 -> cm} (Art. 42.3).`),
       summary(),

@@ -289,6 +289,29 @@ section('Segunda opinión — tercera tanda A (extras)');
   near('Letrero: Tb = 4Mu/(n·Dbc) − 0.9·Wd/n [tonf]', l('Tb', 'tonf'), 4 * l('Mu', 'tonf*m') / (8 * 0.75) - 0.9 * l('Wd', 'tonf') / 8, 1e-6);
 }
 
+section('Segunda opinión — zapata de la torre y cámara de anclaje del pase aéreo');
+{ const g = runTemplate('ex-pase-aereo');
+  const B = 1.4, N = g('Ns', 'tonf'), Ml = g('Hd', 'tonf') * (5.5 + 1.2), Mt = g('wh', 'tonf/m') * 20 * 6.7 + g('qt', 'tonf/m') * 5.5 * (2.75 + 1.2);
+  near('Zapata: N = Pv + Wt + Wz (zapata + relleno)', N, g('Pv', 'tonf') + g('Wt', 'tonf') + 2.4 * B * B * 0.6 + 1.8 * (B * B - 0.16) * 0.6, 1e-6);
+  near('Zapata: qmax = N/B²(1 + 6el/B + 6et/B) con viento transversal', g('qmax', 'tonf/m^2'), N / (B * B) * (1 + 6 * Ml / N / B + 6 * Mt / N / B), 1e-6);
+  near('Zapata: FS volteo = N·B/2/máx(Ml, Mt)', g('FSvol'), N * B / 2 / Math.max(Ml, Mt), 1e-6);
+  const T = g('Tmax', 'tonf'), a2 = g('a2', 'deg') * Math.PI / 180, WA = 2.3 * 1.8 * 1.8 * 1.5;
+  near('Cámara: FS volteo = WA·LA/2/(Tx·ha0 + Tz·LA/2)', g('FSva'), WA * 0.9 / (T * Math.cos(a2) * 0.3 + T * Math.sin(a2) * 0.9), 1e-6);
+  near('Cámara: qmax = N/A(1 + 6e/L)', g('qA', 'tonf/m^2'), (WA - T * Math.sin(a2)) / 3.24 * (1 + 6 * (T * Math.cos(a2) * 0.3 / (WA - T * Math.sin(a2))) / 1.8), 1e-6);
+  const s2 = status(runTemplate('ex-pase-aereo', setData({ qa: '0.5 kgf/cm^2' })));
+  truthy('Pase aéreo con qa = 0.5 kg/cm²: NO CUMPLE la presión bajo la zapata', s2.bad >= 1 && s2.err === 0); }
+
+section('Segunda opinión — componente vertical de los anclajes en la base del muro anclado');
+{ const g = runTemplate('ex-muro-anclado');
+  const th = 15 * Math.PI / 180, ThS = g('T1', 'tonf/m') + g('Ti', 'tonf/m') + g('Tn', 'tonf/m');
+  near('ΣTv = ΣTh·tan α (= DL·sen α/sh por fila)', g('TvS', 'tonf/m'), ThS * Math.tan(th), 1e-9);
+  near('ΣTv = Σ DLi·sen α / sh', g('TvS', 'tonf/m'), (g('T1', 'tonf/m') + g('Ti', 'tonf/m') + g('Tn', 'tonf/m')) * 3 / Math.cos(th) * Math.sin(th) / 3, 1e-9);
+  const Nz = 2.4 * 0.3 * 9 + ThS * Math.tan(th) + 2.4 * 0.8 * 0.5, e = 0.1 * (Nz - 0.96) / Nz;
+  near('Zapata de la pantalla: q = N/(B − 2e) (Meyerhof)', g('qz', 'tonf/m^2'), Nz / (0.8 - 2 * e), 1e-9);
+  near('Último paño: q = (γc·tw·(H − Hb) + ΣTv)/tw', g('qcon', 'tonf/m^2'), (2.4 * 0.3 * 7.5 + ThS * Math.tan(th)) / 0.3, 1e-9);
+  const s2 = status(runTemplate('ex-muro-anclado', setData({ qa: '3.0 kgf/cm^2' })));
+  truthy('Muro anclado con qa = 3 kg/cm²: NO CUMPLE el hundimiento del paño durante la excavación', s2.bad >= 1 && s2.err === 0); }
+
 section('Bloques gráficos del módulo (datos por defecto)');
 for (const k of ['exEscalera', 'exCapas', 'exMaquina', 'exAcople', 'exDiafragma', 'exCable', 'exAnclado', 'exLetrero', 'exFRP', 'exPMcirc']) {
   let ok = false, info = '';

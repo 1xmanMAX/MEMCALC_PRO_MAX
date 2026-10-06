@@ -23,6 +23,9 @@ const safeId = (s) => String(s).replace(/[^A-Za-z0-9]/g, '');
 const PAL = ['#1b2733', '#1f6feb', '#8250df', '#0a7e8c', '#b35900', '#1a7f37', '#9a2d6b', '#5b6b7b'];
 const COL = { N: '#8250df', V: C.green, M: C.blue, D: C.orange, T: '#1f6feb', Cc: '#d1242f' };
 const FILL = { N: 'rgba(130,80,223,.15)', V: C.greenF, M: C.blueF };
+// recorte de rótulos al ancho disponible (≈ 0.56·fs por carácter; 0.6·fs en negrita) y sujeción dentro del viewBox
+const fitT = (s, maxW, fs = 10, bold = false) => { s = String(s); const n = Math.max(4, Math.floor(maxW / (fs * (bold ? 0.5 : 0.48)))); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
+const clampC = (x, w, W) => Math.min(Math.max(x, w / 2 + 2), Math.max(w / 2 + 2, W - w / 2 - 2));
 const TH = (x, y, s, o = {}) => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="${o.fs || 10}" fill="${o.c || C.ink}" text-anchor="${o.a || 'middle'}"${o.b ? ' font-weight="600"' : ''}${o.r ? ` transform="rotate(${o.r.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)})"` : ''} font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(s)}</text>`;
 const MK = (id, c) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`;
 const DEFS = `<defs>${MK('anB', C.blue)}${MK('anR', C.red)}${MK('anK', C.ink)}${MK('anG', C.green)}${MK('anP', '#8250df')}<pattern id="anH" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#7a8794" stroke-width="1"/></pattern></defs>`;
@@ -919,7 +922,7 @@ function drawModel(md, W) {
   }
   g += hingeGlyphs(md, v);
   md.nodes.forEach((n, k) => { g += supportGlyph(md, k, v); });
-  const lb = labeler();
+  const lb = labeler(W, v.H);
   md.nodes.forEach((n) => { const [x, y] = P(v, n); if (!md.truss) g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="${C.ink}"/>`; lb.add(x, y, 8, 8); });
   // numeración de barras
   for (const m of md.mems) {
@@ -953,8 +956,8 @@ function drawLoads(md, ci, W, maxH) {
   const lvY = [...new Set(md.nodes.map(n => Math.round(v.Y(n.y))))].sort((p, q) => p - q);
   let dyMin = Infinity; for (let k = 1; k < lvY.length; k++) if (lvY[k] - lvY[k - 1] > 4) dyMin = Math.min(dyMin, lvY[k] - lvY[k - 1]);
   const hmaxL = Math.max(8, Math.min(28, 0.4 * dyMin - 9));
-  const lb = labeler(W);
-  const ttl = c.name + (md.cdesc[c.name] ? ' — ' + md.cdesc[c.name] : '');
+  const lb = labeler(W, v.H);
+  const ttl = fitT(c.name + (md.cdesc[c.name] ? ' — ' + md.cdesc[c.name] : ''), W - 20, 11, true);
   lb.add(10 + ttl.length * 3.4, 14, ttl.length * 6.8, 18);
   if (hasPP) lb.add(10 + 70, 30, 140, 12);
   for (const l of dl) {
@@ -1007,29 +1010,34 @@ function drawLoads(md, ci, W, maxH) {
       if (l.dir === 'horiz' || l.dir === 'hproy') { dx = 1; dy = 0; } else if (l.dir === 'perp') { dx = -m.s; dy = -m.c; } else if (l.dir === 'axial') { dx = m.c; dy = -m.s; }
       const sg = l.P >= 0 ? 1 : -1, len = 36;
       g += arrow(x - dx * len * sg, y - dy * len * sg, x - dx * 2 * sg, y - dy * 2 * sg, C.red, 'anR', 1.8);
-      g += TH(x - dx * (len + 8) * sg + (dx ? 0 : 0), y - dy * (len + 6) * sg + 3, fx(l.P) + ' ' + lu, { fs: 9.5, c: C.red, b: 1 });
+      const sP = fx(l.P) + ' ' + lu, wP = sP.length * 5.7 + 4;
+      g += TH(clampC(x - dx * (len + 8) * sg, wP, W), Math.min(Math.max(y - dy * (len + 6) * sg + 3, 12), v.H - 4), sP, { fs: 9.5, c: C.red, b: 1 });
     } else {
       const ccw = l.C >= 0;
-      g += `<path d="M${x + 11},${y} A11,11 0 1,${ccw ? 0 : 1} ${x - 11},${y}" fill="none" stroke="${C.red}" stroke-width="1.5" marker-end="url(#anR)"/>` + TH(x, y - 16, fx(Math.abs(l.C)) + ' ' + lu + '·m', { fs: 9.5, c: C.red, b: 1 });
+      g += `<path d="M${x + 11},${y} A11,11 0 1,${ccw ? 0 : 1} ${x - 11},${y}" fill="none" stroke="${C.red}" stroke-width="1.5" marker-end="url(#anR)"/>` + TH(clampC(x, (fx(Math.abs(l.C)) + ' ' + lu + '·m').length * 5.7 + 4, W), Math.max(y - 16, 12), fx(Math.abs(l.C)) + ' ' + lu + '·m', { fs: 9.5, c: C.red, b: 1 });
     }
   }
   // nodales
   for (const l of c.loads.filter(q => q.t === 'N')) {
     const [x, y] = P(v, md.nodes[l.n]); const [Fx, Fy, Mz] = l.vals;
-    if (Math.abs(Fx) > 1e-12) { const sg = Fx > 0 ? 1 : -1; g += arrow(x - sg * 40, y, x - sg * 4, y, C.red, 'anR', 1.8); const p = lb.place([[x - sg * 22, y - 6], [x - sg * 22, y + 14]], 40, 11); g += TH(p ? p[0] : x - sg * 22, p ? p[1] : y - 6, fx(Fx) + ' ' + lu, { fs: 9.5, c: C.red, b: 1, a: 'middle' }); }
-    if (Math.abs(Fy) > 1e-12) { const sg = Fy > 0 ? -1 : 1; g += arrow(x, y - sg * 40, x, y - sg * 4, C.red, 'anR', 1.8); const p = lb.place([[x + 4, y - sg * 46 + 3], [x + 24, y - sg * 46 + 3], [x - 24, y - sg * 46 + 3]], 44, 11); g += TH(p ? p[0] : x, p ? p[1] : y - sg * 46, fx(Math.abs(Fy)) + ' ' + lu, { fs: 9.5, c: C.red, b: 1 }); }
-    if (Math.abs(Mz) > 1e-12) { const ccw = Mz > 0; g += `<path d="M${x + 13},${y} A13,13 0 1,${ccw ? 0 : 1} ${x - 13},${y}" fill="none" stroke="${C.red}" stroke-width="1.5" marker-end="url(#anR)"/>` + TH(x + 18, y - 14, fx(Math.abs(Mz)) + ' ' + lu + '·m', { fs: 9.5, c: C.red, b: 1, a: 'start' }); }
+    // los rótulos se colocan con el labeler (dentro del panel); si no hay sitio libre, se sujetan al borde del panel
+    if (Math.abs(Fx) > 1e-12) { const sg = Fx > 0 ? 1 : -1, s = fx(Fx) + ' ' + lu, w = s.length * 5.7 + 4; g += arrow(x - sg * 40, y, x - sg * 4, y, C.red, 'anR', 1.8); const p = lb.place([[x - sg * 22, y - 6], [x - sg * 22, y + 14], [x - sg * (w / 2 + 4), y - 6], [x + sg * (w / 2 + 6), y - 6], [x - sg * 22, y - 18]], w, 11); g += TH(p ? p[0] : clampC(x - sg * 22, w, W), p ? p[1] : Math.max(y - 6, 12), s, { fs: 9.5, c: C.red, b: 1, a: 'middle' }); }
+    if (Math.abs(Fy) > 1e-12) { const sg = Fy > 0 ? -1 : 1, s = fx(Math.abs(Fy)) + ' ' + lu, w = s.length * 5.7 + 4; g += arrow(x, y - sg * 40, x, y - sg * 4, C.red, 'anR', 1.8); const p = lb.place([[x + 4, y - sg * 46 + 3], [x + 24, y - sg * 46 + 3], [x - 24, y - sg * 46 + 3], [x + w / 2 + 5, y - sg * 24], [x - w / 2 - 5, y - sg * 24]], w, 11); g += TH(p ? p[0] : clampC(x, w, W), p ? p[1] : Math.min(Math.max(y - sg * 46, 12), v.H - 4), s, { fs: 9.5, c: C.red, b: 1 }); }
+    if (Math.abs(Mz) > 1e-12) { const ccw = Mz > 0, s = fx(Math.abs(Mz)) + ' ' + lu + '·m', w = s.length * 5.7 + 4; g += `<path d="M${x + 13},${y} A13,13 0 1,${ccw ? 0 : 1} ${x - 13},${y}" fill="none" stroke="${C.red}" stroke-width="1.5" marker-end="url(#anR)"/>`; const p = lb.place([[x + 18 + w / 2, y - 14], [x - 18 - w / 2, y - 14], [x, y - 24]], w, 11); g += TH(p ? p[0] : clampC(x + 18 + w / 2, w, W), p ? p[1] : Math.max(y - 14, 12), s, { fs: 9.5, c: C.red, b: 1 }); }
   }
   for (const l of c.loads.filter(q => q.t === 'S')) {
     const [x, y] = P(v, md.nodes[l.n]);
-    g += TH(x + 16, y + 26, 'Δ = (' + l.vals.slice(0, 2).map(q => fx(q * 1000, 1)).join('; ') + ') mm', { fs: 9, c: '#8250df', a: 'start', b: 1 });
+    const s = 'Δ = (' + l.vals.slice(0, 2).map(q => fx(q * 1000, 1)).join('; ') + ') mm', w = s.length * 5.4 + 4;
+    g += TH(clampC(x + 16 + w / 2, w, W), Math.min(y + 26, v.H - 4), s, { fs: 9, c: '#8250df', b: 1 });
   }
   g += T(10, 16, ttl, { fs: 11, b: 1, a: 'start' });
   return { svg: g, H: v.H };
 }
 // diagramas N, V o M sobre la geometría
 function drawDiagram(md, sets, key, W, opts = {}) {
-  const v = makeView(md.nodes, W, { pl: 64, pr: 64, pt: 76, pb: 56, maxH: 480 });
+  // márgenes laterales: ordenada máxima del diagrama (≤ 46) + un rótulo (≈ 40 px), para que los valores de los
+  // extremos de las columnas quepan fuera del diagrama y dentro del viewBox
+  const v = makeView(md.nodes, W, { pl: 86, pr: 86, pt: 76, pb: 56, maxH: 480 });
   let g = DEFS;
   const all = sets.flatMap(s => s.mf.flatMap(q => q[key]));
   const amax = Math.max(1e-12, ...all.map(Math.abs));
@@ -1122,7 +1130,7 @@ function drawDiagram(md, sets, key, W, opts = {}) {
     g += `<circle cx="${L.x.toFixed(1)}" cy="${L.y.toFixed(1)}" r="1.9" fill="${col}"/>` + TH(p[0], p[1], s, { fs: 9.5, c: col, b: 1 });
   }
   const title = { N: 'Fuerza axial N [' + md.U.lab + '] (+ tracción)', V: 'Fuerza cortante V [' + md.U.lab + ']', M: 'Momento flector M [' + md.U.lab + '·m] — dibujado del lado en tracción' }[key];
-  g += T(10, 16, title + (opts.sub ? ' · ' + opts.sub : ''), { fs: 11, b: 1, a: 'start' });
+  g += T(10, 16, fitT(title + (opts.sub ? ' · ' + opts.sub : ''), W - 20, 11, true), { fs: 11, b: 1, a: 'start' });
   return svgWrap(W, v.H, g);
 }
 function drawTruss(md, sets, W, opts = {}) {
@@ -1133,7 +1141,7 @@ function drawTruss(md, sets, W, opts = {}) {
   const nc = md.mems.map((m, mi) => Math.min(0, ...sets.map(s => Math.min(...s.mf[mi].N))));
   const amax = Math.max(1e-12, ...nt, ...nc.map(Math.abs));
   md.nodes.forEach((n, i) => { g += supportGlyph(md, i, v, '#7a8794'); });
-  const lb = labeler(W);
+  const lb = labeler(W, v.H);
   md.nodes.forEach(n => { const [x, y] = P(v, n); lb.add(x, y, 10, 10); });
   md.mems.forEach((m, mi) => {
     const a = P(v, md.nodes[m.i]), b = P(v, md.nodes[m.j]);
@@ -1156,7 +1164,7 @@ function drawTruss(md, sets, W, opts = {}) {
     const p = lb.place(cands.map(q => [q[0], q[1]]), Math.abs(Math.cos(ang * Math.PI / 180)) * w + 8 * Math.abs(Math.sin(ang * Math.PI / 180)), Math.abs(Math.sin(ang * Math.PI / 180)) * w + 11 * Math.abs(Math.cos(ang * Math.PI / 180)));
     if (p) g += TH(p[0], p[1], s, { fs: 9, c: col, b: 1, r: ang });
   });
-  g += T(10, 16, 'Fuerzas axiales N [' + md.U.lab + ']' + (opts.sub ? ' · ' + opts.sub : ''), { fs: 11, b: 1, a: 'start' });
+  g += T(10, 16, fitT('Fuerzas axiales N [' + md.U.lab + ']' + (opts.sub ? ' · ' + opts.sub : ''), W - 20, 11, true), { fs: 11, b: 1, a: 'start' });
   return svgWrap(W, v.H, g) + `<div class="legend"><span><i style="background:${COL.T}"></i>Tracción (+)</span><span><i style="background:${COL.Cc}"></i>Compresión (−)</span><span><i style="background:#9aa5b1"></i>Barra sin fuerza</span></div>`;
 }
 function drawDeformed(md, set, W) {
@@ -1175,14 +1183,15 @@ function drawDeformed(md, set, W) {
     g += `<path d="${d.map((p, k) => (k ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="${C.orange}" stroke-width="2" stroke-linejoin="round"/>`;
   });
   // rótulos de desplazamientos máximos
-  const lb = labeler(W);
+  const lb = labeler(W, v.H);
+  lb.add(W / 2, 14, W, 20);
   let ix = -1, iy = -1;
   md.nodes.forEach((n, i) => { if (ix < 0 || Math.abs(set.u[3 * i]) > Math.abs(set.u[3 * ix])) ix = i; if (iy < 0 || Math.abs(set.u[3 * i + 1]) > Math.abs(set.u[3 * iy + 1])) iy = i; });
   const mark = (i, txt) => { const n = md.nodes[i], x = v.X(n.x + amp * set.u[3 * i]), y = v.Y(n.y + amp * set.u[3 * i + 1]); g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${C.orange}"/>`; const w = txt.length * 5.5; const p = lb.place([[x + w / 2 + 8, y - 8], [x - w / 2 - 8, y - 8], [x + w / 2 + 8, y + 14], [x - w / 2 - 8, y + 14], [x, y - 16], [x, y + 20]], w, 11); if (p) g += TH(p[0], p[1], txt, { fs: 9.5, c: '#8a4b00', b: 1 }); };
   if (Math.abs(set.u[3 * ix]) > 1e-12) mark(ix, 'Δx = ' + fx(set.u[3 * ix] * 1000) + ' mm (nudo ' + md.nodes[ix].id + ')');
   if (Math.abs(set.u[3 * iy + 1]) > 1e-12 && iy !== ix) mark(iy, 'Δy = ' + fx(set.u[3 * iy + 1] * 1000) + ' mm (nudo ' + md.nodes[iy].id + ')');
   else if (Math.abs(set.u[3 * iy + 1]) > 1e-12) mark(iy, 'Δy = ' + fx(set.u[3 * iy + 1] * 1000) + ' mm');
-  g += T(10, 16, 'Deformada · ' + set.name + ' · amplificación ×' + f2(amp, 0), { fs: 11, b: 1, a: 'start' });
+  g += T(10, 16, fitT('Deformada · ' + set.name + ' · amplificación ×' + f2(amp, 0), W - 20, 11, true), { fs: 11, b: 1, a: 'start' });
   return svgWrap(W, v.H, g);
 }
 
@@ -1207,7 +1216,7 @@ function drawModes(md, modal, W) {
         }
         p += `<path d="${d.map((pt, i) => (i ? 'L' : 'M') + pt[0].toFixed(1) + ',' + pt[1].toFixed(1)).join(' ')}" fill="none" stroke="${C.orange}" stroke-width="1.8" stroke-linejoin="round"/>`;
       }
-      p += T(10, 16, 'Modo ' + (r * cols + k + 1), { fs: 11, b: 1, a: 'start' }) + T(10, 30, 'T = ' + f2(q.T, 3) + ' s' + (modal.Mtot[0] > 0 ? ' · Mx ' + f2(100 * q.mef[0], 1) + ' %' : '') + (modal.Mtot[1] > 0 ? ' · My ' + f2(100 * q.mef[1], 1) + ' %' : ''), { fs: 9.5, c: '#5b6b7b', a: 'start' });
+      p += T(10, 16, 'Modo ' + (r * cols + k + 1), { fs: 11, b: 1, a: 'start' }) + T(10, 30, fitT('T = ' + f2(q.T, 3) + ' s' + (modal.Mtot[0] > 0 ? ' · Mx ' + f2(100 * q.mef[0], 1) + ' %' : '') + (modal.Mtot[1] > 0 ? ' · My ' + f2(100 * q.mef[1], 1) + ' %' : ''), pw - 20, 9.5), { fs: 9.5, c: '#5b6b7b', a: 'start' });
       row.push([k, p]); rh = Math.max(rh, v.H);
     });
     row.forEach(([k, p]) => { g += `<g transform="translate(${k * pw} ${H})">${p}</g>`; if (k) g += Lne(k * pw, H + 6, k * pw, H + rh - 6, C.grid, 1); });

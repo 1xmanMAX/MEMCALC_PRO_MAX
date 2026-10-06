@@ -228,6 +228,15 @@ function rayCap(poly, ax, ay) {
 // ---------------------------------------------------------------------
 //  Dibujos
 // ---------------------------------------------------------------------
+// rótulos de demanda: recorte con elipsis al espacio disponible y cambio de lado si no caben (dentro del viewBox)
+const fitT = (s, maxW, fs = 9.5, bold = true) => { s = String(s); const n = Math.max(3, Math.floor(maxW / (fs * (bold ? 0.55 : 0.52)))); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
+function demLabel(x, y, s, right, W, H, col) {
+  const cw = 9.5 * 0.55, wl = s.length * cw, roomR = W - 3 - (x + 7), roomL = x - 7 - 3;
+  let side = right;
+  if (side && wl > roomR && roomL > roomR) side = false; else if (!side && wl > roomL && roomR > roomL) side = true;
+  const lab = fitT(s, side ? roomR : roomL), lx = side ? x + 7 : x - 7, ly = Math.min(Math.max(y, 11), H - 4);
+  return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="9.5" font-weight="600" fill="${col}" text-anchor="${side ? 'start' : 'end'}" font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(lab)}</text>`;
+}
 function drawSection(sec, cores, W, Hmax, title) {
   const xs = sec.corners.map(c => c[0]), ys = sec.corners.map(c => c[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
@@ -242,7 +251,7 @@ function drawSection(sec, cores, W, Hmax, title) {
   sec.rects.forEach(r => { g += `<rect x="${X(r.x0) + 0.7}" y="${Y(r.y0 + r.h) + 0.7}" width="${Math.max(0, r.b * sc - 1.4)}" height="${Math.max(0, r.h * sc - 1.4)}" fill="${C.conc}" stroke="none"/>`; });
   cores.forEach(r => {
     g += `<rect x="${X(r.x0)}" y="${Y(r.y0 + r.h)}" width="${r.b * sc}" height="${r.h * sc}" fill="rgba(209,36,47,.07)" stroke="${C.red}" stroke-width="1.3" rx="2"/>`;
-    if (r.lab) g += T(X(r.x0 + r.b / 2), Y(r.y0) + 13, r.lab, { fs: 9, c: C.red });
+    if (r.lab) g += T(X(r.x0 + r.b / 2), Y(r.y0) + 13, fitT(r.lab, Math.max(40, r.b * sc + 30), 9, false), { fs: 9, c: C.red });
   });
   const rmin = 2.2;
   sec.bars.forEach(b => { g += `<circle cx="${X(b.x).toFixed(1)}" cy="${Y(b.y).toFixed(1)}" r="${Math.max(rmin, b.d / 2 * sc).toFixed(1)}" fill="${C.steel}"/>`; });
@@ -254,7 +263,7 @@ function drawSection(sec, cores, W, Hmax, title) {
   // leyenda de barras
   const grp = {}; sec.bars.forEach(b => { grp[b.lab] = (grp[b.lab] || 0) + 1; });
   const leg = Object.entries(grp).map(([k, v]) => v + ' Ø' + k.replace(/^Ø/, '')).join(' + ');
-  g += T(W / 2, H - 6, (title ? title + ' · ' : '') + leg + ' · As = ' + f2(sec.Ast) + ' cm² · ρ = ' + f2(100 * sec.Ast / sec.Ag, 2) + '%', { fs: 10, c: C.axis });
+  g += T(W / 2, H - 6, fitT((title ? title + ' · ' : '') + leg + ' · As = ' + f2(sec.Ast) + ' cm² · ρ = ' + f2(100 * sec.Ast / sec.Ag, 2) + '%', W - 8, 10, false), { fs: 10, c: C.axis });
   return svgWrap(W, H, g);
 }
 function drawPM(cpos, cneg, dem, W, H, title, uM = 't·m') {
@@ -278,7 +287,7 @@ function drawPM(cpos, cneg, dem, W, H, title, uM = 't·m') {
     const ok = d.dc <= 1, lx = X(d.M) + (d.M >= 0 ? 7 : -7); let ly = Y(d.P) - 6;
     for (let k = 0; k < 6 && placed.some(q => Math.abs(q.x - lx) < 70 && Math.abs(q.y - ly) < 11); k++) ly += 12;
     placed.push({ x: lx, y: ly });
-    g += `<circle cx="${X(d.M)}" cy="${Y(d.P)}" r="4.2" fill="${ok ? C.green : C.red}" stroke="#fff"/>` + `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="9.5" font-weight="600" fill="${ok ? C.green : C.red}" text-anchor="${d.M >= 0 ? 'start' : 'end'}" font-family="Inter,Segoe UI,Arial" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(d.lab || 'P' + (i + 1))}</text>`;
+    g += `<circle cx="${X(d.M)}" cy="${Y(d.P)}" r="4.2" fill="${ok ? C.green : C.red}" stroke="#fff"/>` + demLabel(X(d.M), ly, d.lab || 'P' + (i + 1), d.M >= 0, W, H, ok ? C.green : C.red);
   });
   g += T((pl + W - pr) / 2, H - 8, title + ' [' + uM + ']', { fs: 10.5 }) + T(14, (pt + H - pb) / 2, 'P [t]', { fs: 10.5, r: -90 });
   g += Lne(W - pr - 150, pt + 6, W - pr - 128, pt + 6, C.axis, 1.3, '6 4') + T(W - pr - 124, pt + 9, 'Pn, Mn', { fs: 9, a: 'start' }) + Lne(W - pr - 80, pt + 6, W - pr - 58, pt + 6, C.blue, 2) + T(W - pr - 54, pt + 9, 'φPn, φMn', { fs: 9, a: 'start' });
@@ -293,8 +302,8 @@ function drawContour(poly, dem, Pu, W, H) {
   niceTicks(-R, R, 6).forEach(t => { g += Lne(X(t), Y(R), X(t), Y(-R), C.grid, 0.7) + T(X(t), Y(-R) + 13, f2(t, 0), { fs: 9, c: C.axis }) + Lne(X(-R), Y(t), X(R), Y(t), C.grid, 0.7) + T(X(-R) - 5, Y(t) + 3, f2(t, 0), { fs: 9, c: C.axis, a: 'end' }); });
   g += Lne(X(-R), Y(0), X(R), Y(0), C.ink, 1) + Lne(X(0), Y(R), X(0), Y(-R), C.ink, 1);
   g += `<path d="${pts.map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ',' + Y(p.y).toFixed(1)).join(' ')} Z" fill="${C.blueF}" stroke="${C.blue}" stroke-width="2"/>`;
-  dem.forEach((d, i) => { const ok = d.dc <= 1; g += Lne(X(0), Y(0), X(d.Mx), Y(d.My), ok ? C.green : C.red, 1, '3 2') + `<circle cx="${X(d.Mx)}" cy="${Y(d.My)}" r="4.2" fill="${ok ? C.green : C.red}" stroke="#fff"/>` + T(X(d.Mx) + 7, Y(d.My) - 6, d.lab || 'P' + (i + 1), { fs: 9.5, a: 'start', c: ok ? C.green : C.red, b: 1 }); });
-  g += T(X(0), oy + sz + 34, 'φMnx [t·m]  —  contorno de carga para Pu = ' + f2(Pu) + ' t', { fs: 10.5 }) + T(ox - 34, Y(0), 'φMny [t·m]', { fs: 10.5, r: -90 });
+  dem.forEach((d, i) => { const ok = d.dc <= 1; g += Lne(X(0), Y(0), X(d.Mx), Y(d.My), ok ? C.green : C.red, 1, '3 2') + `<circle cx="${X(d.Mx)}" cy="${Y(d.My)}" r="4.2" fill="${ok ? C.green : C.red}" stroke="#fff"/>` + demLabel(X(d.Mx), Y(d.My) - 6, d.lab || 'P' + (i + 1), d.Mx <= 0.5 * R, W, oy + sz + 44, ok ? C.green : C.red); });
+  g += T(X(0), oy + sz + 34, fitT('φMnx [t·m]  —  contorno de carga para Pu = ' + f2(Pu) + ' t', W - 8, 10.5, false), { fs: 10.5 }) + T(ox - 34, Y(0), 'φMny [t·m]', { fs: 10.5, r: -90 });
   return svgWrap(W, oy + sz + 44, g);
 }
 

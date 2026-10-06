@@ -496,6 +496,35 @@ export function wminJ2(t) {
 export function wmaxJ2(t) { const i = t / 0.0254; return i < 0.25 ? t : t - 0.0254 / 16; }
 
 // ---------------------------------------------------------------------
+//  Viga con el ala superior recortada (coped beam) — AISC Manual, Parte 9 (15.ª/16.ª ed.)
+//  Sección T remanente: ala inferior bf×tf + alma tw de altura ho − tf, con ho = d − dc (sin filetes).
+//  Resistencia a flexión en la cara del recorte (Dowswell y Whyte, EJ 2018 Q4; Manual Ec. 9-6 a 9-14):
+//    λ = ho/tw, k = 2.2(ho/c)^1.65 (c/ho ≤ 1) o 2.2·ho/c, f = 2c/d (c/d ≤ 1) o 1 + c/d ≤ 3,
+//    k1 = f·k ≥ 1.61, λp = 0.475√(k1E/Fy); Mn = Mp (λ ≤ λp), Mp − (Mp − My)(λ/λp − 1) (λ ≤ 2λp),
+//    Fcr·Snet con Fcr = 0.903Ek1/λ² (λ > 2λp).  φb = 0.90.
+// ---------------------------------------------------------------------
+export function copeAISC(sh, dc, c, Fy, E = ES) {
+  const s = getShape(sh);
+  if (s.fam !== 'I') throw new Error('Recorte de viga: válido para perfiles W/S/M/HP (familia I)');
+  const d = P(s, 'd'), bf = P(s, 'bf'), tf = P(s, 'tf'), tw = P(s, 'tw');
+  if (!(dc > 0 && dc < d / 2)) throw new Error('Profundidad del recorte dc fuera de rango (0 < dc < d/2; Manual Parte 9)');
+  if (!(c > 0)) throw new Error('Longitud del recorte c debe ser positiva');
+  const ho = d - dc, hw = ho - tf;
+  const Af = bf * tf, Aw = tw * hw, A = Af + Aw;
+  const yb = (Af * tf / 2 + Aw * (tf + hw / 2)) / A;                        // centroide desde el borde inferior
+  const I = bf * tf ** 3 / 12 + Af * (yb - tf / 2) ** 2 + tw * hw ** 3 / 12 + Aw * (tf + hw / 2 - yb) ** 2;
+  const Snet = I / Math.max(yb, ho - yb);
+  let Znet;                                                                 // eje neutro plástico (área igual a ambos lados)
+  if (Af >= A / 2) { const yp = A / 2 / bf; Znet = bf * yp * yp / 2 + bf * (tf - yp) ** 2 / 2 + Aw * (tf + hw / 2 - yp); }
+  else { const yp = tf + (A / 2 - Af) / tw; Znet = Af * (yp - tf / 2) + tw * (yp - tf) ** 2 / 2 + tw * (ho - yp) ** 2 / 2; }
+  const lam = ho / tw, k = c / ho <= 1 ? 2.2 * (ho / c) ** 1.65 : 2.2 * ho / c, f = c / d <= 1 ? 2 * c / d : Math.min(1 + c / d, 3);
+  const k1 = Math.max(f * k, 1.61), lp = 0.475 * Math.sqrt(k1 * E / Fy);
+  const Mp = Fy * Znet, My = Fy * Snet, Fcr = 0.903 * E * k1 / (lam * lam);
+  const Mn = lam <= lp ? Mp : lam <= 2 * lp ? Mp - (Mp - My) * (lam / lp - 1) : Fcr * Snet;
+  return { ho, Snet, Znet, lam, k, f, k1, lp, Mp, My, Fcr, Mn };
+}
+
+// ---------------------------------------------------------------------
 //  Registro de funciones para el editor
 // ---------------------------------------------------------------------
 const famArgs = (sh) => getShape(sh);
@@ -539,6 +568,10 @@ defineFns({
   wminJ2: { fn: (t) => mkUnit(wminJ2(Mt(t)), 'm').to('in'), tex: 'w_{min}', desc: 'Tamaño mínimo de soldadura de filete (Tabla J2.4)', args: 't (más delgada)' },
   wmaxJ2: { fn: (t) => mkUnit(wmaxJ2(Mt(t)), 'm').to('in'), tex: 'w_{max}', desc: 'Tamaño máximo de filete en bordes (J2.2b)', args: 't' },
   // --- Bloque de cortante, tracción, alma ---
+  SnetCope: { fn: (sh, dc) => mkUnit(copeAISC(sh, Mt(dc), 1, 345e6).Snet, 'm^3').to(lenU() + '^3'), tex: 'S_{net}', desc: 'Módulo elástico de la sección T remanente de una viga con el ala superior recortada (Manual AISC, Parte 9; sin filetes)', args: 'perfil, dc' },
+  ZnetCope: { fn: (sh, dc) => mkUnit(copeAISC(sh, Mt(dc), 1, 345e6).Znet, 'm^3').to(lenU() + '^3'), tex: 'Z_{net}', desc: 'Módulo plástico de la sección T remanente de una viga con el ala superior recortada (Manual AISC, Parte 9)', args: 'perfil, dc' },
+  MnCope: { fn: (sh, dc, c, Fy, E) => out(copeAISC(sh, Mt(dc), Mt(c), Pa(Fy), Pa(E, ES)).Mn, 'M'), tex: 'M_{n,rec}', desc: 'Resistencia nominal a flexión en la cara del recorte del ala superior: fluencia (Mp), transición lineal o pandeo local del alma Fcr·Snet (Manual AISC 15.ª/16.ª ed., Ec. 9-6 a 9-14); φb = 0.90', args: 'perfil, dc, c, Fy, E' },
+  lambdaCope: { fn: (sh, dc, c, Fy, E) => { const r = copeAISC(sh, Mt(dc), Mt(c), Pa(Fy), Pa(E, ES)); return r.lam / r.lp; }, tex: '\\lambda/\\lambda_p', desc: 'Esbeltez relativa del alma recortada λ/λp (Manual AISC, Ec. 9-11 y 9-12): ≤ 1 fluencia; ≤ 2 transición; > 2 pandeo elástico', args: 'perfil, dc, c, Fy, E' },
   RnBloque: { fn: (Agv, Anv, Ant, Fy, Fu, Ubs) => { const u = Ubs === undefined ? 1 : nd(Ubs); const fu = Pa(Fu); return out(Math.min(0.6 * fu * M2(Anv) + u * fu * M2(Ant), 0.6 * Pa(Fy) * M2(Agv) + u * fu * M2(Ant)), 'F'); }, tex: 'R_{n,bs}', desc: 'Resistencia por bloque de cortante (AISC J4-5)', args: 'Agv, Anv, Ant, Fy, Fu, Ubs' },
   UD3: { fn: (xb, l) => 1 - Mt(xb) / Mt(l), tex: 'U', desc: 'Factor de retraso de cortante U = 1 − x̄/l (Tabla D3.1, caso 2)', args: 'x̄, l' },
   RnJ10y: { fn: (Fy, tw, k, lb, x, d) => { const ext = x !== undefined && d !== undefined && Mt(x) <= Mt(d); return out(Pa(Fy) * Mt(tw) * ((ext ? 2.5 : 5) * Mt(k) + Mt(lb)), 'F'); }, tex: 'R_{n,J10.2}', desc: 'Fluencia local del alma (AISC J10-2/J10-3)', args: 'Fy, tw, k, lb, x, d' },

@@ -1,5 +1,6 @@
 // Pruebas del módulo «bridges» (AASHTO LRFD / MTC 2018) — ver docs/referencias/bridges.md
 import { near, truthy, calc, block, runTemplate, section, done, TEMPLATES } from './helpers.mjs';
+import { settings, valTex } from '../src/engine.js';
 
 section('Factores de distribución — FHWA, ejemplo de viga PSC (Design Step 5.1): S = 9.667 ft, L = 110 ft, ts = 8 in, Kg = 2 984 704 in⁴, esviaje 20°');
 let v = calc(`S = 9.667 ft
@@ -247,5 +248,25 @@ for (const t of TEMPLATES.filter(x => x.id.startsWith('br-'))) {
   truthy('neopreno: SVG con 5 zunchos (×5), 4 capas interiores (×4) y H = 75 mm', /<svg/.test(g.html) && /\(×5\)/.test(g.html) && /\(×4\)/.test(g.html) && /H = 75 mm/.test(g.html));
   const t = runTemplate('br-neopreno').res;
   truthy('br-neopreno: incluye la figura del apoyo', /Apoyo de neopreno zunchado/.test(t.html) && t.ctx.errors.length === 0);
+}
+section('Segunda opinión — M8: fuerzas y momentos de carga viva en la unidad del sistema del documento');
+{
+  const prev = settings.sys, res = {};
+  for (const sys of ['tec', 'si', 'us']) {
+    settings.sys = sys;
+    const g = calc('Vf = VfatLRFD(20 m)\nMf = MfatLRFD(20 m)\nMx = MxLRFD(20 m, 10 m, 1)\nVx = VxLRFD(20 m, 0 m, 3)\nBR = BRLRFD(20 m, 2)\nFt = FtLRFD(4)');
+    res[sys] = { g, tex: ['Vf', 'Mf', 'Mx', 'Vx', 'BR', 'Ft'].map(n => valTex(g.ctx.scope.get(n))).join(' ') };
+  }
+  settings.sys = prev;
+  const U = { tec: ['tonf', 'tonf'], si: ['kN', 'kN'], us: ['kip', 'kip'] };
+  for (const sys of ['tec', 'si', 'us']) {
+    const t = res[sys].tex, otros = Object.keys(U).filter(k => k !== sys).map(k => U[k][0]);
+    truthy(`Sistema «${sys}»: VfatLRFD, MfatLRFD, MxLRFD, VxLRFD, BRLRFD y FtLRFD se muestran en ${U[sys][0]}`, t.includes('\\mathrm{' + U[sys][0]) && otros.every(o => !t.includes('\\mathrm{' + o)), t);
+  }
+  near('VfatLRFD: mismo valor físico en kip y en tonf', res.us.g('Vf', 'tonf'), res.tec.g('Vf', 'tonf'), 1e-9);
+  near('MfatLRFD: mismo valor físico en kip·ft y en tonf·m', res.us.g('Mf', 'tonf*m'), res.tec.g('Mf', 'tonf*m'), 1e-9);
+  near('VfatLRFD(20 m) = 14.52 + 14.52·11/20 + 3.63·6.7/20 (ejes a 4.3 y 9.0 m) [tonf]', res.si.g('Vf', 'tonf'), 14.52 + 14.52 * 11 / 20 + 3.63 * 6.7 / 20, 1e-6);
+  const h = runTemplate('br-acero').res.html;
+  truthy('br-acero (memoria en kip): la sustitución del rango de cortante de fatiga no muestra tonf', !/tonf/.test(h));
 }
 done();

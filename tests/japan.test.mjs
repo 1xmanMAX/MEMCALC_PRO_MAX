@@ -204,7 +204,7 @@ section('Plantillas con datos extremos: deben pasar a NO CUMPLE sin errores ni N
     ['jp-aij-viga', [['sw = 125 mm', 'sw = 300 mm'], ['M_E = 175 kN*m', 'M_E = 400 kN*m']], ['Separación', 'Flexión de corto plazo', 'pw ≥ 0.2']],
     ['jp-aij-columna', [['M_E = 330 kN*m', 'M_E = 900 kN*m'], ['nw = 4', 'nw = 2']], ['N máx', 'Qsu']],
     ['jp-aij-acero', [['lb = 2.4 m', 'lb = 7.2 m'], ['wL = 17.5 kN/m', 'wL = 45 kN/m']], ['Flexión de largo plazo', 'Deflexión']],
-    ['jp-madera-kaberyo', [['8.19 0 10.92 0 2.5', '8.19 0 8.5 0 1.0'], ['0 7.28 3.64 7.28 2.5', '0 7.28 1.0 7.28 1.0'], ['techo = 1', 'techo = 2']], ['Longitud efectiva en X']],
+    ['jp-madera-kaberyo', [['8.19 0 10.92 0 2.5', '8.19 0 8.5 0 1.0'], ['0 7.28 3.64 7.28 2.5', '0 7.28 1.0 7.28 1.0'], ['cub = 1', 'cub = 3']], ['Longitud efectiva en X']],
     ['jp-madera-kaberyo', [['0 0 0 2.73 2.5', '0 0 0 0.5 1.0'], ['0 4.55 0 7.28 2.5', '0 4.55 0 5.0 1.0']], ['Balance yonbun-wari en Y']],
     ['jp-bsl-viento-nieve', [['ds = 30 cm', 'ds = 150 cm'], ['QE1 = 1450 kN', 'QE1 = 150 kN']], ['nieve', 'sismo controla']],
     ['jp-jra-espectro', [['Pa = 8200 kN', 'Pa = 5000 kN']], ['tipo I', 'tipo II']],
@@ -237,7 +237,33 @@ section('Segunda opinión — tercera tanda B (JRA: desplazamiento residual; kab
   near('JRA: δR = cR(μr − 1)(1 − r)δy [mm]', j('dR', 'mm'), 0.6 * (muR - 1) * 40, 1e-6);
   const j2 = runTemplate('jp-jra-espectro', subT([['dy = 0.040 m', 'dy = 0.12 m']]));
   truthy('JRA con δy = 0.12 m: NO CUMPLE δR ≤ h/100', j2.res.ctx.checks.some(c => !c.ok && /residual/.test(c.label)));
-  const k = runTemplate('jp-madera-kaberyo', subT([['cw1v = 0 cm/m^2', 'cw1v = 40 cm/m^2']]));
-  near('Kabe-ryo: cw del 1F = máx(tabla anterior, valor vigente)', k('cw1', 'cm/m^2'), 40, 1e-9);
+}
+section('Segunda opinión — M5: cantidad de muros vigente desde abril de 2025 (Notif. 1100 parte 3; hoja oficial HOWTEC)');
+{ const subT = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  // Ejemplo del MLIT (material complementario, 8-07-2024, p. 5): 2F 2.86 m, 1F 3.00 m, 50 + 50 m², teja sin barro, siding, paneles → 46 y 28 cm/m²
+  const f = calc('a = kabeBSL25(1, 2, 3, 3, 1, 3.0 m, 2.86 m, 1, 0.2)\nb = kabeBSL25(2, 2, 3, 3, 1, 3.0 m, 2.86 m, 1, 0.2)\nc = kabeBSL25(1, 2, 3, 3, 0, 3.0 m, 2.86 m, 1, 0.2)\nd = kabeBSL25(1, 2, 3, 3, 1, 3.0 m, 2.86 m, 1, 0.3)\ne = kabeBSL25(1, 1, 1, 3, 0, 2.8 m, 0 m, 1, 0.2)');
+  near('kabeBSL25: ejemplo del MLIT, 1F = 46 cm/m²', f('a', 'cm/m^2'), 46, 1e-9);
+  near('kabeBSL25: ejemplo del MLIT, 2F = 28 cm/m²', f('b', 'cm/m^2'), 28, 1e-9);
+  truthy('kabeBSL25: sin paneles solares la longitud requerida baja', f('c', 'cm/m^2') < 46);
+  near('kabeBSL25: con C0 = 0.3 (suelo blando) ≈ 1.5 × (redondeo al entero superior)', f('d', 'cm/m^2'), Math.ceil(0.3 / 0.2 * 4.4764286 / 0.0196 * 0.2 - 1e-9), 1e-9);
+  { const w = 0.65 + 0.10 + 0.5 * ((Math.ceil(600 * 45 * 2.8 / 99 * 0.91 / 10 - 1e-9) * 10 + Math.ceil(70 * 45 * 2.8 / 99 * 0.91 / 10 - 1e-9) * 10 + Math.ceil(400 * 45 * 2.8 / 99 * 0.09 / 10 - 1e-9) * 10 + 200) / 1000);
+    near('kabeBSL25: vivienda de 1 piso = ⌈0.2·w/0.0196⌉ a mano', f('e', 'cm/m^2'), Math.ceil(0.2 * w / 0.0196 - 1e-9), 1e-9); }
+  const m = runTemplate('jp-madera-kaberyo', subT([['cub = 1', 'cub = 3'], ['h1 = 2.9 m', 'h1 = 3.0 m'], ['h2 = 2.8 m', 'h2 = 2.86 m'], ['A2 = 7.28 m*7.28 m', 'A2 = A1']]));
+  near('Plantilla con los datos del ejemplo del MLIT: Lw1 = 46 cm/m²', m('Lw1', 'cm/m^2'), 46, 1e-9);
+  near('Plantilla con los datos del ejemplo del MLIT: Lw2 = 28 cm/m²', m('Lw2', 'cm/m^2'), 28, 1e-9);
+  const k = runTemplate('jp-madera-kaberyo');
+  near('Kabe-ryo: paso a paso = función kabeBSL25 (1F)', k('Lw1', 'cm/m^2'), k('Lw1_lib', 'cm/m^2'), 1e-9);
+  near('Kabe-ryo: Ai del 2F = 1 + (1/√α − α)·2T/(1 + 3T), T = 0.03·(0.5 + 2.9 + 2.8 + 0.9)', k('Ai2'), (() => { const a = k('W2', 'kN') / k('W1', 'kN'), T = 0.03 * 7.1; return 1 + (1 / Math.sqrt(a) - a) * 2 * T / (1 + 3 * T); })(), 1e-9);
+  near('Kabe-ryo: por defecto c_w del 1F = procedimiento vigente (32 cm/m²)', k('cw1', 'cm/m^2'), 32, 1e-9);
+  near('Kabe-ryo: la tabla anterior se conserva para comparación (29 cm/m²)', k('cw1a', 'cm/m^2'), 29, 1e-9);
+  const o = runTemplate('jp-madera-kaberyo', subT([['metodo = 2', 'metodo = 1']]));
+  truthy('Kabe-ryo con metodo = 1: c_w = tabla anterior (29 y 15 cm/m²), sin errores', Math.abs(o('cw1', 'cm/m^2') - 29) < 1e-9 && Math.abs(o('cw2', 'cm/m^2') - 15) < 1e-9 && o.res.ctx.errors.length === 0);
+  const t1 = runTemplate('jp-madera-kaberyo', subT([['niv = 2', 'niv = 1']]));
+  truthy('Kabe-ryo con 1 piso: sin errores y Lw1 = kabeBSL25(1, 1, …)', t1.res.ctx.errors.length === 0 && Math.abs(t1('Lw1', 'cm/m^2') - t1('Lw1_lib', 'cm/m^2')) < 1e-9, t1.res.ctx.errors.map(e => e.msg).join('; '));
+  // Multiplicador de muro: hasta 7.0 con el criterio vigente, 5.0 con el anterior
+  const w7 = block('kaberyo', { Lx: '8', Ly: '8', coef: '30 cm/m^2', kmax: '7', muros: '0 0 4 0 6.5\n0 8 2 8 2\n0 0 0 4 2.5\n8 0 8 4 2.5' });
+  truthy('kaberyo: multiplicador 6.5 admitido con kmax = 7 (reforma de 2025)', Math.abs(w7('LeX', 'm') - (4 * 6.5 + 2 * 2)) < 1e-9);
+  let err = ''; try { block('kaberyo', { Lx: '8', Ly: '8', coef: '30 cm/m^2', kmax: '5', muros: '0 0 4 0 6.5\n0 8 2 8 2\n0 0 0 4 2.5\n8 0 8 4 2.5' }); } catch (e) { err = e.message; }
+  truthy('kaberyo: multiplicador 6.5 rechazado con kmax = 5 (criterio anterior)', /fuera de rango/.test(err), err);
 }
 done();

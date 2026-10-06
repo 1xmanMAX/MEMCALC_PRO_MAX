@@ -370,4 +370,32 @@ section('Segunda opinión — segunda tanda (st-placa-base)');
   const g2 = runTemplate('st-placa-base', sub2([['Nua = 4 tonf', 'Nua = 7.5 tonf']]));
   truthy('Placa base: Nua = 7.5 t ≤ φNcbg (9.14 t) pero > 0.75·φNcbg → NO CUMPLE con sismo', g2.res.ctx.checks.some(c => !c.ok && /con sismo/.test(c.label)) && g2.res.ctx.checks.filter(c => /^Arrancamiento del concreto \(si no/.test(c.label)).every(c => c.ok));
 }
+section('Segunda opinión — st-shear-tab: viga con ala recortada (Manual AISC Partes 9 y 10)');
+{ // Ejemplo publicado: Dowswell y Whyte, «Local Strength of Single-Coped Beams», EJ 2018 Q4 (W18×35, dc = 2 in, c = 7.5 in, e = 8 in)
+  const prev = settings.sys; settings.sys = 'us';
+  const k = calc('Sn = SnetCope("W18X35", 2 in)\nZn = ZnetCope("W18X35", 2 in)\nMn = MnCope("W18X35", 2 in, 7.5 in, 50 ksi)\nrl = lambdaCope("W18X35", 2 in, 7.5 in, 50 ksi)');
+  settings.sys = prev;
+  near('Coped W18×35: Snet = 18.2 in³ (Manual Tabla 9-2)', k('Sn', 'in^3'), 18.2, 0.003);
+  near('Coped W18×35: Znet = 32.1 in³ (Design Examples Tabla IV-11)', k('Zn', 'in^3'), 32.1, 0.003);
+  near('Coped W18×35: λ/λp = 52.3/28.7 (transición, Ec. 9-7)', k('rl'), 52.3 / 28.7, 0.003);
+  near('Coped W18×35: Mn = 1 030 kip·in (Ec. 9-7)', k('Mn', 'kip*in'), 1030, 0.005);
+  near('Coped W18×35: φRn = 0.9·Mn/e = 116 kip', 0.9 * k('Mn', 'kip*in') / 8, 116, 0.005);
+  const sub = (pairs) => (d) => { for (const [a, b] of pairs) { let hit = false; d.blocks.forEach(x => { if (typeof x.src === 'string' && x.src.includes(a)) { x.src = x.src.replace(a, b); hit = true; } }); if (!hit) throw new Error('No se encontró: ' + a); } };
+  const g = runTemplate('st-shear-tab');
+  const Ip = 2 * (3.75 ** 2 + 11.25 ** 2), tw = g('tw', 'cm'), dhc = g('dh', 'cm') + 0.159;
+  near('Shear tab: componente horizontal del perno extremo M·y/Ip = 18·7.5·11.25/Ip [t]', g('Rhx', 'tonf'), 18 * 7.5 * 11.25 / Ip, 1e-6);
+  near('Shear tab: desgarramiento horizontal 0.75·1.2·(leb − dh/2)·tw·Fu [t]', g('phirwh', 'tonf'), 0.75 * 1.2 * (4 - g('dh', 'cm') / 2) * tw * 4570 / 1000, 1e-6);
+  { const Agv = (5 + 3 * 7.5) * tw, Anv = Agv - 3.5 * dhc * tw, Ant = (4 - dhc / 2) * tw;
+    near('Shear tab: bloque de cortante del alma recortada (J4-5) a mano [t]', g('phiRbsw', 'tonf'), 0.75 * Math.min(0.6 * 4570 * Anv + 4570 * Ant, 0.6 * 3515 * Agv + 4570 * Ant) / 1000, 1e-6); }
+  near('Shear tab: fluencia por cortante de la sección recortada 0.6·Fy·(d − dc)·tw [t]', g('phiVyb', 'tonf'), 0.6 * 3515 * (g('d', 'cm') - 3.5) * tw / 1000, 1e-6);
+  near('Shear tab: φMn paso a paso (Ec. 9-6 a 9-14) = función MnCope', g('Mnr', 'tonf*m'), g('Mnr_lib', 'tonf*m'), 1e-9);
+  near('Shear tab: Mu en la cara del recorte = Vu·(c + holgura) = 18·0.138 t·m', g('Mur', 'tonf*m'), 18 * 0.138, 1e-9);
+  const nc = (r) => r.res.ctx.checks.filter(c => !c.ok).map(c => c.label);
+  const g1 = runTemplate('st-shear-tab', sub([['leb = 4 cm', 'leb = 2.5 cm']]));
+  truthy('Shear tab con leb = 2.5 cm: NO CUMPLE desgarramiento horizontal del alma y leb ≥ 2db', nc(g1).some(l => /Desgarramiento horizontal/.test(l)) && nc(g1).some(l => /extremo de la viga ≥ 2db/.test(l)) && g1.res.ctx.errors.length === 0, nc(g1).join(' | '));
+  const g2 = runTemplate('st-shear-tab', sub([['cr = 12.5 cm', 'cr = 30 cm'], ['dc = 3.5 cm', 'dc = 10 cm'], ['Vu = 18 tonf', 'Vu = 30 tonf']]));
+  truthy('Shear tab con recorte de 30 × 10 cm y Vu = 30 t: NO CUMPLE flexión/pandeo en la cara del recorte', nc(g2).some(l => /cara del recorte/.test(l)) && g2.res.ctx.errors.length === 0, nc(g2).join(' | '));
+  const g3 = runTemplate('st-shear-tab', sub([['levb = 5 cm', 'levb = 3 cm'], ['nb = 4 //', 'nb = 2 //']]));
+  truthy('Shear tab con 2 pernos: NO CUMPLE Lp ≥ ho/2 y la placa sobresale del borde recortado', nc(g3).some(l => /ho\/2/.test(l)) && nc(g3).some(l => /sobresale/.test(l)), nc(g3).join(' | '));
+}
 done();

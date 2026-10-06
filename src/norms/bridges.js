@@ -7,7 +7,7 @@
 //  otros módulos. Las longitudes pueden pasarse con unidades (recomendado);
 //  un número sin unidad se interpreta en la unidad indicada en cada función.
 // =====================================================================
-import { defineFns, math, toNum, mkUnit, interp1 } from '../engine.js';
+import { defineFns, math, toNum, mkUnit, interp1, settings } from '../engine.js';
 
 const isU = (x) => math.isUnit(x);
 const mm = (x) => (isU(x) ? x.toNumber('mm') : toNum(x));          // número sin unidad = mm
@@ -21,6 +21,13 @@ const isMTC = (v) => v !== undefined && v !== null && Math.round(toNum(v)) === 2
 const deg = (x) => (isU(x) ? x.toNumber('deg') : toNum(x));        // número sin unidad = grados
 const n0 = (x) => toNum(x);
 const chk = (c, msg) => { if (!c) throw new Error(msg); };
+// Fuerzas y momentos en la unidad del sistema del documento (tec: tonf, tonf·m; si: kN, kN·m; us: kip, kip·ft).
+// Los trenes de carga se definen en tonf y m; el resultado se convierte para que la sustitución numérica
+// de la memoria no muestre tonf en medio de una memoria en kip (segunda opinión, M8).
+const SYSFM = { tec: ['tonf', 'tonf*m'], si: ['kN', 'kN*m'], us: ['kip', 'kip*ft'] };
+const sysFM = () => SYSFM[settings.sys] || SYSFM.tec;
+const fOut = (tonf) => mkUnit(tonf, 'tonf').to(sysFM()[0]);
+const mOut = (tonfm) => mkUnit(tonfm, 'tonf*m').to(sysFM()[1]);
 const ratio = (a, b) => (isU(a) ? a.value : n0(a)) / (isU(b) ? b.value : n0(b));   // cociente adimensional
 
 // ---------------------------------------------------------------------
@@ -160,23 +167,23 @@ const FN = {
   IMLRFD: ap((tipo) => { const t = Math.round(n0(tipo)); return t === 2 ? 0.15 : t === 3 ? 0.75 : 0.33; }, 'IM', 'Incremento por carga dinámica: 1 = otros estados (0.33), 2 = fatiga (0.15), 3 = juntas (0.75) (Tabla 3.6.2.1-1)', 'tipo'),
   IMburLRFD: ap((DE) => Math.max(0, 0.33 * (1 - 4.1e-4 * mm(DE))), 'IM', 'IM para estructuras enterradas: 33(1 − 4.1×10⁻⁴·DE) % (3.6.2.2)', 'DE (profundidad de relleno)'),
   // ---------------- cargas vivas por posición (viga simple) ----------------
-  MfatLRFD: ap((L) => mkUnit(absMaxMSimple(mt(L), AX_TRUCK(9.0)), 'tonf*m'), 'M_{fat}', 'Momento máximo del camión de fatiga (ejes posteriores a 9.0 m, 3.6.1.4.1) en viga simple, sin IM', 'L'),
-  VfatLRFD: ap((L) => mkUnit(vAtSimple(mt(L), 0, AX_TRUCK(9.0)), 'tonf'), 'V_{fat}', 'Cortante máximo en el apoyo del camión de fatiga (viga simple), sin IM', 'L'),
+  MfatLRFD: ap((L) => mOut(absMaxMSimple(mt(L), AX_TRUCK(9.0))), 'M_{fat}', 'Momento máximo del camión de fatiga (ejes posteriores a 9.0 m, 3.6.1.4.1) en viga simple, sin IM; en la unidad de momento del sistema del documento', 'L'),
+  VfatLRFD: ap((L) => fOut(vAtSimple(mt(L), 0, AX_TRUCK(9.0))), 'V_{fat}', 'Cortante máximo en el apoyo del camión de fatiga (viga simple), sin IM; en la unidad de fuerza del sistema del documento', 'L'),
   MxLRFD: ap((L, x, tipo) => {
     const l = mt(L), xx = mt(x), t = Math.round(n0(tipo)); chk(xx >= 0 && xx <= l, 'La sección x debe estar dentro de la luz');
-    if (t === 3) return mkUnit(W_LANE * xx * (l - xx) / 2, 'tonf*m');
-    return mkUnit(mAtSimple(l, xx, t === 2 ? AX_TANDEM : t === 4 ? AX_TRUCK(9.0) : AX_TRUCK()), 'tonf*m');
+    if (t === 3) return mOut(W_LANE * xx * (l - xx) / 2);
+    return mOut(mAtSimple(l, xx, t === 2 ? AX_TANDEM : t === 4 ? AX_TRUCK(9.0) : AX_TRUCK()));
   }, 'M_{LL}(x)', 'Momento máximo en la sección x de viga simple: tipo 1 camión, 2 tándem, 3 carril, 4 camión de fatiga', 'L, x, tipo'),
   VxLRFD: ap((L, x, tipo) => {
     const l = mt(L), xx = mt(x), t = Math.round(n0(tipo)); chk(xx >= 0 && xx <= l, 'La sección x debe estar dentro de la luz');
-    if (t === 3) return mkUnit(W_LANE * (l - xx) ** 2 / (2 * l), 'tonf');
-    return mkUnit(vAtSimple(l, xx, t === 2 ? AX_TANDEM : t === 4 ? AX_TRUCK(9.0) : AX_TRUCK()), 'tonf');
+    if (t === 3) return fOut(W_LANE * (l - xx) ** 2 / (2 * l));
+    return fOut(vAtSimple(l, xx, t === 2 ? AX_TANDEM : t === 4 ? AX_TRUCK(9.0) : AX_TRUCK()));
   }, 'V_{LL}(x)', 'Cortante máximo en la sección x de viga simple: tipo 1 camión, 2 tándem, 3 carril (carga parcial), 4 fatiga', 'L, x, tipo'),
   BRLRFD: ap((L, NL) => {
     const l = mt(L), n = Math.round(n0(NL));
     const m = n === 1 ? 1.2 : n === 2 ? 1.0 : n === 3 ? 0.85 : 0.65;
     const v = Math.max(0.25 * 32.67, 0.25 * 22.68, 0.05 * (32.67 + W_LANE * l), 0.05 * (22.68 + W_LANE * l));
-    return mkUnit(v * n * m, 'tonf');
+    return fOut(v * n * m);
   }, 'BR', 'Fuerza de frenado total: máx(25% camión o tándem, 5% (camión o tándem + carril))·NL·m (3.6.4)', 'L, NL'),
   heqLRFD: ap((H) => mkUnit(interp1(mt(H), HEQ.x, HEQ.y), 'm'), 'h_{eq}', 'Altura equivalente de suelo por sobrecarga vehicular en estribos (Tabla 3.11.6.4-1)', 'H'),
   // ---------------- sismo (3.10) ----------------
@@ -224,7 +231,7 @@ const FN = {
   betaMCFT: ap((ex) => 4.8 / (1 + 750 * Math.max(n0(ex), -0.0004)), '\\beta', 'β = 4.8/(1 + 750εs), método general con refuerzo mínimo (5.7.3.4.2-1)', 'εs'),
   thetaMCFT: ap((ex) => mkUnit(29 + 3500 * Math.max(n0(ex), -0.0004), 'deg'), '\\theta', 'θ = 29 + 3500εs (5.7.3.4.2-3)', 'εs'),
   // ---------------- barreras (Apéndice A13, Tabla A13.2-1, base NCHRP 350) ----------------
-  FtLRFD: ap((TL) => mkUnit(BAR(TL).Ft, 'kN').to('tonf'), 'F_t', 'Fuerza transversal de diseño de la barrera: TL-1 60, TL-2 120, TL-3 240, TL-4 240, TL-5 550, TL-6 780 kN (Tabla A13.2-1)', 'TL'),
+  FtLRFD: ap((TL) => mkUnit(BAR(TL).Ft, 'kN').to(sysFM()[0]), 'F_t', 'Fuerza transversal de diseño de la barrera: TL-1 60, TL-2 120, TL-3 240, TL-4 240, TL-5 550, TL-6 780 kN (Tabla A13.2-1)', 'TL'),
   LtLRFD: ap((TL) => mkUnit(BAR(TL).Lt, 'mm').to('m'), 'L_t', 'Longitud de distribución de Ft: 1220 mm (TL-1 a TL-3), 1070 mm (TL-4), 2440 mm (TL-5, TL-6) (Tabla A13.2-1)', 'TL'),
   HbminLRFD: ap((TL) => mkUnit(BAR(TL).H, 'mm').to('m'), 'H_{min}', 'Altura mínima de la barrera: 685 mm (TL-1 a TL-3), 810 mm (TL-4), 1070 mm (TL-5), 2290 mm (TL-6) (Tabla A13.2-1)', 'TL'),
   // ---------------- apoyos elastoméricos (14.7.5 / 14.7.6) ----------------

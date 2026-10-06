@@ -165,15 +165,18 @@ registerBlock('kaberyo', {
     F('muros', 'Muros: x1 y1 x2 y2 multiplicador (uno por línea, m)', '0 0 2.73 0 2.5', 'area'),
     F('coef', 'Longitud requerida por sismo (cm/m²)', '33', 'text'),
     F('coefLado', 'Requerida en las franjas laterales (cm/m²)', '', 'text'),
+    F('kmax', 'Multiplicador máximo por muro (7.0 desde la reforma de 2025; 5.0 antes)', '7', 'text'),
     F('titulo', 'Título', ''),
   ],
-  hint: 'Cada muro es un segmento horizontal (resiste X) o vertical (resiste Y) con su multiplicador de muro (kabe-bairitsu). Calcula longitudes efectivas y el balance por cuartos (yonbun-wari, Notif. 1352). Exporta <code>LeX, LeY, rX1, rX2, rY1, rY2, bX, bY</code>.',
+  hint: 'Cada muro es un segmento horizontal (resiste X) o vertical (resiste Y) con su multiplicador de muro (kabe-bairitsu). Calcula longitudes efectivas y el balance por cuartos (yonbun-wari, Notif. 1352). El multiplicador de cada muro no puede exceder <code>kmax</code> (Order Art. 46: 7.0 desde abril de 2025, 5.0 antes). Exporta <code>LeX, LeY, rX1, rX2, rY1, rY2, bX, bY</code>.',
   def: { Lx: '10.92', Ly: '7.28', muros: '0 0 2.73 0 2.5', coef: '33' },
   render(b, ctx) {
     const S = ctx.scope;
     const Lx = evalParam(b.Lx, S, 'm', 10), Ly = evalParam(b.Ly, S, 'm', 7);
     if (!(Lx > 0 && Ly > 0)) throw new Error('Las dimensiones de la planta deben ser positivas');
     const cf = evalParam(b.coef, S, 'cm/m^2', 33), cl = evalParam(b.coefLado, S, 'cm/m^2', cf);
+    const kmax = b.kmax === undefined || String(b.kmax).trim() === '' ? 7 : evalParam(b.kmax, S, '', 7);
+    if (!(kmax > 0 && kmax <= 7)) throw new Error('Multiplicador máximo kmax fuera de rango (0 < kmax ≤ 7)');
     const ws = [];
     for (const raw of String(b.muros || '').split('\n')) {
       const ln = raw.split('//')[0].trim(); if (!ln) continue;
@@ -182,7 +185,7 @@ registerBlock('kaberyo', {
       const [x1, y1, x2, y2, k] = t;
       const dir = Math.abs(y1 - y2) < 1e-6 ? 'X' : Math.abs(x1 - x2) < 1e-6 ? 'Y' : null;
       if (!dir) throw new Error('El muro «' + raw + '» debe ser horizontal o vertical');
-      if (!(k > 0 && k <= 5)) throw new Error('Multiplicador de muro fuera de rango (0 < k ≤ 5): ' + raw);
+      if (!(k > 0 && k <= kmax + 1e-9)) throw new Error(`Multiplicador de muro fuera de rango (0 < k ≤ ${f2(kmax, 1)}, Order Art. 46): ` + raw);
       ws.push({ x1, y1, x2, y2, k, dir, L: Math.hypot(x2 - x1, y2 - y1) });
     }
     if (!ws.length) throw new Error('Defina al menos un muro');
