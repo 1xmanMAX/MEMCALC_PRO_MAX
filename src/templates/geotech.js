@@ -544,10 +544,10 @@ My = Q*ex -> tonf*m // Momento respecto al eje y
 @modo corto
 xs = xc - Lx/2 // Coordenadas relativas al centroide
 ys = yc - Ly/2
-q_med = Q/A // Presión media (carga centrada)
-q_x = My*xs/Iy // Variación por el momento My
-q_y = Mx*ys/Ix // Variación por el momento Mx
-qcol = q_med + q_x + q_y // Presión bajo cada columna
+"Presión de contacto bajo cada columna (distribución lineal, platea rígida): $q_{\\mathrm{col}} = \\dfrac{Q}{A} + \\dfrac{M_y\\,x_s}{I_y} + \\dfrac{M_x\\,y_s}{I_x}$; los valores se listan en la tabla siguiente.
+@ocultar
+qcol = Q/A + My*xs/Iy + Mx*ys/Ix // Presión bajo cada columna
+@mostrar
 @modo completo
 qA = Q/A - My*(Lx/2)/Iy - Mx*(Ly/2)/Ix -> tonf/m^2 // Esquina (0, 0)
 qB = Q/A + My*(Lx/2)/Iy - Mx*(Ly/2)/Ix -> tonf/m^2 // Esquina (Lx, 0)
