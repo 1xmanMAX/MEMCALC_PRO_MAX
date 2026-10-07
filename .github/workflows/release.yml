@@ -1,0 +1,41 @@
+# Publica una versión de MemoriaCalc al subir una etiqueta v* (p. ej. v2.0.0)
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm ci
+      - name: Compilar la app web
+        run: node build.mjs
+      - name: Pruebas
+        run: node tests/run.mjs
+      - uses: actions/setup-go@v5
+        with: { go-version: 'stable' }
+      - name: Ícono y ejecutable de Windows
+        run: |
+          pip install pillow
+          python3 mkico.py
+          cp dist/MemoriaCalc.html app.html
+          GO111MODULE=off GOOS=windows GOARCH=amd64 go build -ldflags "-H windowsgui -s -w" -o dist/MemoriaCalc.exe .
+      - name: Paquete
+        run: |
+          mkdir -p pkg/MemoriaCalc
+          cp dist/MemoriaCalc.exe dist/MemoriaCalc.html LEEME.md pkg/MemoriaCalc/
+          (cd pkg && zip -r ../MemoriaCalc-windows.zip MemoriaCalc)
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: MemoriaCalc ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            MemoriaCalc-windows.zip
+            dist/MemoriaCalc.exe
+            dist/MemoriaCalc.html

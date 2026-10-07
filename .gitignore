@@ -1,3 +1,8 @@
 node_modules/
 dist/
 *.exe
+rsrc_windows_amd64.syso
+icon.ico
+app.html
+pkg/
+*.zip

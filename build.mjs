@@ -13,7 +13,7 @@ const pwa = process.argv.includes('--pwa');
 const headExtra = `<meta name="theme-color" content="#0b5cad"><meta name="description" content="Memorias de cálculo estructural rápidas: fórmulas, unidades, diagramas y verificaciones.">`;
 const styles = `<style id="katexcss">${kcss}</style><style id="papercss">${paper}</style><style id="appcss">${app}</style><style id="printcss"></style>`;
 const icon = `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="2" y="2" width="28" height="28" rx="7" fill="#0b5cad"/><path d="M8 22h16M10 22V12l6-4 6 4v10" stroke="#fff" stroke-width="2" fill="none"/></svg>')}">`;
-fs.mkdirSync('dist', { recursive: true });
+fs.mkdirSync(pwa ? 'dist/pwa' : 'dist', { recursive: true });
 const full = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>MemoriaCalc</title>${headExtra}${icon}${pwa ? '<link rel="manifest" href="manifest.webmanifest"><script>window.MC_PWA=1</script>' : ''}${styles}</head><body><script>${js}</script></body></html>`;
 fs.writeFileSync(pwa ? 'dist/pwa/index.html' : 'dist/MemoriaCalc.html', full);
 if (!pwa) fs.writeFileSync('dist/artifact.html', `<meta charset="utf-8"><title>MemoriaCalc Estructural</title>${styles}<script>window.MC_ARTIFACT=1</script><script>${js}</script>`);
