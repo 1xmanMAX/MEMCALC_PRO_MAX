@@ -1,15 +1,31 @@
-# Publica una versión de MemoriaCalc al subir una etiqueta v* (p. ej. v2.0.0)
+# Publica una versión de MemoriaCalc:
+#  - al subir una etiqueta v* (p. ej. v2.0.0), o
+#  - con un commit cuyo mensaje contenga [release vX.Y.Z] en cualquier rama
 name: Release
 on:
   push:
+    branches: ['**']
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      version: { description: 'Versión (p. ej. v2.0.0)', required: true }
 permissions:
   contents: write
 jobs:
   release:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release v')
     runs-on: ubuntu-latest
     steps:
+      - name: Versión
+        id: ver
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+          INPUT: ${{ github.event.inputs.version }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF#refs/tags/}";
+          elif [[ -n "$INPUT" ]]; then V="$INPUT";
+          else V=$(echo "$MSG" | grep -o '\[release v[0-9][0-9.]*\]' | head -1 | sed 's/\[release //; s/\]//'); fi
+          echo "v=$V" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
@@ -33,7 +49,9 @@ jobs:
           (cd pkg && zip -r ../MemoriaCalc-windows.zip MemoriaCalc)
       - uses: softprops/action-gh-release@v2
         with:
-          name: MemoriaCalc ${{ github.ref_name }}
+          tag_name: ${{ steps.ver.outputs.v }}
+          target_commitish: ${{ github.sha }}
+          name: MemoriaCalc ${{ steps.ver.outputs.v }}
           body_path: RELEASE_NOTES.md
           files: |
             MemoriaCalc-windows.zip
