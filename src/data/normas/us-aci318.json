@@ -12,12 +12,72 @@
  "tipo": "indice",
  "version": "ACI 318-19 (reaprobada 2022); existe ACI 318-25",
  "fuente": "https://www.concrete.org/store/",
- "licencia": "Norma protegida por derechos de autor de American Concrete Institute. Solo índice (números y títulos oficiales), sin texto. Se compra en concrete.org (también la versión en español ACI 318S y métrica ACI 318M).",
+ "licencia": "Norma protegida por derechos de autor de American Concrete Institute. Solo índice (números y títulos oficiales), sin texto. Se compra en concrete.org (también la versión en español ACI 318S y métrica ACI 318M). Índice verificado contra la tabla de contenido oficial de ACI 318-19 (vista previa gratuita de ACI, concrete.org/Portals/0/Files/PDF/Previews/318-19_preview.pdf) el 2026-10-09. Cubre todos los capítulos, sus secciones de primer nivel y los apéndices.",
  "secciones": [
   {
    "id": "1",
    "nivel": 1,
    "titulo": "Chapter 1 — General",
+   "texto": ""
+  },
+  {
+   "id": "1.1",
+   "nivel": 2,
+   "titulo": "Scope of ACI 318",
+   "texto": ""
+  },
+  {
+   "id": "1.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "1.3",
+   "nivel": 2,
+   "titulo": "Purpose",
+   "texto": ""
+  },
+  {
+   "id": "1.4",
+   "nivel": 2,
+   "titulo": "Applicability",
+   "texto": ""
+  },
+  {
+   "id": "1.5",
+   "nivel": 2,
+   "titulo": "Interpretation",
+   "texto": ""
+  },
+  {
+   "id": "1.6",
+   "nivel": 2,
+   "titulo": "Building official",
+   "texto": ""
+  },
+  {
+   "id": "1.7",
+   "nivel": 2,
+   "titulo": "Licensed design professional",
+   "texto": ""
+  },
+  {
+   "id": "1.8",
+   "nivel": 2,
+   "titulo": "Construction documents and design records",
+   "texto": ""
+  },
+  {
+   "id": "1.9",
+   "nivel": 2,
+   "titulo": "Testing and inspection",
+   "texto": ""
+  },
+  {
+   "id": "1.10",
+   "nivel": 2,
+   "titulo": "\u0007Approval of special systems of design, construction, or alternative construction materials",
    "texto": ""
   },
   {
@@ -27,9 +87,39 @@
    "texto": ""
   },
   {
+   "id": "2.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "2.2",
+   "nivel": 2,
+   "titulo": "Notation",
+   "texto": ""
+  },
+  {
+   "id": "2.3",
+   "nivel": 2,
+   "titulo": "Terminology",
+   "texto": ""
+  },
+  {
    "id": "3",
    "nivel": 1,
    "titulo": "Chapter 3 — Referenced Standards",
+   "texto": ""
+  },
+  {
+   "id": "3.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "3.2",
+   "nivel": 2,
+   "titulo": "Referenced standards",
    "texto": ""
   },
   {
@@ -39,9 +129,105 @@
    "texto": ""
   },
   {
+   "id": "4.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "4.2",
+   "nivel": 2,
+   "titulo": "Materials",
+   "texto": ""
+  },
+  {
+   "id": "4.3",
+   "nivel": 2,
+   "titulo": "Design loads",
+   "texto": ""
+  },
+  {
+   "id": "4.4",
+   "nivel": 2,
+   "titulo": "Structural system and load paths",
+   "texto": ""
+  },
+  {
+   "id": "4.5",
+   "nivel": 2,
+   "titulo": "Structural analysis",
+   "texto": ""
+  },
+  {
+   "id": "4.6",
+   "nivel": 2,
+   "titulo": "Strength",
+   "texto": ""
+  },
+  {
+   "id": "4.7",
+   "nivel": 2,
+   "titulo": "Serviceability",
+   "texto": ""
+  },
+  {
+   "id": "4.8",
+   "nivel": 2,
+   "titulo": "Durability",
+   "texto": ""
+  },
+  {
+   "id": "4.9",
+   "nivel": 2,
+   "titulo": "Sustainability",
+   "texto": ""
+  },
+  {
+   "id": "4.10",
+   "nivel": 2,
+   "titulo": "Structural integrity",
+   "texto": ""
+  },
+  {
+   "id": "4.11",
+   "nivel": 2,
+   "titulo": "Fire resistance",
+   "texto": ""
+  },
+  {
+   "id": "4.12",
+   "nivel": 2,
+   "titulo": "\u0007Requirements for specific types of construction",
+   "texto": ""
+  },
+  {
+   "id": "4.13",
+   "nivel": 2,
+   "titulo": "Construction and inspection",
+   "texto": ""
+  },
+  {
+   "id": "4.14",
+   "nivel": 2,
+   "titulo": "Strength evaluation of existing structures",
+   "texto": ""
+  },
+  {
    "id": "5",
    "nivel": 1,
    "titulo": "Chapter 5 — Loads",
+   "texto": ""
+  },
+  {
+   "id": "5.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "5.2",
+   "nivel": 2,
+   "titulo": "General",
    "texto": ""
   },
   {
@@ -57,9 +243,105 @@
    "texto": ""
   },
   {
+   "id": "6.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "6.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "6.3",
+   "nivel": 2,
+   "titulo": "Modeling assumptions",
+   "texto": ""
+  },
+  {
+   "id": "6.4",
+   "nivel": 2,
+   "titulo": "Arrangement of live load",
+   "texto": ""
+  },
+  {
+   "id": "6.5",
+   "nivel": 2,
+   "titulo": "\u0007Simplified method of analysis for nonprestressed continuous beams and one-way slabs",
+   "texto": ""
+  },
+  {
+   "id": "6.6",
+   "nivel": 2,
+   "titulo": "Linear elastic first-order analysis",
+   "texto": ""
+  },
+  {
+   "id": "6.7",
+   "nivel": 2,
+   "titulo": "Linear elastic second-order analysis",
+   "texto": ""
+  },
+  {
+   "id": "6.8",
+   "nivel": 2,
+   "titulo": "Inelastic analysis",
+   "texto": ""
+  },
+  {
+   "id": "6.9",
+   "nivel": 2,
+   "titulo": "Acceptability of finite element analysis",
+   "texto": ""
+  },
+  {
    "id": "7",
    "nivel": 1,
    "titulo": "Chapter 7 — One-Way Slabs",
+   "texto": ""
+  },
+  {
+   "id": "7.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "7.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "7.3",
+   "nivel": 2,
+   "titulo": "Design limits",
+   "texto": ""
+  },
+  {
+   "id": "7.4",
+   "nivel": 2,
+   "titulo": "Required strength",
+   "texto": ""
+  },
+  {
+   "id": "7.5",
+   "nivel": 2,
+   "titulo": "Design strength",
+   "texto": ""
+  },
+  {
+   "id": "7.6",
+   "nivel": 2,
+   "titulo": "Reinforcement limits",
+   "texto": ""
+  },
+  {
+   "id": "7.7",
+   "nivel": 2,
+   "titulo": "Reinforcement detailing",
    "texto": ""
   },
   {
@@ -69,9 +351,87 @@
    "texto": ""
   },
   {
+   "id": "8.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "8.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "8.3",
+   "nivel": 2,
+   "titulo": "Design limits",
+   "texto": ""
+  },
+  {
+   "id": "8.4",
+   "nivel": 2,
+   "titulo": "Required strength",
+   "texto": ""
+  },
+  {
+   "id": "8.5",
+   "nivel": 2,
+   "titulo": "Design strength",
+   "texto": ""
+  },
+  {
+   "id": "8.6",
+   "nivel": 2,
+   "titulo": "Reinforcement limits",
+   "texto": ""
+  },
+  {
+   "id": "8.7",
+   "nivel": 2,
+   "titulo": "Reinforcement detailing",
+   "texto": ""
+  },
+  {
+   "id": "8.8",
+   "nivel": 2,
+   "titulo": "Nonprestressed two-way joist systems",
+   "texto": ""
+  },
+  {
    "id": "9",
    "nivel": 1,
    "titulo": "Chapter 9 — Beams",
+   "texto": ""
+  },
+  {
+   "id": "9.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "9.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "9.3",
+   "nivel": 2,
+   "titulo": "Design limits",
+   "texto": ""
+  },
+  {
+   "id": "9.4",
+   "nivel": 2,
+   "titulo": "Required strength",
+   "texto": ""
+  },
+  {
+   "id": "9.5",
+   "nivel": 2,
+   "titulo": "Design strength",
    "texto": ""
   },
   {
@@ -87,9 +447,63 @@
    "texto": ""
   },
   {
+   "id": "9.8",
+   "nivel": 2,
+   "titulo": "Nonprestressed one-way joist systems",
+   "texto": ""
+  },
+  {
+   "id": "9.9",
+   "nivel": 2,
+   "titulo": "Deep beams",
+   "texto": ""
+  },
+  {
    "id": "10",
    "nivel": 1,
    "titulo": "Chapter 10 — Columns",
+   "texto": ""
+  },
+  {
+   "id": "10.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "10.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "10.3",
+   "nivel": 2,
+   "titulo": "Design limits",
+   "texto": ""
+  },
+  {
+   "id": "10.4",
+   "nivel": 2,
+   "titulo": "Required strength",
+   "texto": ""
+  },
+  {
+   "id": "10.5",
+   "nivel": 2,
+   "titulo": "Design strength",
+   "texto": ""
+  },
+  {
+   "id": "10.6",
+   "nivel": 2,
+   "titulo": "Reinforcement limits",
+   "texto": ""
+  },
+  {
+   "id": "10.7",
+   "nivel": 2,
+   "titulo": "Reinforcement detailing",
    "texto": ""
   },
   {
@@ -99,15 +513,117 @@
    "texto": ""
   },
   {
+   "id": "11.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "11.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "11.3",
+   "nivel": 2,
+   "titulo": "Design limits",
+   "texto": ""
+  },
+  {
+   "id": "11.4",
+   "nivel": 2,
+   "titulo": "Required strength",
+   "texto": ""
+  },
+  {
+   "id": "11.5",
+   "nivel": 2,
+   "titulo": "Design strength",
+   "texto": ""
+  },
+  {
+   "id": "11.6",
+   "nivel": 2,
+   "titulo": "Reinforcement limits",
+   "texto": ""
+  },
+  {
+   "id": "11.7",
+   "nivel": 2,
+   "titulo": "Reinforcement detailing",
+   "texto": ""
+  },
+  {
+   "id": "11.8",
+   "nivel": 2,
+   "titulo": "\u0007Alternative method for out-of-plane slender wall analysis",
+   "texto": ""
+  },
+  {
    "id": "12",
    "nivel": 1,
    "titulo": "Chapter 12 — Diaphragms",
    "texto": ""
   },
   {
+   "id": "12.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "12.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "12.3",
+   "nivel": 2,
+   "titulo": "Design limits",
+   "texto": ""
+  },
+  {
+   "id": "12.4",
+   "nivel": 2,
+   "titulo": "Required strength",
+   "texto": ""
+  },
+  {
+   "id": "12.5",
+   "nivel": 2,
+   "titulo": "Design strength",
+   "texto": ""
+  },
+  {
+   "id": "12.6",
+   "nivel": 2,
+   "titulo": "Reinforcement limits",
+   "texto": ""
+  },
+  {
+   "id": "12.7",
+   "nivel": 2,
+   "titulo": "Reinforcement detailing",
+   "texto": ""
+  },
+  {
    "id": "13",
    "nivel": 1,
    "titulo": "Chapter 13 — Foundations",
+   "texto": ""
+  },
+  {
+   "id": "13.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "13.2",
+   "nivel": 2,
+   "titulo": "General",
    "texto": ""
   },
   {
@@ -129,9 +645,75 @@
    "texto": ""
   },
   {
+   "id": "14.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "14.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "14.3",
+   "nivel": 2,
+   "titulo": "Design limits",
+   "texto": ""
+  },
+  {
+   "id": "14.4",
+   "nivel": 2,
+   "titulo": "Required strength",
+   "texto": ""
+  },
+  {
+   "id": "14.5",
+   "nivel": 2,
+   "titulo": "Design strength",
+   "texto": ""
+  },
+  {
+   "id": "14.6",
+   "nivel": 2,
+   "titulo": "Reinforcement detailing",
+   "texto": ""
+  },
+  {
    "id": "15",
    "nivel": 1,
    "titulo": "Chapter 15 — Beam-Column and Slab-Column Joints",
+   "texto": ""
+  },
+  {
+   "id": "15.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "15.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "15.3",
+   "nivel": 2,
+   "titulo": "Detailing of joints",
+   "texto": ""
+  },
+  {
+   "id": "15.4",
+   "nivel": 2,
+   "titulo": "\u0007Strength requirements for beam-column joints",
+   "texto": ""
+  },
+  {
+   "id": "15.5",
+   "nivel": 2,
+   "titulo": "\u0007Transfer of column axial force through the floor system",
    "texto": ""
   },
   {
@@ -141,9 +723,69 @@
    "texto": ""
   },
   {
+   "id": "16.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "16.2",
+   "nivel": 2,
+   "titulo": "Connections of precast members",
+   "texto": ""
+  },
+  {
+   "id": "16.3",
+   "nivel": 2,
+   "titulo": "Connections to foundations",
+   "texto": ""
+  },
+  {
+   "id": "16.4",
+   "nivel": 2,
+   "titulo": "\u0007Horizontal shear transfer in composite concrete flexural members",
+   "texto": ""
+  },
+  {
+   "id": "16.5",
+   "nivel": 2,
+   "titulo": "Brackets and corbels",
+   "texto": ""
+  },
+  {
    "id": "17",
    "nivel": 1,
    "titulo": "Chapter 17 — Anchoring to Concrete",
+   "texto": ""
+  },
+  {
+   "id": "17.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "17.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "17.3",
+   "nivel": 2,
+   "titulo": "Design Limits",
+   "texto": ""
+  },
+  {
+   "id": "17.4",
+   "nivel": 2,
+   "titulo": "Required strength",
+   "texto": ""
+  },
+  {
+   "id": "17.5",
+   "nivel": 2,
+   "titulo": "Design strength",
    "texto": ""
   },
   {
@@ -165,9 +807,39 @@
    "texto": ""
   },
   {
+   "id": "17.9",
+   "nivel": 2,
+   "titulo": "\u0007Edge distances, spacings, and thicknesses to preclude splitting failure",
+   "texto": ""
+  },
+  {
+   "id": "17.10",
+   "nivel": 2,
+   "titulo": "\u0007Earthquake-resistant anchor design requirements",
+   "texto": ""
+  },
+  {
+   "id": "17.11",
+   "nivel": 2,
+   "titulo": "Attachments with shear lugs",
+   "texto": ""
+  },
+  {
    "id": "18",
    "nivel": 1,
    "titulo": "Chapter 18 — Earthquake-Resistant Structures",
+   "texto": ""
+  },
+  {
+   "id": "18.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "18.2",
+   "nivel": 2,
+   "titulo": "General",
    "texto": ""
   },
   {
@@ -180,6 +852,12 @@
    "id": "18.4",
    "nivel": 2,
    "titulo": "Intermediate moment frames",
+   "texto": ""
+  },
+  {
+   "id": "18.5",
+   "nivel": 2,
+   "titulo": "Intermediate precast structural walls",
    "texto": ""
   },
   {
@@ -201,9 +879,39 @@
    "texto": ""
   },
   {
+   "id": "18.9",
+   "nivel": 2,
+   "titulo": "\u0007Special moment frames constructed using precast concrete",
+   "texto": ""
+  },
+  {
    "id": "18.10",
    "nivel": 2,
    "titulo": "Special structural walls",
+   "texto": ""
+  },
+  {
+   "id": "18.11",
+   "nivel": 2,
+   "titulo": "\u0007Special structural walls constructed using precast concrete",
+   "texto": ""
+  },
+  {
+   "id": "18.12",
+   "nivel": 2,
+   "titulo": "Diaphragms and trusses",
+   "texto": ""
+  },
+  {
+   "id": "18.13",
+   "nivel": 2,
+   "titulo": "Foundations",
+   "texto": ""
+  },
+  {
+   "id": "18.14",
+   "nivel": 2,
+   "titulo": "\u0007Members not designated as part of the seismic-force-resisting system",
    "texto": ""
   },
   {
@@ -213,9 +921,27 @@
    "texto": ""
   },
   {
+   "id": "19.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
    "id": "19.2",
    "nivel": 2,
    "titulo": "Concrete design properties",
+   "texto": ""
+  },
+  {
+   "id": "19.3",
+   "nivel": 2,
+   "titulo": "Concrete durability requirements",
+   "texto": ""
+  },
+  {
+   "id": "19.4",
+   "nivel": 2,
+   "titulo": "Grout durability requirements",
    "texto": ""
   },
   {
@@ -225,9 +951,39 @@
    "texto": ""
   },
   {
+   "id": "20.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
    "id": "20.2",
    "nivel": 2,
    "titulo": "Nonprestressed bars and wires",
+   "texto": ""
+  },
+  {
+   "id": "20.3",
+   "nivel": 2,
+   "titulo": "Prestressing strands, wires, and bars",
+   "texto": ""
+  },
+  {
+   "id": "20.4",
+   "nivel": 2,
+   "titulo": "Headed shear stud reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "20.5",
+   "nivel": 2,
+   "titulo": "Provisions for durability of steel reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "20.6",
+   "nivel": 2,
+   "titulo": "Embedments",
    "texto": ""
   },
   {
@@ -237,9 +993,15 @@
    "texto": ""
   },
   {
+   "id": "21.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
    "id": "21.2",
    "nivel": 2,
-   "titulo": "Strength reduction factors for structural concrete members and connections",
+   "titulo": "\u0007Strength reduction factors for structural concrete members and connections",
    "texto": ""
   },
   {
@@ -249,9 +1011,15 @@
    "texto": ""
   },
   {
+   "id": "22.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
    "id": "22.2",
    "nivel": 2,
-   "titulo": "Design assumptions for flexural and axial strength",
+   "titulo": "\u0007Design assumptions for moment and axial strength",
    "texto": ""
   },
   {
@@ -263,7 +1031,7 @@
   {
    "id": "22.4",
    "nivel": 2,
-   "titulo": "Axial strength or combined flexural and axial strength",
+   "titulo": "\u0007Axial strength or combined flexural and axial strength",
    "texto": ""
   },
   {
@@ -285,15 +1053,99 @@
    "texto": ""
   },
   {
+   "id": "22.8",
+   "nivel": 2,
+   "titulo": "Bearing",
+   "texto": ""
+  },
+  {
+   "id": "22.9",
+   "nivel": 2,
+   "titulo": "Shear friction",
+   "texto": ""
+  },
+  {
    "id": "23",
    "nivel": 1,
    "titulo": "Chapter 23 — Strut-and-Tie Method",
    "texto": ""
   },
   {
+   "id": "23.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "23.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "23.3",
+   "nivel": 2,
+   "titulo": "Design strength",
+   "texto": ""
+  },
+  {
+   "id": "23.4",
+   "nivel": 2,
+   "titulo": "Strength of struts",
+   "texto": ""
+  },
+  {
+   "id": "23.5",
+   "nivel": 2,
+   "titulo": "Minimum distributed reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "23.6",
+   "nivel": 2,
+   "titulo": "Strut reinforcement detailing",
+   "texto": ""
+  },
+  {
+   "id": "23.7",
+   "nivel": 2,
+   "titulo": "Strength of ties",
+   "texto": ""
+  },
+  {
+   "id": "23.8",
+   "nivel": 2,
+   "titulo": "Tie reinforcement detailing",
+   "texto": ""
+  },
+  {
+   "id": "23.9",
+   "nivel": 2,
+   "titulo": "Strength of nodal zones",
+   "texto": ""
+  },
+  {
+   "id": "23.10",
+   "nivel": 2,
+   "titulo": "Curved-bar nodes",
+   "texto": ""
+  },
+  {
+   "id": "23.11",
+   "nivel": 2,
+   "titulo": "\u0007Earthquake-resistant design using the strut-and-tie method",
+   "texto": ""
+  },
+  {
    "id": "24",
    "nivel": 1,
-   "titulo": "Chapter 24 — Serviceability Requirements",
+   "titulo": "Chapter 24 — Serviceability",
+   "texto": ""
+  },
+  {
+   "id": "24.1",
+   "nivel": 2,
+   "titulo": "Scope",
    "texto": ""
   },
   {
@@ -303,9 +1155,45 @@
    "texto": ""
   },
   {
+   "id": "24.3",
+   "nivel": 2,
+   "titulo": "\u0007Distribution of flexural reinforcement in one-way slabs and beams",
+   "texto": ""
+  },
+  {
+   "id": "24.4",
+   "nivel": 2,
+   "titulo": "Shrinkage and temperature reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "24.5",
+   "nivel": 2,
+   "titulo": "\u0007Permissible stresses in prestressed concrete flexural members",
+   "texto": ""
+  },
+  {
    "id": "25",
    "nivel": 1,
    "titulo": "Chapter 25 — Reinforcement Details",
+   "texto": ""
+  },
+  {
+   "id": "25.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "25.2",
+   "nivel": 2,
+   "titulo": "Minimum spacing of reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "25.3",
+   "nivel": 2,
+   "titulo": "\u0007Standard hooks, seismic hooks, crossties, and minimum inside bend diameters",
    "texto": ""
   },
   {
@@ -321,9 +1209,111 @@
    "texto": ""
   },
   {
+   "id": "25.6",
+   "nivel": 2,
+   "titulo": "Bundled reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "25.7",
+   "nivel": 2,
+   "titulo": "Transverse reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "25.8",
+   "nivel": 2,
+   "titulo": "Post-tensioning anchorages and couplers",
+   "texto": ""
+  },
+  {
+   "id": "25.9",
+   "nivel": 2,
+   "titulo": "Anchorage zones for post-tensioned tendons",
+   "texto": ""
+  },
+  {
    "id": "26",
    "nivel": 1,
    "titulo": "Chapter 26 — Construction Documents and Inspection",
+   "texto": ""
+  },
+  {
+   "id": "26.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "26.2",
+   "nivel": 2,
+   "titulo": "Design criteria",
+   "texto": ""
+  },
+  {
+   "id": "26.3",
+   "nivel": 2,
+   "titulo": "Member information",
+   "texto": ""
+  },
+  {
+   "id": "26.4",
+   "nivel": 2,
+   "titulo": "Concrete materials and mixture requirements",
+   "texto": ""
+  },
+  {
+   "id": "26.5",
+   "nivel": 2,
+   "titulo": "Concrete production and construction",
+   "texto": ""
+  },
+  {
+   "id": "26.6",
+   "nivel": 2,
+   "titulo": "\u0007Reinforcement materials and construction requirements",
+   "texto": ""
+  },
+  {
+   "id": "26.7",
+   "nivel": 2,
+   "titulo": "Anchoring to concrete",
+   "texto": ""
+  },
+  {
+   "id": "26.8",
+   "nivel": 2,
+   "titulo": "Embedments",
+   "texto": ""
+  },
+  {
+   "id": "26.9",
+   "nivel": 2,
+   "titulo": "Additional requirements for precast concrete",
+   "texto": ""
+  },
+  {
+   "id": "26.10",
+   "nivel": 2,
+   "titulo": "\u0007Additional requirements for prestressed concrete",
+   "texto": ""
+  },
+  {
+   "id": "26.11",
+   "nivel": 2,
+   "titulo": "Formwork",
+   "texto": ""
+  },
+  {
+   "id": "26.12",
+   "nivel": 2,
+   "titulo": "\u0007Evaluation and acceptance of hardened concrete",
+   "texto": ""
+  },
+  {
+   "id": "26.13",
+   "nivel": 2,
+   "titulo": "Inspection",
    "texto": ""
   },
   {
@@ -333,9 +1323,123 @@
    "texto": ""
   },
   {
+   "id": "27.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "27.2",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "27.3",
+   "nivel": 2,
+   "titulo": "Analytical strength evaluation",
+   "texto": ""
+  },
+  {
+   "id": "27.4",
+   "nivel": 2,
+   "titulo": "Strength evaluation by load test",
+   "texto": ""
+  },
+  {
+   "id": "27.5",
+   "nivel": 2,
+   "titulo": "Monotonic load test procedure",
+   "texto": ""
+  },
+  {
+   "id": "27.6",
+   "nivel": 2,
+   "titulo": "Cyclic load test procedure",
+   "texto": ""
+  },
+  {
    "id": "Appendix A",
    "nivel": 1,
    "titulo": "Design Verification Using Nonlinear Response History Analysis",
+   "texto": ""
+  },
+  {
+   "id": "A.1",
+   "nivel": 2,
+   "titulo": "Notation and terminology",
+   "texto": ""
+  },
+  {
+   "id": "A.2",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "A.3",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "A.4",
+   "nivel": 2,
+   "titulo": "Earthquake ground motions",
+   "texto": ""
+  },
+  {
+   "id": "A.5",
+   "nivel": 2,
+   "titulo": "Load factors and combinations",
+   "texto": ""
+  },
+  {
+   "id": "A.6",
+   "nivel": 2,
+   "titulo": "Modeling and analysis",
+   "texto": ""
+  },
+  {
+   "id": "A.7",
+   "nivel": 2,
+   "titulo": "Action classification and criticality",
+   "texto": ""
+  },
+  {
+   "id": "A.8",
+   "nivel": 2,
+   "titulo": "Effective stiffness",
+   "texto": ""
+  },
+  {
+   "id": "A.9",
+   "nivel": 2,
+   "titulo": "Expected material strength",
+   "texto": ""
+  },
+  {
+   "id": "A.10",
+   "nivel": 2,
+   "titulo": "\u0007Acceptance criteria for deformation-controlled actions",
+   "texto": ""
+  },
+  {
+   "id": "A.11",
+   "nivel": 2,
+   "titulo": "\u0007Expected strength for force-controlled actions",
+   "texto": ""
+  },
+  {
+   "id": "A.12",
+   "nivel": 2,
+   "titulo": "Enhanced detailing requirements",
+   "texto": ""
+  },
+  {
+   "id": "A.13",
+   "nivel": 2,
+   "titulo": "Independent structural design review",
    "texto": ""
   },
   {
@@ -347,7 +1451,7 @@
   {
    "id": "Appendix C",
    "nivel": 1,
-   "titulo": "Equivalence between SI-Metric, MKS-Metric, and U.S. Customary Units of Nonhomogeneous Equations in the Code",
+   "titulo": "Equivalence between SI-Metric, MKS-Metric, and U.S. Customary Units of Nonhomogenous Equations in the Code",
    "texto": ""
   }
  ]

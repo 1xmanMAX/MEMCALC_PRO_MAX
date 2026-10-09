@@ -13,7 +13,7 @@
  "tipo": "indice",
  "version": "EN 1992-1-1:2004 + AC:2010 + A1:2014 (existe la 2.ª generación EN 1992-1-1:2023)",
  "fuente": "https://eurocodes.jrc.ec.europa.eu/",
- "licencia": "Norma europea (CEN) protegida por derechos de autor; se adquiere a través de los organismos nacionales de normalización (p. ej. UNE, AENOR, BSI, DIN). Solo índice (números y títulos oficiales en inglés), sin texto.",
+ "licencia": "Norma europea (CEN) protegida por derechos de autor; se adquiere a través de los organismos nacionales de normalización (p. ej. UNE, AENOR, BSI, DIN). Solo índice (números y títulos oficiales en inglés), sin texto. Índice verificado contra la lista de contenido y los encabezados de EN 1992-1-1:2004 (copia BS EN de libre acceso histórico en phd.eng.br) el 2026-10-09. Cubre las secciones 1–12, sus subsecciones de primer nivel y los anexos A–J, con los títulos de anexo del encabezado de cada uno. No se cotejó con A1:2014.",
  "secciones": [
   {
    "id": "1",
@@ -22,9 +22,87 @@
    "texto": ""
   },
   {
+   "id": "1.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "1.2",
+   "nivel": 2,
+   "titulo": "Normative references",
+   "texto": ""
+  },
+  {
+   "id": "1.3",
+   "nivel": 2,
+   "titulo": "Assumptions",
+   "texto": ""
+  },
+  {
+   "id": "1.4",
+   "nivel": 2,
+   "titulo": "Distinction between principles and application rules",
+   "texto": ""
+  },
+  {
+   "id": "1.5",
+   "nivel": 2,
+   "titulo": "Definitions",
+   "texto": ""
+  },
+  {
+   "id": "1.6",
+   "nivel": 2,
+   "titulo": "Symbols",
+   "texto": ""
+  },
+  {
    "id": "2",
    "nivel": 1,
    "titulo": "Section 2 — Basis of design",
+   "texto": ""
+  },
+  {
+   "id": "2.1",
+   "nivel": 2,
+   "titulo": "Requirements",
+   "texto": ""
+  },
+  {
+   "id": "2.2",
+   "nivel": 2,
+   "titulo": "Principles of limit state design",
+   "texto": ""
+  },
+  {
+   "id": "2.3",
+   "nivel": 2,
+   "titulo": "Basic variables",
+   "texto": ""
+  },
+  {
+   "id": "2.4",
+   "nivel": 2,
+   "titulo": "Verification by the partial factor method",
+   "texto": ""
+  },
+  {
+   "id": "2.5",
+   "nivel": 2,
+   "titulo": "Design assisted by testing",
+   "texto": ""
+  },
+  {
+   "id": "2.6",
+   "nivel": 2,
+   "titulo": "Supplementary requirements for foundations",
+   "texto": ""
+  },
+  {
+   "id": "2.7",
+   "nivel": 2,
+   "titulo": "Requirements for fastenings",
    "texto": ""
   },
   {
@@ -46,15 +124,45 @@
    "texto": ""
   },
   {
+   "id": "3.3",
+   "nivel": 2,
+   "titulo": "Prestressing steel",
+   "texto": ""
+  },
+  {
+   "id": "3.4",
+   "nivel": 2,
+   "titulo": "Prestressing devices",
+   "texto": ""
+  },
+  {
    "id": "4",
    "nivel": 1,
    "titulo": "Section 4 — Durability and cover to reinforcement",
    "texto": ""
   },
   {
+   "id": "4.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "4.2",
+   "nivel": 2,
+   "titulo": "Environmental conditions",
+   "texto": ""
+  },
+  {
+   "id": "4.3",
+   "nivel": 2,
+   "titulo": "Requirements for durability",
+   "texto": ""
+  },
+  {
    "id": "4.4",
    "nivel": 2,
-   "titulo": "Methods of verification",
+   "titulo": "Methods of verifications",
    "texto": ""
   },
   {
@@ -64,9 +172,69 @@
    "texto": ""
   },
   {
+   "id": "5.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "5.2",
+   "nivel": 2,
+   "titulo": "Geometric imperfections",
+   "texto": ""
+  },
+  {
+   "id": "5.3",
+   "nivel": 2,
+   "titulo": "Idealisation of the structure",
+   "texto": ""
+  },
+  {
+   "id": "5.4",
+   "nivel": 2,
+   "titulo": "Linear elastic analysis",
+   "texto": ""
+  },
+  {
+   "id": "5.5",
+   "nivel": 2,
+   "titulo": "Linear analysis with limited redistribution",
+   "texto": ""
+  },
+  {
+   "id": "5.6",
+   "nivel": 2,
+   "titulo": "Plastic analysis",
+   "texto": ""
+  },
+  {
+   "id": "5.7",
+   "nivel": 2,
+   "titulo": "Non-linear analysis",
+   "texto": ""
+  },
+  {
    "id": "5.8",
    "nivel": 2,
    "titulo": "Analysis of second order effects with axial load",
+   "texto": ""
+  },
+  {
+   "id": "5.9",
+   "nivel": 2,
+   "titulo": "Lateral instability of slender beams",
+   "texto": ""
+  },
+  {
+   "id": "5.10",
+   "nivel": 2,
+   "titulo": "Prestressed members and structures",
+   "texto": ""
+  },
+  {
+   "id": "5.11",
+   "nivel": 2,
+   "titulo": "Analysis for some particular structural members",
    "texto": ""
   },
   {
@@ -106,9 +274,39 @@
    "texto": ""
   },
   {
+   "id": "6.6",
+   "nivel": 2,
+   "titulo": "Anchorages and laps",
+   "texto": ""
+  },
+  {
+   "id": "6.7",
+   "nivel": 2,
+   "titulo": "Partially loaded areas",
+   "texto": ""
+  },
+  {
+   "id": "6.8",
+   "nivel": 2,
+   "titulo": "Fatigue",
+   "texto": ""
+  },
+  {
    "id": "7",
    "nivel": 1,
    "titulo": "Section 7 — Serviceability limit states (SLS)",
+   "texto": ""
+  },
+  {
+   "id": "7.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "7.2",
+   "nivel": 2,
+   "titulo": "Stress limitation",
    "texto": ""
   },
   {
@@ -130,9 +328,39 @@
    "texto": ""
   },
   {
+   "id": "8.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "8.2",
+   "nivel": 2,
+   "titulo": "Spacing of bars",
+   "texto": ""
+  },
+  {
+   "id": "8.3",
+   "nivel": 2,
+   "titulo": "Permissible mandrel diameters for bent bars",
+   "texto": ""
+  },
+  {
    "id": "8.4",
    "nivel": 2,
    "titulo": "Anchorage of longitudinal reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "8.5",
+   "nivel": 2,
+   "titulo": "Anchorage of links and shear reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "8.6",
+   "nivel": 2,
+   "titulo": "Anchorage by welded bars",
    "texto": ""
   },
   {
@@ -142,15 +370,51 @@
    "texto": ""
   },
   {
+   "id": "8.8",
+   "nivel": 2,
+   "titulo": "Additional rules for large diameter bars",
+   "texto": ""
+  },
+  {
+   "id": "8.9",
+   "nivel": 2,
+   "titulo": "Bundled bars",
+   "texto": ""
+  },
+  {
+   "id": "8.10",
+   "nivel": 2,
+   "titulo": "Prestressing tendons",
+   "texto": ""
+  },
+  {
    "id": "9",
    "nivel": 1,
    "titulo": "Section 9 — Detailing of members and particular rules",
    "texto": ""
   },
   {
+   "id": "9.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
    "id": "9.2",
    "nivel": 2,
    "titulo": "Beams",
+   "texto": ""
+  },
+  {
+   "id": "9.3",
+   "nivel": 2,
+   "titulo": "Solid slabs",
+   "texto": ""
+  },
+  {
+   "id": "9.4",
+   "nivel": 2,
+   "titulo": "Flat slabs",
    "texto": ""
   },
   {
@@ -166,9 +430,63 @@
    "texto": ""
   },
   {
+   "id": "9.7",
+   "nivel": 2,
+   "titulo": "Deep beams",
+   "texto": ""
+  },
+  {
+   "id": "9.8",
+   "nivel": 2,
+   "titulo": "Foundations",
+   "texto": ""
+  },
+  {
+   "id": "9.9",
+   "nivel": 2,
+   "titulo": "Regions with discontinuity in geometry or action",
+   "texto": ""
+  },
+  {
+   "id": "9.10",
+   "nivel": 2,
+   "titulo": "Tying systems",
+   "texto": ""
+  },
+  {
    "id": "10",
    "nivel": 1,
    "titulo": "Section 10 — Additional rules for precast concrete elements and structures",
+   "texto": ""
+  },
+  {
+   "id": "10.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "10.2",
+   "nivel": 2,
+   "titulo": "Basis of design, fundamental requirements",
+   "texto": ""
+  },
+  {
+   "id": "10.3",
+   "nivel": 2,
+   "titulo": "Materials",
+   "texto": ""
+  },
+  {
+   "id": "10.5",
+   "nivel": 2,
+   "titulo": "Structural analysis",
+   "texto": ""
+  },
+  {
+   "id": "10.9",
+   "nivel": 2,
+   "titulo": "Particular rules for design and detailing",
    "texto": ""
   },
   {
@@ -178,9 +496,117 @@
    "texto": ""
   },
   {
+   "id": "11.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "11.2",
+   "nivel": 2,
+   "titulo": "Basis of design",
+   "texto": ""
+  },
+  {
+   "id": "11.3",
+   "nivel": 2,
+   "titulo": "Materials",
+   "texto": ""
+  },
+  {
+   "id": "11.4",
+   "nivel": 2,
+   "titulo": "Durability and cover to reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "11.5",
+   "nivel": 2,
+   "titulo": "Structural analysis",
+   "texto": ""
+  },
+  {
+   "id": "11.6",
+   "nivel": 2,
+   "titulo": "Ultimate limit states",
+   "texto": ""
+  },
+  {
+   "id": "11.7",
+   "nivel": 2,
+   "titulo": "Serviceability limit states",
+   "texto": ""
+  },
+  {
+   "id": "11.8",
+   "nivel": 2,
+   "titulo": "Detailing of reinforcement - General",
+   "texto": ""
+  },
+  {
+   "id": "11.9",
+   "nivel": 2,
+   "titulo": "Detailing of members and particular rules",
+   "texto": ""
+  },
+  {
+   "id": "11.10",
+   "nivel": 2,
+   "titulo": "Additional rules for precast concrete elements and structures",
+   "texto": ""
+  },
+  {
+   "id": "11.12",
+   "nivel": 2,
+   "titulo": "Plain and lightly reinforced concrete structures",
+   "texto": ""
+  },
+  {
    "id": "12",
    "nivel": 1,
    "titulo": "Section 12 — Plain and lightly reinforced concrete structures",
+   "texto": ""
+  },
+  {
+   "id": "12.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "12.2",
+   "nivel": 2,
+   "titulo": "Basis of design",
+   "texto": ""
+  },
+  {
+   "id": "12.3",
+   "nivel": 2,
+   "titulo": "Materials",
+   "texto": ""
+  },
+  {
+   "id": "12.5",
+   "nivel": 2,
+   "titulo": "Structural analysis: ultimate limit states",
+   "texto": ""
+  },
+  {
+   "id": "12.6",
+   "nivel": 2,
+   "titulo": "Ultimate limit states",
+   "texto": ""
+  },
+  {
+   "id": "12.7",
+   "nivel": 2,
+   "titulo": "Serviceability limit states",
+   "texto": ""
+  },
+  {
+   "id": "12.9",
+   "nivel": 2,
+   "titulo": "Detailing of members and particular rules",
    "texto": ""
   },
   {

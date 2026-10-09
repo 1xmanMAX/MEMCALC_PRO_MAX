@@ -11,12 +11,24 @@
  "tipo": "indice",
  "version": "ACI 440.2R-17; existe ACI PRC-440.2-23",
  "fuente": "https://www.concrete.org/store/",
- "licencia": "Norma protegida por derechos de autor de American Concrete Institute. Solo índice (números y títulos oficiales), sin texto.",
+ "licencia": "Norma protegida por derechos de autor de American Concrete Institute. Solo índice (números y títulos oficiales), sin texto. Índice verificado contra la tabla de contenido oficial de ACI 440.2R-17 (vista previa gratuita de ACI, concrete.org/Portals/0/Files/PDF/Previews/440.2R-17_preview.pdf) el 2026-10-09. Cubre capítulos, secciones de primer nivel (salvo los ejemplos del cap. 16) y apéndices A–D.",
  "secciones": [
   {
    "id": "1",
    "nivel": 1,
    "titulo": "Chapter 1 — Introduction and scope",
+   "texto": ""
+  },
+  {
+   "id": "1.1",
+   "nivel": 2,
+   "titulo": "Introduction",
+   "texto": ""
+  },
+  {
+   "id": "1.2",
+   "nivel": 2,
+   "titulo": "Scope",
    "texto": ""
   },
   {
@@ -26,9 +38,33 @@
    "texto": ""
   },
   {
+   "id": "2.1",
+   "nivel": 2,
+   "titulo": "Notation",
+   "texto": ""
+  },
+  {
+   "id": "2.2",
+   "nivel": 2,
+   "titulo": "Definitions",
+   "texto": ""
+  },
+  {
    "id": "3",
    "nivel": 1,
    "titulo": "Chapter 3 — Background information",
+   "texto": ""
+  },
+  {
+   "id": "3.1",
+   "nivel": 2,
+   "titulo": "Historical development",
+   "texto": ""
+  },
+  {
+   "id": "3.2",
+   "nivel": 2,
+   "titulo": "Commercially available externally bonded FRP systems",
    "texto": ""
   },
   {
@@ -38,9 +74,63 @@
    "texto": ""
   },
   {
+   "id": "4.1",
+   "nivel": 2,
+   "titulo": "Constituent materials",
+   "texto": ""
+  },
+  {
+   "id": "4.2",
+   "nivel": 2,
+   "titulo": "Physical properties",
+   "texto": ""
+  },
+  {
+   "id": "4.3",
+   "nivel": 2,
+   "titulo": "Mechanical properties",
+   "texto": ""
+  },
+  {
+   "id": "4.4",
+   "nivel": 2,
+   "titulo": "Time-dependent behavior",
+   "texto": ""
+  },
+  {
+   "id": "4.5",
+   "nivel": 2,
+   "titulo": "Durability",
+   "texto": ""
+  },
+  {
+   "id": "4.6",
+   "nivel": 2,
+   "titulo": "FRP systems qualification",
+   "texto": ""
+  },
+  {
    "id": "5",
    "nivel": 1,
    "titulo": "Chapter 5 — Shipping, storage, and handling",
+   "texto": ""
+  },
+  {
+   "id": "5.1",
+   "nivel": 2,
+   "titulo": "Shipping",
+   "texto": ""
+  },
+  {
+   "id": "5.2",
+   "nivel": 2,
+   "titulo": "Storage",
+   "texto": ""
+  },
+  {
+   "id": "5.3",
+   "nivel": 2,
+   "titulo": "Handling",
    "texto": ""
   },
   {
@@ -50,9 +140,81 @@
    "texto": ""
   },
   {
+   "id": "6.1",
+   "nivel": 2,
+   "titulo": "Contractor competency",
+   "texto": ""
+  },
+  {
+   "id": "6.2",
+   "nivel": 2,
+   "titulo": "Temperature, humidity, and moisture considerations",
+   "texto": ""
+  },
+  {
+   "id": "6.3",
+   "nivel": 2,
+   "titulo": "Equipment",
+   "texto": ""
+  },
+  {
+   "id": "6.4",
+   "nivel": 2,
+   "titulo": "Substrate repair and surface preparation",
+   "texto": ""
+  },
+  {
+   "id": "6.5",
+   "nivel": 2,
+   "titulo": "Mixing of resins",
+   "texto": ""
+  },
+  {
+   "id": "6.6",
+   "nivel": 2,
+   "titulo": "Application of FRP systems",
+   "texto": ""
+  },
+  {
+   "id": "6.7",
+   "nivel": 2,
+   "titulo": "Alignment of FRP materials",
+   "texto": ""
+  },
+  {
+   "id": "6.8",
+   "nivel": 2,
+   "titulo": "Multiple plies and lap splices",
+   "texto": ""
+  },
+  {
+   "id": "6.9",
+   "nivel": 2,
+   "titulo": "Curing of resins",
+   "texto": ""
+  },
+  {
+   "id": "6.10",
+   "nivel": 2,
+   "titulo": "Temporary protection",
+   "texto": ""
+  },
+  {
    "id": "7",
    "nivel": 1,
    "titulo": "Chapter 7 — Inspection, evaluation, and acceptance",
+   "texto": ""
+  },
+  {
+   "id": "7.1",
+   "nivel": 2,
+   "titulo": "Inspection",
+   "texto": ""
+  },
+  {
+   "id": "7.2",
+   "nivel": 2,
+   "titulo": "Evaluation and acceptance",
    "texto": ""
   },
   {
@@ -62,9 +224,57 @@
    "texto": ""
   },
   {
+   "id": "8.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "8.2",
+   "nivel": 2,
+   "titulo": "Inspection and assessment",
+   "texto": ""
+  },
+  {
+   "id": "8.3",
+   "nivel": 2,
+   "titulo": "Repair of strengthening system",
+   "texto": ""
+  },
+  {
+   "id": "8.4",
+   "nivel": 2,
+   "titulo": "Repair of surface coating",
+   "texto": ""
+  },
+  {
    "id": "9",
    "nivel": 1,
    "titulo": "Chapter 9 — General design considerations",
+   "texto": ""
+  },
+  {
+   "id": "9.1",
+   "nivel": 2,
+   "titulo": "Design philosophy",
+   "texto": ""
+  },
+  {
+   "id": "9.2",
+   "nivel": 2,
+   "titulo": "Strengthening limits",
+   "texto": ""
+  },
+  {
+   "id": "9.3",
+   "nivel": 2,
+   "titulo": "Selection of FRP systems",
+   "texto": ""
+  },
+  {
+   "id": "9.4",
+   "nivel": 2,
+   "titulo": "Design material properties",
    "texto": ""
   },
   {
@@ -74,15 +284,81 @@
    "texto": ""
   },
   {
+   "id": "10.1",
+   "nivel": 2,
+   "titulo": "Nominal strength",
+   "texto": ""
+  },
+  {
+   "id": "10.2",
+   "nivel": 2,
+   "titulo": "Reinforced concrete members",
+   "texto": ""
+  },
+  {
+   "id": "10.3",
+   "nivel": 2,
+   "titulo": "Prestressed concrete members",
+   "texto": ""
+  },
+  {
+   "id": "10.4",
+   "nivel": 2,
+   "titulo": "Moment redistribution",
+   "texto": ""
+  },
+  {
    "id": "11",
    "nivel": 1,
    "titulo": "Chapter 11 — Shear strengthening",
    "texto": ""
   },
   {
+   "id": "11.1",
+   "nivel": 2,
+   "titulo": "General considerations",
+   "texto": ""
+  },
+  {
+   "id": "11.2",
+   "nivel": 2,
+   "titulo": "Wrapping schemes",
+   "texto": ""
+  },
+  {
+   "id": "11.3",
+   "nivel": 2,
+   "titulo": "Nominal shear strength",
+   "texto": ""
+  },
+  {
    "id": "12",
    "nivel": 1,
-   "titulo": "Chapter 12 — Strengthening for axial force and combined axial and bending",
+   "titulo": "Chapter 12 — Strengthening of members subjected to axial force or combined axial and bending forces",
+   "texto": ""
+  },
+  {
+   "id": "12.1",
+   "nivel": 2,
+   "titulo": "Pure axial compression",
+   "texto": ""
+  },
+  {
+   "id": "12.2",
+   "nivel": 2,
+   "titulo": "Combined axial compression and bending",
+   "texto": ""
+  },
+  {
+   "id": "12.3",
+   "nivel": 2,
+   "titulo": "Ductility enhancement",
+   "texto": ""
+  },
+  {
+   "id": "12.4",
+   "nivel": 2,
+   "titulo": "Pure axial tension",
    "texto": ""
   },
   {
@@ -92,15 +368,93 @@
    "texto": ""
   },
   {
+   "id": "13.1",
+   "nivel": 2,
+   "titulo": "Background",
+   "texto": ""
+  },
+  {
+   "id": "13.2",
+   "nivel": 2,
+   "titulo": "FRP properties for seismic design",
+   "texto": ""
+  },
+  {
+   "id": "13.3",
+   "nivel": 2,
+   "titulo": "Confinement with FRP",
+   "texto": ""
+  },
+  {
+   "id": "13.4",
+   "nivel": 2,
+   "titulo": "Flexural strengthening",
+   "texto": ""
+  },
+  {
+   "id": "13.5",
+   "nivel": 2,
+   "titulo": "Shear strengthening",
+   "texto": ""
+  },
+  {
+   "id": "13.6",
+   "nivel": 2,
+   "titulo": "Beam-column joints",
+   "texto": ""
+  },
+  {
+   "id": "13.7",
+   "nivel": 2,
+   "titulo": "Strengthening reinforced concrete shear walls",
+   "texto": ""
+  },
+  {
    "id": "14",
    "nivel": 1,
    "titulo": "Chapter 14 — Fiber-reinforced polymer reinforcement details",
    "texto": ""
   },
   {
+   "id": "14.1",
+   "nivel": 2,
+   "titulo": "Bond and delamination",
+   "texto": ""
+  },
+  {
+   "id": "14.2",
+   "nivel": 2,
+   "titulo": "Detailing of laps and splices",
+   "texto": ""
+  },
+  {
+   "id": "14.3",
+   "nivel": 2,
+   "titulo": "Bond of near-surface-mounted systems",
+   "texto": ""
+  },
+  {
    "id": "15",
    "nivel": 1,
    "titulo": "Chapter 15 — Drawings, specifications, and submittals",
+   "texto": ""
+  },
+  {
+   "id": "15.1",
+   "nivel": 2,
+   "titulo": "Engineering requirements",
+   "texto": ""
+  },
+  {
+   "id": "15.2",
+   "nivel": 2,
+   "titulo": "Drawings and specifications",
+   "texto": ""
+  },
+  {
+   "id": "15.3",
+   "nivel": 2,
+   "titulo": "Submittals",
    "texto": ""
   },
   {
@@ -113,6 +467,30 @@
    "id": "17",
    "nivel": 1,
    "titulo": "Chapter 17 — References",
+   "texto": ""
+  },
+  {
+   "id": "Appendix A",
+   "nivel": 1,
+   "titulo": "Material properties of carbon, glass, and aramid fibers",
+   "texto": ""
+  },
+  {
+   "id": "Appendix B",
+   "nivel": 1,
+   "titulo": "Summary of standard test methods",
+   "texto": ""
+  },
+  {
+   "id": "Appendix C",
+   "nivel": 1,
+   "titulo": "Areas of future research",
+   "texto": ""
+  },
+  {
+   "id": "Appendix D",
+   "nivel": 1,
+   "titulo": "Methodology for computation of simplified P-M interaction diagram for noncircular columns",
    "texto": ""
   }
  ]

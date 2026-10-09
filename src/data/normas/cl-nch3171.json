@@ -4,19 +4,152 @@
   "NCh3171",
   "NCh 3171",
   "NCh3171.Of2010",
-  "NCh3171:2010"
+  "NCh3171:2010",
+  "NCh3171:2017"
  ],
  "titulo": "NCh3171 Diseño estructural — Disposiciones generales y combinaciones de carga",
  "pais": "CL",
  "tipo": "indice",
- "version": "NCh3171 (edición sin año) oficial por D. Ex. N.º 54 (V. y U.), de 2024 (DO 17-10-2024), reemplaza a NCh3171:2010 seis meses después de su publicación",
+ "version": "NCh3171:2017 (2.ª ed., 23-05-2017). El D. Ex. N.º 54 (V. y U.), de 2024 (DO 17-10-2024), la cita sin año al reemplazar a NCh3171:2010; MINVU publica con ese decreto el texto de la edición 2017",
  "fuente": "https://www.inn.cl/",
- "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. Índice no verificado contra fuente oficial: no se transcriben títulos de capítulos.",
+ "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. Índice verificado contra el «Contenido» y los encabezados de NCh3171:2017, que MINVU publica con acceso gratuito en normastecnicas.minvu.cl junto al D. Ex. 54/2024, el 2026-10-09.",
  "secciones": [
   {
-   "id": "Norma",
+   "id": "1",
    "nivel": 1,
-   "titulo": "Índice y texto en la norma oficial (INN)",
+   "titulo": "Alcance y campo de aplicación",
+   "texto": ""
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Referencias normativas",
+   "texto": ""
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Términos, definiciones y simbología",
+   "texto": ""
+  },
+  {
+   "id": "3.1",
+   "nivel": 2,
+   "titulo": "Términos y definiciones",
+   "texto": ""
+  },
+  {
+   "id": "3.2",
+   "nivel": 2,
+   "titulo": "Simbología y notación",
+   "texto": ""
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Disposiciones generales",
+   "texto": ""
+  },
+  {
+   "id": "4.1",
+   "nivel": 2,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "4.2",
+   "nivel": 2,
+   "titulo": "Métodos de diseño por resistencia",
+   "texto": ""
+  },
+  {
+   "id": "4.3",
+   "nivel": 2,
+   "titulo": "Diseño por condiciones de servicio",
+   "texto": ""
+  },
+  {
+   "id": "4.4",
+   "nivel": 2,
+   "titulo": "Esfuerzos internos autoinducidos",
+   "texto": ""
+  },
+  {
+   "id": "4.5",
+   "nivel": 2,
+   "titulo": "Análisis",
+   "texto": ""
+  },
+  {
+   "id": "4.6",
+   "nivel": 2,
+   "titulo": "Acciones estructurales equilibrantes (contrarrestantes)",
+   "texto": ""
+  },
+  {
+   "id": "5",
+   "nivel": 1,
+   "titulo": "Integridad estructural general",
+   "texto": ""
+  },
+  {
+   "id": "6",
+   "nivel": 1,
+   "titulo": "Clasificación de los edificios y otras estructuras",
+   "texto": ""
+  },
+  {
+   "id": "6.1",
+   "nivel": 2,
+   "titulo": "Clasificación según naturaleza de la ocupación",
+   "texto": ""
+  },
+  {
+   "id": "6.2",
+   "nivel": 2,
+   "titulo": "Clasificación según sustancias peligrosas",
+   "texto": ""
+  },
+  {
+   "id": "7",
+   "nivel": 1,
+   "titulo": "Agregados y modificaciones a estructuras existentes",
+   "texto": ""
+  },
+  {
+   "id": "8",
+   "nivel": 1,
+   "titulo": "Pruebas de carga",
+   "texto": ""
+  },
+  {
+   "id": "9",
+   "nivel": 1,
+   "titulo": "Combinaciones de carga",
+   "texto": ""
+  },
+  {
+   "id": "9.1",
+   "nivel": 2,
+   "titulo": "Factores de combinación de cargas mayoradas usando el diseño por resistencia",
+   "texto": ""
+  },
+  {
+   "id": "9.2",
+   "nivel": 2,
+   "titulo": "Combinaciones de cargas nominales que se usan en el método de diseño por tensiones admisibles",
+   "texto": ""
+  },
+  {
+   "id": "9.3",
+   "nivel": 2,
+   "titulo": "Combinaciones de cargas para eventos extraordinarios",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 1",
+   "nivel": 1,
+   "titulo": "Categoría de Ocupación de edificios y otras estructuras para cargas de inundación, viento, nieve, hielo y sismo",
    "texto": ""
   }
  ]

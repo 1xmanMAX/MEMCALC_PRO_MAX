@@ -11,12 +11,30 @@
  "tipo": "indice",
  "version": "AISI S100-16 (reafirmada 2020) con suplemento 2 (S100-16 w/S2-20)",
  "fuente": "https://www.steel.org/",
- "licencia": "Norma protegida por derechos de autor de American Iron and Steel Institute. Solo índice (números y títulos oficiales), sin texto.",
+ "licencia": "Norma protegida por derechos de autor de American Iron and Steel Institute. Solo índice (números y títulos oficiales), sin texto. Índice verificado contra la tabla de contenido del PDF oficial de AISI S100-16 (2020) w/S2-20, que AISI publica gratis en buildusingsteel.org, el 2026-10-09. Cubre los capítulos A–M, sus secciones de primer nivel y los apéndices.",
  "secciones": [
   {
    "id": "Chapter A",
    "nivel": 1,
    "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "A1",
+   "nivel": 2,
+   "titulo": "Scope, Applicability, and Definitions",
+   "texto": ""
+  },
+  {
+   "id": "A2",
+   "nivel": 2,
+   "titulo": "Referenced Specifications, Codes, and Standards",
+   "texto": ""
+  },
+  {
+   "id": "A3",
+   "nivel": 2,
+   "titulo": "Material",
    "texto": ""
   },
   {
@@ -26,9 +44,69 @@
    "texto": ""
   },
   {
+   "id": "B1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "B2",
+   "nivel": 2,
+   "titulo": "Loads and Load Combinations",
+   "texto": ""
+  },
+  {
+   "id": "B3",
+   "nivel": 2,
+   "titulo": "Design Basis",
+   "texto": ""
+  },
+  {
+   "id": "B4",
+   "nivel": 2,
+   "titulo": "Dimensional Limits and Considerations",
+   "texto": ""
+  },
+  {
+   "id": "B5",
+   "nivel": 2,
+   "titulo": "Member Properties",
+   "texto": ""
+  },
+  {
+   "id": "B6",
+   "nivel": 2,
+   "titulo": "Fabrication and Erection",
+   "texto": ""
+  },
+  {
+   "id": "B7",
+   "nivel": 2,
+   "titulo": "Quality Control and Quality Assurance",
+   "texto": ""
+  },
+  {
+   "id": "B8",
+   "nivel": 2,
+   "titulo": "Evaluation of Existing Structures",
+   "texto": ""
+  },
+  {
    "id": "Chapter C",
    "nivel": 1,
    "titulo": "Design for Stability",
+   "texto": ""
+  },
+  {
+   "id": "C1",
+   "nivel": 2,
+   "titulo": "Design for System Stability",
+   "texto": ""
+  },
+  {
+   "id": "C2",
+   "nivel": 2,
+   "titulo": "Member Bracing",
    "texto": ""
   },
   {
@@ -38,9 +116,51 @@
    "texto": ""
   },
   {
+   "id": "D1",
+   "nivel": 2,
+   "titulo": "General Requirements",
+   "texto": ""
+  },
+  {
+   "id": "D2",
+   "nivel": 2,
+   "titulo": "Yielding of Gross Section",
+   "texto": ""
+  },
+  {
+   "id": "D3",
+   "nivel": 2,
+   "titulo": "Rupture of Net Section",
+   "texto": ""
+  },
+  {
    "id": "Chapter E",
    "nivel": 1,
    "titulo": "Members in Compression",
+   "texto": ""
+  },
+  {
+   "id": "E1",
+   "nivel": 2,
+   "titulo": "General Requirements",
+   "texto": ""
+  },
+  {
+   "id": "E2",
+   "nivel": 2,
+   "titulo": "Yielding and Global (Flexural, Flexural-Torsional, and Torsional) Buckling",
+   "texto": ""
+  },
+  {
+   "id": "E3",
+   "nivel": 2,
+   "titulo": "Local Buckling Interacting With Yielding and Global Buckling",
+   "texto": ""
+  },
+  {
+   "id": "E4",
+   "nivel": 2,
+   "titulo": "Distortional Buckling",
    "texto": ""
   },
   {
@@ -50,9 +170,75 @@
    "texto": ""
   },
   {
+   "id": "F1",
+   "nivel": 2,
+   "titulo": "General Requirements",
+   "texto": ""
+  },
+  {
+   "id": "F2",
+   "nivel": 2,
+   "titulo": "Yielding and Global (Lateral-Torsional) Buckling",
+   "texto": ""
+  },
+  {
+   "id": "F3",
+   "nivel": 2,
+   "titulo": "Local Buckling Interacting With Yielding and Global Buckling",
+   "texto": ""
+  },
+  {
+   "id": "F4",
+   "nivel": 2,
+   "titulo": "Distortional Buckling",
+   "texto": ""
+  },
+  {
+   "id": "F5",
+   "nivel": 2,
+   "titulo": "Stiffeners",
+   "texto": ""
+  },
+  {
    "id": "Chapter G",
    "nivel": 1,
    "titulo": "Members in Shear and Web Crippling",
+   "texto": ""
+  },
+  {
+   "id": "G1",
+   "nivel": 2,
+   "titulo": "General Requirements",
+   "texto": ""
+  },
+  {
+   "id": "G2",
+   "nivel": 2,
+   "titulo": "Shear Strength of Webs Without Holes",
+   "texto": ""
+  },
+  {
+   "id": "G3",
+   "nivel": 2,
+   "titulo": "Shear Strength of C-Section Webs With Holes",
+   "texto": ""
+  },
+  {
+   "id": "G4",
+   "nivel": 2,
+   "titulo": "Transverse Web Stiffeners",
+   "texto": ""
+  },
+  {
+   "id": "G5",
+   "nivel": 2,
+   "titulo": "Web Crippling Strength of Webs Without Holes",
+   "texto": ""
+  },
+  {
+   "id": "G6",
+   "nivel": 2,
+   "titulo": "Web Crippling Strength of C-Section Webs With Holes",
    "texto": ""
   },
   {
@@ -62,9 +248,75 @@
    "texto": ""
   },
   {
+   "id": "H1",
+   "nivel": 2,
+   "titulo": "Combined Axial Load and Bending",
+   "texto": ""
+  },
+  {
+   "id": "H2",
+   "nivel": 2,
+   "titulo": "Combined Bending and Shear",
+   "texto": ""
+  },
+  {
+   "id": "H3",
+   "nivel": 2,
+   "titulo": "Combined Bending and Web Crippling",
+   "texto": ""
+  },
+  {
+   "id": "H4",
+   "nivel": 2,
+   "titulo": "Combined Bending and Torsional Loading",
+   "texto": ""
+  },
+  {
    "id": "Chapter I",
    "nivel": 1,
    "titulo": "Assemblies and Systems",
+   "texto": ""
+  },
+  {
+   "id": "I1",
+   "nivel": 2,
+   "titulo": "Built-Up Sections",
+   "texto": ""
+  },
+  {
+   "id": "I2",
+   "nivel": 2,
+   "titulo": "Floor, Roof, or Wall Steel Diaphragm Construction",
+   "texto": ""
+  },
+  {
+   "id": "I3",
+   "nivel": 2,
+   "titulo": "Mixed Systems",
+   "texto": ""
+  },
+  {
+   "id": "I4",
+   "nivel": 2,
+   "titulo": "Cold-Formed Steel Light-Frame Construction",
+   "texto": ""
+  },
+  {
+   "id": "I5",
+   "nivel": 2,
+   "titulo": "Special Bolted Moment Frame Systems",
+   "texto": ""
+  },
+  {
+   "id": "I6",
+   "nivel": 2,
+   "titulo": "Metal Roof and Wall Systems",
+   "texto": ""
+  },
+  {
+   "id": "I7",
+   "nivel": 2,
+   "titulo": "Rack Systems",
    "texto": ""
   },
   {
@@ -74,9 +326,123 @@
    "texto": ""
   },
   {
+   "id": "J1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "J2",
+   "nivel": 2,
+   "titulo": "Welded Connections",
+   "texto": ""
+  },
+  {
+   "id": "J3",
+   "nivel": 2,
+   "titulo": "Bolted Connections",
+   "texto": ""
+  },
+  {
+   "id": "J4",
+   "nivel": 2,
+   "titulo": "Screw Connections",
+   "texto": ""
+  },
+  {
+   "id": "J5",
+   "nivel": 2,
+   "titulo": "Power-Actuated Fastener (PAF) Connections",
+   "texto": ""
+  },
+  {
+   "id": "J6",
+   "nivel": 2,
+   "titulo": "Rupture",
+   "texto": ""
+  },
+  {
+   "id": "J7",
+   "nivel": 2,
+   "titulo": "Connections to Other Materials",
+   "texto": ""
+  },
+  {
    "id": "Chapter K",
    "nivel": 1,
    "titulo": "Strength for Special Cases",
+   "texto": ""
+  },
+  {
+   "id": "K1",
+   "nivel": 2,
+   "titulo": "Test Standards",
+   "texto": ""
+  },
+  {
+   "id": "K2",
+   "nivel": 2,
+   "titulo": "Tests for Special Cases",
+   "texto": ""
+  },
+  {
+   "id": "Chapter L",
+   "nivel": 1,
+   "titulo": "Design for Serviceability",
+   "texto": ""
+  },
+  {
+   "id": "L1",
+   "nivel": 2,
+   "titulo": "Serviceability Determination for the Effective Width Method",
+   "texto": ""
+  },
+  {
+   "id": "L2",
+   "nivel": 2,
+   "titulo": "Serviceability Determination for the Direct Strength Method",
+   "texto": ""
+  },
+  {
+   "id": "L3",
+   "nivel": 2,
+   "titulo": "Flange Curling",
+   "texto": ""
+  },
+  {
+   "id": "Chapter M",
+   "nivel": 1,
+   "titulo": "Design for Fatigue",
+   "texto": ""
+  },
+  {
+   "id": "M1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "M2",
+   "nivel": 2,
+   "titulo": "Calculation of Maximum Stresses and Stress Ranges",
+   "texto": ""
+  },
+  {
+   "id": "M3",
+   "nivel": 2,
+   "titulo": "Design Stress Range",
+   "texto": ""
+  },
+  {
+   "id": "M4",
+   "nivel": 2,
+   "titulo": "Bolts and Threaded Parts",
+   "texto": ""
+  },
+  {
+   "id": "M5",
+   "nivel": 2,
+   "titulo": "Special Fabrication Requirements",
    "texto": ""
   },
   {
@@ -88,7 +454,19 @@
   {
    "id": "Appendix 2",
    "nivel": 1,
-   "titulo": "Second-Order Analysis",
+   "titulo": "Elastic Buckling Analysis of Members",
+   "texto": ""
+  },
+  {
+   "id": "Appendix A",
+   "nivel": 1,
+   "titulo": "Provisions Applicable to the United States and Mexico",
+   "texto": ""
+  },
+  {
+   "id": "Appendix B",
+   "nivel": 1,
+   "titulo": "Provisions Applicable to Canada",
    "texto": ""
   }
  ]

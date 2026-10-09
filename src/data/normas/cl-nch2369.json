@@ -11,14 +11,506 @@
  "titulo": "NCh2369 Diseño sísmico de estructuras e instalaciones industriales",
  "pais": "CL",
  "tipo": "indice",
- "version": "NCh2369.Of2003, vigente hasta el 09-09-2027; NCh2369:2025 oficial por D. Ex. N.º 12 MINVU (DO 09-03-2026), rige desde el 10-09-2027",
+ "version": "NCh2369.Of2003, vigente hasta el 09-09-2027; NCh2369:2025 oficial por D. Ex. N.º 12 MINVU (DO 09-03-2026), rige desde el 10-09-2027. El índice corresponde a la NCh2369.Of2003; la :2025 tiene otra numeración desde el cap. 5. El índice corresponde a la NCh2369.Of2003; la :2025 tiene otra numeración desde el cap. 5",
  "fuente": "https://www.inn.cl/",
- "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. No se pudo verificar el índice contra una fuente oficial; por eso no se transcriben títulos de capítulos (consúltelos en la norma).",
+ "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. Índice verificado contra el «Contenido» de una copia del texto oficial de NCh2369.Of2003 publicada como material docente en u-cursos.cl (Universidad de Chile, CI3201) el 2026-10-09, cotejando los títulos con los encabezados del cuerpo (9.2 dice «prefabricadas»; el índice impreso trae la errata «prebabricadas»). El índice es el de la Of2003; el de la NCh2369:2025 (publicada por MINVU en normastecnicas.minvu.cl) no se transcribe.",
  "secciones": [
   {
-   "id": "Norma",
+   "id": "1",
    "nivel": 1,
-   "titulo": "Índice y texto en la norma oficial (INN)",
+   "titulo": "Alcance y campo de aplicación",
+   "texto": ""
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Referencias normativas",
+   "texto": ""
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Términos, definiciones y simbología",
+   "texto": ""
+  },
+  {
+   "id": "3.1",
+   "nivel": 2,
+   "titulo": "Términos y definiciones",
+   "texto": ""
+  },
+  {
+   "id": "3.2",
+   "nivel": 2,
+   "titulo": "Simbología",
+   "texto": ""
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Disposiciones de aplicación general",
+   "texto": ""
+  },
+  {
+   "id": "4.1",
+   "nivel": 2,
+   "titulo": "Principios e hipótesis básicos",
+   "texto": ""
+  },
+  {
+   "id": "4.2",
+   "nivel": 2,
+   "titulo": "Formas de especificar la acción sísmica",
+   "texto": ""
+  },
+  {
+   "id": "4.3",
+   "nivel": 2,
+   "titulo": "Clasificación de estructuras y equipos según su importancia",
+   "texto": ""
+  },
+  {
+   "id": "4.4",
+   "nivel": 2,
+   "titulo": "Coordinación con otras normas",
+   "texto": ""
+  },
+  {
+   "id": "4.5",
+   "nivel": 2,
+   "titulo": "Combinaciones de cargas",
+   "texto": ""
+  },
+  {
+   "id": "4.6",
+   "nivel": 2,
+   "titulo": "Proyecto y revisión del diseño sísmico",
+   "texto": ""
+  },
+  {
+   "id": "4.7",
+   "nivel": 2,
+   "titulo": "Disposición general sobre la aplicación de esta norma",
+   "texto": ""
+  },
+  {
+   "id": "5",
+   "nivel": 1,
+   "titulo": "Análisis sísmico",
+   "texto": ""
+  },
+  {
+   "id": "5.1",
+   "nivel": 2,
+   "titulo": "Disposiciones generales",
+   "texto": ""
+  },
+  {
+   "id": "5.2",
+   "nivel": 2,
+   "titulo": "Métodos de análisis",
+   "texto": ""
+  },
+  {
+   "id": "5.3",
+   "nivel": 2,
+   "titulo": "Análisis elástico estático",
+   "texto": ""
+  },
+  {
+   "id": "5.4",
+   "nivel": 2,
+   "titulo": "Análisis elástico dinámico",
+   "texto": ""
+  },
+  {
+   "id": "5.5",
+   "nivel": 2,
+   "titulo": "Acción sísmica vertical",
+   "texto": ""
+  },
+  {
+   "id": "5.6",
+   "nivel": 2,
+   "titulo": "Equipos robustos y rígidos apoyados en el suelo",
+   "texto": ""
+  },
+  {
+   "id": "5.7",
+   "nivel": 2,
+   "titulo": "Diseño por desplazamientos diferenciales horizontales",
+   "texto": ""
+  },
+  {
+   "id": "5.8",
+   "nivel": 2,
+   "titulo": "Análisis especiales",
+   "texto": ""
+  },
+  {
+   "id": "5.9",
+   "nivel": 2,
+   "titulo": "Estructuras con aislación sísmica o disipadores de energía",
+   "texto": ""
+  },
+  {
+   "id": "5.10",
+   "nivel": 2,
+   "titulo": "Otras estructuras no específicamente referidas en esta norma",
+   "texto": ""
+  },
+  {
+   "id": "6",
+   "nivel": 1,
+   "titulo": "Deformaciones sísmicas",
+   "texto": ""
+  },
+  {
+   "id": "6.1",
+   "nivel": 2,
+   "titulo": "Cálculos de deformaciones",
+   "texto": ""
+  },
+  {
+   "id": "6.2",
+   "nivel": 2,
+   "titulo": "Separación entre estructuras",
+   "texto": ""
+  },
+  {
+   "id": "6.3",
+   "nivel": 2,
+   "titulo": "Deformaciones sísmicas máximas",
+   "texto": ""
+  },
+  {
+   "id": "6.4",
+   "nivel": 2,
+   "titulo": "Efecto P-Delta",
+   "texto": ""
+  },
+  {
+   "id": "7",
+   "nivel": 1,
+   "titulo": "Elementos secundarios y equipos montados sobre estructuras",
+   "texto": ""
+  },
+  {
+   "id": "7.1",
+   "nivel": 2,
+   "titulo": "Alcance",
+   "texto": ""
+  },
+  {
+   "id": "7.2",
+   "nivel": 2,
+   "titulo": "Fuerzas para el diseño sísmico",
+   "texto": ""
+  },
+  {
+   "id": "7.3",
+   "nivel": 2,
+   "titulo": "Fuerzas para el diseño de anclajes",
+   "texto": ""
+  },
+  {
+   "id": "7.4",
+   "nivel": 2,
+   "titulo": "Sistemas de corte automático",
+   "texto": ""
+  },
+  {
+   "id": "8",
+   "nivel": 1,
+   "titulo": "Disposiciones especiales para estructuras de acero",
+   "texto": ""
+  },
+  {
+   "id": "8.1",
+   "nivel": 2,
+   "titulo": "Normas aplicables",
+   "texto": ""
+  },
+  {
+   "id": "8.2",
+   "nivel": 2,
+   "titulo": "Materiales",
+   "texto": ""
+  },
+  {
+   "id": "8.3",
+   "nivel": 2,
+   "titulo": "Marcos arriostrados",
+   "texto": ""
+  },
+  {
+   "id": "8.4",
+   "nivel": 2,
+   "titulo": "Marcos rígidos",
+   "texto": ""
+  },
+  {
+   "id": "8.5",
+   "nivel": 2,
+   "titulo": "Conexiones",
+   "texto": ""
+  },
+  {
+   "id": "8.6",
+   "nivel": 2,
+   "titulo": "Anclajes",
+   "texto": ""
+  },
+  {
+   "id": "8.7",
+   "nivel": 2,
+   "titulo": "Sistemas de arriostramientos horizontales",
+   "texto": ""
+  },
+  {
+   "id": "9",
+   "nivel": 1,
+   "titulo": "Disposiciones especiales para estructuras de hormigón",
+   "texto": ""
+  },
+  {
+   "id": "9.1",
+   "nivel": 2,
+   "titulo": "Estructuras de hormigón armado",
+   "texto": ""
+  },
+  {
+   "id": "9.2",
+   "nivel": 2,
+   "titulo": "Estructuras prefabricadas de hormigón",
+   "texto": ""
+  },
+  {
+   "id": "9.3",
+   "nivel": 2,
+   "titulo": "Naves industriales compuestas por columnas en voladizo",
+   "texto": ""
+  },
+  {
+   "id": "10",
+   "nivel": 1,
+   "titulo": "Disposiciones sobre fundaciones",
+   "texto": ""
+  },
+  {
+   "id": "10.1",
+   "nivel": 2,
+   "titulo": "Especificaciones generales para el diseño",
+   "texto": ""
+  },
+  {
+   "id": "10.2",
+   "nivel": 2,
+   "titulo": "Fundaciones superficiales",
+   "texto": ""
+  },
+  {
+   "id": "11",
+   "nivel": 1,
+   "titulo": "Estructuras específicas",
+   "texto": ""
+  },
+  {
+   "id": "11.1",
+   "nivel": 2,
+   "titulo": "Galpones industriales",
+   "texto": ""
+  },
+  {
+   "id": "11.2",
+   "nivel": 2,
+   "titulo": "Naves de acero livianas",
+   "texto": ""
+  },
+  {
+   "id": "11.3",
+   "nivel": 2,
+   "titulo": "Edificios industriales de varios pisos",
+   "texto": ""
+  },
+  {
+   "id": "11.4",
+   "nivel": 2,
+   "titulo": "Grandes equipos suspendidos",
+   "texto": ""
+  },
+  {
+   "id": "11.5",
+   "nivel": 2,
+   "titulo": "Cañerías y ductos",
+   "texto": ""
+  },
+  {
+   "id": "11.6",
+   "nivel": 2,
+   "titulo": "Grandes equipos móviles",
+   "texto": ""
+  },
+  {
+   "id": "11.7",
+   "nivel": 2,
+   "titulo": "Estanques, elevados, recipientes de proceso y chimeneas de acero",
+   "texto": ""
+  },
+  {
+   "id": "11.8",
+   "nivel": 2,
+   "titulo": "Estanques verticales apoyados en el suelo",
+   "texto": ""
+  },
+  {
+   "id": "11.9",
+   "nivel": 2,
+   "titulo": "Hornos y secadores rotatorios",
+   "texto": ""
+  },
+  {
+   "id": "11.10",
+   "nivel": 2,
+   "titulo": "Estructuras de albañilería refractaria",
+   "texto": ""
+  },
+  {
+   "id": "11.11",
+   "nivel": 2,
+   "titulo": "Equipos eléctricos",
+   "texto": ""
+  },
+  {
+   "id": "11.12",
+   "nivel": 2,
+   "titulo": "Estructuras y equipos menores",
+   "texto": ""
+  },
+  {
+   "id": "11.13",
+   "nivel": 2,
+   "titulo": "Estructuras de madera",
+   "texto": ""
+  },
+  {
+   "id": "Anexo A",
+   "nivel": 1,
+   "titulo": "(normativo) Detalles típicos",
+   "texto": ""
+  },
+  {
+   "id": "Anexo B",
+   "nivel": 1,
+   "titulo": "(normativo) Diseño de las uniones viga a columna en marcos rígidos de acero",
+   "texto": ""
+  },
+  {
+   "id": "B.1",
+   "nivel": 2,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "B.2",
+   "nivel": 2,
+   "titulo": "Diseño de la zona panel de uniones de momento",
+   "texto": ""
+  },
+  {
+   "id": "B.3",
+   "nivel": 2,
+   "titulo": "Flexión local del ala de la columna debida a una fuerza de tracción perpendicular a ella",
+   "texto": ""
+  },
+  {
+   "id": "B.4",
+   "nivel": 2,
+   "titulo": "Fluencia local del alma por fuerzas de compresión perpendicular al ala",
+   "texto": ""
+  },
+  {
+   "id": "B.5",
+   "nivel": 2,
+   "titulo": "Aplastamiento del alma por la fuerza de compresión perpendicular al ala",
+   "texto": ""
+  },
+  {
+   "id": "B.6",
+   "nivel": 2,
+   "titulo": "Pandeo de compresión del alma",
+   "texto": ""
+  },
+  {
+   "id": "B.7",
+   "nivel": 2,
+   "titulo": "Requisitos adicionales para atiesadores de continuidad",
+   "texto": ""
+  },
+  {
+   "id": "B.8",
+   "nivel": 2,
+   "titulo": "Requisitos adicionales para planchas de refuerzo",
+   "texto": ""
+  },
+  {
+   "id": "Anexo C",
+   "nivel": 1,
+   "titulo": "(informativo) Comentarios",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 5.1",
+   "nivel": 1,
+   "titulo": "Zonificación sísmica por comunas para las Regiones Cuarta a Novena",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 5.2",
+   "nivel": 1,
+   "titulo": "Valor de la aceleración efectiva máxima A0",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 5.3",
+   "nivel": 1,
+   "titulo": "Definición de los tipos de suelos de fundación",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 5.4",
+   "nivel": 1,
+   "titulo": "Valor de los parámetros que dependen del tipo de suelo",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 5.5",
+   "nivel": 1,
+   "titulo": "Razones de amortiguamiento",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 5.6",
+   "nivel": 1,
+   "titulo": "Valores máximos del factor de modificación de la respuesta",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 5.7",
+   "nivel": 1,
+   "titulo": "Valores máximos del coeficiente sísmico",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 7.1",
+   "nivel": 1,
+   "titulo": "Valores máximos del factor de modificación de la respuesta para elementos secundarios y equipos",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 8.1",
+   "nivel": 1,
+   "titulo": "Límites de la relación ancho/espesor",
    "texto": ""
   }
  ]

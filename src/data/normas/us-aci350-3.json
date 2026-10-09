@@ -11,7 +11,7 @@
  "tipo": "indice",
  "version": "ACI 350.3-06 (índice); la edición vigente es ACI 350.3-20 (Code Requirements for Seismic Analysis and Design of Liquid-Containing Concrete Structures), con otra numeración",
  "fuente": "https://www.concrete.org/store/",
- "licencia": "Norma protegida por derechos de autor de American Concrete Institute. Solo índice (números y títulos oficiales), sin texto.",
+ "licencia": "Norma protegida por derechos de autor de American Concrete Institute. Solo índice (números y títulos oficiales), sin texto. Índice verificado contra la tabla de contenido de ACI 350.3-06 publicada en la tienda de normas de NSAI (shop.standards.ie, ficha «ACI 350.3:2006») el 2026-10-09. Cubre capítulos y apéndices; ACI no publica vista previa de esta edición agotada.",
  "secciones": [
   {
    "id": "1",
@@ -46,7 +46,7 @@
   {
    "id": "6",
    "nivel": 1,
-   "titulo": "Chapter 6 — Strength and serviceability",
+   "titulo": "Chapter 6 — Stresses",
    "texto": ""
   },
   {
@@ -58,13 +58,31 @@
   {
    "id": "8",
    "nivel": 1,
-   "titulo": "Chapter 8 — Buried structures",
+   "titulo": "Chapter 8 — Earthquake-induced earth pressures",
    "texto": ""
   },
   {
    "id": "9",
    "nivel": 1,
    "titulo": "Chapter 9 — Dynamic model",
+   "texto": ""
+  },
+  {
+   "id": "10",
+   "nivel": 1,
+   "titulo": "Chapter 10 — Commentary references",
+   "texto": ""
+  },
+  {
+   "id": "Appendix A",
+   "nivel": 1,
+   "titulo": "Design method",
+   "texto": ""
+  },
+  {
+   "id": "Appendix B",
+   "nivel": 1,
+   "titulo": "Alternative method of analysis based on 1997 Uniform Building Code",
    "texto": ""
   }
  ]

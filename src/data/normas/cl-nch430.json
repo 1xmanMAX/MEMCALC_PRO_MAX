@@ -9,14 +9,122 @@
  "titulo": "NCh430 Hormigón armado — Requisitos de diseño y cálculo",
  "pais": "CL",
  "tipo": "indice",
- "version": "NCh430.Of2008 (basada en ACI 318-05); el DS 60 (2011) la reemplaza para edificios adoptando ACI 318S-08 con adecuaciones",
+ "version": "NCh430.Of2008 (basada en ACI 318-05); el DS 60 (2011) la reemplaza para edificios adoptando ACI 318S-08 con adecuaciones. El INN publicó NCh430:2026 (25-09-2026), no incluida. El INN publicó NCh430:2026 (25-09-2026), no incluida",
  "fuente": "https://www.inn.cl/",
- "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. Índice no verificado contra fuente oficial: no se transcriben títulos de capítulos. Las adecuaciones vigentes (DS 60) están en texto completo en el documento «DS60».",
+ "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. Las adecuaciones vigentes (DS 60) están en texto completo en el documento «DS60». Índice verificado contra el texto de NCh430.Of2008 que MINVU publica con acceso gratuito en normastecnicas.minvu.cl el 2026-10-09. La norma no trae página de contenido: se listan sus cláusulas, los capítulos del ACI 318-05 que modifica la cláusula 4 (con sus títulos en español) y el Anexo A.",
  "secciones": [
   {
-   "id": "Norma",
+   "id": "0",
    "nivel": 1,
-   "titulo": "Índice y texto en la norma oficial (INN)",
+   "titulo": "Introducción",
+   "texto": ""
+  },
+  {
+   "id": "1",
+   "nivel": 1,
+   "titulo": "Alcance y campo de aplicación",
+   "texto": ""
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Referencias normativas",
+   "texto": ""
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Requisitos",
+   "texto": ""
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Apéndice al Código ACI 318-05",
+   "texto": ""
+  },
+  {
+   "id": "Cap. 1",
+   "nivel": 2,
+   "titulo": "Capítulo 1 — Requisitos generales (modificaciones al ACI 318-05)",
+   "texto": ""
+  },
+  {
+   "id": "Cap. 3",
+   "nivel": 2,
+   "titulo": "Capítulo 3 — Materiales (modificaciones al ACI 318-05)",
+   "texto": ""
+  },
+  {
+   "id": "Cap. 4",
+   "nivel": 2,
+   "titulo": "Capítulo 4 — Requisitos de durabilidad (modificaciones al ACI 318-05)",
+   "texto": ""
+  },
+  {
+   "id": "Cap. 5",
+   "nivel": 2,
+   "titulo": "Capítulo 5 — Calidad del concreto, mezclado y colocación (modificaciones al ACI 318-05)",
+   "texto": ""
+  },
+  {
+   "id": "Cap. 7",
+   "nivel": 2,
+   "titulo": "Capítulo 7 — Detalles del refuerzo (modificaciones al ACI 318-05)",
+   "texto": ""
+  },
+  {
+   "id": "Cap. 8",
+   "nivel": 2,
+   "titulo": "Capítulo 8 — Análisis y diseño - Consideraciones generales (modificaciones al ACI 318-05)",
+   "texto": ""
+  },
+  {
+   "id": "Cap. 9",
+   "nivel": 2,
+   "titulo": "Capítulo 9 — Requisitos de resistencia y funcionamiento (modificaciones al ACI 318-05)",
+   "texto": ""
+  },
+  {
+   "id": "Cap. 12",
+   "nivel": 2,
+   "titulo": "Capítulo 12 — Longitudes de desarrollo y empalmes del refuerzo (modificaciones al ACI 318-05)",
+   "texto": ""
+  },
+  {
+   "id": "Cap. 21",
+   "nivel": 2,
+   "titulo": "Capítulo 21 — Disposiciones especiales para diseño sísmico (modificaciones al ACI 318-05)",
+   "texto": ""
+  },
+  {
+   "id": "Anexo A",
+   "nivel": 1,
+   "titulo": "(normativo) Requisitos de resaltes y tolerancias de masa para aceros de diámetro mayor que 40 mm",
+   "texto": ""
+  },
+  {
+   "id": "A.1",
+   "nivel": 2,
+   "titulo": "Requisitos de forma, dimensiones y masa",
+   "texto": ""
+  },
+  {
+   "id": "A.2",
+   "nivel": 2,
+   "titulo": "Requisitos de los resaltes",
+   "texto": ""
+  },
+  {
+   "id": "A.3",
+   "nivel": 2,
+   "titulo": "Tolerancias",
+   "texto": ""
+  },
+  {
+   "id": "A.4",
+   "nivel": 2,
+   "titulo": "Alargamiento admisible",
    "texto": ""
   }
  ]

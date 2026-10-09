@@ -6,13 +6,67 @@
   "ASCE/SEI 7-22",
   "ASCE 7-16"
  ],
- "titulo": "ASCE/SEI 7-22 Minimum Design Loads and Associated Criteria for Buildings and Other Structures — Capítulos 11 y 12 (sismo)",
+ "titulo": "ASCE/SEI 7-22 Minimum Design Loads and Associated Criteria for Buildings and Other Structures — capítulos 1–32 (detalle de 11 y 12, sismo)",
  "pais": "US",
  "tipo": "indice",
  "version": "ASCE/SEI 7-22",
  "fuente": "https://www.asce.org/publications-and-news/asce-7",
- "licencia": "Norma protegida por derechos de autor de American Society of Civil Engineers. Solo índice (números y títulos oficiales), sin texto. Parámetros sísmicos de sitio: ASCE Hazard Tool (ascehazardtool.org).",
+ "licencia": "Norma protegida por derechos de autor de American Society of Civil Engineers. Solo índice (números y títulos oficiales), sin texto. Parámetros sísmicos de sitio: ASCE Hazard Tool (ascehazardtool.org). Índice verificado contra la tabla de contenido oficial de ASCE/SEI 7-22 en ASCE Amplify (amplify.asce.org/content/standard/9780784415788) el 2026-10-09. Cubre los títulos de capítulos y apéndices y las secciones de los caps. 11 y 12; se omiten los capítulos 9, 24 y 25 y los apéndices A y B, reservados.",
  "secciones": [
+  {
+   "id": "1",
+   "nivel": 1,
+   "titulo": "Chapter 1 — General",
+   "texto": ""
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Chapter 2 — Combinations of Loads",
+   "texto": ""
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Chapter 3 — Dead Loads, Soil Loads, and Hydrostatic Pressure",
+   "texto": ""
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Chapter 4 — Live Loads",
+   "texto": ""
+  },
+  {
+   "id": "5",
+   "nivel": 1,
+   "titulo": "Chapter 5 — Flood Loads",
+   "texto": ""
+  },
+  {
+   "id": "6",
+   "nivel": 1,
+   "titulo": "Chapter 6 — Tsunami Loads and Effects",
+   "texto": ""
+  },
+  {
+   "id": "7",
+   "nivel": 1,
+   "titulo": "Chapter 7 — Snow Loads",
+   "texto": ""
+  },
+  {
+   "id": "8",
+   "nivel": 1,
+   "titulo": "Chapter 8 — Rain Loads",
+   "texto": ""
+  },
+  {
+   "id": "10",
+   "nivel": 1,
+   "titulo": "Chapter 10 — Ice Loads—Atmospheric Icing",
+   "texto": ""
+  },
   {
    "id": "11",
    "nivel": 1,
@@ -74,6 +128,12 @@
    "texto": ""
   },
   {
+   "id": "11.10",
+   "nivel": 2,
+   "titulo": "Consensus Standards and other Referenced Documents",
+   "texto": ""
+  },
+  {
    "id": "12",
    "nivel": 1,
    "titulo": "Chapter 12 — Seismic Design Requirements for Building Structures",
@@ -124,7 +184,7 @@
   {
    "id": "12.8",
    "nivel": 2,
-   "titulo": "Equivalent Lateral Force Procedure",
+   "titulo": "Equivalent Lateral Force (ELF) Procedure",
    "texto": ""
   },
   {
@@ -160,7 +220,7 @@
   {
    "id": "12.8.6",
    "nivel": 3,
-   "titulo": "Story Drift Determination",
+   "titulo": "Displacement and Drift Determination",
    "texto": ""
   },
   {
@@ -215,6 +275,150 @@
    "id": "12.14",
    "nivel": 2,
    "titulo": "Simplified Alternative Structural Design Criteria for Simple Bearing Wall or Building Frame Systems",
+   "texto": ""
+  },
+  {
+   "id": "12.15",
+   "nivel": 2,
+   "titulo": "Consensus Standards and Other Referenced Documents",
+   "texto": ""
+  },
+  {
+   "id": "13",
+   "nivel": 1,
+   "titulo": "Chapter 13 — Seismic Design Requirements for Nonstructural Components",
+   "texto": ""
+  },
+  {
+   "id": "14",
+   "nivel": 1,
+   "titulo": "Chapter 14 — Material-Specific Seismic Design and Detailing Requirements",
+   "texto": ""
+  },
+  {
+   "id": "15",
+   "nivel": 1,
+   "titulo": "Chapter 15 — Seismic Design Requirements for Nonbuilding Structures",
+   "texto": ""
+  },
+  {
+   "id": "16",
+   "nivel": 1,
+   "titulo": "Chapter 16 — Nonlinear Response History Analysis",
+   "texto": ""
+  },
+  {
+   "id": "17",
+   "nivel": 1,
+   "titulo": "Chapter 17 — Seismic Design Requirements for Seismically Isolated Structures",
+   "texto": ""
+  },
+  {
+   "id": "18",
+   "nivel": 1,
+   "titulo": "Chapter 18 — Seismic Design Requirements for Structures with Damping Systems",
+   "texto": ""
+  },
+  {
+   "id": "19",
+   "nivel": 1,
+   "titulo": "Chapter 19 — Soil–Structure Interaction for Seismic Design",
+   "texto": ""
+  },
+  {
+   "id": "20",
+   "nivel": 1,
+   "titulo": "Chapter 20 — Site Classification Procedure for Seismic Design",
+   "texto": ""
+  },
+  {
+   "id": "21",
+   "nivel": 1,
+   "titulo": "Chapter 21 — Site-Specific Ground Motion Procedures for Seismic Design",
+   "texto": ""
+  },
+  {
+   "id": "22",
+   "nivel": 1,
+   "titulo": "Chapter 22 — Seismic Ground Motion and Long-Period Transition Maps",
+   "texto": ""
+  },
+  {
+   "id": "23",
+   "nivel": 1,
+   "titulo": "Chapter 23 — Seismic Design Reference Documents",
+   "texto": ""
+  },
+  {
+   "id": "26",
+   "nivel": 1,
+   "titulo": "Chapter 26 — Wind Loads: General Requirements",
+   "texto": ""
+  },
+  {
+   "id": "27",
+   "nivel": 1,
+   "titulo": "Chapter 27 — Wind Loads on Buildings: Main Wind Force Resisting System (Directional Procedure)",
+   "texto": ""
+  },
+  {
+   "id": "28",
+   "nivel": 1,
+   "titulo": "Chapter 28 — Wind Loads on Buildings: Main Wind Force Resisting System (Envelope Procedure)",
+   "texto": ""
+  },
+  {
+   "id": "29",
+   "nivel": 1,
+   "titulo": "Chapter 29 — Wind Loads on Building Appurtenances and Other Structures: Main Wind Force Resisting System (Directional Procedure)",
+   "texto": ""
+  },
+  {
+   "id": "30",
+   "nivel": 1,
+   "titulo": "Chapter 30 — Wind Loads: Components and Cladding",
+   "texto": ""
+  },
+  {
+   "id": "31",
+   "nivel": 1,
+   "titulo": "Chapter 31 — Wind Tunnel Procedure",
+   "texto": ""
+  },
+  {
+   "id": "32",
+   "nivel": 1,
+   "titulo": "Chapter 32 — Tornado Loads",
+   "texto": ""
+  },
+  {
+   "id": "Appendix C",
+   "nivel": 1,
+   "titulo": "Serviceability Considerations",
+   "texto": ""
+  },
+  {
+   "id": "Appendix D",
+   "nivel": 1,
+   "titulo": "Buildings Exempted from Torsional Wind Load Cases",
+   "texto": ""
+  },
+  {
+   "id": "Appendix E",
+   "nivel": 1,
+   "titulo": "Performance-Based Design Procedures for Fire Effects on Structures",
+   "texto": ""
+  },
+  {
+   "id": "Appendix F",
+   "nivel": 1,
+   "titulo": "Wind Hazard Maps for Long Return Periods",
+   "texto": ""
+  },
+  {
+   "id": "Appendix G",
+   "nivel": 1,
+   "titulo": "Tornado Hazard Maps for Long Return Periods",
    "texto": ""
   }
  ]

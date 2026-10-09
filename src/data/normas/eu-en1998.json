@@ -13,12 +13,54 @@
  "tipo": "indice",
  "version": "EN 1998-1:2004 + AC:2009 + A1:2013",
  "fuente": "https://eurocodes.jrc.ec.europa.eu/",
- "licencia": "Norma europea (CEN) protegida por derechos de autor; se adquiere a través de los organismos nacionales de normalización (p. ej. UNE, AENOR, BSI, DIN). Solo índice (números y títulos oficiales en inglés), sin texto.",
+ "licencia": "Norma europea (CEN) protegida por derechos de autor; se adquiere a través de los organismos nacionales de normalización (p. ej. UNE, AENOR, BSI, DIN). Solo índice (números y títulos oficiales en inglés), sin texto. Índice verificado contra la lista de contenido y los encabezados de EN 1998-1:2004 (copia BS EN de libre acceso histórico en phd.eng.br; texto escaneado) el 2026-10-09. Cubre las secciones 1–10, sus subsecciones de primer nivel, las cláusulas de detalle listadas y los anexos A–C. No se cotejó con AC:2009 ni A1:2013.",
  "secciones": [
   {
    "id": "1",
    "nivel": 1,
    "titulo": "Section 1 — General",
+   "texto": ""
+  },
+  {
+   "id": "1.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "1.2",
+   "nivel": 2,
+   "titulo": "Normative references",
+   "texto": ""
+  },
+  {
+   "id": "1.3",
+   "nivel": 2,
+   "titulo": "Assumptions",
+   "texto": ""
+  },
+  {
+   "id": "1.4",
+   "nivel": 2,
+   "titulo": "Distinction between principles and application rules",
+   "texto": ""
+  },
+  {
+   "id": "1.5",
+   "nivel": 2,
+   "titulo": "Terms and definitions",
+   "texto": ""
+  },
+  {
+   "id": "1.6",
+   "nivel": 2,
+   "titulo": "Symbols",
+   "texto": ""
+  },
+  {
+   "id": "1.7",
+   "nivel": 2,
+   "titulo": "S.I. Units",
    "texto": ""
   },
   {
@@ -28,20 +70,44 @@
    "texto": ""
   },
   {
+   "id": "2.1",
+   "nivel": 2,
+   "titulo": "Fundamental requirements",
+   "texto": ""
+  },
+  {
+   "id": "2.2",
+   "nivel": 2,
+   "titulo": "Compliance criteria",
+   "texto": ""
+  },
+  {
    "id": "3",
    "nivel": 1,
    "titulo": "Section 3 — Ground conditions and seismic action",
    "texto": ""
   },
   {
-   "id": "3.2.2.2",
+   "id": "3.1",
    "nivel": 2,
+   "titulo": "Ground conditions",
+   "texto": ""
+  },
+  {
+   "id": "3.2",
+   "nivel": 2,
+   "titulo": "Seismic action",
+   "texto": ""
+  },
+  {
+   "id": "3.2.2.2",
+   "nivel": 3,
    "titulo": "Horizontal elastic response spectrum",
    "texto": ""
   },
   {
    "id": "3.2.2.5",
-   "nivel": 2,
+   "nivel": 3,
    "titulo": "Design spectrum for elastic analysis",
    "texto": ""
   },
@@ -52,26 +118,50 @@
    "texto": ""
   },
   {
-   "id": "4.2.3",
+   "id": "4.1",
    "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "4.2",
+   "nivel": 2,
+   "titulo": "Characteristics of earthquake resistant buildings",
+   "texto": ""
+  },
+  {
+   "id": "4.2.3",
+   "nivel": 3,
    "titulo": "Criteria for structural regularity",
    "texto": ""
   },
   {
-   "id": "4.3.3.2",
+   "id": "4.3",
    "nivel": 2,
+   "titulo": "Structural analysis",
+   "texto": ""
+  },
+  {
+   "id": "4.3.3.2",
+   "nivel": 3,
    "titulo": "Lateral force method of analysis",
    "texto": ""
   },
   {
    "id": "4.3.3.3",
-   "nivel": 2,
+   "nivel": 3,
    "titulo": "Modal response spectrum analysis",
    "texto": ""
   },
   {
-   "id": "4.4.3.2",
+   "id": "4.4",
    "nivel": 2,
+   "titulo": "Safety verifications",
+   "texto": ""
+  },
+  {
+   "id": "4.4.3.2",
+   "nivel": 3,
    "titulo": "Limitation of interstorey drift",
    "texto": ""
   },
@@ -82,9 +172,27 @@
    "texto": ""
   },
   {
-   "id": "5.2.2.2",
+   "id": "5.1",
    "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "5.2",
+   "nivel": 2,
+   "titulo": "Design concepts",
+   "texto": ""
+  },
+  {
+   "id": "5.2.2.2",
+   "nivel": 3,
    "titulo": "Behaviour factors for horizontal seismic actions",
+   "texto": ""
+  },
+  {
+   "id": "5.3",
+   "nivel": 2,
+   "titulo": "Design to EN 1992-1-1",
    "texto": ""
   },
   {
@@ -100,9 +208,111 @@
    "texto": ""
   },
   {
+   "id": "5.6",
+   "nivel": 2,
+   "titulo": "Provisions for anchorages and splices",
+   "texto": ""
+  },
+  {
+   "id": "5.7",
+   "nivel": 2,
+   "titulo": "Design and detailing of secondary seismic elements",
+   "texto": ""
+  },
+  {
+   "id": "5.8",
+   "nivel": 2,
+   "titulo": "Concrete foundation elements",
+   "texto": ""
+  },
+  {
+   "id": "5.9",
+   "nivel": 2,
+   "titulo": "Local effects due to masonry or concrete infills",
+   "texto": ""
+  },
+  {
+   "id": "5.10",
+   "nivel": 2,
+   "titulo": "Provisions for concrete diaphragms",
+   "texto": ""
+  },
+  {
+   "id": "5.11",
+   "nivel": 2,
+   "titulo": "Precast concrete structures",
+   "texto": ""
+  },
+  {
    "id": "6",
    "nivel": 1,
    "titulo": "Section 6 — Specific rules for steel buildings",
+   "texto": ""
+  },
+  {
+   "id": "6.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "6.2",
+   "nivel": 2,
+   "titulo": "Materials",
+   "texto": ""
+  },
+  {
+   "id": "6.3",
+   "nivel": 2,
+   "titulo": "Structural types and behaviour factors",
+   "texto": ""
+  },
+  {
+   "id": "6.4",
+   "nivel": 2,
+   "titulo": "Structural analysis",
+   "texto": ""
+  },
+  {
+   "id": "6.5",
+   "nivel": 2,
+   "titulo": "Design criteria and detailing rules for dissipative structural behaviour common to all structural types",
+   "texto": ""
+  },
+  {
+   "id": "6.6",
+   "nivel": 2,
+   "titulo": "Design and detailing rules for moment resisting frames",
+   "texto": ""
+  },
+  {
+   "id": "6.7",
+   "nivel": 2,
+   "titulo": "Design and detailing rules for frames with concentric bracings",
+   "texto": ""
+  },
+  {
+   "id": "6.8",
+   "nivel": 2,
+   "titulo": "Design and detailing rules for frames with eccentric bracings",
+   "texto": ""
+  },
+  {
+   "id": "6.9",
+   "nivel": 2,
+   "titulo": "Design rules for inverted pendulum structures",
+   "texto": ""
+  },
+  {
+   "id": "6.10",
+   "nivel": 2,
+   "titulo": "Design rules for steel structures with concrete cores or concrete walls and for moment resisting frames combined with concentric bracings or infills",
+   "texto": ""
+  },
+  {
+   "id": "6.11",
+   "nivel": 2,
+   "titulo": "Control of design and construction",
    "texto": ""
   },
   {
@@ -112,9 +322,123 @@
    "texto": ""
   },
   {
+   "id": "7.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "7.2",
+   "nivel": 2,
+   "titulo": "Materials",
+   "texto": ""
+  },
+  {
+   "id": "7.3",
+   "nivel": 2,
+   "titulo": "Structural types and behaviour factors",
+   "texto": ""
+  },
+  {
+   "id": "7.4",
+   "nivel": 2,
+   "titulo": "Structural analysis",
+   "texto": ""
+  },
+  {
+   "id": "7.5",
+   "nivel": 2,
+   "titulo": "Design criteria and detailing rules for dissipative structural behaviour common to all structural types",
+   "texto": ""
+  },
+  {
+   "id": "7.6",
+   "nivel": 2,
+   "titulo": "Rules for members",
+   "texto": ""
+  },
+  {
+   "id": "7.7",
+   "nivel": 2,
+   "titulo": "Design and detailing rules for moment frames",
+   "texto": ""
+  },
+  {
+   "id": "7.8",
+   "nivel": 2,
+   "titulo": "Design and detailing rules for composite concentrically braced frames",
+   "texto": ""
+  },
+  {
+   "id": "7.9",
+   "nivel": 2,
+   "titulo": "Design and detailing rules for composite eccentrically braced frames",
+   "texto": ""
+  },
+  {
+   "id": "7.10",
+   "nivel": 2,
+   "titulo": "Design and detailing rules for structural systems made of reinforced concrete shear walls composite with structural steel elements",
+   "texto": ""
+  },
+  {
+   "id": "7.11",
+   "nivel": 2,
+   "titulo": "Design and detailing rules for composite steel plate shear walls",
+   "texto": ""
+  },
+  {
+   "id": "7.12",
+   "nivel": 2,
+   "titulo": "Control of design and construction",
+   "texto": ""
+  },
+  {
    "id": "8",
    "nivel": 1,
    "titulo": "Section 8 — Specific rules for timber buildings",
+   "texto": ""
+  },
+  {
+   "id": "8.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "8.2",
+   "nivel": 2,
+   "titulo": "Materials and properties of dissipative zones",
+   "texto": ""
+  },
+  {
+   "id": "8.3",
+   "nivel": 2,
+   "titulo": "Ductility classes and behaviour factors",
+   "texto": ""
+  },
+  {
+   "id": "8.4",
+   "nivel": 2,
+   "titulo": "Structural analysis",
+   "texto": ""
+  },
+  {
+   "id": "8.5",
+   "nivel": 2,
+   "titulo": "Detailing rules",
+   "texto": ""
+  },
+  {
+   "id": "8.6",
+   "nivel": 2,
+   "titulo": "Safety verifications",
+   "texto": ""
+  },
+  {
+   "id": "8.7",
+   "nivel": 2,
+   "titulo": "Control of design and construction",
    "texto": ""
   },
   {
@@ -124,9 +448,111 @@
    "texto": ""
   },
   {
+   "id": "9.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "9.2",
+   "nivel": 2,
+   "titulo": "Materials and bonding patterns",
+   "texto": ""
+  },
+  {
+   "id": "9.3",
+   "nivel": 2,
+   "titulo": "Types of construction and behaviour factors",
+   "texto": ""
+  },
+  {
+   "id": "9.4",
+   "nivel": 2,
+   "titulo": "Structural analysis",
+   "texto": ""
+  },
+  {
+   "id": "9.5",
+   "nivel": 2,
+   "titulo": "Design criteria and construction rules",
+   "texto": ""
+  },
+  {
+   "id": "9.6",
+   "nivel": 2,
+   "titulo": "Safety verification",
+   "texto": ""
+  },
+  {
+   "id": "9.7",
+   "nivel": 2,
+   "titulo": "Rules for \"simple masonry buildings\"",
+   "texto": ""
+  },
+  {
    "id": "10",
    "nivel": 1,
    "titulo": "Section 10 — Base isolation",
+   "texto": ""
+  },
+  {
+   "id": "10.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "10.2",
+   "nivel": 2,
+   "titulo": "Definitions",
+   "texto": ""
+  },
+  {
+   "id": "10.3",
+   "nivel": 2,
+   "titulo": "Fundamental requirements",
+   "texto": ""
+  },
+  {
+   "id": "10.4",
+   "nivel": 2,
+   "titulo": "Compliance criteria",
+   "texto": ""
+  },
+  {
+   "id": "10.5",
+   "nivel": 2,
+   "titulo": "General design provisions",
+   "texto": ""
+  },
+  {
+   "id": "10.6",
+   "nivel": 2,
+   "titulo": "Seismic action",
+   "texto": ""
+  },
+  {
+   "id": "10.7",
+   "nivel": 2,
+   "titulo": "Behaviour factor",
+   "texto": ""
+  },
+  {
+   "id": "10.8",
+   "nivel": 2,
+   "titulo": "Properties of the isolation system",
+   "texto": ""
+  },
+  {
+   "id": "10.9",
+   "nivel": 2,
+   "titulo": "Structural analysis",
+   "texto": ""
+  },
+  {
+   "id": "10.10",
+   "nivel": 2,
+   "titulo": "Safety verifications at Ultimate Limit State",
    "texto": ""
   },
   {

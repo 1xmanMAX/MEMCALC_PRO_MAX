@@ -11,7 +11,7 @@
  "tipo": "indice",
  "version": "9.ª edición (2020); existe la 10.ª edición (2024)",
  "fuente": "https://store.transportation.org/",
- "licencia": "Norma protegida por derechos de autor de American Association of State Highway and Transportation Officials (AASHTO). Solo índice (números y títulos oficiales), sin texto. Se compra en store.transportation.org.",
+ "licencia": "Norma protegida por derechos de autor de American Association of State Highway and Transportation Officials (AASHTO). Solo índice (números y títulos oficiales), sin texto. Se compra en store.transportation.org. Índice verificado contra la 9.ª ed. (prefacio y tabla de contenido de la sección 3, copia publicada en SlideShare) y contra la vista previa oficial de AASHTO de la 8.ª ed. (store.transportation.org, DownloadContentFiles?id=1648; artículos de las secciones 4, 5, 11 y 14, que según la lista de artículos eliminados de la 9.ª ed. no perdieron artículos de primer nivel) el 2026-10-09. No verificable: los artículos nuevos de la sección 11 en la 9.ª ed. (11.12 en adelante, muros de suelo claveteado), que por eso no se listan.",
  "secciones": [
   {
    "id": "1",
@@ -122,6 +122,12 @@
    "texto": ""
   },
   {
+   "id": "3.16",
+   "nivel": 2,
+   "titulo": "References",
+   "texto": ""
+  },
+  {
    "id": "4",
    "nivel": 1,
    "titulo": "Section 4 — Structural Analysis and Evaluation",
@@ -176,6 +182,12 @@
    "texto": ""
   },
   {
+   "id": "4.9",
+   "nivel": 2,
+   "titulo": "References",
+   "texto": ""
+  },
+  {
    "id": "5",
    "nivel": 1,
    "titulo": "Section 5 — Concrete Structures",
@@ -208,7 +220,7 @@
   {
    "id": "5.5",
    "nivel": 2,
-   "titulo": "Limit States",
+   "titulo": "Limit States and Design Methodologies",
    "texto": ""
   },
   {
@@ -220,7 +232,7 @@
   {
    "id": "5.7",
    "nivel": 2,
-   "titulo": "Design for Shear and Torsion—B Regions",
+   "titulo": "Design for Shear and Torsion—B-Regions",
    "texto": ""
   },
   {
@@ -245,6 +257,30 @@
    "id": "5.11",
    "nivel": 2,
    "titulo": "Seismic Design and Details",
+   "texto": ""
+  },
+  {
+   "id": "5.12",
+   "nivel": 2,
+   "titulo": "Provisions for Structure Components and Types",
+   "texto": ""
+  },
+  {
+   "id": "5.13",
+   "nivel": 2,
+   "titulo": "Anchors",
+   "texto": ""
+  },
+  {
+   "id": "5.14",
+   "nivel": 2,
+   "titulo": "Durability",
+   "texto": ""
+  },
+  {
+   "id": "5.15",
+   "nivel": 2,
+   "titulo": "References",
    "texto": ""
   },
   {
@@ -280,7 +316,7 @@
   {
    "id": "11",
    "nivel": 1,
-   "titulo": "Section 11 — Abutments, Piers, and Walls",
+   "titulo": "Section 11 — Walls, Abutments, and Piers",
    "texto": ""
   },
   {
@@ -413,6 +449,18 @@
    "id": "14.8",
    "nivel": 2,
    "titulo": "Load Plates and Anchorage for Bearings",
+   "texto": ""
+  },
+  {
+   "id": "14.9",
+   "nivel": 2,
+   "titulo": "Corrosion Protection",
+   "texto": ""
+  },
+  {
+   "id": "14.10",
+   "nivel": 2,
+   "titulo": "References",
    "texto": ""
   },
   {

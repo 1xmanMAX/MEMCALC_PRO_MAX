@@ -14,7 +14,7 @@
  "tipo": "indice",
  "version": "NCh432:2025 (basada en ASCE 7-22; oficializada en 2025, DO 18-08-2025) — reemplaza a NCh432.Of1971; existe además la edición INN NCh432:2010",
  "fuente": "https://www.inn.cl/",
- "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. Índice no verificado contra fuente oficial: no se transcriben títulos de capítulos.",
+ "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. Índice no verificable: el catálogo del INN (ecommerce.inn.cl) solo publica el alcance de la NCh432:2025 y MINVU (normastecnicas.minvu.cl) solo publica la NCh432.Of1971; por eso no se transcriben títulos de capítulos (consultado el 2026-10-09).",
  "secciones": [
   {
    "id": "Norma",

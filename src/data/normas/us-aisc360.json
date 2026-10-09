@@ -11,7 +11,7 @@
  "tipo": "indice",
  "version": "ANSI/AISC 360-22 (agosto 2022)",
  "fuente": "https://www.aisc.org/publications/steel-standards/",
- "licencia": "Norma protegida por derechos de autor de American Institute of Steel Construction. Solo índice (números y títulos oficiales), sin texto. AISC la ofrece como descarga gratuita en aisc.org, pero su redistribución no está autorizada; descárguela allí.",
+ "licencia": "Norma protegida por derechos de autor de American Institute of Steel Construction. Solo índice (números y títulos oficiales), sin texto. AISC la ofrece como descarga gratuita en aisc.org, pero su redistribución no está autorizada; descárguela allí. Índice verificado contra la tabla de contenido de ANSI/AISC 360-22 (copia del PDF oficial publicada en SlideShare, porque aisc.org bloqueó la descarga automática) el 2026-10-09. Cubre los capítulos A–N, sus secciones de primer nivel y los apéndices 1–8.",
  "secciones": [
   {
    "id": "Chapter A",
@@ -20,9 +20,51 @@
    "texto": ""
   },
   {
+   "id": "A1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "A2",
+   "nivel": 2,
+   "titulo": "Referenced Specifications, Codes, and Standards",
+   "texto": ""
+  },
+  {
+   "id": "A3",
+   "nivel": 2,
+   "titulo": "Material",
+   "texto": ""
+  },
+  {
+   "id": "A4",
+   "nivel": 2,
+   "titulo": "Structural Design Documents and Specifications",
+   "texto": ""
+  },
+  {
+   "id": "A5",
+   "nivel": 2,
+   "titulo": "Approvals",
+   "texto": ""
+  },
+  {
    "id": "Chapter B",
    "nivel": 1,
    "titulo": "Design Requirements",
+   "texto": ""
+  },
+  {
+   "id": "B1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "B2",
+   "nivel": 2,
+   "titulo": "Loads and Load Combinations",
    "texto": ""
   },
   {
@@ -35,6 +77,30 @@
    "id": "B4",
    "nivel": 2,
    "titulo": "Member Properties",
+   "texto": ""
+  },
+  {
+   "id": "B5",
+   "nivel": 2,
+   "titulo": "Fabrication and Erection",
+   "texto": ""
+  },
+  {
+   "id": "B6",
+   "nivel": 2,
+   "titulo": "Quality Control and Quality Assurance",
+   "texto": ""
+  },
+  {
+   "id": "B7",
+   "nivel": 2,
+   "titulo": "Evaluation of Existing Structures",
+   "texto": ""
+  },
+  {
+   "id": "B8",
+   "nivel": 2,
+   "titulo": "Dimensional Tolerances",
    "texto": ""
   },
   {
@@ -68,9 +134,51 @@
    "texto": ""
   },
   {
+   "id": "D1",
+   "nivel": 2,
+   "titulo": "Slenderness Limitations",
+   "texto": ""
+  },
+  {
+   "id": "D2",
+   "nivel": 2,
+   "titulo": "Tensile Strength",
+   "texto": ""
+  },
+  {
+   "id": "D3",
+   "nivel": 2,
+   "titulo": "Effective Net Area",
+   "texto": ""
+  },
+  {
+   "id": "D4",
+   "nivel": 2,
+   "titulo": "Built-Up Members",
+   "texto": ""
+  },
+  {
+   "id": "D5",
+   "nivel": 2,
+   "titulo": "Pin-Connected Members",
+   "texto": ""
+  },
+  {
+   "id": "D6",
+   "nivel": 2,
+   "titulo": "Eyebars",
+   "texto": ""
+  },
+  {
    "id": "Chapter E",
    "nivel": 1,
    "titulo": "Design of Members for Compression",
+   "texto": ""
+  },
+  {
+   "id": "E1",
+   "nivel": 2,
+   "titulo": "General Provisions",
    "texto": ""
   },
   {
@@ -92,6 +200,18 @@
    "texto": ""
   },
   {
+   "id": "E5",
+   "nivel": 2,
+   "titulo": "Single-Angle Compression Members",
+   "texto": ""
+  },
+  {
+   "id": "E6",
+   "nivel": 2,
+   "titulo": "Built-Up Members",
+   "texto": ""
+  },
+  {
    "id": "E7",
    "nivel": 2,
    "titulo": "Members with Slender Elements",
@@ -101,6 +221,12 @@
    "id": "Chapter F",
    "nivel": 1,
    "titulo": "Design of Members for Flexure",
+   "texto": ""
+  },
+  {
+   "id": "F1",
+   "nivel": 2,
+   "titulo": "General Provisions",
    "texto": ""
   },
   {
@@ -116,15 +242,111 @@
    "texto": ""
   },
   {
+   "id": "F4",
+   "nivel": 2,
+   "titulo": "Other I-Shaped Members with Compact or Noncompact Webs Bent about Their Major Axis",
+   "texto": ""
+  },
+  {
+   "id": "F5",
+   "nivel": 2,
+   "titulo": "Doubly Symmetric and Singly Symmetric I-Shaped Members with Slender Webs Bent about Their Major Axis",
+   "texto": ""
+  },
+  {
+   "id": "F6",
+   "nivel": 2,
+   "titulo": "I-Shaped Members and Channels Bent about Their Minor Axis",
+   "texto": ""
+  },
+  {
+   "id": "F7",
+   "nivel": 2,
+   "titulo": "Square and Rectangular HSS and Box Sections",
+   "texto": ""
+  },
+  {
+   "id": "F8",
+   "nivel": 2,
+   "titulo": "Round HSS",
+   "texto": ""
+  },
+  {
+   "id": "F9",
+   "nivel": 2,
+   "titulo": "Tees and Double Angles Loaded in the Plane of Symmetry",
+   "texto": ""
+  },
+  {
+   "id": "F10",
+   "nivel": 2,
+   "titulo": "Single Angles",
+   "texto": ""
+  },
+  {
+   "id": "F11",
+   "nivel": 2,
+   "titulo": "Rectangular Bars and Rounds",
+   "texto": ""
+  },
+  {
+   "id": "F12",
+   "nivel": 2,
+   "titulo": "Unsymmetrical Shapes",
+   "texto": ""
+  },
+  {
+   "id": "F13",
+   "nivel": 2,
+   "titulo": "Proportions of Beams and Girders",
+   "texto": ""
+  },
+  {
    "id": "Chapter G",
    "nivel": 1,
    "titulo": "Design of Members for Shear",
    "texto": ""
   },
   {
+   "id": "G1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
    "id": "G2",
    "nivel": 2,
    "titulo": "I-Shaped Members and Channels",
+   "texto": ""
+  },
+  {
+   "id": "G3",
+   "nivel": 2,
+   "titulo": "Single Angles and Tees",
+   "texto": ""
+  },
+  {
+   "id": "G4",
+   "nivel": 2,
+   "titulo": "Rectangular HSS, Box Sections, and Other Singly and Doubly Symmetric Members",
+   "texto": ""
+  },
+  {
+   "id": "G5",
+   "nivel": 2,
+   "titulo": "Round HSS",
+   "texto": ""
+  },
+  {
+   "id": "G6",
+   "nivel": 2,
+   "titulo": "Doubly Symmetric and Singly Symmetric Members Subjected to Minor-Axis Shear",
+   "texto": ""
+  },
+  {
+   "id": "G7",
+   "nivel": 2,
+   "titulo": "Beams and Girders with Web Openings",
    "texto": ""
   },
   {
@@ -136,7 +358,25 @@
   {
    "id": "H1",
    "nivel": 2,
-   "titulo": "Doubly and Singly Symmetric Members Subject to Flexure and Axial Force",
+   "titulo": "Doubly and Singly Symmetric Members Subjected to Flexure and Axial Force",
+   "texto": ""
+  },
+  {
+   "id": "H2",
+   "nivel": 2,
+   "titulo": "Unsymmetric and Other Members Subjected to Flexure and Axial Force",
+   "texto": ""
+  },
+  {
+   "id": "H3",
+   "nivel": 2,
+   "titulo": "Members Subjected to Torsion and Combined Torsion, Flexure, Shear, and/or Axial Force",
+   "texto": ""
+  },
+  {
+   "id": "H4",
+   "nivel": 2,
+   "titulo": "Rupture of Flanges with Bolt Holes and Subjected to Tension",
    "texto": ""
   },
   {
@@ -146,27 +386,111 @@
    "texto": ""
   },
   {
+   "id": "I1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "I2",
+   "nivel": 2,
+   "titulo": "Axial Force",
+   "texto": ""
+  },
+  {
+   "id": "I3",
+   "nivel": 2,
+   "titulo": "Flexure",
+   "texto": ""
+  },
+  {
+   "id": "I4",
+   "nivel": 2,
+   "titulo": "Shear",
+   "texto": ""
+  },
+  {
+   "id": "I5",
+   "nivel": 2,
+   "titulo": "Combined Flexure and Axial Force",
+   "texto": ""
+  },
+  {
+   "id": "I6",
+   "nivel": 2,
+   "titulo": "Load Transfer",
+   "texto": ""
+  },
+  {
+   "id": "I7",
+   "nivel": 2,
+   "titulo": "Composite Diaphragms and Collector Beams",
+   "texto": ""
+  },
+  {
+   "id": "I8",
+   "nivel": 2,
+   "titulo": "Steel Anchors",
+   "texto": ""
+  },
+  {
    "id": "Chapter J",
    "nivel": 1,
    "titulo": "Design of Connections",
    "texto": ""
   },
   {
+   "id": "J1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
    "id": "J2",
    "nivel": 2,
-   "titulo": "Welds",
+   "titulo": "Welds and Welded Joints",
    "texto": ""
   },
   {
    "id": "J3",
    "nivel": 2,
-   "titulo": "Bolts and Threaded Parts",
+   "titulo": "Bolts, Threaded Parts, and Bolted Connections",
    "texto": ""
   },
   {
    "id": "J4",
    "nivel": 2,
    "titulo": "Affected Elements of Members and Connecting Elements",
+   "texto": ""
+  },
+  {
+   "id": "J5",
+   "nivel": 2,
+   "titulo": "Fillers",
+   "texto": ""
+  },
+  {
+   "id": "J6",
+   "nivel": 2,
+   "titulo": "Splices",
+   "texto": ""
+  },
+  {
+   "id": "J7",
+   "nivel": 2,
+   "titulo": "Bearing Strength",
+   "texto": ""
+  },
+  {
+   "id": "J8",
+   "nivel": 2,
+   "titulo": "Column Bases and Bearing on Concrete",
+   "texto": ""
+  },
+  {
+   "id": "J9",
+   "nivel": 2,
+   "titulo": "Anchor Rods and Embedments",
    "texto": ""
   },
   {
@@ -182,9 +506,81 @@
    "texto": ""
   },
   {
+   "id": "K1",
+   "nivel": 2,
+   "titulo": "General Provisions and Parameters for HSS Connections",
+   "texto": ""
+  },
+  {
+   "id": "K2",
+   "nivel": 2,
+   "titulo": "Concentrated Forces on HSS",
+   "texto": ""
+  },
+  {
+   "id": "K3",
+   "nivel": 2,
+   "titulo": "HSS-to-HSS Truss Connections",
+   "texto": ""
+  },
+  {
+   "id": "K4",
+   "nivel": 2,
+   "titulo": "HSS-to-HSS Moment Connections",
+   "texto": ""
+  },
+  {
+   "id": "K5",
+   "nivel": 2,
+   "titulo": "Welds of Plates and Branches to HSS",
+   "texto": ""
+  },
+  {
    "id": "Chapter L",
    "nivel": 1,
    "titulo": "Design for Serviceability",
+   "texto": ""
+  },
+  {
+   "id": "L1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "L2",
+   "nivel": 2,
+   "titulo": "Deflections",
+   "texto": ""
+  },
+  {
+   "id": "L3",
+   "nivel": 2,
+   "titulo": "Drift",
+   "texto": ""
+  },
+  {
+   "id": "L4",
+   "nivel": 2,
+   "titulo": "Vibration",
+   "texto": ""
+  },
+  {
+   "id": "L5",
+   "nivel": 2,
+   "titulo": "Wind-Induced Motion",
+   "texto": ""
+  },
+  {
+   "id": "L6",
+   "nivel": 2,
+   "titulo": "Thermal Expansion and Contraction",
+   "texto": ""
+  },
+  {
+   "id": "L7",
+   "nivel": 2,
+   "titulo": "Connection Slip",
    "texto": ""
   },
   {
@@ -194,9 +590,81 @@
    "texto": ""
   },
   {
+   "id": "M1",
+   "nivel": 2,
+   "titulo": "Fabrication and Erection Documents",
+   "texto": ""
+  },
+  {
+   "id": "M2",
+   "nivel": 2,
+   "titulo": "Fabrication",
+   "texto": ""
+  },
+  {
+   "id": "M3",
+   "nivel": 2,
+   "titulo": "Shop Painting",
+   "texto": ""
+  },
+  {
+   "id": "M4",
+   "nivel": 2,
+   "titulo": "Erection",
+   "texto": ""
+  },
+  {
    "id": "Chapter N",
    "nivel": 1,
    "titulo": "Quality Control and Quality Assurance",
+   "texto": ""
+  },
+  {
+   "id": "N1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "N2",
+   "nivel": 2,
+   "titulo": "Fabricator and Erector Quality Control Program",
+   "texto": ""
+  },
+  {
+   "id": "N3",
+   "nivel": 2,
+   "titulo": "Fabricator and Erector Documents",
+   "texto": ""
+  },
+  {
+   "id": "N4",
+   "nivel": 2,
+   "titulo": "Inspection and Nondestructive Testing Personnel",
+   "texto": ""
+  },
+  {
+   "id": "N5",
+   "nivel": 2,
+   "titulo": "Minimum Requirements for Inspection of Structural Steel Buildings",
+   "texto": ""
+  },
+  {
+   "id": "N6",
+   "nivel": 2,
+   "titulo": "Approved Fabricators and Erectors",
+   "texto": ""
+  },
+  {
+   "id": "N7",
+   "nivel": 2,
+   "titulo": "Nonconforming Material and Workmanship",
+   "texto": ""
+  },
+  {
+   "id": "N8",
+   "nivel": 2,
+   "titulo": "Minimum Requirements for Shop- or Field-Applied Coatings",
    "texto": ""
   },
   {
@@ -206,9 +674,33 @@
    "texto": ""
   },
   {
+   "id": "1.1",
+   "nivel": 2,
+   "titulo": "General Requirements",
+   "texto": ""
+  },
+  {
+   "id": "1.2",
+   "nivel": 2,
+   "titulo": "Design by Elastic Analysis",
+   "texto": ""
+  },
+  {
+   "id": "1.3",
+   "nivel": 2,
+   "titulo": "Design by Inelastic Analysis",
+   "texto": ""
+  },
+  {
    "id": "Appendix 2",
    "nivel": 1,
-   "titulo": "Design for Ponding",
+   "titulo": "Design of Filled Composite Members (High Strength)",
+   "texto": ""
+  },
+  {
+   "id": "2.1",
+   "nivel": 2,
+   "titulo": "Rectangular Filled Composite Members",
    "texto": ""
   },
   {
@@ -218,9 +710,63 @@
    "texto": ""
   },
   {
+   "id": "3.1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "3.2",
+   "nivel": 2,
+   "titulo": "Calculation of Maximum Stresses and Stress Ranges",
+   "texto": ""
+  },
+  {
+   "id": "3.3",
+   "nivel": 2,
+   "titulo": "Plain Material and Welded Joints",
+   "texto": ""
+  },
+  {
+   "id": "3.4",
+   "nivel": 2,
+   "titulo": "Bolts and Threaded Parts",
+   "texto": ""
+  },
+  {
+   "id": "3.5",
+   "nivel": 2,
+   "titulo": "Fabrication and Erection Requirements for Fatigue",
+   "texto": ""
+  },
+  {
+   "id": "3.6",
+   "nivel": 2,
+   "titulo": "Nondestructive Examination Requirements for Fatigue",
+   "texto": ""
+  },
+  {
    "id": "Appendix 4",
    "nivel": 1,
    "titulo": "Structural Design for Fire Conditions",
+   "texto": ""
+  },
+  {
+   "id": "4.1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "4.2",
+   "nivel": 2,
+   "titulo": "Structural Design for Fire Conditions by Analysis",
+   "texto": ""
+  },
+  {
+   "id": "4.3",
+   "nivel": 2,
+   "titulo": "Design by Qualification Testing",
    "texto": ""
   },
   {
@@ -230,9 +776,63 @@
    "texto": ""
   },
   {
+   "id": "5.1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "5.2",
+   "nivel": 2,
+   "titulo": "Material Properties",
+   "texto": ""
+  },
+  {
+   "id": "5.3",
+   "nivel": 2,
+   "titulo": "Evaluation by Structural Analysis",
+   "texto": ""
+  },
+  {
+   "id": "5.4",
+   "nivel": 2,
+   "titulo": "Evaluation by Load Tests",
+   "texto": ""
+  },
+  {
+   "id": "5.5",
+   "nivel": 2,
+   "titulo": "Evaluation Report",
+   "texto": ""
+  },
+  {
    "id": "Appendix 6",
    "nivel": 1,
    "titulo": "Member Stability Bracing",
+   "texto": ""
+  },
+  {
+   "id": "6.1",
+   "nivel": 2,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "6.2",
+   "nivel": 2,
+   "titulo": "Column Bracing",
+   "texto": ""
+  },
+  {
+   "id": "6.3",
+   "nivel": 2,
+   "titulo": "Beam Bracing",
+   "texto": ""
+  },
+  {
+   "id": "6.4",
+   "nivel": 2,
+   "titulo": "Beam-Column Bracing",
    "texto": ""
   },
   {
@@ -242,9 +842,39 @@
    "texto": ""
   },
   {
+   "id": "7.1",
+   "nivel": 2,
+   "titulo": "General Stability Requirements",
+   "texto": ""
+  },
+  {
+   "id": "7.2",
+   "nivel": 2,
+   "titulo": "Effective Length Method",
+   "texto": ""
+  },
+  {
+   "id": "7.3",
+   "nivel": 2,
+   "titulo": "First-Order Analysis Method",
+   "texto": ""
+  },
+  {
    "id": "Appendix 8",
    "nivel": 1,
-   "titulo": "Approximate Second-Order Analysis",
+   "titulo": "Approximate Analysis",
+   "texto": ""
+  },
+  {
+   "id": "8.1",
+   "nivel": 2,
+   "titulo": "Approximate Second-Order Elastic Analysis",
+   "texto": ""
+  },
+  {
+   "id": "8.2",
+   "nivel": 2,
+   "titulo": "Approximate Inelastic Moment Redistribution",
    "texto": ""
   }
  ]
