@@ -13,7 +13,7 @@ for (const f of files) {
 }
 const json = JSON.stringify(docs);
 const b64 = Buffer.from(gzipSync(strToU8(json), { level: 9 })).toString('base64');
-const index = docs.map(d => ({ id: d.id, titulo: d.titulo, pais: d.pais, tipo: d.tipo, version: d.version || '', n: d.secciones.length }));
+const index = docs.map(d => ({ id: d.id, alias: Array.isArray(d.alias) ? d.alias : [], titulo: d.titulo, pais: d.pais, tipo: d.tipo, version: d.version || '', fuente: d.fuente || '', n: d.secciones.length }));
 fs.writeFileSync(new URL('../src/data/normas.pack.js', import.meta.url),
   `// Generado por tools/pack-normas.mjs — no editar a mano\nexport const NORMAS_INDEX = ${JSON.stringify(index)};\nexport const NORMAS_GZ = ${JSON.stringify(b64)};\n`);
 console.log(`normas: ${docs.length} documentos, ${(json.length / 1024).toFixed(0)} KB de texto → ${(b64.length / 1024).toFixed(0)} KB empaquetado`);

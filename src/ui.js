@@ -5,6 +5,7 @@ import { runDoc } from './docrun.js';
 import { TEMPLATES, CATEGORIES } from './templates.js';
 import { K, esc, math, valText, symTex, FN_DOCS, CUSTOM_FN, imgSrc } from './engine.js';
 import { BLOCKS } from './blockreg.js';
+import { NORMAS_INDEX, loadNormas, normasLoaded, searchNormas, searchTerms, findRef, refDoc, citeOf } from './normas.js';
 
 const VERSION = '1.0.0';
 const $ = (s, r = document) => r.querySelector(s);
@@ -272,6 +273,7 @@ function compute() {
   updateInputs();
   paintRanges();
   updateBlockErrors();
+  linkRefs();
   if (tab === 'vars') renderVars();
   if (ied) iedSync();
   const t2 = performance.now();
@@ -1039,6 +1041,7 @@ function paperHTML() {
   const c = $('#paper').cloneNode(true);
   c.querySelectorAll('.ln.oor').forEach(ln => { ln.classList.remove('oor'); ln.removeAttribute('title'); delete ln.dataset.oor; });
   c.querySelectorAll('.ln.editing').forEach(ln => ln.classList.remove('editing'));
+  c.querySelectorAll('[data-nr]').forEach(x => { x.classList.remove('nlink'); for (const a of ['data-nr', 'tabindex', 'role', 'title']) x.removeAttribute(a); });
   return c.innerHTML;
 }
 function exportHTML() {
@@ -1120,14 +1123,14 @@ function showFunctions(initial = '') {
     const base = fns.filter(f => !ts.length || matchAll(f.name + ' ' + f.desc + ' ' + f.cat + ' ' + f.args, ts));
     side.innerHTML = `<button class="gs${st.cat === '' ? ' on' : ''}" data-cat="">${I.layers}<span>Todas</span><em>${base.length}</em></button><div class="gsep">Categorías</div>` + cats.map(c => { const n = base.filter(f => f.cat === c).length; return `<button class="gs${st.cat === c ? ' on' : ''}${n ? '' : ' zero'}" data-cat="${esc(c)}"><span>${esc(c)}</span><em>${n}</em></button>`; }).join('');
     const list = base.filter(f => !st.cat || f.cat === st.cat);
-    const row = (f) => `<div class="fnr"><code class="fsig"><b>${hl(f.name, ts)}</b>(<i>${hl(f.args, ts)}</i>)</code><span class="fd">${hl(f.desc, ts)}</span><button class="btn sm" data-ins-fn="${esc(f.name)}">${I.plus}Insertar</button></div>`;
+    const row = (f) => { const r = fnRef(f.desc); return `<div class="fnr"><code class="fsig"><b>${hl(f.name, ts)}</b>(<i>${hl(f.args, ts)}</i>)</code><span class="fd">${hl(f.desc, ts)}${r ? ` <button class="lnk fnref" data-fnref="${esc(r)}" title="Abrir ${esc(r)} en la biblioteca de normas">${I.book}${esc(r)}</button>` : ''}</span><button class="btn sm" data-ins-fn="${esc(f.name)}">${I.plus}Insertar</button></div>`; };
     main.innerHTML = list.length ? (st.cat ? [st.cat] : cats).map(c => { const l = list.filter(f => f.cat === c); return l.length ? `<div class="gh">${esc(c)} <em>${l.length}</em></div><div class="fnt">${l.map(row).join('')}</div>` : ''; }).join('') : `<div class="empty big">${I.search}<b>Sin resultados</b><span>No hay funciones para «${esc(st.q)}».</span></div>`;
   };
   draw();
   q.addEventListener('input', () => { st.q = q.value; draw(); });
   q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); main.querySelector('[data-ins-fn]')?.click(); } });
   side.addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (!b) return; st.cat = b.dataset.cat; draw(); main.scrollTop = 0; });
-  main.addEventListener('click', e => { const b = e.target.closest('[data-ins-fn]'); if (!b) return; m.close(); insertFn(fns.find(f => f.name === b.dataset.insFn)); });
+  main.addEventListener('click', e => { const fr = e.target.closest('[data-fnref]'); if (fr) { m.close(); openNormLib({ ref: fr.dataset.fnref }); return; } const b = e.target.closest('[data-ins-fn]'); if (!b) return; m.close(); insertFn(fns.find(f => f.name === b.dataset.insFn)); });
   if (!isMobile()) setTimeout(() => { q.focus(); q.select(); }, 50);
 }
 
@@ -1158,11 +1161,323 @@ function showNormas() {
   <h4>Plantillas por país</h4><table><tr><th style="width:130px">País</th><th>Plantillas (norma)</th></tr>${tplHtml}</table>
   <h4>Funciones normativas disponibles en el editor</h4>
   <table><tr><th style="width:170px">Categoría</th><th>Funciones</th></tr>${fcats.map(c => `<tr><td>${esc(c)}</td><td>${fns.filter(f => f.cat === c).map(f => `<code title="${esc(f.desc)}">${esc(f.name)}(${esc(f.args)})</code>`).join(' ')}</td></tr>`).join('')}</table>
-  <p><button class="btn" data-fnlib>${I.fn}Abrir la biblioteca de funciones</button></p></div>`);
+  <p><button class="btn" data-fnlib>${I.fn}Abrir la biblioteca de funciones</button> <button class="btn" data-nlibgo>${I.book}Abrir la biblioteca de normas (texto)</button></p></div>`);
   m.c.addEventListener('click', e => {
     const a = e.target.closest('[data-tpl-go]'); if (a) { e.preventDefault(); const t = TEMPLATES.find(x => x.id === a.dataset.tplGo); m.close(); loadTemplate(t); return; }
     if (e.target.closest('[data-fnlib]')) { m.close(); showFunctions(); }
+    if (e.target.closest('[data-nlibgo]')) { m.close(); openNormLib(); }
   });
+}
+// ---------------- Biblioteca de normas (lector y buscador) ----------------
+//  Datos: src/data/normas/*.json → normas.pack.js (gzip). El índice ligero (NORMAS_INDEX) está siempre
+//  disponible; el texto se descomprime solo al abrir la biblioteca por primera vez.
+const NL = { el: null, doc: null, sec: null, side: 'list', q: '', scope: 'all', mv: 'side', view: 'sec', hl: [], num: null, numFound: false, exp: new Map(), prevFocus: null, io: null };
+const NL_KEY = 'Ctrl ⇧ L';
+const nlDocs = () => (normasLoaded() ? loadNormas() : []);
+const nlUrl = (d) => ((String(d.fuente || '').match(/https?:\/\/[^\s)"'<>]+/) || [])[0] || '');
+const nlDoc = (id) => nlDocs().find(d => d.id === id) || null;
+const nlTipo = (d) => (d.tipo === 'indice' ? '<span class="nl-badge idx" title="Por derechos de autor solo se incluyen los títulos y el enlace a la fuente oficial">Índice + enlace oficial</span>' : '<span class="nl-badge full">Texto completo</span>');
+const nlPais = (p) => PAISES[p] || p || 'Otros';
+const nlNum = (d, s) => { const id = String(s.id || '').trim(); return /^\d+(\.\d+)*[a-z]?$/i.test(id) && /^(PE|CL)$/.test(d.pais) ? (s.nivel <= 1 && !id.includes('.') && d.pais === 'PE' && /cap/i.test(s.titulo || '') ? id : 'Art. ' + id) : id; };
+// árbol del índice: padre de cada sección según `nivel` (cacheado por documento)
+const nlTreeC = new WeakMap();
+function nlTree(d) {
+  let t = nlTreeC.get(d); if (t) return t;
+  const parent = new Array(d.secciones.length).fill(-1), kids = new Map(), st = [];
+  d.secciones.forEach((s, i) => {
+    while (st.length && d.secciones[st[st.length - 1]].nivel >= s.nivel) st.pop();
+    const p = st.length ? st[st.length - 1] : -1; parent[i] = p;
+    if (!kids.has(p)) kids.set(p, []); kids.get(p).push(i); st.push(i);
+  });
+  t = { parent, kids }; nlTreeC.set(d, t); return t;
+}
+const nlAnc = (d, i) => { const { parent } = nlTree(d), out = []; for (let p = parent[i]; p >= 0; p = parent[p]) out.unshift(p); return out; };
+function nlRemember() { if (NL.doc) lsSet('mc_nlib', JSON.stringify({ doc: NL.doc.id, sec: NL.sec ? NL.sec._i : -1 })); }
+async function nlCopy(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {
+    const ta = h('<textarea style="position:fixed;opacity:0"></textarea>'); ta.value = text; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (er) { /* */ } ta.remove(); return ok;
+  }
+}
+// Texto de una sección → HTML legible. Convenciones de los datos: una línea por párrafo; las líneas que empiezan
+// por «|» son texto preformateado (tablas, fórmulas); «[Figura/tabla en imagen…]» marca contenido gráfico del original.
+const NL_COLS = (l) => { const t = l.trim(); return t.length < 170 && (/\t/.test(t) || (t.match(/\S {2,}(?=\S)/g) || []).length >= 2); };
+function nlFmt(text, ts, d) {
+  const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  const pre = (rows) => { const md = rows.every(l => /\|\s*$/.test(l)); const body = (md ? rows : rows.map(l => l.replace(/^\|\s?/, ''))).join('\n').replace(/\s+$/, ''); out.push(`<div class="nl-tbl" tabindex="0" role="region" aria-label="Tabla o texto preformateado"><pre>${hl(body, ts)}</pre></div>`); };
+  for (let i = 0; i < lines.length; i++) {
+    let l = lines[i];
+    if (/^\s*\|/.test(l)) { const rows = []; while (i < lines.length && /^\s*\|/.test(lines[i])) rows.push(lines[i++].replace(/^\s+/, '')); i--; pre(rows); continue; }
+    if (NL_COLS(l) && NL_COLS(lines[i + 1] || '')) { const rows = []; while (i < lines.length && NL_COLS(lines[i])) rows.push('| ' + lines[i++]); i--; pre(rows); continue; }
+    if (!l.trim()) continue;
+    if (/^\s*\[(figura|tabla|imagen|gr[aá]fico)[^\]]*\]\s*$/i.test(l)) { out.push(`<p class="nl-fig">${I.image}<span>Figura o tabla disponible solo como imagen en el original.${d && nlUrl(d) ? ` <a href="${esc(nlUrl(d))}" target="_blank" rel="noopener noreferrer">Ver la fuente oficial</a>` : ''}</span></p>`); continue; }
+    // renglón con puntos guía y el valor en la línea siguiente («Flexión ……… » + «0,90»)
+    if (/[.…]{4,}\s*$/.test(l) && /^\s*[\d.,]+\s*$/.test(lines[i + 1] || '')) l += ' ' + lines[++i].trim();
+    const m = /^\s*((?:\d+\.)+\d+\.?|\(?[a-z]\)|\(\d{1,2}\)|[ivx]{1,4}\))(\s+)/i.exec(l);
+    const num = m ? m[1] : '', rest = m ? l.slice(m[0].length) : l.trim();
+    const isNum = /^\d/.test(num), cls = num && !isNum ? 'nl-li' : '';
+    const head = num ? `<span class="nl-pnum">${esc(num)}</span> ` : '';
+    const lead = /^(.*?)\s*(?:[.·]{4,}|…)[\s.…·]*(\d[\d.,]*)\s*$/.exec(rest);
+    const attrs = `${cls ? ` class="${cls}${lead ? ' nl-lead' : ''}"` : lead ? ' class="nl-lead"' : ''}${isNum ? ` data-num="${esc(num.replace(/\.$/, ''))}"` : ''}`;
+    out.push(lead ? `<p${attrs}><span>${head}${hl(lead[1], ts)}</span><b>${hl(lead[2], ts)}</b></p>` : `<p${attrs}>${head}${hl(rest, ts)}</p>`);
+  }
+  return out.join('');
+}
+function nlRenderList() {
+  const box = NL.el.querySelector('.nl-list');
+  const byP = new Map();
+  for (const d of NORMAS_INDEX) { if (!byP.has(d.pais)) byP.set(d.pais, []); byP.get(d.pais).push(d); }
+  const order = [...Object.keys(PAISES).filter(p => byP.has(p)), ...[...byP.keys()].filter(p => !PAISES[p])];
+  box.innerHTML = order.map(p => `<div class="nl-pg"><div class="nl-pgh"><span class="flag f-${esc(p)}">${esc(p)}</span>${esc(nlPais(p))}<em>${byP.get(p).length}</em></div>${byP.get(p).map(d => `<button class="nl-doc${NL.doc && NL.doc.id === d.id ? ' on' : ''}" data-nldoc="${esc(d.id)}"${NL.doc && NL.doc.id === d.id ? ' aria-current="true"' : ''}><b>${esc(d.id)}</b><span class="nl-dt">${esc(String(d.titulo || '').replace(new RegExp('^(Norma\\s+)?' + d.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[-—:]?\\s*', 'i'), ''))}</span><small>${esc(d.version || '')}${d.version ? ' · ' : ''}${d.n} secc.</small>${nlTipo(d)}</button>`).join('')}</div>`).join('');
+}
+function nlRenderToc() {
+  const nav = NL.el.querySelector('.nl-toc'), d = NL.doc;
+  if (!d) { nav.innerHTML = '<div class="empty">Elija una norma para ver su índice.</div>'; return; }
+  const { kids } = nlTree(d);
+  const cur = NL.sec ? NL.sec._i : -1;
+  let exp = NL.exp.get(d.id); if (!exp) NL.exp.set(d.id, exp = new Set());
+  const lvl = (p, depth) => `<ul${p < 0 ? ' class="nt-root" role="tree" aria-label="Índice de ' + esc(d.id) + '"' : ' role="group"'}>${(kids.get(p) || []).map(i => {
+    const s = d.secciones[i], has = kids.has(i), open = has && exp.has(i);
+    return `<li role="treeitem"${has ? ` aria-expanded="${open}"` : ''}${i === cur ? ' aria-current="true"' : ''}><div class="nt-row${i === cur ? ' on' : ''}" style="--d:${depth}">${has ? `<button class="nt-tg" data-nltg="${i}" tabindex="-1" aria-label="${open ? 'Plegar' : 'Desplegar'} ${esc(s.id || '')}">${I.chev}</button>` : '<span class="nt-sp"></span>'}<button class="nt-a" data-nlsec="${i}">${s.id ? `<span class="nt-id">${esc(s.id)}</span>` : ''}<span class="nt-t">${esc(s.titulo || '')}</span></button></div>${open ? lvl(i, depth + 1) : ''}</li>`;
+  }).join('')}</ul>`;
+  nav.innerHTML = `<div class="nt-head"><b>${esc(d.id)}</b><span>${esc(d.titulo || '')}</span>${nlTipo(d)}<span class="nt-acts"><button class="lnk" data-nlexp="1">Desplegar todo</button><button class="lnk" data-nlexp="0">Plegar</button></span></div>` + lvl(-1, 0);
+  const on = nav.querySelector('.nt-row.on'); if (on) on.scrollIntoView({ block: 'nearest' });
+}
+function nlSide(s) {
+  NL.side = s;
+  NL.el.querySelectorAll('[data-nlside]').forEach(b => { const on = b.dataset.nlside === s; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
+  NL.el.querySelector('.nl-list').hidden = s !== 'list'; NL.el.querySelector('.nl-toc').hidden = s !== 'toc';
+}
+function nlMv(v) { NL.mv = v; NL.el.querySelector('.nl-body').dataset.mv = v; }
+function nlScopeUI() {
+  const sc = NL.el.querySelector('.nl-scope'); sc.hidden = !NL.doc;
+  if (NL.doc) sc.innerHTML = `<button data-nlscope="all" aria-pressed="${NL.scope === 'all'}">Todas</button><button data-nlscope="doc" aria-pressed="${NL.scope === 'doc'}">Solo ${esc(NL.doc.id)}</button>`;
+  NL.el.querySelector('.nl-q input').placeholder = NL.scope === 'doc' && NL.doc ? `Buscar en ${NL.doc.id} o ir a un artículo: 9.3.2` : (isMobile() ? 'Buscar o escribir una cita: E.060 9.3.2' : 'Buscar en todas las normas o escribir una cita: E.060 21.6.4');
+}
+// Portada de una norma: datos, aviso de derechos y capítulos
+function nlCover(d) {
+  const { kids } = nlTree(d);
+  const top = (kids.get(-1) || []).slice(0, 400);
+  return `<article class="nl-art"><div class="nl-crumb"><span class="flag f-${esc(d.pais)}">${esc(d.pais)}</span>${esc(nlPais(d.pais))}</div>
+    <div class="nl-num">${esc(d.id)}</div><h2 class="nl-tt">${esc(d.titulo || '')}</h2>
+    <div class="nl-meta">${d.version ? `<span><b>Versión:</b> ${esc(d.version)}</span>` : ''}<span><b>Secciones:</b> ${d.secciones.length}</span>${nlTipo(d)}</div>
+    ${d.tipo === 'indice' ? nlIdxNote(d) : ''}
+    <div class="nl-acts">${nlUrl(d) ? `<a class="btn sm" href="${esc(nlUrl(d))}" target="_blank" rel="noopener noreferrer">${I.open}Fuente oficial</a>` : ''}${d.secciones.length ? `<button class="btn sm pri" data-nlsec="0">${I.book}Empezar a leer</button>` : ''}</div>
+    ${top.length ? `<h4 class="nl-h4">Contenido</h4><div class="nl-kids">${top.map(i => { const s = d.secciones[i]; return `<button data-nlsec="${i}"><span class="nt-id">${esc(s.id || '')}</span>${esc(s.titulo || '')}</button>`; }).join('')}</div>` : ''}
+    ${d.licencia ? `<p class="nl-lic">${esc(d.licencia)}</p>` : ''}</article>`;
+}
+const nlIdxNote = (d) => `<div class="nl-idx" role="note">${I.book}<span><b>Solo índice y enlace oficial</b>Por derechos de autor, MemoriaCalc no reproduce el texto de esta norma: incluye únicamente los títulos de sus secciones para ubicarlas y citarlas. Consulte el texto completo en la fuente oficial.${nlUrl(d) ? `<a class="btn sm pri" href="${esc(nlUrl(d))}" target="_blank" rel="noopener noreferrer">${I.open}Abrir fuente oficial</a>` : ''}</span></div>`;
+function nlRenderSec() {
+  const main = NL.el.querySelector('.nl-main'), d = NL.doc, s = NL.sec;
+  NL.io?.disconnect(); NL.view = 'sec';
+  if (!d) {
+    main.innerHTML = `<div class="empty big">${I.book}<b>Elija una norma</b><span>Seleccione una norma de la lista, busque un término (p. ej. <i>punzonamiento</i>) o escriba una cita como <code>E.060 9.3.2</code>.</span></div>`;
+    return;
+  }
+  if (!s) { main.innerHTML = nlCover(d); main.scrollTop = 0; return; }
+  const i = s._i, secs = d.secciones, prev = secs[i - 1], next = secs[i + 1];
+  const anc = nlAnc(d, i).map(k => secs[k]);
+  const { kids } = nlTree(d), ch = kids.get(i) || [];
+  const ts = NL.hl;
+  const body = (s.texto || '').trim();
+  const subNum = NL.num && new RegExp('(^|\\n)\\s*' + NL.num.replace(/\./g, '\\.') + '[.\\s]').test(body) ? NL.num : null;
+  const cite = citeOf(d, subNum ? { ...s, id: subNum } : s);
+  const pn = (x, dir) => x ? `<button class="nl-step ${dir < 0 ? 'p' : 'n'}" data-nlstep="${dir}"><span>${dir < 0 ? '‹ Anterior' : 'Siguiente ›'}</span><b>${esc(x.id || '')} ${esc(x.titulo || '')}</b></button>` : '<span></span>';
+  main.innerHTML = `<div class="nl-mbar"><button class="btn ghost sm nl-back${NL.q ? ' res' : ''}" data-nlback>${I.chev}${NL.q ? 'Resultados' : 'Índice'}</button>${ts.length ? `<span class="nl-hlbar">Resaltando «${esc(ts.join(' '))}» <button class="lnk" data-nlhloff>Quitar</button></span>` : ''}</div>
+  <article class="nl-art" aria-labelledby="nl-sec-t">
+    <nav class="nl-crumb" aria-label="Ubicación"><span class="flag f-${esc(d.pais)}">${esc(d.pais)}</span><button class="lnk" data-nlcover>${esc(d.id)}</button>${anc.map(a => `<span aria-hidden="true">›</span><button class="lnk" data-nlsec="${a._i}">${esc(a.id || a.titulo || '')}</button>`).join('')}</nav>
+    <div class="nl-num">${esc(nlNum(d, s))}</div>
+    <h2 class="nl-tt" id="nl-sec-t">${hl(s.titulo || '', ts)}</h2>
+    <div class="nl-acts"><button class="btn sm" data-nlcopy="${esc(cite)}" title="Copiar la cita al portapapeles">${I.dup}Copiar cita <code>${esc(cite)}</code></button>${nlUrl(d) ? `<a class="btn sm ghost" href="${esc(nlUrl(d))}" target="_blank" rel="noopener noreferrer">${I.open}Fuente oficial</a>` : ''}</div>
+    ${d.tipo === 'indice' ? nlIdxNote(d) : ''}
+    ${body ? `<div class="nl-text">${nlFmt(body, ts, d)}</div>` : d.tipo === 'indice' || ch.length ? '' : '<p class="mut">Esta sección no tiene texto.</p>'}
+    ${ch.length ? `<h4 class="nl-h4">${body ? 'Subsecciones' : 'Contenido de esta sección'}</h4><div class="nl-kids">${ch.map(k => `<button data-nlsec="${k}"><span class="nt-id">${esc(secs[k].id || '')}</span>${hl(secs[k].titulo || '', ts)}</button>`).join('')}</div>` : ''}
+    <nav class="nl-pn" aria-label="Secciones anterior y siguiente">${pn(prev, -1)}${pn(next, 1)}</nav>
+    <p class="nl-lic">${esc(d.titulo || d.id)}${d.version ? ' · ' + esc(d.version) : ''}${d.licencia ? '<br>' + esc(d.licencia) : ''}</p>
+  </article>`;
+  main.scrollTop = 0;
+  // numeral pedido dentro del texto de la sección (p. ej. 9.3.2 dentro de 9.3): se muestra y resalta
+  const pn2 = NL.num ? [...main.querySelectorAll('.nl-text p[data-num]')].find(p => p.dataset.num === NL.num) || [...main.querySelectorAll('.nl-text p[data-num]')].find(p => p.dataset.num.startsWith(NL.num + '.')) : null;
+  NL.numFound = !!pn2;
+  const mk = pn2 || (ts.length && main.querySelector('.nl-text mark'));
+  if (pn2) pn2.classList.add('nl-flash');
+  if (mk) setTimeout(() => mk.scrollIntoView({ block: pn2 ? 'start' : 'center' }), 0);
+}
+function nlOpenDoc(id, secIdx, opts = {}) {
+  const d = nlDoc(id); if (!d) return;
+  const changedDoc = NL.doc !== d;
+  NL.doc = d; NL.sec = secIdx >= 0 && secIdx < d.secciones.length ? d.secciones[secIdx] : null;
+  if (!opts.keepHl) NL.hl = [];
+  NL.num = opts.num || null;
+  if (NL.sec) { let exp = NL.exp.get(d.id); if (!exp) NL.exp.set(d.id, exp = new Set()); nlAnc(d, NL.sec._i).forEach(k => exp.add(k)); }
+  if (changedDoc) { nlRenderList(); if (NL.scope === 'doc' && !opts.keepScope) NL.scope = 'all'; }
+  nlScopeUI();
+  if (opts.clearSearch && NL.q) { NL.q = ''; NL.el.querySelector('.nl-q input').value = ''; nlQx(); }
+  nlRenderToc(); if (NL.side !== 'toc') nlSide('toc');
+  nlRenderSec(); nlRemember();
+  nlMv(NL.sec || opts.main ? 'main' : 'side');
+  if (opts.focus !== false && NL.sec) NL.el.querySelector('.nl-main').focus({ preventScroll: true });
+}
+const nlQx = () => { NL.el.querySelector('.nl-qx').hidden = !NL.q; };
+// Resultados de búsqueda agrupados por norma, pintados por lotes al desplazarse
+function nlSearch() {
+  const main = NL.el.querySelector('.nl-main'), q = NL.q.trim();
+  NL.io?.disconnect();
+  if (!q) { nlRenderSec(); if (!NL.sec) nlMv('side'); return; }
+  nlMv('main'); NL.view = 'search';
+  const ts = searchTerms(q), scopeDoc = NL.scope === 'doc' && NL.doc ? NL.doc.id : '';
+  // ¿es una cita? «E.060 21.6.4», «E.030 28» o, dentro de una norma, «9.3.2»
+  let ref = null;
+  if (/\d/.test(q) || q.length <= 12) { ref = findRef(q); if (!ref && NL.doc && /^\s*(art(iculo|\.)?\s*|tabla\s*)?\d+(\.\d+)*\s*$/i.test(q)) ref = findRef(NL.doc.id + ' ' + q); }
+  const res = ts.length ? searchNormas(q, { doc: scopeDoc }) : [];
+  const groups = []; const gi = new Map();
+  for (const r of res) { let g = gi.get(r.doc.id); if (!g) { g = { doc: r.doc, items: [] }; gi.set(r.doc.id, g); groups.push(g); } g.items.push(r); }
+  const flat = []; for (const g of groups) { flat.push({ g }); for (const r of g.items) flat.push({ r }); }
+  const where = scopeDoc ? 'en ' + esc(scopeDoc) : 'en todas las normas';
+  const refH = ref && ref.sec ? `<button class="nl-ref" data-nlref data-nldoc2="${esc(ref.doc.id)}" data-nlsec2="${ref.sec._i}"${!ref.exact && ref.num ? ` data-nlnum="${esc(ref.num)}"` : ''}>${I.book}<span><small>${ref.exact ? 'Ir a la cita' : 'Ir a la cita (dentro de ' + esc(nlNum(ref.doc, ref.sec)) + ')'}</small><b>${esc(ref.exact ? citeOf(ref.doc, ref.sec) : ref.doc.id + ' ' + ref.num)}</b> — ${esc(ref.sec.titulo || '')}</span><kbd>Enter</kbd></button>` : ref ? `<button class="nl-ref" data-nldoc="${esc(ref.doc.id)}">${I.book}<span><small>Abrir la norma</small><b>${esc(ref.doc.id)}</b> — ${esc(ref.doc.titulo || '')}</span><kbd>Enter</kbd></button>` : '';
+  main.innerHTML = `<div class="nl-mbar"><button class="btn ghost sm nl-back" data-nlback>${I.chev}${NL.doc ? 'Índice' : 'Normas'}</button></div><div class="nl-sres" role="region" aria-label="Resultados de búsqueda"><div class="nl-srh" aria-live="polite">${res.length ? `<b>${res.length >= 600 ? 'Más de 600' : res.length}</b> resultado${res.length === 1 ? '' : 's'} para «${esc(q)}» ${where}${groups.length > 1 ? ` · ${groups.length} normas` : ''}` : ref ? '' : `Sin resultados para «${esc(q)}» ${where}.${scopeDoc ? ' <button class="lnk" data-nlscope="all">Buscar en todas las normas</button>' : ' Pruebe con otra palabra (la búsqueda no distingue tildes).'}`}</div>${refH}<div class="nl-srl"></div></div>`;
+  main.scrollTop = 0;
+  const list = main.querySelector('.nl-srl');
+  let k = 0;
+  const batch = () => {
+    let html = '';
+    for (const end = Math.min(flat.length, k + 60); k < end; k++) {
+      const it = flat[k];
+      if (it.g) html += `<div class="nl-srgh"><span class="flag f-${esc(it.g.doc.pais)}">${esc(it.g.doc.pais)}</span><b>${esc(it.g.doc.id)}</b><span>${esc(it.g.doc.titulo || '')}</span><em>${it.g.items.length}</em></div>`;
+      else { const r = it.r; html += `<button class="nl-sr" data-nldoc2="${esc(r.doc.id)}" data-nlsec2="${r.sec._i}"><span class="nl-srt"><span class="nt-id">${esc(nlNum(r.doc, r.sec))}</span>${hl(r.sec.titulo || '', ts)}</span>${r.doc.tipo === 'indice' ? '<small class="mut">Solo índice — texto en la fuente oficial</small>' : r.snippet ? `<small>${hl(r.snippet, ts)}</small>` : ''}</button>`; }
+    }
+    list.insertAdjacentHTML('beforeend', html);
+    if (k < flat.length) { const sn = h('<div class="nl-more" aria-hidden="true">Cargando más…</div>'); list.appendChild(sn); NL.io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { NL.io.disconnect(); sn.remove(); batch(); } }, { root: main, rootMargin: '400px' }); NL.io.observe(sn); }
+  };
+  batch();
+}
+const nlSearchD = debounce(() => { if (NL.el) nlSearch(); }, 140);
+function closeNormLib() {
+  if (!NL.el) return;
+  NL.io?.disconnect(); NL.el.remove(); NL.el = null;
+  document.removeEventListener('keydown', nlKey, true);
+  if (NL.prevFocus && document.body.contains(NL.prevFocus)) NL.prevFocus.focus?.({ preventScroll: true });
+}
+function nlKey(e) {
+  if (!NL.el) return;
+  const inp = NL.el.querySelector('.nl-q input');
+  if (e.key === 'Escape') {
+    if (document.querySelector('.ov,.cmdk-ov')) return;
+    e.preventDefault(); e.stopPropagation();
+    if (document.activeElement === inp && inp.value) { inp.value = ''; NL.q = ''; nlQx(); nlSearch(); return; }
+    closeNormLib(); return;
+  }
+  if (e.key === 'Tab') { // foco dentro del panel
+    const f = [...NL.el.querySelectorAll('button,input,a[href],[tabindex="0"],.nl-main')].filter(x => x.offsetParent && !x.disabled && x.tabIndex >= 0);
+    if (!f.length) return; const first = f[0], last = f[f.length - 1];
+    if (!NL.el.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'f' && !e.shiftKey)) { e.preventDefault(); inp.focus(); inp.select(); return; }
+  const ae = document.activeElement, inReader = NL.view === 'sec' && NL.sec && NL.el.querySelector('.nl-main').contains(ae) && !ae.closest('.nl-tbl');
+  if (inReader && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.altKey && !e.ctrlKey) { e.preventDefault(); NL.el.querySelector(`[data-nlstep="${e.key === 'ArrowLeft' ? -1 : 1}"]`)?.click(); }
+}
+// Abre la biblioteca. target: { ref: 'E.060 9.3.2' } | { doc: 'E.060', sec: índice } | { q: 'texto' }
+function openNormLib(target = {}) {
+  document.querySelectorAll('.menu').forEach(m => m.remove());
+  document.querySelector('.cmdk-ov')?.remove();
+  if (!NL.el) {
+    NL.prevFocus = document.activeElement;
+    setTimeout(() => NL.el && nlScopeUI(), 0);
+    NL.el = h(`<div class="nl-ov"><div class="nlib" role="dialog" aria-modal="true" aria-labelledby="nl-title">
+      <header class="nl-h"><h3 id="nl-title">${I.book}<span>Biblioteca de normas</span></h3>
+        <div class="nl-qw"><div class="sbox nl-q">${I.search}<input type="search" autocomplete="off" spellcheck="false" aria-label="Buscar en las normas o ir a una cita" placeholder="Buscar en todas las normas o escribir una cita: E.060 21.6.4"><button class="nl-qx" hidden aria-label="Limpiar búsqueda" title="Limpiar (Esc)">${I.x}</button></div><div class="nl-scope" role="group" aria-label="Ámbito de búsqueda" hidden></div></div>
+        <button class="btn ghost ic" data-nlx title="Cerrar (Esc)" aria-label="Cerrar la biblioteca">${I.x}</button></header>
+      <div class="nl-body" data-mv="side">
+        <aside class="nl-side"><div class="nl-seg" role="tablist" aria-label="Vista"><button role="tab" data-nlside="list">Normas</button><button role="tab" data-nlside="toc">Índice</button></div><div class="nl-list"></div><nav class="nl-toc" aria-label="Índice de la norma" hidden></nav></aside>
+        <section class="nl-main" tabindex="-1" aria-label="Lector"></section>
+      </div></div></div>`);
+    document.body.appendChild(NL.el);
+    document.addEventListener('keydown', nlKey, true);
+    const el = NL.el, inp = el.querySelector('.nl-q input');
+    el.addEventListener('mousedown', e => { if (e.target === el) closeNormLib(); });
+    inp.addEventListener('input', () => { NL.q = inp.value; nlQx(); nlSearchD(); });
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); nlSearchD.flush?.(); (el.querySelector('.nl-ref') || el.querySelector('.nl-sr'))?.click(); }
+      else if (e.key === 'ArrowDown') { const f = el.querySelector('.nl-ref,.nl-sr'); if (f) { e.preventDefault(); f.focus(); } }
+    });
+    el.querySelector('.nl-main').addEventListener('keydown', e => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      const its = [...el.querySelectorAll('.nl-ref,.nl-sr')], i = its.indexOf(document.activeElement); if (i < 0) return;
+      e.preventDefault(); if (e.key === 'ArrowUp' && i === 0) inp.focus(); else its[Math.max(0, Math.min(its.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))].focus();
+    });
+    el.querySelector('.nl-toc').addEventListener('keydown', e => {
+      const its = [...el.querySelectorAll('.nl-toc .nt-a')], i = its.indexOf(document.activeElement); if (i < 0) return;
+      const li = document.activeElement.closest('li'), d = { ArrowDown: 1, ArrowUp: -1 }[e.key];
+      if (d) { e.preventDefault(); its[Math.max(0, Math.min(its.length - 1, i + d))].focus(); }
+      else if ((e.key === 'ArrowRight' && li.getAttribute('aria-expanded') === 'false') || (e.key === 'ArrowLeft' && li.getAttribute('aria-expanded') === 'true')) { e.preventDefault(); li.querySelector('.nt-tg').click(); el.querySelector(`.nl-toc .nt-a[data-nlsec="${li.querySelector('.nt-a').dataset.nlsec}"]`)?.focus(); }
+    });
+    el.addEventListener('click', async e => {
+      const t = e.target;
+      if (t.closest('[data-nlx]')) return closeNormLib();
+      const sd = t.closest('[data-nlside]'); if (sd) { nlSide(sd.dataset.nlside); if (sd.dataset.nlside === 'toc') nlRenderToc(); return; }
+      const dc = t.closest('[data-nldoc]'); if (dc) { nlOpenDoc(dc.dataset.nldoc, -1, { main: true, clearSearch: true }); return; }
+      const sc = t.closest('[data-nlscope]'); if (sc) { NL.scope = sc.dataset.nlscope; nlScopeUI(); if (NL.q) nlSearch(); inp.focus(); return; }
+      const r = t.closest('[data-nldoc2]'); if (r) { const ts = NL.q && !r.hasAttribute('data-nlref') ? searchTerms(NL.q) : []; NL.hl = ts; nlOpenDoc(r.dataset.nldoc2, +r.dataset.nlsec2, { keepHl: true, keepSearch: true, num: r.dataset.nlnum }); return; }
+      const tg = t.closest('[data-nltg]'); if (tg) { const exp = NL.exp.get(NL.doc.id), i = +tg.dataset.nltg; if (exp.has(i)) exp.delete(i); else exp.add(i); nlRenderToc(); el.querySelector(`.nl-toc .nt-a[data-nlsec="${i}"]`)?.focus({ preventScroll: true }); return; }
+      const ex = t.closest('[data-nlexp]'); if (ex) { const exp = NL.exp.get(NL.doc.id); exp.clear(); if (ex.dataset.nlexp === '1') { const { kids } = nlTree(NL.doc); for (const k of kids.keys()) if (k >= 0) exp.add(k); } else if (NL.sec) nlAnc(NL.doc, NL.sec._i).forEach(k => exp.add(k)); nlRenderToc(); return; }
+      const sc2 = t.closest('[data-nlsec]'); if (sc2 && NL.doc) { nlOpenDoc(NL.doc.id, +sc2.dataset.nlsec); return; }
+      if (t.closest('[data-nlcover]')) { NL.sec = null; NL.hl = []; nlRenderSec(); nlRenderToc(); nlRemember(); return; }
+      const st = t.closest('[data-nlstep]'); if (st && NL.sec) { NL.hl = []; nlOpenDoc(NL.doc.id, NL.sec._i + +st.dataset.nlstep); return; }
+      if (t.closest('[data-nlhloff]')) { NL.hl = []; nlRenderSec(); return; }
+      if (t.closest('[data-nlback]')) { if (NL.q && NL.view === 'sec') { nlSearch(); return; } if (NL.q) { inp.value = ''; NL.q = ''; nlQx(); } nlSide(NL.doc ? 'toc' : 'list'); nlRenderSec(); nlMv('side'); return; }
+      if (t.closest('.nl-qx')) { inp.value = ''; NL.q = ''; nlQx(); nlSearch(); inp.focus(); return; }
+      if (t.closest('[data-nlcopy]') && NL.sec) { const c = t.closest('[data-nlcopy]').dataset.nlcopy; toast((await nlCopy(c)) ? 'Cita copiada: <b>' + esc(c) + '</b>' : 'No se pudo copiar la cita'); }
+    });
+  }
+  const el = NL.el, main = el.querySelector('.nl-main');
+  nlRenderList(); nlSide(NL.doc ? NL.side : 'list');
+  if (!NORMAS_INDEX.length) {
+    el.querySelector('.nl-body').innerHTML = `<div class="empty big nl-empty">${I.book}<b>La biblioteca de normas aún está vacía</b><span>Todavía no se han incorporado textos de normas en esta versión de MemoriaCalc. Cuando estén disponibles podrá leerlas aquí, buscar términos (sin importar tildes) y abrir cada referencia de la memoria con un clic.</span><span class="mut">Mientras tanto, las referencias normativas siguen apareciendo en el margen de la memoria.</span></div>`;
+    el.querySelector('.nl-q input').disabled = true;
+    setTimeout(() => el.querySelector('[data-nlx]').focus(), 20);
+    return;
+  }
+  // descompresión perezosa: la primera vez se muestra «Cargando…» y se descomprime en el siguiente cuadro
+  const go = () => {
+    if (!NL.el) return;
+    loadNormas();
+    const inp = el.querySelector('.nl-q input');
+    if (target.ref) {
+      const r = findRef(target.ref);
+      if (r && r.sec) { NL.hl = []; nlOpenDoc(r.doc.id, r.sec._i, { clearSearch: true, num: r.exact ? null : r.num }); if (!r.exact && !NL.numFound) toast('No se encontró «' + esc(target.ref) + '» exactamente; se muestra la sección más cercana'); return; }
+      if (r) { nlOpenDoc(r.doc.id, -1, { main: true, clearSearch: true }); if (!r.exact) toast('No se encontró «' + esc(target.ref) + '» en ' + esc(r.doc.id) + '; se muestra su contenido'); return; }
+      toast('La norma de «' + esc(target.ref) + '» no está en la biblioteca');
+    }
+    if (target.q) { inp.value = NL.q = target.q; nlQx(); nlSearch(); inp.focus(); return; }
+    if (target.doc) { nlOpenDoc(target.doc, target.sec ?? -1, { main: true, clearSearch: true }); return; }
+    if (!NL.doc) {
+      let last = null; try { last = JSON.parse(lsGet('mc_nlib', 'null')); } catch (er) { /* */ }
+      if (last && nlDoc(last.doc)) { nlOpenDoc(last.doc, last.sec, { focus: false }); if (isMobile()) nlMv('main'); }
+      else nlRenderSec();
+    }
+    if (!isMobile()) setTimeout(() => inp.focus(), 20);
+  };
+  if (normasLoaded()) go();
+  else { main.innerHTML = `<div class="empty big nl-load" role="status">${I.book}<b>Cargando normas…</b><span>Descomprimiendo ${NORMAS_INDEX.length} documento${NORMAS_INDEX.length === 1 ? '' : 's'}.</span></div>`; requestAnimationFrame(() => setTimeout(go, 16)); }
+}
+// Referencias normativas de la memoria (margen y resumen) → enlaces a la biblioteca (solo en pantalla)
+function linkRefs() {
+  if (!NORMAS_INDEX.length) return;
+  document.querySelectorAll('#paper .nref:not([data-nr]), #paper td.c-r:not([data-nr])').forEach(el => {
+    const t = el.textContent.trim(), m = t && t !== '—' ? refDoc(t) : null;
+    el.dataset.nr = m ? '1' : '0';
+    if (m) { el.classList.add('nlink'); el.tabIndex = 0; el.setAttribute('role', 'link'); el.title = 'Abrir ' + t + ' en la biblioteca de normas'; }
+  });
+}
+// Cita normativa dentro de la descripción de una función: «… (E.060 10.2.7.3)» → «E.060 10.2.7.3»
+function fnRef(desc) {
+  const m = NORMAS_INDEX.length ? refDoc(desc) : null; if (!m) return '';
+  const tail = desc.slice(m.k + m.len), n = /^[\s\-–:]*(?:\d{4}\b\s*)?((?:art\.?\s*|tabla\s*(?:n[°º]\s*)?|§\s*)?\d+(?:\.\d+)*)/i.exec(tail);
+  return desc.slice(m.k, m.k + m.len) + (n ? ' ' + n[1] : '');
 }
 function showHelp() {
   modal('Ayuda — sintaxis y funciones', `<div class="helpc">
@@ -1368,7 +1683,7 @@ function applyZoom() { const p = $('#paper'); if (p) p.style.zoom = zoom === 1 ?
 // ---------------- Atajos y barra de comandos ----------------
 const KEYS = [
   ['Ctrl K', 'Buscar plantillas, acciones, funciones, secciones y variables'], ['Ctrl S', 'Guardar archivo .mcalc'], ['Ctrl O', 'Abrir archivo'], ['Ctrl P', 'Imprimir / PDF'],
-  ['Ctrl Z · Ctrl Y', 'Deshacer · Rehacer (fuera de un campo de texto)'], ['Ctrl Shift F', 'Biblioteca de funciones'], ['Alt 1 … 4', 'Pestañas Datos · Editor · Variables · Proyecto'],
+  ['Ctrl Z · Ctrl Y', 'Deshacer · Rehacer (fuera de un campo de texto)'], ['Ctrl Shift F', 'Biblioteca de funciones'], ['Ctrl Shift L', 'Biblioteca de normas (lector y buscador)'], ['Clic en una referencia «▸ E.060 9.3.2»', 'Abrirla en la biblioteca de normas'], ['Alt 1 … 4', 'Pestañas Datos · Editor · Variables · Proyecto'],
   ['F1', 'Ayuda y sintaxis'], ['Ctrl \\', 'Ocultar / mostrar el panel (memoria a todo el ancho)'], ['Tab', 'Completar en el editor · siguiente dato en la edición en el lugar'], ['↑ ↓', 'Incrementar / reducir un dato numérico'], ['Clic en un dato de la vista', 'Editarlo en el lugar (Enter aceptar, Esc cancelar)'], ['Clic en una fórmula', 'Ir a su línea en el editor'],
 ];
 function showKeys() { modal(`${I.key}Atajos de teclado`, `<div class="keys">${KEYS.map(k => `<div><span>${k[0].split(' · ').map(x => x.split(' ').map(y => y === '…' ? '…' : `<kbd>${esc(y)}</kbd>`).join(' ')).join(' · ')}</span><em>${esc(k[1])}</em></div>`).join('')}</div>`, false); }
@@ -1381,7 +1696,7 @@ function showCmdK() {
     A('Nueva memoria desde plantilla', I.grid, '', () => showTemplates()), A('Pantalla de inicio', I.layers, '', () => showHome()), A('Recorrido guiado', I.eye, '', () => startTour()), A('Documento en blanco', I.blank, '', () => runAction('new')), A('Mis memorias', I.folder, '', () => showLibrary()),
     A('Abrir archivo .mcalc', I.open, 'Ctrl O', () => openFile()), A('Guardar archivo .mcalc', I.save, 'Ctrl S', () => saveFile()), A('Duplicar memoria', I.dup, '', () => runAction('dupdoc')),
     ...(EMBED ? [] : [A('Imprimir / Guardar PDF', I.pdf, 'Ctrl P', () => doPrint())]), A('Exportar Word (.docx)', I.word, '', () => exportWord()), A('Exportar HTML', I.html, '', () => exportHTML()),
-    A('Deshacer', I.undo, 'Ctrl Z', () => undoRedo(-1)), A('Rehacer', I.redo, 'Ctrl Y', () => undoRedo(1)), A('Biblioteca de funciones', I.fn, 'Ctrl ⇧ F', () => showFunctions()),
+    A('Deshacer', I.undo, 'Ctrl Z', () => undoRedo(-1)), A('Rehacer', I.redo, 'Ctrl Y', () => undoRedo(1)), A('Biblioteca de funciones', I.fn, 'Ctrl ⇧ F', () => showFunctions()), A('Biblioteca de normas', I.book, NL_KEY, () => openNormLib(), 'Leer y buscar en el texto de las normas'),
     A('Ir a Datos', I.data, 'Alt 1', () => { setView('edit'); setTab('datos'); }), A('Ir al Editor', I.edit, 'Alt 2', () => { setView('edit'); setTab('bloques'); }), A('Ir a Variables', I.vars, 'Alt 3', () => { setView('edit'); setTab('vars'); }), A('Ir a Proyecto', I.gear, 'Alt 4', () => { setView('edit'); setTab('proyecto'); }),
     A('Cambiar tema (claro / oscuro / automático)', I.moon, '', () => runAction('theme')), A('Normas implementadas', I.book, '', () => showNormas()), A('Ayuda y sintaxis', I.help, 'F1', () => showHelp()), A('Atajos de teclado', I.key, '', () => showKeys()),
   ];
@@ -1390,9 +1705,10 @@ function showCmdK() {
   const tpls = TEMPLATES.map(t => ({ g: 'Plantillas', t: t.name, sub: t.normas || t.cat, ic: I[t.icon] || I.calc, k: paisOf(t), run: () => loadTemplate(t) }));
   const fns = allFns().map(f => ({ g: 'Funciones', t: f.name + '(' + f.args + ')', sub: f.desc, ic: I.fn, run: () => insertFn(f), key: f.name }));
   const vars = [...lastRes.ctx.scope].filter(([, v]) => typeof v !== 'function').map(([k, v]) => { let val = ''; try { val = valText(v); } catch (e) { /* */ } return { g: 'Variables', t: k + ' = ' + (val.length > 50 ? val.slice(0, 48) + '…' : val), ic: I.vars, run: () => { const d = defOf(k); if (d) goToLine(d.b, d.l); }, key: k }; });
+  const nrms = NORMAS_INDEX.map(d => ({ g: 'Normas', t: d.id + ' — ' + (d.titulo || ''), sub: (PAISES[d.pais] || d.pais) + (d.version ? ' · ' + d.version : '') + (d.tipo === 'indice' ? ' · índice + enlace oficial' : ' · texto completo'), ic: I.book, run: () => openNormLib({ doc: d.id }), key: d.id }));
   if (valOf()) acts.push(A('Ejemplo de validación', I.book, '', () => showValidation(), valOf().fuente || ''));
   const L = isLocked();
-  const ALL = L ? [...acts.filter(a => !/Editor|Variables/.test(a.t)), ...secs, ...tpls] : [...acts, ...secs, ...tpls, ...fns, ...blks, ...vars];
+  const ALL = L ? [...acts.filter(a => !/Editor|Variables/.test(a.t)), ...secs, ...tpls, ...nrms] : [...acts, ...secs, ...tpls, ...nrms, ...fns, ...blks, ...vars];
   const ov = h(`<div class="cmdk-ov"><div class="cmdk" role="dialog" aria-label="Barra de comandos"><div class="sbox lg">${I.search}<input placeholder="Buscar plantillas, acciones, funciones, secciones, variables…" autocomplete="off" spellcheck="false"><kbd>Esc</kbd></div><div class="cl"></div><div class="cf"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> ejecutar</span><span><kbd>Esc</kbd> cerrar</span></div></div></div>`);
   const q = ov.querySelector('input'), list = ov.querySelector('.cl');
   let shown = [], sel = 0;
@@ -1407,6 +1723,9 @@ function showCmdK() {
       res = groups.flatMap(g => m.filter(x => x.g === g).sort((a, b) => sc(a) - sc(b)).slice(0, g === 'Plantillas' || g === 'Funciones' ? 8 : 6));
       const order = (g) => Math.min(...m.filter(x => x.g === g).map(sc));
       res.sort((a, b) => order(a.g) - order(b.g) || groups.indexOf(a.g) - groups.indexOf(b.g));
+      // una cita normativa («E.060 9.3.2») se abre directamente en la biblioteca
+      const rd = /\d/.test(q.value) && refDoc(q.value);
+      if (rd) res.unshift({ g: 'Normas', t: 'Abrir ' + q.value.trim() + ' en la biblioteca de normas', sub: rd.d.titulo || '', ic: I.book, run: () => openNormLib({ ref: q.value.trim() }) });
     }
     shown = res; sel = 0;
     let lastG = '';
@@ -1492,6 +1811,7 @@ export function start() {
       <div class="bgrp hide-m"><button class="btn ghost ic" data-do="undo" title="Deshacer (Ctrl+Z)">${I.undo}</button><button class="btn ghost ic" data-do="redo" title="Rehacer (Ctrl+Y)">${I.redo}</button></div>
       <span class="tsep hide-m"></span>
       <button class="btn hide-m" data-do="tpl" title="Nueva desde plantilla">${I.grid}<span>Plantillas</span></button>
+      <button class="btn nlbtn" data-do="nlib" title="Biblioteca de normas (Ctrl+Shift+L)" aria-label="Biblioteca de normas">${I.book}<span>Normas</span></button>
       <button class="btn ghost ic hide-m" data-do="fns" title="Biblioteca de funciones (Ctrl+Shift+F)">${I.fn}</button>
       <button class="btn ghost ic hide-m" data-do="lib" title="Mis memorias">${I.folder}</button>
       <button class="btn ghost ic hide-m" data-do="save" title="Guardar archivo (Ctrl+S)">${I.save}</button>
@@ -1533,7 +1853,7 @@ export function start() {
     if (d) {
       const a = d.dataset.do;
       if (a === 'tpl') showTemplates(); else if (a === 'home') showHome(); else if (a === 'tour') startTour(); else if (a === 'lib') showLibrary(); else if (a === 'fns') showFunctions(); else if (a === 'cmdk') { showCmdK(); return; } else if (a === 'keys') showKeys(); else if (a === 'save') saveFile(); else if (a === 'open') openFile();
-      else if (a === 'pdf') doPrint(); else if (a === 'html') exportHTML(); else if (a === 'word') exportWord(); else if (a === 'help') showHelp(); else if (a === 'normas') showNormas();
+      else if (a === 'pdf') doPrint(); else if (a === 'html') exportHTML(); else if (a === 'word') exportWord(); else if (a === 'help') showHelp(); else if (a === 'normas') showNormas(); else if (a === 'nlib') openNormLib();
       else if (a === 'menu') { showMenu(d); return; }
       else if (a === 'theme') { const cur = document.documentElement.dataset.theme; const nx = cur === 'dark' ? 'light' : cur === 'light' ? '' : 'dark'; if (nx) document.documentElement.dataset.theme = nx; else delete document.documentElement.dataset.theme; try { localStorage.setItem('mc_theme', nx); } catch (er) { /* */ } toast('Tema: ' + (nx === 'dark' ? 'oscuro' : nx === 'light' ? 'claro' : 'automático')); }
       else if (a === 'undo') undoRedo(-1); else if (a === 'redo') undoRedo(1);
@@ -1555,6 +1875,8 @@ export function start() {
       else { if (isMobile()) setView('prev'); const el = document.querySelector(g === 'bad' ? '#paper .cbad, #paper .bad' : '#paper .sum, #paper .cok'); paperGo(el); }
       return;
     }
+    const nr = e.target.closest('#paper .nlink');
+    if (nr && !window.getSelection().toString()) { e.preventDefault(); openNormLib({ ref: nr.textContent.trim() }); return; }
     const ln = e.target.closest('#paper .ln[data-b]');
     if (ln && !window.getSelection().toString()) { if (ln.classList.contains('in') && !e.altKey) openIed(ln); else goToLine(ln.dataset.b, +ln.dataset.l); return; }
     const sec = e.target.closest('#paper .blk[data-b]');
@@ -1569,7 +1891,7 @@ export function start() {
       <button data-do="undo">${I.undo}Deshacer<kbd>Ctrl Z</kbd></button><button data-do="redo">${I.redo}Rehacer<kbd>Ctrl Y</kbd></button><hr><button data-do="home">${I.layers}Inicio</button><button data-do="tpl">${I.grid}Nueva desde plantilla</button><button data-do="new">${I.blank}Documento en blanco</button><button data-do="lib">${I.folder}Mis memorias</button><hr>
       <button data-do="open">${I.open}Abrir archivo .mcalc<kbd>Ctrl O</kbd></button><button data-do="save">${I.save}Guardar archivo .mcalc<kbd>Ctrl S</kbd></button><button data-do="dupdoc">${I.dup}Duplicar memoria</button><hr>
       <button data-do="pdf">${I.pdf}Imprimir / Guardar PDF<kbd>Ctrl P</kbd></button><button data-do="html">${I.html}Exportar HTML</button><button data-do="word">${I.word}Exportar Word (.docx)</button><hr>
-      <button data-do="cmdk">${I.search}Buscar o ejecutar…<kbd>Ctrl K</kbd></button><button data-do="fns">${I.fn}Biblioteca de funciones</button><hr>
+      <button data-do="cmdk">${I.search}Buscar o ejecutar…<kbd>Ctrl K</kbd></button><button data-do="fns">${I.fn}Biblioteca de funciones</button><button data-do="nlib">${I.book}Biblioteca de normas<kbd>${NL_KEY}</kbd></button><hr>
       <button data-do="theme">${I.moon}Cambiar tema</button><button data-do="normas">${I.book}Normas implementadas</button><button data-do="help">${I.help}Ayuda y sintaxis<kbd>F1</kbd></button><button data-do="tour">${I.eye}Recorrido guiado</button><button data-do="keys">${I.key}Atajos de teclado</button></div>`);
     if (EMBED) m.querySelectorAll('[data-do="pdf"]').forEach(b => b.hidden = true);
     openMenu(m, btn);
@@ -1715,6 +2037,7 @@ export function start() {
   });
 
   // atajos
+  document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('#paper .nlink')) { e.preventDefault(); openNormLib({ ref: e.target.textContent.trim() }); } });
   document.addEventListener('mousedown', e => { if (ied && !e.target.closest('.ied') && !e.target.closest('#paper .ln.in')) { recompute.flush?.(); closeIed(); } });
   $('#right').addEventListener('scroll', () => { if (ied) iedPlace(); }, { passive: true });
   window.addEventListener('resize', () => { if (ied) iedPlace(); });
@@ -1726,6 +2049,7 @@ export function start() {
     const k = e.key.toLowerCase();
     if (k === 'k' && !e.shiftKey && !e.altKey) { e.preventDefault(); if (document.querySelector('.cmdk-ov')) document.querySelector('.cmdk-ov').remove(); else showCmdK(); return; }
     if (k === 'f' && e.shiftKey) { e.preventDefault(); showFunctions(); return; }
+    if ((k === 'l' || k === 'n') && e.shiftKey) { e.preventDefault(); if (NL.el) closeNormLib(); else openNormLib(); return; }
     if (e.key === '\\' && !isMobile()) { e.preventDefault(); toggleFocus(); return; }
     const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
     // en los campos de la pestaña Datos el valor se aplica al instante: Ctrl+Z deshace en la memoria
