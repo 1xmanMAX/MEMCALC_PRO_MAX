@@ -1,5 +1,7 @@
 import * as esbuild from 'esbuild';
 import fs from 'fs';
+import { execSync } from 'child_process';
+execSync('node tools/pack-normas.mjs', { stdio: 'inherit' });
 const r = await esbuild.build({ entryPoints: ['src/main.js'], bundle: true, minify: true, format: 'iife', target: ['chrome100','edge100','safari15','firefox100'], write: false, legalComments: 'none' });
 let js = r.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
 let kcss = fs.readFileSync('node_modules/katex/dist/katex.min.css', 'utf8');

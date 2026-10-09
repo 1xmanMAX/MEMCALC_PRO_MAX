@@ -1,0 +1,13 @@
+{
+  "id": "E.060",
+  "alias": ["E060", "NTE E.060", "E.060"],
+  "titulo": "Norma E.060 Concreto Armado",
+  "pais": "PE",
+  "tipo": "texto",
+  "version": "DS 010-2009-VIVIENDA",
+  "fuente": "https://... (URL oficial)",
+  "licencia": "Texto oficial publicado en El Peruano; norma legal no protegida por derecho de autor (D. Leg. 822, Art. 9)",
+  "secciones": [
+    { "id": "9.3.2", "nivel": 3, "titulo": "Factores de reducción de resistencia", "texto": "9.3.2.1 Para flexión sin carga axial... (texto literal)" }
+  ]
+}
