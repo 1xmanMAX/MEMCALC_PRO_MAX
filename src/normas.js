@@ -88,6 +88,18 @@ export function findRef(ref) {
       || secs.find(s => rx.test(fold(s.texto || '')));
     if (hit) return { doc, sec: hit, exact: true };
   }
+  // secciones con letra (AISC «E3», «J3.10», «F2.2»)
+  const ml = /\b([a-n])(\d+(?:\.\d+)*)\b/i.exec(rest);
+  if (ml && (!m || ml.index < m.index)) {
+    const parts = (ml[1].toUpperCase() + ml[2]).split('.');
+    for (let k = parts.length; k > 0; k--) {
+      const p = parts.slice(0, k).join('.');
+      const sec = secs.find(s => String(s.id).toUpperCase() === p);
+      if (sec) return { doc, sec, exact: k === parts.length, num: p };
+    }
+    const ch = secs.find(s => fold(s.id) === 'chapter ' + ml[1].toLowerCase());
+    if (ch) return { doc, sec: ch, exact: false };
+  }
   if (!m) return { doc, sec: null, exact: !rest.trim() }; // solo la norma: portada
   const num = m[1].replace(/\.$/, ''), parts = num.split('.');
   for (let k = parts.length; k > 0; k--) {
