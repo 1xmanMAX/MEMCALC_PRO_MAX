@@ -1,0 +1,251 @@
+{
+ "id": "AISC 360-22",
+ "alias": [
+  "AISC 360",
+  "AISC360",
+  "ANSI/AISC 360-22",
+  "AISC 360-16"
+ ],
+ "titulo": "ANSI/AISC 360-22 Specification for Structural Steel Buildings",
+ "pais": "US",
+ "tipo": "indice",
+ "version": "ANSI/AISC 360-22 (agosto 2022)",
+ "fuente": "https://www.aisc.org/publications/steel-standards/",
+ "licencia": "Norma protegida por derechos de autor de American Institute of Steel Construction. Solo índice (números y títulos oficiales), sin texto. AISC la ofrece como descarga gratuita en aisc.org, pero su redistribución no está autorizada; descárguela allí.",
+ "secciones": [
+  {
+   "id": "Chapter A",
+   "nivel": 1,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "Chapter B",
+   "nivel": 1,
+   "titulo": "Design Requirements",
+   "texto": ""
+  },
+  {
+   "id": "B3",
+   "nivel": 2,
+   "titulo": "Design Basis",
+   "texto": ""
+  },
+  {
+   "id": "B4",
+   "nivel": 2,
+   "titulo": "Member Properties",
+   "texto": ""
+  },
+  {
+   "id": "Chapter C",
+   "nivel": 1,
+   "titulo": "Design for Stability",
+   "texto": ""
+  },
+  {
+   "id": "C1",
+   "nivel": 2,
+   "titulo": "General Stability Requirements",
+   "texto": ""
+  },
+  {
+   "id": "C2",
+   "nivel": 2,
+   "titulo": "Calculation of Required Strengths",
+   "texto": ""
+  },
+  {
+   "id": "C3",
+   "nivel": 2,
+   "titulo": "Calculation of Available Strengths",
+   "texto": ""
+  },
+  {
+   "id": "Chapter D",
+   "nivel": 1,
+   "titulo": "Design of Members for Tension",
+   "texto": ""
+  },
+  {
+   "id": "Chapter E",
+   "nivel": 1,
+   "titulo": "Design of Members for Compression",
+   "texto": ""
+  },
+  {
+   "id": "E2",
+   "nivel": 2,
+   "titulo": "Effective Length",
+   "texto": ""
+  },
+  {
+   "id": "E3",
+   "nivel": 2,
+   "titulo": "Flexural Buckling of Members without Slender Elements",
+   "texto": ""
+  },
+  {
+   "id": "E4",
+   "nivel": 2,
+   "titulo": "Torsional and Flexural-Torsional Buckling of Single Angles and Members without Slender Elements",
+   "texto": ""
+  },
+  {
+   "id": "E7",
+   "nivel": 2,
+   "titulo": "Members with Slender Elements",
+   "texto": ""
+  },
+  {
+   "id": "Chapter F",
+   "nivel": 1,
+   "titulo": "Design of Members for Flexure",
+   "texto": ""
+  },
+  {
+   "id": "F2",
+   "nivel": 2,
+   "titulo": "Doubly Symmetric Compact I-Shaped Members and Channels Bent about Their Major Axis",
+   "texto": ""
+  },
+  {
+   "id": "F3",
+   "nivel": 2,
+   "titulo": "Doubly Symmetric I-Shaped Members with Compact Webs and Noncompact or Slender Flanges Bent about Their Major Axis",
+   "texto": ""
+  },
+  {
+   "id": "Chapter G",
+   "nivel": 1,
+   "titulo": "Design of Members for Shear",
+   "texto": ""
+  },
+  {
+   "id": "G2",
+   "nivel": 2,
+   "titulo": "I-Shaped Members and Channels",
+   "texto": ""
+  },
+  {
+   "id": "Chapter H",
+   "nivel": 1,
+   "titulo": "Design of Members for Combined Forces and Torsion",
+   "texto": ""
+  },
+  {
+   "id": "H1",
+   "nivel": 2,
+   "titulo": "Doubly and Singly Symmetric Members Subject to Flexure and Axial Force",
+   "texto": ""
+  },
+  {
+   "id": "Chapter I",
+   "nivel": 1,
+   "titulo": "Design of Composite Members",
+   "texto": ""
+  },
+  {
+   "id": "Chapter J",
+   "nivel": 1,
+   "titulo": "Design of Connections",
+   "texto": ""
+  },
+  {
+   "id": "J2",
+   "nivel": 2,
+   "titulo": "Welds",
+   "texto": ""
+  },
+  {
+   "id": "J3",
+   "nivel": 2,
+   "titulo": "Bolts and Threaded Parts",
+   "texto": ""
+  },
+  {
+   "id": "J4",
+   "nivel": 2,
+   "titulo": "Affected Elements of Members and Connecting Elements",
+   "texto": ""
+  },
+  {
+   "id": "J10",
+   "nivel": 2,
+   "titulo": "Flanges and Webs with Concentrated Forces",
+   "texto": ""
+  },
+  {
+   "id": "Chapter K",
+   "nivel": 1,
+   "titulo": "Additional Requirements for HSS and Box-Section Connections",
+   "texto": ""
+  },
+  {
+   "id": "Chapter L",
+   "nivel": 1,
+   "titulo": "Design for Serviceability",
+   "texto": ""
+  },
+  {
+   "id": "Chapter M",
+   "nivel": 1,
+   "titulo": "Fabrication and Erection",
+   "texto": ""
+  },
+  {
+   "id": "Chapter N",
+   "nivel": 1,
+   "titulo": "Quality Control and Quality Assurance",
+   "texto": ""
+  },
+  {
+   "id": "Appendix 1",
+   "nivel": 1,
+   "titulo": "Design by Advanced Analysis",
+   "texto": ""
+  },
+  {
+   "id": "Appendix 2",
+   "nivel": 1,
+   "titulo": "Design for Ponding",
+   "texto": ""
+  },
+  {
+   "id": "Appendix 3",
+   "nivel": 1,
+   "titulo": "Fatigue",
+   "texto": ""
+  },
+  {
+   "id": "Appendix 4",
+   "nivel": 1,
+   "titulo": "Structural Design for Fire Conditions",
+   "texto": ""
+  },
+  {
+   "id": "Appendix 5",
+   "nivel": 1,
+   "titulo": "Evaluation of Existing Structures",
+   "texto": ""
+  },
+  {
+   "id": "Appendix 6",
+   "nivel": 1,
+   "titulo": "Member Stability Bracing",
+   "texto": ""
+  },
+  {
+   "id": "Appendix 7",
+   "nivel": 1,
+   "titulo": "Alternative Methods of Design for Stability",
+   "texto": ""
+  },
+  {
+   "id": "Appendix 8",
+   "nivel": 1,
+   "titulo": "Approximate Second-Order Analysis",
+   "texto": ""
+  }
+ ]
+}

@@ -1,0 +1,428 @@
+{
+ "id": "DS60",
+ "alias": [
+  "DS 60",
+  "DS60",
+  "D.S. 60",
+  "DS N° 60",
+  "DS Nº 60",
+  "Decreto 60",
+  "D.S. N° 60"
+ ],
+ "titulo": "DS 60 (V. y U.), de 2011 — Reglamento que fija los requisitos de diseño y cálculo para el hormigón armado (adecuaciones al ACI 318S-08)",
+ "pais": "CL",
+ "tipo": "texto",
+ "version": "Decreto N.º 60 MINVU, promulgado el 02-11-2011, publicado en el Diario Oficial el 13-12-2011; versión única en LeyChile (idNorma 1034100)",
+ "fuente": "https://www.bcn.cl/leychile/navegar?idNorma=1034100",
+ "licencia": "Decreto supremo publicado en el Diario Oficial de la República de Chile; norma reglamentaria de publicidad obligatoria y libre acceso. Texto reproducido de LeyChile (Biblioteca del Congreso Nacional, contenidos bajo licencia CC BY-SA 3.0 CL), citando la fuente. Las fórmulas y tablas que LeyChile publica como imágenes (escaneadas del Diario Oficial) se transcribieron literalmente a texto; los símbolos griegos que la versión HTML perdió (δu, εqu, α) se restituyeron según esas imágenes. Los títulos de los artículos que no tienen epígrafe oficial son descriptivos (no forman parte del decreto). El artículo 3º (tabla CÓDIGO/COMENTARIO del Diario Oficial, publicada como imágenes) se transcribió completo; el texto de la columna COMENTARIO figura tras la cláusula a la que corresponde con el prefijo «COMENTARIO —». No se incluye el texto del ACI 318S-08 (protegido por derechos de autor del American Concrete Institute), solo las adecuaciones que fija el decreto.",
+ "secciones": [
+  {
+   "id": "Vistos",
+   "nivel": 1,
+   "titulo": "Encabezado: vistos, teniendo presente y decreto",
+   "texto": "APRUEBA REGLAMENTO QUE FIJA LOS REQUISITOS DE DISEÑO Y CÁLCULO PARA EL HORMIGÓN ARMADO Y DEROGA DECRETO Nº 118, DE 2010\n\nSantiago, 2 de noviembre de 2011.- Hoy se decretó lo que sigue:\n\nNúm. 60.- Visto: La ley 16.391, en especial lo dispuesto en su artículo 2º número 3; el DL Nº 1.305, de 1975, en su artículo 4º; lo previsto en los artículos 2º, 105 y 106, del DFL Nº 458, de 1975, Ley General de Urbanismo y Construcciones y sus modificaciones; la Ordenanza General de Urbanismo y Construcciones, aprobada por DS Nº 47 (V. y U.), de 1992, y sus modificaciones; la ley 19.912; el DS Nº 77, del Ministerio de Economía, Fomento y Turismo, del año 2004, en especial lo dispuesto en su artículo 7º; el DS Nº 118 (V. y U.), de 2010, que Aprueba Reglamento que Fija los Requisitos de Diseño y Cálculo para el Hormigón Armado; Requisitos de Reglamento para Concreto Estructural y Comentario o ACI 318S-08, del American Concrete Institute; el artículo 32, Nº 6 de la Constitución Política de la República de Chile y la resolución Nº 1.600, de 2008, de la Contraloría General de la República.\n\nTeniendo presente:\n\n1.- Que al Ministerio de Vivienda y Urbanismo le corresponde, entre otras materias, dictar ordenanzas, reglamentos e instrucciones generales sobre urbanización de terrenos, construcción de viviendas, obras de equipamiento comunitario, desarrollo y planificación urbanos y cooperativas de viviendas.\n\n2.- Que, como es de público conocimiento, una amplia zona del país fue afectada por un sismo de intensidad excepcionalmente severa con características de terremoto el pasado 27 de febrero del año 2010, catástrofe que produjo un nivel de daños que se considera por sobre lo aceptable.\n\n3.- Que, en virtud de lo señalado en los puntos precedentes, el Ministerio de Vivienda y Urbanismo dictó el DS Nº 118 (V. y U.), de 2010, Reglamento que Fija los Requisitos de Diseño y Cálculo para Hormigón Armado, que esta Secretaría de Estado estimó necesario revisar, dado que a la época de su formulación se contaba con información parcial de las causas y consecuencias de los daños que la referida catástrofe provocó en las edificaciones del país, estableciéndose, en el indicado Reglamento Técnico, factores de seguridad y estándares que requieren ser ajustados, para lo cual convocó a un panel de expertos en materias relativas a Diseño y Cálculo para Hormigón Armado que efectuara recomendaciones en este sentido, compuesto por:\n\nAlfonso Larraín, ALV Ingeniería y Cía. Ltda.;\n\nArmando Holzapfel, Cámara Chilena de la Construcción;\n\nAugusto Holmberg, Instituto del Cemento y el Hormigón;\n\nCarl Lüders, Pontificia Universidad Católica de Chile;\n\nCarlos Méndez, Ministerio de Obras Públicas;\n\nCarlos Sepúlveda Soruco, Gonzalo Santolaya Ingenieros Consultores S.A.;\n\nCarmen Abarca, Instituto de la Construcción;\n\nEduardo Santos Muñoz, IEC S.A.;\n\nFernando Yáñez, IDIEM de la Universidad de Chile;\n\nGilberto Leiva, Universidad Técnica Federico Santa María;\n\nHernán Santa María, Pontificia Universidad Católica de Chile;\n\nIván Hrepic, consultor particular;\n\nJuan Luis Ramírez, Colegio de Arquitectos de Chile;\n\nLeonardo Massone, Universidad de Chile;\n\nLeopoldo Breschi, VMB Ingeniería Ltda.;\n\nLuis Díaz, Universidad de La Serena;\n\nManuel Brunet, Cámara Chilena de la Construcción;\n\nMarcial Baeza, Asociación Chilena de Sismología e Ingeniería Antisísmica - Achisina;\n\nMarianne Küpfer, René Lagos y Asociados Ingenieros Civiles Ltda.;\n\nMatías Hube, Pontificia Universidad Católica de Chile;\n\nMiguel Sandor, Sandor Ingenieros;\n\nPatricio Bonelli, Patricio Bonelli y Asociados Ltda.;\n\nRené Lagos, René Lagos y Asociados Ingenieros Civiles Ltda.;\n\nRodolfo Saragoni, S y S Ingenieros Consultores Ltda.;\n\nRodrigo Concha, RCP Ingeniería Ltda.;\n\nRodrigo Jordán, Pontificia Universidad Católica de Chile;\n\nRodrigo Mujica, VMB Ingeniería Ltda.;\n\nRodrigo Vásquez, consultor particular;\n\nSergio Contreras, Colegio de Ingenieros de Chile;\n\nWalter Brehme, Universidad de Chile - Facultad de Arquitectura, y\n\nGuillermo Calderón, Ministerio de Vivienda y Urbanismo.\n\n4.- Que el artículo 2º del DS Nº 77, del Ministerio de Economía, del año 2004, Reglamento de Ejecución del Título I de la Ley 19.912 y Requisitos para la Elaboración, Adopción y Aplicación de Reglamentos Técnicos y Procedimientos de Evaluación de Conformidad, establece que cuando sean necesarios reglamentos técnicos y existan normas internacionales pertinentes o sea inminente su formulación definitiva, los ministerios con facultades para adoptarlos, utilizarán esas normas internacionales o sus elementos pertinentes como base de sus reglamentos técnicos.\n\n5.- Que en materia de Diseño y Cálculo para Hormigón Armado, existe la norma internacional denominada \"Requisitos de Reglamento para Concreto Estructural y Comentario\" o ACI 318S-08, preparada por el Comité ACI 318, del American Concrete Institute, de los Estados Unidos de América, que corresponde a la versión en español y en sistema métrico del ACI 318-08.\n\n6.- Que, como resultado de las reuniones sostenidas por el panel de expertos, se determinó que es urgente efectuar adecuaciones y complementaciones al DS Nº 118 (V. y U.), de 2010, que ajusten los factores de seguridad y los estándares del Diseño y Cálculo para Hormigón Armado, de acuerdo a la información obtenida de los daños que ocasionó el sismo de febrero del año 2010, para lo cual resulta pertinente adoptar y aplicar, con los acondicionamientos propios de la realidad nacional, la norma internacional citada en el considerando precedente, siendo necesaria la dictación de un reglamento técnico que lo reemplace, para su aplicación hasta que el Instituto Nacional de Normalización confeccione la norma técnica correspondiente y ésta sea declarada Norma Oficial de la República de Chile por decreto supremo del Ministerio de Vivienda y Urbanismo, dicto el siguiente:\n\nDecreto:\n\nApruébase el siguiente Reglamento que Fija los Requisitos de Diseño y Cálculo para el Hormigón Armado."
+  },
+  {
+   "id": "1",
+   "nivel": 1,
+   "titulo": "Diseño y construcción según ACI 318S-08",
+   "texto": "Artículo 1º.- Los elementos y estructuras de hormigón armado se deberán diseñar y construir de acuerdo con los requisitos y exigencias establecidos en la norma técnica del American Concrete Institute, denominada Requisitos de Reglamento para Concreto Estructural y Comentario ACI 318S-08, en adelante ACI 318S-08, con las adecuaciones indicadas en el artículo 3º del presente decreto."
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Documentos de referencia",
+   "texto": "Artículo 2º.- Toda referencia a código, comentario, cláusula, simbología, figuras o tablas que se contengan en el presente decreto, deberá entenderse realizada a las contenidas en los siguientes documentos. Para referencias sin fecha, se aplicará la última edición oficial vigente del documento referenciado:\n\nNCh148      Cemento - Terminología, clasificación y\n            especificaciones generales\nNCh163      Áridos para morteros y hormigones - Requisitos\n            generales\nNCh170      Hormigón - Requisitos generales\nNCh204      Acero - Barras laminadas en caliente para\n            hormigón armado\nNCh433      Diseño sísmico de edificios\nNCh1174     Construcción - Alambre de acero, liso o con\n            entalladuras, de grado AT56-50H, en forma de\n            barras rectas - Condiciones de uso en el hormigón\n            armado\nNCh1498     Hormigón - Agua de amasado - Requisitos\nNCh1537     Diseño estructural de edificios - Cargas\n            permanentes y sobrecargas de uso\nNCh1934     Hormigón preparado en central hormigonera\nNCh2123     Albañilería confinada - Requisitos de diseños y\n            cálculo\nNCh2182     Hormigón y mortero - Aditivos - Clasificación y\n            requisitos\nNCh2369     Diseño sísmico de estructuras e instalaciones\n            industriales.\nAC 133      Acceptance Criteria for Mechanical Connectors for\n            Steel Bar Reinforcement\nACI 318S-08 Requisitos de Reglamento para Concreto\n            Estructural y Comentarios."
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Adecuaciones al ACI 318S-08",
+   "texto": "Artículo Nº 3.- Fíjanse las siguientes adecuaciones al ACI 318S-08. Los números de este artículo corresponden a las cláusulas del ACI 318S-08, que se modifican, adicionan o reemplazan.\n\n(Las cláusulas del ACI 318S-08 que se modifican, adicionan o reemplazan se transcriben en las subsecciones siguientes. En el Diario Oficial el artículo se publica como una tabla de dos columnas, CÓDIGO y COMENTARIO; aquí el texto de la columna COMENTARIO se transcribe a continuación de la cláusula a la que corresponde, precedido de «COMENTARIO —».)"
+  },
+  {
+   "id": "Capítulo 1",
+   "nivel": 2,
+   "titulo": "Capítulo 1 — Requisitos generales",
+   "texto": "CAPITULO 1 – REQUISITOS GENERALES"
+  },
+  {
+   "id": "1.1.3",
+   "nivel": 3,
+   "titulo": "1.1 Alcance — 1.1.3",
+   "texto": "1.1 – Alcance\n1.1.3 – Agregar el párrafo siguiente:\n\nLas normas chilenas, con las modificaciones indicadas en este Decreto, prevalecen sobre las normas correspondientes citadas en el código ACI 318S-08.\n\nCOMENTARIO — R 1.1.3 – El ACI 318 forma una unidad, por lo cual sus disposiciones no se pueden usar en forma parcial ni para condiciones diferentes a las indicadas en este código, salvo que una disposición indicada en este artículo especifique algo diferente."
+  },
+  {
+   "id": "Capítulo 2",
+   "nivel": 2,
+   "titulo": "Capítulo 2 — Notación y definiciones",
+   "texto": "CAPITULO 2 – NOTACION Y DEFINICIONES"
+  },
+  {
+   "id": "2.1",
+   "nivel": 3,
+   "titulo": "Notación del Reglamento",
+   "texto": "2.1 – Notación del Reglamento\nAgregar las siguientes definiciones:\n\nAtr = área total de todo el refuerzo transversal dentro de un espaciamiento s que cruza el plano potencial de hendimiento a través del refuerzo que está siendo desarrollado, mm², Capítulo 12 y Capítulo 21\n\ncc = extensión de la zona a confinar en un muro medida desde su borde comprimido, Capítulo 21\n\nh'w = altura de un muro medida desde el extremo superior del muro a la sección analizada, Capítulo 21\n\nHt = Distancia entre el último nivel significativo del edificio y la sección crítica de un muro, Capítulo 21\n\nlp = largo de una rótula plástica, Capítulo 21\n\nδe = capacidad de desplazamiento elástico de un muro en su extremo superior, Capítulo 21\n\nδu = desplazamiento de diseño según se define en NCh 433, Capítulo 21\n\nδ'u = desplazamiento relativo de diseño entre el extremo superior de un muro y el desplazamiento a nivel de la sección analizada, Capitulo 21\n\nφe = curvatura en la sección crítica de un muro, consistente con δe, Capitulo 21"
+  },
+  {
+   "id": "2.2",
+   "nivel": 3,
+   "titulo": "Definiciones",
+   "texto": "2.2 – Definiciones\nAgregar la siguiente definición:\n\nSección crítica – zona de un muro especial donde se espera que ocurra incursión inelástica cíclica, Capítulo 21."
+  },
+  {
+   "id": "Capítulo 3",
+   "nivel": 2,
+   "titulo": "Capítulo 3 — Materiales",
+   "texto": "CAPITULO 3- MATERIALES"
+  },
+  {
+   "id": "3.2.1",
+   "nivel": 3,
+   "titulo": "3.2 Cementos — 3.2.1",
+   "texto": "3.2 – Cementos\n3.2.1 – Agregar la letra siguiente:\n\n(h) NCh 148 Cemento – Terminología, clasificación y especificaciones generales."
+  },
+  {
+   "id": "3.3.1",
+   "nivel": 3,
+   "titulo": "3.3 Agregados — 3.3.1",
+   "texto": "3.3– Agregados\n3.3.1 – Agregar las letras siguientes:\n\n(c) NCh 163 Áridos para morteros y hormigones- Requisitos generales.\n\n(d) NCh 170 Hormigón – Requisitos generales."
+  },
+  {
+   "id": "3.4.3",
+   "nivel": 3,
+   "titulo": "3.4 Agua — 3.4.3",
+   "texto": "3.4– Agua\nAgregar la cláusula siguiente:\n\n3.4.3 – Los requisitos para el agua de amasado en hormigones es NCh 1498 Hormigón - Agua de amasado –Requisitos."
+  },
+  {
+   "id": "3.5.3.1",
+   "nivel": 3,
+   "titulo": "3.5 Acero de refuerzo — 3.5.3 Refuerzo corrugado — 3.5.3.1",
+   "texto": "3.5– Acero de refuerzo\n3.5.3 – Refuerzo corrugado\n3.5.3.1 – Agregar las letras y el párrafo siguiente:\n\n(e) NCh204 Acero – Barras laminadas en caliente para hormigón armado.\n(f) NCh 1174 Construcción – Alambre de acero liso o con entalladuras, de grado AT56-50H, en forma de barras rectas – Condiciones de uso en el hormigón armado.\n\nLas barras de acero de refuerzo de diámetro mayor que 40mm deben cumplir lo indicado en NCh204, y los requisitos de resaltes y tolerancias de masa indicados en el Anexo A de este Decreto."
+  },
+  {
+   "id": "3.6.6",
+   "nivel": 3,
+   "titulo": "3.6 Aditivos — 3.6.6",
+   "texto": "3.6– Aditivos\nAgregar la cláusula siguiente:\n\n3.6.6 – Los requisitos para aditivos usados en hormigón es NCh 2182 Hormigón y mortero – Aditivos – Clasificación y requisitos."
+  },
+  {
+   "id": "3.8.1",
+   "nivel": 3,
+   "titulo": "3.8 Normas citadas — 3.8.1",
+   "texto": "3.8– Normas Citadas\n3.8.1 – Agregar las siguientes normas chilenas:\n\nNCh148   Cemento – Terminología, clasificación y Especificaciones generales.\nNCh163   Áridos para morteros y hormigones – Requisitos generales.\nNCh170   Hormigón – Requisitos generales.\nNCh204   Acero – Barras laminadas en caliente para hormigón armado.\nNCh1498  Hormigón – Agua de amasado – Requisitos.\nNCh1934  Hormigón preparado en central hormigonera.\nNCh2182  Hormigón y mortero – Aditivos – Clasificación y requisitos."
+  },
+  {
+   "id": "Capítulo 4",
+   "nivel": 2,
+   "titulo": "Capítulo 4 — Requisitos de durabilidad",
+   "texto": "CAPITULO 4 – REQUISITOS DE DURABILIDAD"
+  },
+  {
+   "id": "4.1.1",
+   "nivel": 3,
+   "titulo": "4.1 Generalidades — 4.1.1",
+   "texto": "4.1 – Generalidades\n4.1.1 – Agregar el párrafo siguiente:\n\nRespecto a los temas abordados en esta subcláusula, las normas chilenas correspondientes son:\n\nNCh163   Áridos para morteros y hormigones – Requisitos generales.\nNCh170   Hormigón – Requisitos generales."
+  },
+  {
+   "id": "Capítulo 5",
+   "nivel": 2,
+   "titulo": "Capítulo 5 — Calidad del concreto, mezclado y colocación",
+   "texto": "CAPITULO 5 – CALIDAD DEL CONCRETO, MEZCLADO Y COLOCACION"
+  },
+  {
+   "id": "5.1.2",
+   "nivel": 3,
+   "titulo": "5.1 Generalidades — 5.1.2",
+   "texto": "5.1 – Generalidades\n5.1.2 – Agregar el párrafo siguiente:\n\nAlternativamente se puede utilizar ensayos de cubos, considerando en las fórmulas de diseño el valor de f'c dado por la siguiente tabla de equivalencia que establece NCh170.Of1985 con la extensión que se indica:\n\nf'c (MPa) | Grado de hormigón (NCh170 con 10% de fracción defectuosa)\n16        | H20\n20        | H25\n25        | H30\n30        | H35\n35        | H40\n40        | H45\n          | >H45*)\n\n*) Para resistencias mayores que H45 el valor de f'c se debe determinar con probetas cilíndricas.\n\nCOMENTARIO — R 5.1.2 – La expresión matemática que relaciona la tensión f'c con la resistencia cubica del hormigón a los 28 días con un 10% de fracción defectuosa (R28(10%)) es (según NCh170.Of1985) la siguiente:\nf'c = 0,8 R28(10%) ; para R28(10%) ≤ 25 MPa; y\nf'c = R28(10%) -5; R28(10%) tal que 25 MPa < R28(10%) ≤ 45 MPa"
+  },
+  {
+   "id": "5.8.2",
+   "nivel": 3,
+   "titulo": "5.8 Mezclado — 5.8.2",
+   "texto": "5.8 – Mezclado\n5.8.2 – Agregar el párrafo siguiente:\n\nLa norma chilena correspondiente es NCh1934 Hormigón preparado en central hormigonera."
+  },
+  {
+   "id": "Capítulo 7",
+   "nivel": 2,
+   "titulo": "Capítulo 7 — Detalles del refuerzo",
+   "texto": "CAPITULO 7 – DETALLES DEL REFUERZO"
+  },
+  {
+   "id": "7.6.6.6",
+   "nivel": 3,
+   "titulo": "7.6 Límites del espaciamiento del refuerzo — 7.6.6.6",
+   "texto": "7.6 – Límites del espaciamiento del refuerzo\n7.6.6 – Agregar la subcláusula siguiente:\n\n7.6.6.6 – No se deben usar paquetes de barras en elementos en que el acero pueda entrar en rango plástico o donde pueda quedar sometido a esfuerzos sísmicos reversibles (tracción-comprensión).\n\nCOMENTARIO — R 7.6.6.6 – Las barras que forman parte de paquetes quedan muy expuestas a sufrir pandeo una vez que falle el recubrimiento."
+  },
+  {
+   "id": "7.7",
+   "nivel": 3,
+   "titulo": "Protección de concreto para el refuerzo",
+   "texto": "7.7 – Protección de concreto para el refuerzo\nRemplazar 7.7.1, 7.7.2 y 7.7.3 por el texto siguiente:\n\nSe consideran las siguientes condiciones ambientales y de vaciado del hormigón:\n\na) Condiciones ambientales severas:\n(i) Interior de edificios donde la humedad es alta (cocinas industriales, saunas, lavanderías. No se aplica a recintos habitados).\n(ii) Zonas donde se produce escurrimiento de agua (jardines, balcones).\n(iii) Condiciones atmosféricas industriales o marítimas adversas.\n\nb) Condiciones ambientales normales:\nCondiciones no incluidas en la categoría de condiciones severas.\n\nCOMENTARIO — R 7.7 – Los recubrimientos mínimos se exigen por tres razones fundamentales:\n1) Transferencia de esfuerzos de las barras de refuerzo al hormigón.\n2) Protección de la armadura contra la corrosión.\n3) Protección de la armadura contra los efectos del fuego, provocando un efecto retardador.\n\nConsiderando principalmente los dos primeros efectos, se han definido recubrimientos diferentes a los recubrimientos únicos que exige el código ACI 318. La protección al fuego queda controlada por 7.7.8.\n\nPara el caso de condiciones ambientales severas, se han mantenido en general, salvo algunas excepciones, los recubrimientos señalados en el cuerpo principal del ACI 318. Para el caso de condiciones normales se proponen recubrimientos menores y parecidos a los que tradicionalmente se ocupan en Chile."
+  },
+  {
+   "id": "7.7.1",
+   "nivel": 3,
+   "titulo": "Hormigón vaciado en obra (no preesforzado)",
+   "texto": "7.7.1 - Hormigón vaciado en obra (no preesforzado)\nSe debe proporcionar el siguiente recubrimiento libre mínimo de hormigón a la armadura, siempre que no sea inferior al exigido por 7.7.6 y 7.7.8:\n\nRecubrimiento libre mínimo, mm                                    | Condiciones normales | Condiciones severas\na) Hormigón colocado contra el suelo y permanentemente expuesto a él | 50 | 70\nb) Hormigón expuesto al suelo o al aire libre:                     |    |\n   Barras Ø 18 a Ø 56                                              | 40 | 50\n   Barras Ø 16 y diámetros menores                                 | 30 | 40\nc) Hormigón no expuesto al aire libre ni en contacto con el suelo  |    |\n   Losas, muros, nervaduras:                                       |    |\n     Barras Ø44 y Ø56                                              | 40 | 40\n     Barras Ø 16 a Ø36                                             | 20 | 20\n     Barras Ø12 y menores                                          | 15 | 20\n   Vigas, columnas:                                                |    |\n     Armadura principal                                            | 30 | 40\n     Amarras, estribos, zunchos                                    | 20 | 30\n   Cáscaras y placas plegadas:                                     |    |\n     Barras Ø 18 y mayores                                         | 20 | 20\n     Barras Ø 16, alambres de16 mm de diámetro y menores           | 15 | 15\nd) Elementos de confinamiento en albañilería:                      |    |\n   Armadura principal Ø 10 y menores                               | 20 | 30\n   Amarras, estribos, zunchos Ø 8 y menores                        | 15 | 20"
+  },
+  {
+   "id": "7.7.2",
+   "nivel": 3,
+   "titulo": "Hormigón vaciado en obra (preesforzado)",
+   "texto": "7.7.2 - Hormigón vaciado en obra (preesforzado)\nSe debe dar el siguiente recubrimiento mínimo de hormigón a la armadura pretensada y no pretensada, ductos y anclajes en los extremos, siempre que no sea inferior al exigido en 7.7.6 y 7.7.8\n\nRecubrimiento libre mínimo, mm                                    | Condiciones Normales | Condiciones Severas\na) Hormigón colocado en contacto con el suelo y permanentemente expuesto a él | 60 | 70\nb) Hormigón expuesto al suelo o al aire libre:                     |    |\n   Paños de muros, losas y nervaduras                              | 25 | 25\n   Otros elementos                                                 | 40 | 40\nc) Hormigón no expuesto al aire libre ni en contacto con el suelo: |    |\n   Losas, muros, nervaduras                                        | 20 | 20\n   Vigas, columnas:                                                |    |\n     Armadura principal                                            | 30 | 40\n     Amarras, estribos, zunchos                                    | 20 | 25\n   Cáscaras y placas plegadas:                                     |    |\n     Barras Ø16, alambres de 16 mm de diámetro y menores.          | 10 | 10\n     Otro tipo de armadura,                                        | db | db\n     pero no menor que                                             | 20 | 20"
+  },
+  {
+   "id": "7.7.3",
+   "nivel": 3,
+   "titulo": "Hormigón prefabricado (fabricado en condiciones de control de planta)",
+   "texto": "7.7.3 - Hormigón prefabricado (fabricado en condiciones de control de planta)\nSe debe dar el siguiente recubrimiento mínimo de hormigón a la armadura pretensada y no pretensada, ductos y anclajes en los extremos, siempre que no sea inferior al exigido en 7.7.6 y 7.7.8\n\nRecubrimiento libre mínimo, mm                                    | Condiciones normales | Condiciones severas\na) Hormigón expuesto al suelo o al aire libre:                     |    |\n   Paneles para muros:                                             |    |\n     Barras Ø44 y Ø56                                              | 40 | 40\n     Barras Ø36 y menores                                          | 20 | 20\n   Otros elementos:                                                |    |\n     Barras Ø44 y Ø56                                              | 50 | 50\n     Barras Ø18 al Ø36                                             | 30 | 40\n     Barras Ø16, alambres de 16mm de diámetro y menores            | 20 | 30\nb) Hormigón no expuesto a la acción del aire libre ni en contacto con el suelo: |    |\n   Losas, muros, nervaduras:                                       |    |\n     Barras Ø44 y Ø56 y tendones de pretensado Ø > 40 mm           | 30 | 30\n     Tendones de pretensado Ø 40 y menores                         | 20 | 20\n     Barras Ø36 y menores                                          | 15 | 15\n   Vigas, columnas:                                                |    |\n     Armadura principal                                            | db | db\n     pero no menor que                                             | 15 | 15\n     y no mayor que                                                | 40 | 40\n   Amarras, estribos y zunchos                                     | 10 | 10\n   Cáscaras y placas plegadas:                                     |    |\n     Tendones de pretensado                                        | 20 | 20\n     Barras Ø18 y mayores                                          | 15 | 15\n     Barras Ø16, alambres de 16 mm de diámetro y menores           | 10 | 10"
+  },
+  {
+   "id": "7.10.4.2",
+   "nivel": 3,
+   "titulo": "7.10 Refuerzo transversal para elementos a compresión — 7.10.4 Espirales",
+   "texto": "7.10 – Refuerzo transversal para elementos a compresión\n7.10.4 – Espirales\nReemplazar el texto de 7.10.4.2 por el siguiente:\n\n7.10.4.2 – Para elementos construidos en obra, el diámetro de barra utilizado en espirales no debe ser menor a 8mm"
+  },
+  {
+   "id": "7.10.5.1",
+   "nivel": 3,
+   "titulo": "7.10.5 Estribos",
+   "texto": "7.10.5 – Estribos\nReemplazar el texto de 7.10.5.1 por el siguiente:\n\n7.10.5.1 – Todas las barras no preesforzadas deben estar confinadas por medio de estribos de diámetro igual o mayor que un tercio del diámetro del refuerzo longitudinal que sujeta. Para paquetes de barras, el estribo debe ser de 12mm de diámetro o mayor. Se permite el uso de alambre corrugado o refuerzo electro soldado de alambre con un área equivalente."
+  },
+  {
+   "id": "Capítulo 8",
+   "nivel": 2,
+   "titulo": "Capítulo 8 — Análisis y diseño – Consideraciones generales",
+   "texto": "CAPITULO 8 – ANALISIS Y DISEÑO – CONSIDERACIONES GENERALES"
+  },
+  {
+   "id": "8.7.1",
+   "nivel": 3,
+   "titulo": "8.7 Rigidez — 8.7.1",
+   "texto": "8.7 – Rigidez\n8.7.1 – Agregar el párrafo siguiente:\n\nPara determinar la distribución de esfuerzos y las deformaciones sísmicas de servicio en estructuras que no presentan problemas de tipo P-δ se puede usar la inercia de la sección de hormigón sin agrietar y sin considerar el efecto de la armadura, Ig, y el módulo de elasticidad del hormigón, Ec, según 8.5.\n\nCOMENTARIO — R.8.7.1 – Agregar luego del primer párrafo lo siguiente:\nEn la práctica chilena para determinar los esfuerzos sísmicos y las deformaciones límites de servicio correspondientes se han utilizado las secciones brutas de los elementos."
+  },
+  {
+   "id": "Capítulo 9",
+   "nivel": 2,
+   "titulo": "Capítulo 9 — Requisitos de resistencia y funcionamiento",
+   "texto": "CAPITULO 9 – REQUISITOS DE RESISTENCIA Y FUNCIONAMIENTO"
+  },
+  {
+   "id": "9.1.4",
+   "nivel": 3,
+   "titulo": "9.1 Generalidades — 9.1.4",
+   "texto": "9.1 – Generalidades\n9.1 – Agregar la cláusula siguiente:\n\n9.1.4 – Para los factores de carga y de reducción de la resistencia establecidos en 9.2.1, la combinación para cargas que incluyan el efecto sísmico se debe hacer reemplazando el factor de carga 1,0 para sismo por el factor 1,4 de acuerdo con 9.2.1 c), donde la solicitación sísmica E se debe determinar de acuerdo con NCh433 Diseño sísmico de edificios."
+  },
+  {
+   "id": "9.5.2",
+   "nivel": 3,
+   "titulo": "9.5 Control de deflexiones — 9.5.2 Elementos reforzados en una dirección (no preesforzados)",
+   "texto": "9.5 – Control de deflexiones\n9.5.2 – Elementos reforzados en una dirección (no preesforzados)\n\nCOMENTARIO — R 9.5.2.1 – Agregar el comentario siguiente:\nLos límites indicados en tabla 9.5 (a) pueden ser insuficientes para el control de deformaciones, especialmente en el caso de luces grandes (> 8 m) y voladizos."
+  },
+  {
+   "id": "9.5.3",
+   "nivel": 3,
+   "titulo": "9.5.3 Elementos reforzados en dos direcciones (no preesforzados)",
+   "texto": "9.5.3 – Elementos reforzados en dos direcciones (no preesforzados)\n\nCOMENTARIO — R 9.5.3.2 – agregar el comentario siguiente:\nLos límites indicados en tabla 9.5 (c) pueden ser insuficientes para el control de deformaciones, especialmente en el caso de luces grandes (>6 m) en la dirección más corta de la losa."
+  },
+  {
+   "id": "Capítulo 12",
+   "nivel": 2,
+   "titulo": "Capítulo 12 — Longitudes de desarrollo y empalmes del refuerzo",
+   "texto": "CAPITULO 12 – LONGITUDES DE DESARROLLO Y EMPALMES DEL REFUERZO"
+  },
+  {
+   "id": "12.14.3.2",
+   "nivel": 3,
+   "titulo": "12.14 Empalmes del refuerzo – Generalidades — 12.14.3 Empalmes soldados y mecánicos — 12.14.3.2",
+   "texto": "12.14 Empalmes del refuerzo – Generalidades\n12.14.3 – Empalmes soldados y mecánicos\n12.14.3.2 – Reemplazar el texto por:\n\nLos empalmes mecánicos completos deben desarrollar en tracción o compresión, según sea requerido, al menos 1,4 fy nominal o 1,15 fy real característico de las barras empalmadas.\n\nCOMENTARIO — R 12.14.3.2 – Muchas de las barras de refuerzo para hormigón que se usan actualmente en Chile tienen un fy real que supera ampliamente el fy nominal, de tal modo que la exigencia que la unión supere el valor 1,25 fy nominal (ACI), no garantiza que la barra pase a fluencia antes de que falle la unión. Por ello este decreto, adopta el factor 1,4 en lugar de 1,25, alternativamente, para garantizar comportamiento dúctil se debe vincular la resistencia de los empalmes mecánicos a la tensión de fluencia real de las barras a empalmar, adoptando el valor 1,15 fy real.\nLos ensayos se pueden realizar de acuerdo al protocolo AC 133 Acceptance Criteria for Mechanical Connectors for Steel Bar Reinforcement, de ICC Evaluation Service, INC; 5 360 Workman Mill Road, Whittier, California 90601."
+  },
+  {
+   "id": "12.14.3.4",
+   "nivel": 3,
+   "titulo": "12.14.3.4",
+   "texto": "12.14.3.4 – Reemplazar el texto por:\n\nLos empalmes soldados completos deben desarrollar en tracción o compresión, según sea requerido, al menos 1,4 fy nominal o 1,15 fy real característico de las barras empalmadas.\n\nCOMENTARIO — R 12.14.3.4 – Los aceros referidos en NCh204 no son de soldabilidad garantizada."
+  },
+  {
+   "id": "Capítulo 21",
+   "nivel": 2,
+   "titulo": "Capítulo 21 — Disposiciones especiales para diseño sísmico",
+   "texto": "CAPITULO 21 – DISPOSICIONES ESPECIALES PARA DISEÑO SISMICO"
+  },
+  {
+   "id": "21.1.1.1",
+   "nivel": 3,
+   "titulo": "21.1 Requisitos generales — 21.1.1 Alcance — 21.1.1.1",
+   "texto": "21.1 – Requisitos generales\n21.1.1 – Alcance\n21.1.1.1 – Agregar el párrafo siguiente:\n\nLos pilares y cadenas de muros de albañilería confinada no necesitan cumplir con las disposiciones del capítulo 21.\n\nCOMENTARIO — R 21.1.1.1 – Los pilares y cadenas de muros de albañilería confinada son elementos de un sistema compuesto que trabajan en conjunto con el panel interior de albañilería. No se comportan como elementos de marcos rígidos. Su función principal es confinar la albañilería del muro. Estos elementos se deben diseñar de acuerdo a lo indicado en NCh2123."
+  },
+  {
+   "id": "21.1.1.2",
+   "nivel": 3,
+   "titulo": "21.1.1.2",
+   "texto": "21.1.1.2 – Agregar el párrafo siguiente:\n\nPara el diseño de elementos sismo resistentes de hormigón armado todas las regiones del territorio nacional deben ser consideradas de elevado riesgo sísmico.\n\nTodas las estructuras de hormigón armado construidas en el territorio nacional deben asignarse a Categoría de Diseño Sísmico D del ACI318S-08.\n\nCOMENTARIO — R 21.1.1.2 – Para resistir las fuerzas inducidas por los sismos se deben usar los sistemas estructurales contenidos en NCh433 de Diseño sísmico de edificios o en NCh2369 de Diseño sísmico de edificios industriales."
+  },
+  {
+   "id": "21.1.1.7",
+   "nivel": 3,
+   "titulo": "21.1.1.7",
+   "texto": "21.1.1.7 – Agregar a la letra (b) el párrafo siguiente:\nSe permite el uso de muros estructurales ordinarios en estructuras de hasta 5 pisos que hayan sido diseñadas utilizando un factor de reducción de respuesta R ó Ro igual o menor que 4, de acuerdo a lo establecido en la tabla 5.1 de NCh 433Of.1996 Mod.2009."
+  },
+  {
+   "id": "21.1.1.9",
+   "nivel": 3,
+   "titulo": "21.1.1.9",
+   "texto": "Agregar la siguiente cláusula:\n\n21.1.1.9 – En estructuras mixtas con muros y marcos continuos en toda la altura del edificio, en los cuales los muros toman al menos un 75% del corte en la base, o cuando los marcos son capaces de alcanzar el desplazamiento correspondiente que se obtiene con el espectro elástico de NCh433 sin aplicar factores de reducción de la respuesta, los marcos se pueden dimensionar como marcos intermedios.\n\nSin embargo, los marcos de edificios estructurados exclusivamente con marcos se deben tratar como marcos especiales de acuerdo a las disposiciones de 21.5 a 21.8.\n\nCOMENTARIO — R 21.1.1.9 – En edificios de hormigón armado que tengan muros en las dos direcciones principales de análisis, se espera que la demanda de desplazamiento sea mucho menor que en una estructura que no tenga muros. Los muros en los sistemas mixtos, además de disminuir la demanda de ductilidad en los marcos, evitan la formación de un piso blando, por lo que los marcos no necesitan tener gran ductilidad. Las disposiciones de los capítulos 1 al 19 y del capítulo 22 tienen por objeto proporcionar la tenacidad adecuada para estructuras no sometidas a movimientos sísmicos severos, denominadas como normales en el ACI 318, en las que no se requiere aplicar las disposiciones del capítulo 21. Sin embargo, resulta conveniente proporcionar un detalle adecuado que permita sostener desplazamientos inesperados, cuyos requisitos están contenidos en 21.3.\nEl desplazamiento de respuesta de la estructura al sismo de diseño contenido en la norma es algo mayor que R veces el desplazamientos calculado con el espectro reducido. Al aplicar disposiciones de desplazamientos es necesario conocer el desplazamiento real de respuesta esperado. Se estima que un marco que sea capaz de responder elásticamente, dentro del sistema, a un desplazamiento igual al calculado con el espectro elástico, sin aplicar el factor de reducción R, podrá sostener desplazamientos mayores sin necesidad de desarrollar grandes ductilidades, siendo suficiente aplicar las recomendaciones para marcos intermedios de este capítulo, que otorgan cierta ductilidad."
+  },
+  {
+   "id": "21.1.5.2",
+   "nivel": 3,
+   "titulo": "21.1.5 Refuerzo en pórticos especiales resistentes a momento y muros estructurales especiales — 21.1.5.2",
+   "texto": "21.1.5 – Refuerzo en pórticos especiales resistentes a momento y muros estructurales especiales\nReemplazar la subcláusula 21.1.5.2 por la siguiente:\n\n21.1.5.2 – El refuerzo que resiste fuerzas axiales y de flexión inducidas por sismo en elementos de pórtico y en elementos de borde de muros debe cumplir con las disposiciones de NCh204, grados A630-420H o ASTM A706M. Se permite el uso de acero grados A440-280H y A560-350H de NCh204 en estos elementos siempre que la resistencia real a la fluencia no sea mayor que fy en más de 125 MPa (los reensayos no deben exceder este valor por más de 21 MPa).\n\nEl acero AT56-50H que no cumpla con fu/fy mayor o igual que 1,25 se puede utilizar siempre que:\n\ni) No sea en zonas críticas donde el acero pueda entrar en rango plástico.\n\nii) No sea utilizado como malla de corte en muros, a menos que se realice un diseño por capacidad que asegure que el comportamiento del elemento no estará controlado por la falla de corte.\n\nEl valor de fyt para el refuerzo transversal incluyendo los refuerzos en espiral no debe exceder de 700 MPa.\n\nCOMENTARIO — R 21.1.5.2 – La limitación de la tensión de fluencia real tiene por objetivo garantizar que el diseño por capacidad cumpla con su objetivo: que la falla de corte no se produzca antes que la sección entre en fluencia por flexión.\n\nSolamente en las zonas críticas se espera que la armadura fluya pudiendo alcanzar grandes deformaciones. En bordes de muros se ha observado que la armadura se ha cortado (fractura). Por esta razón hay disposiciones de armadura mínima y de armadura de confinamiento para impedir la falla por fractura de la armadura traccionada, por lo que es necesario utilizar acero de alta tenacidad en estos sectores.\nSin embargo, el resto de la estructura permanece dentro del rango lineal, pudiéndose usar en esas zonas aceros con menor tenacidad."
+  },
+  {
+   "id": "21.1.6.1",
+   "nivel": 3,
+   "titulo": "21.1.6 Empalmes mecánicos en pórticos especiales resistentes a momento y muros estructurales especiales — 21.1.6.1",
+   "texto": "21.1.6 – Empalmes mecánicos en pórticos especiales resistentes a momento y muros estructurales especiales\n21.1.6.1 – Reemplazar letra (b) por el párrafo siguiente:\n\n(b) Los empalmes mecánicos tipo 2 deben cumplir con lo indicado en 12.14.3.2 y desarrollar en tracción o compresión, según sea requerido, al menos la resistencia de tracción nominal de las barras empalmadas y el 90% de la resistencia de tracción real de las barras empalmadas.\n\nCOMENTARIO — R 21.1.6.1 – Debido a que muchas de las barras de refuerzo para hormigón que se usan actualmente en Chile tienen un fy real que supera ampliamente el fy nominal, es necesario vincular la resistencia de los empalmes mecánicos a la resistencia de tracción real de las barras a empalmar."
+  },
+  {
+   "id": "21.1.7",
+   "nivel": 3,
+   "titulo": "Empalmes soldados en pórticos especiales resistentes a momento y muros estructurales especiales",
+   "texto": "21.1.7 – Empalmes soldados en pórticos especiales resistentes a momento y muros estructurales especiales\n\nCOMENTARIO — R 21.1.7.1 – Agregar el párrafo siguiente:\n\nLos aceros referidos en NCh204 no son de soldabilidad garantizada."
+  },
+  {
+   "id": "21.6.2.2",
+   "nivel": 3,
+   "titulo": "21.6 Elementos sometidos a flexión y carga axial pertenecientes a pórticos especiales resistentes a momento — 21.6.2 Resistencia mínima a flexión de columnas — 21.6.2.2",
+   "texto": "21.6 – Elementos sometidos a flexión y carga axial pertenecientes a pórticos especiales resistentes a momento\n21.6.2 – Resistencia mínima a flexión de columnas\n21.6.2.2 – Agregar el párrafo siguiente:\n\nLa exigencia dada por la ecuación (21-1) no necesariamente se debe cumplir en los nudos de cielo del último piso de edificios de marcos.\n\nCOMENTARIO — R 21.6.2.2 – La existencia de una rótula en el extremo superior de una columna en el último piso no constituye riesgo de formación de piso blando, de manera que es indiferente que la rótula se forme en la columna o en la viga del cielo del último piso."
+  },
+  {
+   "id": "21.6.4.2",
+   "nivel": 3,
+   "titulo": "21.6.4 Refuerzo transversal — 21.6.4.2",
+   "texto": "21.6.4 – Refuerzo transversal\n21.6.4.2 – Agregar al final del párrafo:\n\nLos estribos y trabas suplementarias deben tener ambos extremos doblados en un ángulo mayor o igual que 135 grados."
+  },
+  {
+   "id": "21.9.1.1",
+   "nivel": 3,
+   "titulo": "21.9 Muros estructurales especiales y vigas de acople — 21.9.1 Alcance — 21.9.1.1",
+   "texto": "21.9 – Muros estructurales especiales y vigas de acople\n21.9.1 – Alcance\nAgregar la subcláusula siguiente:\n\n21.9.1.1 – Los muros especiales de espesor inferior a lu/16 deberán ser diseñados considerando los problemas de inestabilidad que pudiesen afectar su comportamiento."
+  },
+  {
+   "id": "21.9.2.2",
+   "nivel": 3,
+   "titulo": "21.9.2 Refuerzo — 21.9.2.2",
+   "texto": "21.9.2 – Refuerzo\n21.9.2.2 – Reemplazar el texto por el siguiente:\n\nTodos los muros resistentes a solicitaciones sísmicas se deben armar con al menos dos capas de armadura.\n\nCOMENTARIO — R 21.9.2.2 – Existe consenso en que aún cuando se pueda usar solamente una malla central desde el punto de vista de la resistencia, el uso doble malla asegura estabilidad fuera del plano y tiene ventajas prácticas en cuanto a la colocación del hormigón en obra y confina mejor el núcleo de hormigón dentro de la zona panel del muro."
+  },
+  {
+   "id": "21.9.2.3",
+   "nivel": 3,
+   "titulo": "21.9.2.3",
+   "texto": "21.9.2.3 –\nAgregar la letra (e):\n\n(e) En la longitud de empalme del refuerzo longitudinal en el núcleo confinado de una zona crítica, cuando la cuantía de refuerzo longitudinal en este núcleo sea superior a 2.8/fy o cuando el recubrimiento a la barra longitudinal de diámetro db sea menor que 2db, deberá verificarse que en el plano vertical que contiene a las barras empalmadas se cumpla la ecuación 21-6a\n\n     Atr fyt ld / s ≥ Ab fy        (21-6a)\n\n[Figura del comentario: Fig. R 21.9.2.3 Refuerzo transversal en empalmes. — Dos esquemas de elemento de borde con: «Empalme: largo ld, área Ab»; «Traba @ s, área Atr»; «Estribo @ s, área Atr y/o Malla @ s, área Atr».]"
+  },
+  {
+   "id": "21.9.2.4",
+   "nivel": 3,
+   "titulo": "21.9.2.4",
+   "texto": "Agregar la siguiente cláusula:\n\n21.9.2.4 – El refuerzo de los elementos especiales de borde debe satisfacer (a) y (b).\n\na) El diámetro de las barras longitudinales en los elementos de borde debe ser menor o igual que un noveno de la menor dimensión del elemento de borde.\n\nb) El diámetro del refuerzo transversal del elemento de borde debe ser igual o mayor que un tercio del diámetro del refuerzo longitudinal que sujeta."
+  },
+  {
+   "id": "21.9.5.2",
+   "nivel": 3,
+   "titulo": "21.9.5 Diseño a flexión y carga axial — 21.9.5.2",
+   "texto": "21.9.5 – Diseño a flexión y carga axial\nReemplazar el texto de la sub cláusula 21.9.5.2 por el siguiente:\n\n21.9.5.2 – Al verificar el diseño de las secciones transversales compuestas (L,T, C, u otras formas) se debe considerar la sección completa con todas las armaduras especificadas. Alternativamente, se puede verificar utilizando el ancho efectivo del ala. El ancho efectivo del ala en secciones con alas debe extenderse desde la cara del alma una distancia igual al menor valor entre la mitad de la distancia al alma de un muro adyacente y el 25% de la altura total del muro."
+  },
+  {
+   "id": "21.9.5.3",
+   "nivel": 3,
+   "titulo": "21.9.5.3",
+   "texto": "Agregar las siguientes cláusulas:\n\n21.9.5.3 – El máximo valor de Pu actuando en la sección transversal definida en 21.9.5.2 debe ser menor o igual que 0.35f'cAg.\n\nCOMENTARIO — R 21.9.5.3 – El límite que se impone a la carga axial pretende asegurar una mínima capacidad de deformación plástica del muro. En secciones asimétricas (ej.: armadura asimétrica, secciones tipo T, etc.) este límite podría ser insuficiente."
+  },
+  {
+   "id": "21.9.5.4",
+   "nivel": 3,
+   "titulo": "21.9.5.4",
+   "texto": "21.9.5.4 – La sección crítica de todo muro con razón de aspecto Ht/lw mayor o igual a 3 debe tener una capacidad de curvatura, φ, mayor que la demanda de curvatura, φu, calculada a partir de la expresión (21-7a). Alternativamente se permite calcular φu con la expresión (21-7b). Esta verificación se debe hacer considerando la mayor carga axial Pu consistente con δu. La deformación unitaria, εc, en la fibra más comprimida de la sección crítica del muo deberá ser menor o igual que 0.008..\n\n     φu = 2δu / (Ht lw) = εc / c ≤ 0.008 / c        (21-7a)\n\n     φu = (δu − δe) / (lp (Ht − lp/2)) + φe = εc / c ≤ 0.008 / c        (21-7b)\n\nEl valor de lp en la Ec. (21-7b) no debe tomarse superior a lw/2, y los valores de φe y δe deben justificarse.\n\nSe debe verificar la sección transversal definida en 21.9.5.2 con la carga axial Pu, considerando todo el refuerzo longitudinal presente en ésta. La capacidad de deformación debe ser verificada en el plano del muro coincidente con la dirección de análisis."
+  },
+  {
+   "id": "21.9.6.2",
+   "nivel": 3,
+   "titulo": "21.9.6 Elementos de borde para muros estructurales especiales — 21.9.6.2",
+   "texto": "21.9.6 – Elementos de borde para muros estructurales especiales\n21.9.6.2 –\nReemplazar la letra (a) por lo siguiente:\n\n(a) Las zonas de compresión deben ser reforzadas con elementos especiales de borde cuando:\n\n     c ≥ lw / (600 (δ'u / h'w))        (21-8)\n\nDonde c, en la ecuación (21-8), corresponde a la mayor profundidad del eje neutro calculada para la fuerza axial mayorada y resistencia nominal a momento congruente con el desplazamiento de diseño δu.\n\nCOMENTARIO — Agregar lo siguiente al comentario:\n\nR 21.9.6.2 – No se considera necesario exigir el límite inferior de 0.007 para δ'u/h'w en la ecuación (21-8) como lo hace ACI318S-08\n\nEl desplazamiento de diseño δ'u se puede calcular a partir de la forma del primer modo con mayor masa traslacional en la dirección de análisis considerada, asignándole a esta forma modal una amplitud en el último nivel significativo del edificio igual a δu."
+  },
+  {
+   "id": "21.9.6.4",
+   "nivel": 3,
+   "titulo": "21.9.6.4",
+   "texto": "21.9.6.4 –\nReemplazar la letra (a) por lo siguiente:\n(a) El elemento de borde debe extenderse horizontalmente desde la fibra extrema en compresión hasta una distancia no menor que el valor de cc determinado como:\n\n     cc / lw = c / lw − 1 / (600 δ'u / h'w)        (21-8a)\n\nDonde c corresponde a la mayor profundidad del eje neutro calculada para la fuerza axial mayorada y resistencia nominal a momento consistente con el desplazamiento de diseño δu.\n\nReemplazar la letra (c) por lo siguiente:\n(c) El refuerzo transversal de los elementos especiales de borde debe cumplir con los requisitos especificados en 21.6.4.2 a 21.6.4.4, excepto que no se necesita cumplir con la ecuación (21-4) y el límite de espaciamiento transversal indicado en 21.6.4.3(a) es, para muros especiales, la mitad de la dimensión menor del elemento de borde. La separación horizontal, hx, entre barras verticales lateralmente soportadas por estribos o trabas dentro del núcleo confinado no debe exceder al mínimo entre 200mm y la mitad del espesor del elemento de borde.\n\nAgregar la letra (f):\n(f) El espesor del elemento de borde deberá ser mayor o igual a 300mm y el largo confinado deberá ser mayor o igual al espesor del muro en la zona confinada.\n\nCOMENTARIO — Agregar lo siguiente al comentario:\nR 21.9.6.4 – La ecuación (21-8a) determina la zona a confinar en función de la demanda de desplazamiento sísmico. La fórmula para determinar la zona a confinar indicada en ACI 318S-08 supone una demanda de desplazamiento igual al 1,5% de la altura del muro, lo que en la mayoría de los edificios habitacionales chilenos estructurados sobre la base de muros puede ser una hipótesis de diseño demasiado conservadora."
+  },
+  {
+   "id": "21.9.6.5",
+   "nivel": 3,
+   "titulo": "21.9.6.5",
+   "texto": "21.9.6.5 – Reemplazar la letra (a) por lo siguiente:\n\n(a) Si la cuantía de refuerzo longitudinal en el borde del muro es mayor a 2.8/fy, el refuerzo transversal debe cumplir con lo indicado en 21.6.4.2. El espaciamiento longitudinal máximo del refuerzo transversal en el borde no debe exceder de 200 mm.\n\nAdicionalmente, en zonas críticas, donde el refuerzo vertical pueda fluir, el espaciamiento longitudinal máximo del refuerzo transversal que amarra la armadura de borde no debe exceder el menor valor entre seis veces el diámetro de la barra longitudinal de menor diámetro y 200 mm."
+  },
+  {
+   "id": "21.9.7.1",
+   "nivel": 3,
+   "titulo": "21.9.7 Vigas de acople — 21.9.7.1",
+   "texto": "21.9.7 – Vigas de acople\n21.9.7.1 – Agregar el párrafo siguiente:\n\nLas vigas de acoplamiento con una relación de aspecto 2 < ln/h < 4 se pueden armar en flexión para un 50% del esfuerzo resultante del análisis de la estructura considerada como monolítica, siempre que se considere la reducción de resistencia de la viga de acoplamiento en el diseño de los demás elementos resistentes de la estructura.\n\nCOMENTARIO — R 21.9.7 – Agregar luego del segundo párrafo lo siguiente:\n\nLa reducción del 50% facilita armar las vigas de acoplamiento chatas 2 < ln/h < 4 de modo que cumplan con los criterios de diseño por capacidad, evitar así su falla por corte y mejorar el comportamiento y la seguridad sísmica de la estructura."
+  },
+  {
+   "id": "Anexo A",
+   "nivel": 2,
+   "titulo": "Anexo A (Normativo) — Requisitos de resaltes y tolerancias de masa para aceros de diámetro mayor que 40 mm",
+   "texto": "Agréguese el siguiente Anexo A:\n\nAnexo A (Normativo)\n\nA. Requisitos de resaltes y tolerancias de masa para aceros de diámetro mayor que 40 mm"
+  },
+  {
+   "id": "A.1",
+   "nivel": 3,
+   "titulo": "Requisitos de forma, dimensiones y masa",
+   "texto": "A.1 Requisitos de forma, dimensiones y masa\n\nLos diámetros nominales, los valores de sección nominal, perímetro nominal y masa por unidad de longitud nominales para diámetro mayor que 40 mm se deben calcular según lo siguiente:\n\na) Diámetro nominal, dn (mm) = 12,73 √mn\n\nb) Sección nominal, Sn (mm²) = 0,785 x dn² (dn en mm)\n\nc) Perímetro nominal, Pn (mm) = 3,1416 x dn (dn en mm)\n\nd) Masa nominal, mn (kg/m) = 0,00785 Sn (Sn en mm²)"
+  },
+  {
+   "id": "A.2",
+   "nivel": 3,
+   "titulo": "Requisitos de los resaltes",
+   "texto": "A.2 Requisitos de los resaltes\n\nA.2.1 El espaciamiento de los resaltes debe ser uniforme a lo largo de la barra y su valor medio debe ser menor o igual que 0,7 veces el diámetro nominal.\n\nA.2.2 El largo de los resaltes medido en su proyección sobre un plano perpendicular al eje longitudinal de la barra será tal que, la longitud de la zona sin resalte que queda entre los extremos de los resaltes ubicados a cada lado de la barra no exceda 0,125 veces el perímetro nominal.\n\nA.2.3 La zona sin resaltes indicada en A.2.2 puede ser parcial o totalmente ocupada por nervios longitudinales.\n\nA.2.4 La altura media de los resaltes deber ser mayor o igual que 0,05 veces el diámetro nominal.\n\nA.2.5 La altura media de los resaltes se determina midiendo un número de resaltes igual o mayor a dos. El procedimiento de determinación de la altura media de los resaltes se debe efectuar de acuerdo a lo indicado en NCh204, Anexo A, A.1.3\n\nA.2.6 El ancho de la base en el punto medio de un resalte debe ser menor o igual que 0,25 veces el diámetro nominal de la barra. El procedimiento de determinado del ancho de la base de los resaltes se debe efectuar de acuerdo a lo indicado en NCh204, Anexo A.1.4."
+  },
+  {
+   "id": "A.3",
+   "nivel": 3,
+   "titulo": "Tolerancias",
+   "texto": "A.3 Tolerancias\n\nA.3.1 Las tolerancias de diámetro para barras lisas es de ± 1,50 mm.\n\nA.3.2 El área de cualquiera sección transversal de las barras debe ser mayor o igual al 90% de la sección nominal.\n\nA.3.3 Para lotes la tolerancia de masa para barras lisas y con resaltes (rectas) es de ± 3,5%\n\nA.3.4 Para barras individuales con resaltes la tolerancia de masa es de ± 6%"
+  },
+  {
+   "id": "A.4",
+   "nivel": 3,
+   "titulo": "Alargamiento admisible",
+   "texto": "A.4 Alargamiento admisible\n\nEl coeficiente K para determinar el alargamiento porcentual de ruptura admisible debe ser igual que 6."
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Referencias de la Ordenanza General",
+   "texto": "Artículo 4º.- Toda referencia que se contenga en la Ordenanza General de Urbanismo y Construcciones, aprobada por DS Nº 47 (V. y U.), de 1992, a la NCh 430, o al diseño y cálculo para hormigón armado, deberá entenderse efectuada a lo dispuesto en el presente decreto."
+  },
+  {
+   "id": "5",
+   "nivel": 1,
+   "titulo": "Vigencia",
+   "texto": "Artículo 5º.- En consideración a que las disposiciones que se introducen por el presente reglamento vienen a solucionar problemas urgentes relacionados con la seguridad de las personas que habitan y utilizan las edificaciones que se construyen en el país y de los bienes que se guarnecen en éstos, omítanse los trámites previstos en el artículo 4º de la Ley 19.912 y en aplicación del artículo 7º, del DS Nº 77, del Ministerio de Economía, del año 2004, cúmplase con los que corresponda, comenzando a regir lo dispuesto en el presente decreto desde su publicación en el Diario Oficial."
+  },
+  {
+   "id": "6",
+   "nivel": 1,
+   "titulo": "Derogación del DS Nº 118 (V. y U.), de 2010",
+   "texto": "Artículo 6º.- Derógase el DS Nº 118 (V. y U.), de 2010, a contar de la fecha de publicación en el Diario Oficial del presente decreto, el que se aplicará hasta que el Instituto Nacional de Normalización confeccione la norma técnica correspondiente y ésta sea declarada norma oficial de la República de Chile por decreto supremo del Ministerio de Vivienda y Urbanismo."
+  },
+  {
+   "id": "Promulgación",
+   "nivel": 1,
+   "titulo": "Firmas",
+   "texto": "Anótese, tómese razón y publíquese.- SEBASTIÁN PIÑERA ECHENIQUE, Presidente de la República.- Rodrigo Pérez Mackenna, Ministro de Vivienda y Urbanismo.\n\nLo que transcribo para su conocimiento.- Juan Carlos Jobet Eluchans, Subsecretario de Vivienda y Urbanismo."
+  }
+ ]
+}

@@ -1,0 +1,122 @@
+{
+ "id": "Notif. MLIT",
+ "alias": [
+  "Notificación MLIT",
+  "Notif. MLIT",
+  "Notif. MOC",
+  "Notif.",
+  "MLIT Notification",
+  "Kokuji",
+  "告示"
+ ],
+ "titulo": "Notificaciones (告示) del Ministerio de Construcción / MLIT relativas al cálculo estructural (Building Standard Law)",
+ "pais": "JP",
+ "tipo": "indice",
+ "version": "Títulos oficiales según la base de datos de notificaciones del MLIT (texto vigente con sus reformas)",
+ "fuente": "https://www.mlit.go.jp/notice/",
+ "licencia": "Índice: número, título oficial y aplicación de cada notificación. Los 告示 no son objeto de derecho de autor en Japón (著作権法 第13条), pero su texto oficial contiene numerosas tablas, fórmulas y figuras; se enlaza a la base de datos de notificaciones del MLIT (buscar por número y año).",
+ "secciones": [
+  {
+   "id": "1793",
+   "nivel": 1,
+   "titulo": "昭和55年建設省告示第1793号「Ｚの数値、Ｒｔ及びＡｉを算出する方法並びに地盤が著しく軟弱な区域として特定行政庁が指定する基準を定める件」 — Z (zona), Rt (espectro/suelo), Ai (distribución en altura) — Orden Art. 88",
+   "texto": ""
+  },
+  {
+   "id": "1791",
+   "nivel": 1,
+   "titulo": "昭和55年建設省告示第1791号「建築物の地震に対する安全性を確かめるために必要な構造計算の基準を定める件」 — Criterios de la ruta 2 (許容応力度等計算): requisitos para muros/columnas, β, H/B, Orden Art. 82-6",
+   "texto": ""
+  },
+  {
+   "id": "1792",
+   "nivel": 1,
+   "titulo": "昭和55年建設省告示第1792号「Ｄｓ及びＦｅｓを算出する方法を定める件」 — Ds y Fes para la resistencia horizontal requerida — Orden Art. 82-3",
+   "texto": ""
+  },
+  {
+   "id": "594",
+   "nivel": 1,
+   "titulo": "平成19年国土交通省告示第594号「保有水平耐力計算及び許容応力度等計算の方法を定める件」 — Métodos de cálculo de resistencia horizontal última y de esfuerzos admisibles",
+   "texto": ""
+  },
+  {
+   "id": "593",
+   "nivel": 1,
+   "titulo": "平成19年国土交通省告示第593号「建築基準法施行令第三十六条の二第五号の国土交通大臣が指定する建築物を定める件」 — Edificios que requieren cálculo de ruta 2/3 (Orden Art. 36-2)",
+   "texto": ""
+  },
+  {
+   "id": "1461",
+   "nivel": 1,
+   "titulo": "平成12年建設省告示第1461号「超高層建築物の構造耐力上の安全性を確かめるための構造計算の基準を定める件」 — Edificios de más de 60 m: análisis tiempo-historia (Orden Art. 81-1)",
+   "texto": ""
+  },
+  {
+   "id": "1457",
+   "nivel": 1,
+   "titulo": "平成12年建設省告示第1457号「損傷限界変位、Ｔｄ、Ｂｄｉ、層間変位、安全限界変位、Ｔｓ、Ｂｓｉ、Ｆｈ及びＧｓを計算する方法並びに屋根ふき材等及び外壁等の構造耐力上の安全を確かめるための構造計算の基準を定める件」 — Cálculo de resistencia límite (限界耐力計算), Orden Art. 82-5",
+   "texto": ""
+  },
+  {
+   "id": "1459",
+   "nivel": 1,
+   "titulo": "平成12年建設省告示第1459号「建築物の使用上の支障が起こらないことを確かめる必要がある場合及びその確認方法を定める件」 — Flechas y vibraciones de vigas y losas (Orden Art. 82, 4)",
+   "texto": ""
+  },
+  {
+   "id": "1454",
+   "nivel": 1,
+   "titulo": "平成12年建設省告示第1454号「Ｅの数値を算出する方法並びにＶ０及び風力係数の数値を定める件」 — Viento: E, V0 y coeficientes de fuerza (Orden Art. 87)",
+   "texto": ""
+  },
+  {
+   "id": "1455",
+   "nivel": 1,
+   "titulo": "平成12年建設省告示第1455号「多雪区域を指定する基準及び垂直積雪量を定める基準を定める件」 — Nieve (Orden Art. 86)",
+   "texto": ""
+  },
+  {
+   "id": "1347",
+   "nivel": 1,
+   "titulo": "平成12年建設省告示第1347号「建築物の基礎の構造方法及び構造計算の基準を定める件」 — Cimentaciones (Orden Art. 38)",
+   "texto": ""
+  },
+  {
+   "id": "1113",
+   "nivel": 1,
+   "titulo": "平成13年国土交通省告示第1113号「地盤の許容応力度及び基礎ぐいの許容支持力を求めるための地盤調査の方法並びにその結果に基づき地盤の許容応力度及び基礎ぐいの許容支持力を定める方法等を定める件」 — Capacidad admisible del suelo y de pilotes (Orden Art. 93)",
+   "texto": ""
+  },
+  {
+   "id": "2464",
+   "nivel": 1,
+   "titulo": "平成12年建設省告示第2464号「鋼材等及び溶接部の許容応力度並びに材料強度の基準強度を定める件」 — Resistencia de referencia F del acero y soldaduras (Orden Arts. 90, 92, 96, 98)",
+   "texto": ""
+  },
+  {
+   "id": "1450",
+   "nivel": 1,
+   "titulo": "平成12年建設省告示第1450号「コンクリートの付着、引張り及びせん断に対する許容応力度及び材料強度を定める件」 — Hormigón: adherencia, tracción y corte (Orden Arts. 91, 97)",
+   "texto": ""
+  },
+  {
+   "id": "1024",
+   "nivel": 1,
+   "titulo": "平成13年国土交通省告示第1024号「特殊な許容応力度及び特殊な材料強度を定める件」 — Esfuerzos admisibles y resistencias especiales (Orden Arts. 94, 99)",
+   "texto": ""
+  },
+  {
+   "id": "1352",
+   "nivel": 1,
+   "titulo": "平成12年建設省告示第1352号「木造建築物の軸組の設置の基準を定める件」 — Madera: distribución equilibrada de muros (Orden Art. 46)",
+   "texto": ""
+  },
+  {
+   "id": "1100",
+   "nivel": 1,
+   "titulo": "昭和56年建設省告示第1100号「建築基準法施行令第四十六条第四項表一(一)項から(七)項までに掲げる軸組と同等以上の耐力を有する軸組及び当該軸組に係る倍率の数値を定める件」 — Madera: multiplicadores de muro (壁倍率), Orden Art. 46 (4)",
+   "texto": ""
+  }
+ ]
+}

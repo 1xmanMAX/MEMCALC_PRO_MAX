@@ -1,0 +1,119 @@
+{
+ "id": "ACI 440.2R",
+ "alias": [
+  "ACI 440.2R",
+  "ACI 440.2R-17",
+  "ACI 440.2R-08",
+  "ACI 440.2"
+ ],
+ "titulo": "ACI 440.2R-17 Guide for the Design and Construction of Externally Bonded FRP Systems for Strengthening Concrete Structures",
+ "pais": "US",
+ "tipo": "indice",
+ "version": "ACI 440.2R-17; existe ACI PRC-440.2-23",
+ "fuente": "https://www.concrete.org/store/",
+ "licencia": "Norma protegida por derechos de autor de American Concrete Institute. Solo índice (números y títulos oficiales), sin texto.",
+ "secciones": [
+  {
+   "id": "1",
+   "nivel": 1,
+   "titulo": "Chapter 1 — Introduction and scope",
+   "texto": ""
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Chapter 2 — Notation and definitions",
+   "texto": ""
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Chapter 3 — Background information",
+   "texto": ""
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Chapter 4 — Constituent materials and properties",
+   "texto": ""
+  },
+  {
+   "id": "5",
+   "nivel": 1,
+   "titulo": "Chapter 5 — Shipping, storage, and handling",
+   "texto": ""
+  },
+  {
+   "id": "6",
+   "nivel": 1,
+   "titulo": "Chapter 6 — Installation",
+   "texto": ""
+  },
+  {
+   "id": "7",
+   "nivel": 1,
+   "titulo": "Chapter 7 — Inspection, evaluation, and acceptance",
+   "texto": ""
+  },
+  {
+   "id": "8",
+   "nivel": 1,
+   "titulo": "Chapter 8 — Maintenance and repair",
+   "texto": ""
+  },
+  {
+   "id": "9",
+   "nivel": 1,
+   "titulo": "Chapter 9 — General design considerations",
+   "texto": ""
+  },
+  {
+   "id": "10",
+   "nivel": 1,
+   "titulo": "Chapter 10 — Flexural strengthening",
+   "texto": ""
+  },
+  {
+   "id": "11",
+   "nivel": 1,
+   "titulo": "Chapter 11 — Shear strengthening",
+   "texto": ""
+  },
+  {
+   "id": "12",
+   "nivel": 1,
+   "titulo": "Chapter 12 — Strengthening for axial force and combined axial and bending",
+   "texto": ""
+  },
+  {
+   "id": "13",
+   "nivel": 1,
+   "titulo": "Chapter 13 — Seismic strengthening",
+   "texto": ""
+  },
+  {
+   "id": "14",
+   "nivel": 1,
+   "titulo": "Chapter 14 — Fiber-reinforced polymer reinforcement details",
+   "texto": ""
+  },
+  {
+   "id": "15",
+   "nivel": 1,
+   "titulo": "Chapter 15 — Drawings, specifications, and submittals",
+   "texto": ""
+  },
+  {
+   "id": "16",
+   "nivel": 1,
+   "titulo": "Chapter 16 — Design examples",
+   "texto": ""
+  },
+  {
+   "id": "17",
+   "nivel": 1,
+   "titulo": "Chapter 17 — References",
+   "texto": ""
+  }
+ ]
+}

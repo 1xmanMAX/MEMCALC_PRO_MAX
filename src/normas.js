@@ -82,8 +82,10 @@ export function findRef(ref) {
   // «Tabla 9.1» si aparece antes que un numeral («E.060 12.2.2, Tabla 12.1» → 12.2.2)
   if (tab && (!m || tab.index <= m.index)) {
     const key = (tab[1].startsWith('cap') ? 'capitulo' : tab[1]) + ' ' + tab[2];
-    const hit = secs.find(s => normId(s.id) === key) || secs.find(s => normId(s.id + ' ' + (s.titulo || '')).includes(key))
-      || secs.find(s => fold(s.texto || '').includes(key));
+    const kw = tab[1].startsWith('cap') ? 'cap(?:itulo|\\.)?' : tab[1];
+    const rx = new RegExp('\\b' + kw + '\\s*(?:n\\s*[°º.]?\\s*)?' + tab[2].replace(/\./g, '\\.') + '(?![\\d.]*\\d)');
+    const hit = secs.find(s => normId(s.id) === key) || secs.find(s => rx.test(fold(s.id + ' ' + (s.titulo || ''))))
+      || secs.find(s => rx.test(fold(s.texto || '')));
     if (hit) return { doc, sec: hit, exact: true };
   }
   if (!m) return { doc, sec: null, exact: !rest.trim() }; // solo la norma: portada

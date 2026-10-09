@@ -1,0 +1,23 @@
+{
+ "id": "NCh430",
+ "alias": [
+  "NCh430",
+  "NCh 430",
+  "NCh430.Of2008",
+  "NCh 430.Of2008"
+ ],
+ "titulo": "NCh430 Hormigón armado — Requisitos de diseño y cálculo",
+ "pais": "CL",
+ "tipo": "indice",
+ "version": "NCh430.Of2008 (basada en ACI 318-05); el DS 60 (2011) la reemplaza para edificios adoptando ACI 318S-08 con adecuaciones",
+ "fuente": "https://www.inn.cl/",
+ "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. Índice no verificado contra fuente oficial: no se transcriben títulos de capítulos. Las adecuaciones vigentes (DS 60) están en texto completo en el documento «DS60».",
+ "secciones": [
+  {
+   "id": "Norma",
+   "nivel": 1,
+   "titulo": "Índice y texto en la norma oficial (INN)",
+   "texto": ""
+  }
+ ]
+}

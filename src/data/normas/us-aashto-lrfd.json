@@ -1,0 +1,425 @@
+{
+ "id": "AASHTO LRFD",
+ "alias": [
+  "AASHTO",
+  "AASHTO LRFD",
+  "AASHTO LRFD BDS",
+  "LRFD Bridge Design Specifications"
+ ],
+ "titulo": "AASHTO LRFD Bridge Design Specifications, 9.ª edición — secciones 1–15 (detalle de 3, 4, 5, 11 y 14)",
+ "pais": "US",
+ "tipo": "indice",
+ "version": "9.ª edición (2020); existe la 10.ª edición (2024)",
+ "fuente": "https://store.transportation.org/",
+ "licencia": "Norma protegida por derechos de autor de American Association of State Highway and Transportation Officials (AASHTO). Solo índice (números y títulos oficiales), sin texto. Se compra en store.transportation.org.",
+ "secciones": [
+  {
+   "id": "1",
+   "nivel": 1,
+   "titulo": "Section 1 — Introduction",
+   "texto": ""
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Section 2 — General Design and Location Features",
+   "texto": ""
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Section 3 — Loads and Load Factors",
+   "texto": ""
+  },
+  {
+   "id": "3.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "3.2",
+   "nivel": 2,
+   "titulo": "Definitions",
+   "texto": ""
+  },
+  {
+   "id": "3.3",
+   "nivel": 2,
+   "titulo": "Notation",
+   "texto": ""
+  },
+  {
+   "id": "3.4",
+   "nivel": 2,
+   "titulo": "Load Factors and Combinations",
+   "texto": ""
+  },
+  {
+   "id": "3.5",
+   "nivel": 2,
+   "titulo": "Permanent Loads",
+   "texto": ""
+  },
+  {
+   "id": "3.6",
+   "nivel": 2,
+   "titulo": "Live Loads",
+   "texto": ""
+  },
+  {
+   "id": "3.7",
+   "nivel": 2,
+   "titulo": "Water Loads: WA",
+   "texto": ""
+  },
+  {
+   "id": "3.8",
+   "nivel": 2,
+   "titulo": "Wind Load: WL and WS",
+   "texto": ""
+  },
+  {
+   "id": "3.9",
+   "nivel": 2,
+   "titulo": "Ice Loads: IC",
+   "texto": ""
+  },
+  {
+   "id": "3.10",
+   "nivel": 2,
+   "titulo": "Earthquake Effects: EQ",
+   "texto": ""
+  },
+  {
+   "id": "3.11",
+   "nivel": 2,
+   "titulo": "Earth Pressure: EH, ES, LS, and DD",
+   "texto": ""
+  },
+  {
+   "id": "3.12",
+   "nivel": 2,
+   "titulo": "Force Effects Due to Superimposed Deformations: TU, TG, SH, CR, SE, PS",
+   "texto": ""
+  },
+  {
+   "id": "3.13",
+   "nivel": 2,
+   "titulo": "Friction Forces: FR",
+   "texto": ""
+  },
+  {
+   "id": "3.14",
+   "nivel": 2,
+   "titulo": "Vessel Collision: CV",
+   "texto": ""
+  },
+  {
+   "id": "3.15",
+   "nivel": 2,
+   "titulo": "Blast Loading: BL",
+   "texto": ""
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Section 4 — Structural Analysis and Evaluation",
+   "texto": ""
+  },
+  {
+   "id": "4.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "4.2",
+   "nivel": 2,
+   "titulo": "Definitions",
+   "texto": ""
+  },
+  {
+   "id": "4.3",
+   "nivel": 2,
+   "titulo": "Notation",
+   "texto": ""
+  },
+  {
+   "id": "4.4",
+   "nivel": 2,
+   "titulo": "Acceptable Methods of Structural Analysis",
+   "texto": ""
+  },
+  {
+   "id": "4.5",
+   "nivel": 2,
+   "titulo": "Mathematical Modeling",
+   "texto": ""
+  },
+  {
+   "id": "4.6",
+   "nivel": 2,
+   "titulo": "Static Analysis",
+   "texto": ""
+  },
+  {
+   "id": "4.7",
+   "nivel": 2,
+   "titulo": "Dynamic Analysis",
+   "texto": ""
+  },
+  {
+   "id": "4.8",
+   "nivel": 2,
+   "titulo": "Analysis by Physical Models",
+   "texto": ""
+  },
+  {
+   "id": "5",
+   "nivel": 1,
+   "titulo": "Section 5 — Concrete Structures",
+   "texto": ""
+  },
+  {
+   "id": "5.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "5.2",
+   "nivel": 2,
+   "titulo": "Definitions",
+   "texto": ""
+  },
+  {
+   "id": "5.3",
+   "nivel": 2,
+   "titulo": "Notation",
+   "texto": ""
+  },
+  {
+   "id": "5.4",
+   "nivel": 2,
+   "titulo": "Material Properties",
+   "texto": ""
+  },
+  {
+   "id": "5.5",
+   "nivel": 2,
+   "titulo": "Limit States",
+   "texto": ""
+  },
+  {
+   "id": "5.6",
+   "nivel": 2,
+   "titulo": "Design for Flexural and Axial Force Effects—B Regions",
+   "texto": ""
+  },
+  {
+   "id": "5.7",
+   "nivel": 2,
+   "titulo": "Design for Shear and Torsion—B Regions",
+   "texto": ""
+  },
+  {
+   "id": "5.8",
+   "nivel": 2,
+   "titulo": "Design of D-Regions",
+   "texto": ""
+  },
+  {
+   "id": "5.9",
+   "nivel": 2,
+   "titulo": "Prestressing",
+   "texto": ""
+  },
+  {
+   "id": "5.10",
+   "nivel": 2,
+   "titulo": "Reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "5.11",
+   "nivel": 2,
+   "titulo": "Seismic Design and Details",
+   "texto": ""
+  },
+  {
+   "id": "6",
+   "nivel": 1,
+   "titulo": "Section 6 — Steel Structures",
+   "texto": ""
+  },
+  {
+   "id": "7",
+   "nivel": 1,
+   "titulo": "Section 7 — Aluminum Structures",
+   "texto": ""
+  },
+  {
+   "id": "8",
+   "nivel": 1,
+   "titulo": "Section 8 — Wood Structures",
+   "texto": ""
+  },
+  {
+   "id": "9",
+   "nivel": 1,
+   "titulo": "Section 9 — Decks and Deck Systems",
+   "texto": ""
+  },
+  {
+   "id": "10",
+   "nivel": 1,
+   "titulo": "Section 10 — Foundations",
+   "texto": ""
+  },
+  {
+   "id": "11",
+   "nivel": 1,
+   "titulo": "Section 11 — Abutments, Piers, and Walls",
+   "texto": ""
+  },
+  {
+   "id": "11.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "11.2",
+   "nivel": 2,
+   "titulo": "Definitions",
+   "texto": ""
+  },
+  {
+   "id": "11.3",
+   "nivel": 2,
+   "titulo": "Notation",
+   "texto": ""
+  },
+  {
+   "id": "11.4",
+   "nivel": 2,
+   "titulo": "Soil Properties and Materials",
+   "texto": ""
+  },
+  {
+   "id": "11.5",
+   "nivel": 2,
+   "titulo": "Limit States and Resistance Factors",
+   "texto": ""
+  },
+  {
+   "id": "11.6",
+   "nivel": 2,
+   "titulo": "Abutments and Conventional Retaining Walls",
+   "texto": ""
+  },
+  {
+   "id": "11.7",
+   "nivel": 2,
+   "titulo": "Piers",
+   "texto": ""
+  },
+  {
+   "id": "11.8",
+   "nivel": 2,
+   "titulo": "Nongravity Cantilevered Walls",
+   "texto": ""
+  },
+  {
+   "id": "11.9",
+   "nivel": 2,
+   "titulo": "Anchored Walls",
+   "texto": ""
+  },
+  {
+   "id": "11.10",
+   "nivel": 2,
+   "titulo": "Mechanically Stabilized Earth Walls",
+   "texto": ""
+  },
+  {
+   "id": "11.11",
+   "nivel": 2,
+   "titulo": "Prefabricated Modular Walls",
+   "texto": ""
+  },
+  {
+   "id": "12",
+   "nivel": 1,
+   "titulo": "Section 12 — Buried Structures and Tunnel Liners",
+   "texto": ""
+  },
+  {
+   "id": "13",
+   "nivel": 1,
+   "titulo": "Section 13 — Railings",
+   "texto": ""
+  },
+  {
+   "id": "14",
+   "nivel": 1,
+   "titulo": "Section 14 — Joints and Bearings",
+   "texto": ""
+  },
+  {
+   "id": "14.1",
+   "nivel": 2,
+   "titulo": "Scope",
+   "texto": ""
+  },
+  {
+   "id": "14.2",
+   "nivel": 2,
+   "titulo": "Definitions",
+   "texto": ""
+  },
+  {
+   "id": "14.3",
+   "nivel": 2,
+   "titulo": "Notation",
+   "texto": ""
+  },
+  {
+   "id": "14.4",
+   "nivel": 2,
+   "titulo": "Movements and Loads",
+   "texto": ""
+  },
+  {
+   "id": "14.5",
+   "nivel": 2,
+   "titulo": "Bridge Joints",
+   "texto": ""
+  },
+  {
+   "id": "14.6",
+   "nivel": 2,
+   "titulo": "Requirements for Bearings",
+   "texto": ""
+  },
+  {
+   "id": "14.7",
+   "nivel": 2,
+   "titulo": "Special Design Provisions for Bearings",
+   "texto": ""
+  },
+  {
+   "id": "14.8",
+   "nivel": 2,
+   "titulo": "Load Plates and Anchorage for Bearings",
+   "texto": ""
+  },
+  {
+   "id": "15",
+   "nivel": 1,
+   "titulo": "Section 15 — Design of Sound Barriers",
+   "texto": ""
+  }
+ ]
+}

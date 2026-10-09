@@ -1,0 +1,247 @@
+{
+ "id": "EN 1992-1-1",
+ "alias": [
+  "EN 1992",
+  "EN 1992-1-1",
+  "Eurocódigo 2",
+  "Eurocode 2",
+  "EC2",
+  "UNE-EN 1992-1-1"
+ ],
+ "titulo": "EN 1992-1-1 Eurocode 2: Design of concrete structures — Part 1-1: General rules and rules for buildings",
+ "pais": "EU",
+ "tipo": "indice",
+ "version": "EN 1992-1-1:2004 + AC:2010 + A1:2014 (existe la 2.ª generación EN 1992-1-1:2023)",
+ "fuente": "https://eurocodes.jrc.ec.europa.eu/",
+ "licencia": "Norma europea (CEN) protegida por derechos de autor; se adquiere a través de los organismos nacionales de normalización (p. ej. UNE, AENOR, BSI, DIN). Solo índice (números y títulos oficiales en inglés), sin texto.",
+ "secciones": [
+  {
+   "id": "1",
+   "nivel": 1,
+   "titulo": "Section 1 — General",
+   "texto": ""
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Section 2 — Basis of design",
+   "texto": ""
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Section 3 — Materials",
+   "texto": ""
+  },
+  {
+   "id": "3.1",
+   "nivel": 2,
+   "titulo": "Concrete",
+   "texto": ""
+  },
+  {
+   "id": "3.2",
+   "nivel": 2,
+   "titulo": "Reinforcing steel",
+   "texto": ""
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Section 4 — Durability and cover to reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "4.4",
+   "nivel": 2,
+   "titulo": "Methods of verification",
+   "texto": ""
+  },
+  {
+   "id": "5",
+   "nivel": 1,
+   "titulo": "Section 5 — Structural analysis",
+   "texto": ""
+  },
+  {
+   "id": "5.8",
+   "nivel": 2,
+   "titulo": "Analysis of second order effects with axial load",
+   "texto": ""
+  },
+  {
+   "id": "6",
+   "nivel": 1,
+   "titulo": "Section 6 — Ultimate limit states (ULS)",
+   "texto": ""
+  },
+  {
+   "id": "6.1",
+   "nivel": 2,
+   "titulo": "Bending with or without axial force",
+   "texto": ""
+  },
+  {
+   "id": "6.2",
+   "nivel": 2,
+   "titulo": "Shear",
+   "texto": ""
+  },
+  {
+   "id": "6.3",
+   "nivel": 2,
+   "titulo": "Torsion",
+   "texto": ""
+  },
+  {
+   "id": "6.4",
+   "nivel": 2,
+   "titulo": "Punching",
+   "texto": ""
+  },
+  {
+   "id": "6.5",
+   "nivel": 2,
+   "titulo": "Design with strut and tie models",
+   "texto": ""
+  },
+  {
+   "id": "7",
+   "nivel": 1,
+   "titulo": "Section 7 — Serviceability limit states (SLS)",
+   "texto": ""
+  },
+  {
+   "id": "7.3",
+   "nivel": 2,
+   "titulo": "Crack control",
+   "texto": ""
+  },
+  {
+   "id": "7.4",
+   "nivel": 2,
+   "titulo": "Deflection control",
+   "texto": ""
+  },
+  {
+   "id": "8",
+   "nivel": 1,
+   "titulo": "Section 8 — Detailing of reinforcement and prestressing tendons — General",
+   "texto": ""
+  },
+  {
+   "id": "8.4",
+   "nivel": 2,
+   "titulo": "Anchorage of longitudinal reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "8.7",
+   "nivel": 2,
+   "titulo": "Laps and mechanical couplers",
+   "texto": ""
+  },
+  {
+   "id": "9",
+   "nivel": 1,
+   "titulo": "Section 9 — Detailing of members and particular rules",
+   "texto": ""
+  },
+  {
+   "id": "9.2",
+   "nivel": 2,
+   "titulo": "Beams",
+   "texto": ""
+  },
+  {
+   "id": "9.5",
+   "nivel": 2,
+   "titulo": "Columns",
+   "texto": ""
+  },
+  {
+   "id": "9.6",
+   "nivel": 2,
+   "titulo": "Walls",
+   "texto": ""
+  },
+  {
+   "id": "10",
+   "nivel": 1,
+   "titulo": "Section 10 — Additional rules for precast concrete elements and structures",
+   "texto": ""
+  },
+  {
+   "id": "11",
+   "nivel": 1,
+   "titulo": "Section 11 — Lightweight aggregate concrete structures",
+   "texto": ""
+  },
+  {
+   "id": "12",
+   "nivel": 1,
+   "titulo": "Section 12 — Plain and lightly reinforced concrete structures",
+   "texto": ""
+  },
+  {
+   "id": "Annex A",
+   "nivel": 1,
+   "titulo": "Modification of partial factors for materials",
+   "texto": ""
+  },
+  {
+   "id": "Annex B",
+   "nivel": 1,
+   "titulo": "Creep and shrinkage strain",
+   "texto": ""
+  },
+  {
+   "id": "Annex C",
+   "nivel": 1,
+   "titulo": "Properties of reinforcement suitable for use with this Eurocode",
+   "texto": ""
+  },
+  {
+   "id": "Annex D",
+   "nivel": 1,
+   "titulo": "Detailed calculation method for prestressing steel relaxation losses",
+   "texto": ""
+  },
+  {
+   "id": "Annex E",
+   "nivel": 1,
+   "titulo": "Indicative strength classes for durability",
+   "texto": ""
+  },
+  {
+   "id": "Annex F",
+   "nivel": 1,
+   "titulo": "Tension reinforcement expressions for in-plane stress conditions",
+   "texto": ""
+  },
+  {
+   "id": "Annex G",
+   "nivel": 1,
+   "titulo": "Soil structure interaction",
+   "texto": ""
+  },
+  {
+   "id": "Annex H",
+   "nivel": 1,
+   "titulo": "Global second order effects in structures",
+   "texto": ""
+  },
+  {
+   "id": "Annex I",
+   "nivel": 1,
+   "titulo": "Analysis of flat slabs and shear walls",
+   "texto": ""
+  },
+  {
+   "id": "Annex J",
+   "nivel": 1,
+   "titulo": "Detailing rules for particular situations",
+   "texto": ""
+  }
+ ]
+}

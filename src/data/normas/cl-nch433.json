@@ -1,0 +1,377 @@
+{
+ "id": "NCh433",
+ "alias": [
+  "NCh433",
+  "NCh 433",
+  "NCh433.Of1996",
+  "NCh 433.Of1996",
+  "NCh433 Of.96",
+  "NCh433.Of1996 Mod.2009",
+  "NCh433.Of1996 Mod. 2009",
+  "NCh433 Of.1996 Mod.2009",
+  "NCh433.Of96 Mod.2009",
+  "NCh433:2026"
+ ],
+ "titulo": "NCh433 Diseño sísmico de edificios",
+ "pais": "CL",
+ "tipo": "indice",
+ "version": "Of1996 Mod. 2009 (oficial por D. Ex. 406/2010) + DS 61 (2011); índice de la edición Of1996 Mod. 2012, que incorpora el DS 61. La NCh433:2026 (D. Ex. N.º 28 MINVU, DO 10-08-2026) la reemplaza ≈ 10-02-2027 y su índice no está incluido",
+ "fuente": "https://www.inn.cl/",
+ "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. Las disposiciones que modifica el DS 61 (2011) están en texto completo en el documento «DS61».",
+ "secciones": [
+  {
+   "id": "1",
+   "nivel": 1,
+   "titulo": "Alcance",
+   "texto": ""
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Referencias",
+   "texto": ""
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Terminología y simbología",
+   "texto": ""
+  },
+  {
+   "id": "3.1",
+   "nivel": 2,
+   "titulo": "Terminología",
+   "texto": ""
+  },
+  {
+   "id": "3.2",
+   "nivel": 2,
+   "titulo": "Simbología",
+   "texto": ""
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Disposiciones de aplicación general",
+   "texto": ""
+  },
+  {
+   "id": "4.1",
+   "nivel": 2,
+   "titulo": "Zonificación sísmica",
+   "texto": ""
+  },
+  {
+   "id": "4.2",
+   "nivel": 2,
+   "titulo": "Efecto del suelo de fundación y de la topografía en las características del movimiento sísmico",
+   "texto": ""
+  },
+  {
+   "id": "4.3",
+   "nivel": 2,
+   "titulo": "Clasificación de ocupación de edificios y otras estructuras de acuerdo a su importancia, uso y riesgo de falla",
+   "texto": ""
+  },
+  {
+   "id": "4.4",
+   "nivel": 2,
+   "titulo": "Instrumentos sísmicos",
+   "texto": ""
+  },
+  {
+   "id": "5",
+   "nivel": 1,
+   "titulo": "Disposiciones generales sobre diseño y métodos de análisis",
+   "texto": ""
+  },
+  {
+   "id": "5.1",
+   "nivel": 2,
+   "titulo": "Principios e hipótesis básicos",
+   "texto": ""
+  },
+  {
+   "id": "5.2",
+   "nivel": 2,
+   "titulo": "Combinación de las solicitaciones sísmicas con otras solicitaciones",
+   "texto": ""
+  },
+  {
+   "id": "5.3",
+   "nivel": 2,
+   "titulo": "Coordinación con otras normas de análisis y diseño",
+   "texto": ""
+  },
+  {
+   "id": "5.4",
+   "nivel": 2,
+   "titulo": "Sistemas estructurales",
+   "texto": ""
+  },
+  {
+   "id": "5.5",
+   "nivel": 2,
+   "titulo": "Modelos estructurales",
+   "texto": ""
+  },
+  {
+   "id": "5.6",
+   "nivel": 2,
+   "titulo": "Limitaciones para el uso de los métodos de análisis",
+   "texto": ""
+  },
+  {
+   "id": "5.7",
+   "nivel": 2,
+   "titulo": "Factor de modificación de la respuesta",
+   "texto": ""
+  },
+  {
+   "id": "5.8",
+   "nivel": 2,
+   "titulo": "Acciones sísmicas sobre la estructura",
+   "texto": ""
+  },
+  {
+   "id": "5.9",
+   "nivel": 2,
+   "titulo": "Deformaciones sísmicas",
+   "texto": ""
+  },
+  {
+   "id": "5.10",
+   "nivel": 2,
+   "titulo": "Separaciones entre edificios o cuerpos de edificios",
+   "texto": ""
+  },
+  {
+   "id": "5.11",
+   "nivel": 2,
+   "titulo": "Planos y memoria de cálculo",
+   "texto": ""
+  },
+  {
+   "id": "6",
+   "nivel": 1,
+   "titulo": "Métodos de análisis",
+   "texto": ""
+  },
+  {
+   "id": "6.1",
+   "nivel": 2,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "6.2",
+   "nivel": 2,
+   "titulo": "Análisis estático",
+   "texto": ""
+  },
+  {
+   "id": "6.3",
+   "nivel": 2,
+   "titulo": "Análisis modal espectral",
+   "texto": ""
+  },
+  {
+   "id": "7",
+   "nivel": 1,
+   "titulo": "Diseño y construcción de fundaciones",
+   "texto": ""
+  },
+  {
+   "id": "7.1",
+   "nivel": 2,
+   "titulo": "Especificaciones generales para el diseño",
+   "texto": ""
+  },
+  {
+   "id": "7.2",
+   "nivel": 2,
+   "titulo": "Fundaciones superficiales",
+   "texto": ""
+  },
+  {
+   "id": "7.3",
+   "nivel": 2,
+   "titulo": "Pilotes",
+   "texto": ""
+  },
+  {
+   "id": "7.4",
+   "nivel": 2,
+   "titulo": "Estructuras contiguas",
+   "texto": ""
+  },
+  {
+   "id": "8",
+   "nivel": 1,
+   "titulo": "Elementos secundarios",
+   "texto": ""
+  },
+  {
+   "id": "8.1",
+   "nivel": 2,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "8.2",
+   "nivel": 2,
+   "titulo": "Criterios sobre el nivel de desempeño",
+   "texto": ""
+  },
+  {
+   "id": "8.3",
+   "nivel": 2,
+   "titulo": "Fuerzas para el diseño de elementos secundarios y sus anclajes",
+   "texto": ""
+  },
+  {
+   "id": "8.4",
+   "nivel": 2,
+   "titulo": "Tabiques divisorios",
+   "texto": ""
+  },
+  {
+   "id": "8.5",
+   "nivel": 2,
+   "titulo": "Aspectos complementarios",
+   "texto": ""
+  },
+  {
+   "id": "Anexo A",
+   "nivel": 1,
+   "titulo": "(informativo) Daño sísmico y recuperación estructural",
+   "texto": ""
+  },
+  {
+   "id": "A.1",
+   "nivel": 2,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "A.2",
+   "nivel": 2,
+   "titulo": "Evaluación del daño sísmico y decisiones sobre la recuperación estructural",
+   "texto": ""
+  },
+  {
+   "id": "A.3",
+   "nivel": 2,
+   "titulo": "Requisitos que debe cumplir el proyecto de recuperación estructural",
+   "texto": ""
+  },
+  {
+   "id": "A.4",
+   "nivel": 2,
+   "titulo": "Disposiciones generales sobre métodos de reparación",
+   "texto": ""
+  },
+  {
+   "id": "A.5",
+   "nivel": 2,
+   "titulo": "Requisitos que debe cumplir el proceso constructivo de la recuperación estructural",
+   "texto": ""
+  },
+  {
+   "id": "A.6",
+   "nivel": 2,
+   "titulo": "Necesidad de recuperación de edificios sin daños",
+   "texto": ""
+  },
+  {
+   "id": "Anexo B",
+   "nivel": 1,
+   "titulo": "(normativo) Disposiciones transitorias",
+   "texto": ""
+  },
+  {
+   "id": "Anexo C",
+   "nivel": 1,
+   "titulo": "(normativo) Empujes de muros subterráneos",
+   "texto": ""
+  },
+  {
+   "id": "Anexo D",
+   "nivel": 1,
+   "titulo": "(informativo) Comentario",
+   "texto": ""
+  },
+  {
+   "id": "Figura 4.1",
+   "nivel": 1,
+   "titulo": "Zonificación sísmica (a: Regiones XV, I, II, III y V; b: Regiones IV, V, VI, VII, VIII, IX, X, XIV y Región Metropolitana; c: Regiones XI y XII)",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 4.1",
+   "nivel": 1,
+   "titulo": "Zonificación sísmica por comunas para las Regiones Cuarta a Novena",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 4.2",
+   "nivel": 1,
+   "titulo": "Clasificación sísmica del terreno de fundación",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 4.3",
+   "nivel": 1,
+   "titulo": "Categoría de ocupación de edificios y otras estructuras",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 5.1",
+   "nivel": 1,
+   "titulo": "Valores máximos de los factores de modificación de la respuesta",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 6.1",
+   "nivel": 1,
+   "titulo": "Valor del coeficiente I",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 6.2",
+   "nivel": 1,
+   "titulo": "Valor de la aceleración efectiva Ao",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 6.3",
+   "nivel": 1,
+   "titulo": "Valor de los parámetros que dependen del tipo de suelo",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 6.4",
+   "nivel": 1,
+   "titulo": "Valores máximos del coeficiente sísmico C",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 6.5",
+   "nivel": 1,
+   "titulo": "Valores del parámetro Cd*",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 8.1",
+   "nivel": 1,
+   "titulo": "Valores del coeficiente Cp y del factor de desempeño Kd para el diseño y anclaje de elementos secundarios",
+   "texto": ""
+  },
+  {
+   "id": "Tabla 8.2",
+   "nivel": 1,
+   "titulo": "Valores del factor λ",
+   "texto": ""
+  }
+ ]
+}

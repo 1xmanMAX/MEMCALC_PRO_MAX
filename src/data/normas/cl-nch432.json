@@ -1,0 +1,26 @@
+{
+ "id": "NCh432",
+ "alias": [
+  "NCh432",
+  "NCh 432",
+  "NCh432:2025",
+  "NCh432:2010",
+  "NCh432.Of2010",
+  "NCh432.Of1971",
+  "NCh432.Of71"
+ ],
+ "titulo": "NCh432 Diseño estructural — Cargas de viento",
+ "pais": "CL",
+ "tipo": "indice",
+ "version": "NCh432:2025 (basada en ASCE 7-22; oficializada en 2025, DO 18-08-2025) — reemplaza a NCh432.Of1971; existe además la edición INN NCh432:2010",
+ "fuente": "https://www.inn.cl/",
+ "licencia": "Norma técnica del Instituto Nacional de Normalización (INN), protegida por derechos de autor aunque sea declarada oficial por decreto: se venden en inn.cl. Solo se incluye el índice (números y títulos), sin texto de la norma. Índice no verificado contra fuente oficial: no se transcriben títulos de capítulos.",
+ "secciones": [
+  {
+   "id": "Norma",
+   "nivel": 1,
+   "titulo": "Índice y texto en la norma oficial (INN)",
+   "texto": ""
+  }
+ ]
+}

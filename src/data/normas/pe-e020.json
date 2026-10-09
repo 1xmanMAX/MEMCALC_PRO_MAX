@@ -13,6 +13,7 @@
  "version": "DS N° 011-2006-VIVIENDA (2006)",
  "fuente": "https://cdn.www.gob.pe/uploads/document/file/2366640/50%20E.020%20CARGAS.pdf",
  "licencia": "Texto oficial del Reglamento Nacional de Edificaciones (norma legal publicada por el Estado peruano); las disposiciones legales y reglamentarias no son objeto de protección por derecho de autor (D. Leg. 822, Art. 9).",
+ "notas": "Texto del PDF oficial (MVCS). Las ecuaciones del original están compuestas como objetos de ecuación: su texto aparece en bloques «| » y puede perder subíndices o el orden de fracciones; verificar con la fuente.",
  "secciones": [
   {
    "id": "Cap. 1",

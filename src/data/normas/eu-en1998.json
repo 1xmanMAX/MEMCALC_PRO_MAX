@@ -1,0 +1,151 @@
+{
+ "id": "EN 1998-1",
+ "alias": [
+  "EN 1998",
+  "EN 1998-1",
+  "Eurocódigo 8",
+  "Eurocode 8",
+  "EC8",
+  "UNE-EN 1998-1"
+ ],
+ "titulo": "EN 1998-1 Eurocode 8: Design of structures for earthquake resistance — Part 1: General rules, seismic actions and rules for buildings",
+ "pais": "EU",
+ "tipo": "indice",
+ "version": "EN 1998-1:2004 + AC:2009 + A1:2013",
+ "fuente": "https://eurocodes.jrc.ec.europa.eu/",
+ "licencia": "Norma europea (CEN) protegida por derechos de autor; se adquiere a través de los organismos nacionales de normalización (p. ej. UNE, AENOR, BSI, DIN). Solo índice (números y títulos oficiales en inglés), sin texto.",
+ "secciones": [
+  {
+   "id": "1",
+   "nivel": 1,
+   "titulo": "Section 1 — General",
+   "texto": ""
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Section 2 — Performance requirements and compliance criteria",
+   "texto": ""
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Section 3 — Ground conditions and seismic action",
+   "texto": ""
+  },
+  {
+   "id": "3.2.2.2",
+   "nivel": 2,
+   "titulo": "Horizontal elastic response spectrum",
+   "texto": ""
+  },
+  {
+   "id": "3.2.2.5",
+   "nivel": 2,
+   "titulo": "Design spectrum for elastic analysis",
+   "texto": ""
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Section 4 — Design of buildings",
+   "texto": ""
+  },
+  {
+   "id": "4.2.3",
+   "nivel": 2,
+   "titulo": "Criteria for structural regularity",
+   "texto": ""
+  },
+  {
+   "id": "4.3.3.2",
+   "nivel": 2,
+   "titulo": "Lateral force method of analysis",
+   "texto": ""
+  },
+  {
+   "id": "4.3.3.3",
+   "nivel": 2,
+   "titulo": "Modal response spectrum analysis",
+   "texto": ""
+  },
+  {
+   "id": "4.4.3.2",
+   "nivel": 2,
+   "titulo": "Limitation of interstorey drift",
+   "texto": ""
+  },
+  {
+   "id": "5",
+   "nivel": 1,
+   "titulo": "Section 5 — Specific rules for concrete buildings",
+   "texto": ""
+  },
+  {
+   "id": "5.2.2.2",
+   "nivel": 2,
+   "titulo": "Behaviour factors for horizontal seismic actions",
+   "texto": ""
+  },
+  {
+   "id": "5.4",
+   "nivel": 2,
+   "titulo": "Design for DCM",
+   "texto": ""
+  },
+  {
+   "id": "5.5",
+   "nivel": 2,
+   "titulo": "Design for DCH",
+   "texto": ""
+  },
+  {
+   "id": "6",
+   "nivel": 1,
+   "titulo": "Section 6 — Specific rules for steel buildings",
+   "texto": ""
+  },
+  {
+   "id": "7",
+   "nivel": 1,
+   "titulo": "Section 7 — Specific rules for composite steel – concrete buildings",
+   "texto": ""
+  },
+  {
+   "id": "8",
+   "nivel": 1,
+   "titulo": "Section 8 — Specific rules for timber buildings",
+   "texto": ""
+  },
+  {
+   "id": "9",
+   "nivel": 1,
+   "titulo": "Section 9 — Specific rules for masonry buildings",
+   "texto": ""
+  },
+  {
+   "id": "10",
+   "nivel": 1,
+   "titulo": "Section 10 — Base isolation",
+   "texto": ""
+  },
+  {
+   "id": "Annex A",
+   "nivel": 1,
+   "titulo": "Elastic displacement response spectrum",
+   "texto": ""
+  },
+  {
+   "id": "Annex B",
+   "nivel": 1,
+   "titulo": "Determination of the target displacement for nonlinear static (pushover) analysis",
+   "texto": ""
+  },
+  {
+   "id": "Annex C",
+   "nivel": 1,
+   "titulo": "Design of the slab of steel-concrete composite beams at beam-column joints in moment resisting frames",
+   "texto": ""
+  }
+ ]
+}

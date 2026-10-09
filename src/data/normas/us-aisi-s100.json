@@ -1,0 +1,95 @@
+{
+ "id": "AISI S100",
+ "alias": [
+  "AISI S100",
+  "AISI S100-16",
+  "AISI S100-16 (2020)",
+  "AISI"
+ ],
+ "titulo": "AISI S100-16 North American Specification for the Design of Cold-Formed Steel Structural Members",
+ "pais": "US",
+ "tipo": "indice",
+ "version": "AISI S100-16 (reafirmada 2020) con suplemento 2 (S100-16 w/S2-20)",
+ "fuente": "https://www.steel.org/",
+ "licencia": "Norma protegida por derechos de autor de American Iron and Steel Institute. Solo índice (números y títulos oficiales), sin texto.",
+ "secciones": [
+  {
+   "id": "Chapter A",
+   "nivel": 1,
+   "titulo": "General Provisions",
+   "texto": ""
+  },
+  {
+   "id": "Chapter B",
+   "nivel": 1,
+   "titulo": "Design Requirements",
+   "texto": ""
+  },
+  {
+   "id": "Chapter C",
+   "nivel": 1,
+   "titulo": "Design for Stability",
+   "texto": ""
+  },
+  {
+   "id": "Chapter D",
+   "nivel": 1,
+   "titulo": "Members in Tension",
+   "texto": ""
+  },
+  {
+   "id": "Chapter E",
+   "nivel": 1,
+   "titulo": "Members in Compression",
+   "texto": ""
+  },
+  {
+   "id": "Chapter F",
+   "nivel": 1,
+   "titulo": "Members in Flexure",
+   "texto": ""
+  },
+  {
+   "id": "Chapter G",
+   "nivel": 1,
+   "titulo": "Members in Shear and Web Crippling",
+   "texto": ""
+  },
+  {
+   "id": "Chapter H",
+   "nivel": 1,
+   "titulo": "Members Under Combined Forces",
+   "texto": ""
+  },
+  {
+   "id": "Chapter I",
+   "nivel": 1,
+   "titulo": "Assemblies and Systems",
+   "texto": ""
+  },
+  {
+   "id": "Chapter J",
+   "nivel": 1,
+   "titulo": "Connections and Joints",
+   "texto": ""
+  },
+  {
+   "id": "Chapter K",
+   "nivel": 1,
+   "titulo": "Strength for Special Cases",
+   "texto": ""
+  },
+  {
+   "id": "Appendix 1",
+   "nivel": 1,
+   "titulo": "Effective Width of Elements",
+   "texto": ""
+  },
+  {
+   "id": "Appendix 2",
+   "nivel": 1,
+   "titulo": "Second-Order Analysis",
+   "texto": ""
+  }
+ ]
+}

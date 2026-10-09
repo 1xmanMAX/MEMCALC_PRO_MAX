@@ -1,0 +1,354 @@
+{
+ "id": "ACI 318-19",
+ "alias": [
+  "ACI 318",
+  "ACI318",
+  "ACI 318-19",
+  "ACI 318M-19",
+  "ACI 318S-19"
+ ],
+ "titulo": "ACI 318-19 Building Code Requirements for Structural Concrete and Commentary",
+ "pais": "US",
+ "tipo": "indice",
+ "version": "ACI 318-19 (reaprobada 2022); existe ACI 318-25",
+ "fuente": "https://www.concrete.org/store/",
+ "licencia": "Norma protegida por derechos de autor de American Concrete Institute. Solo índice (números y títulos oficiales), sin texto. Se compra en concrete.org (también la versión en español ACI 318S y métrica ACI 318M).",
+ "secciones": [
+  {
+   "id": "1",
+   "nivel": 1,
+   "titulo": "Chapter 1 — General",
+   "texto": ""
+  },
+  {
+   "id": "2",
+   "nivel": 1,
+   "titulo": "Chapter 2 — Notation and Terminology",
+   "texto": ""
+  },
+  {
+   "id": "3",
+   "nivel": 1,
+   "titulo": "Chapter 3 — Referenced Standards",
+   "texto": ""
+  },
+  {
+   "id": "4",
+   "nivel": 1,
+   "titulo": "Chapter 4 — Structural System Requirements",
+   "texto": ""
+  },
+  {
+   "id": "5",
+   "nivel": 1,
+   "titulo": "Chapter 5 — Loads",
+   "texto": ""
+  },
+  {
+   "id": "5.3",
+   "nivel": 2,
+   "titulo": "Load factors and combinations",
+   "texto": ""
+  },
+  {
+   "id": "6",
+   "nivel": 1,
+   "titulo": "Chapter 6 — Structural Analysis",
+   "texto": ""
+  },
+  {
+   "id": "7",
+   "nivel": 1,
+   "titulo": "Chapter 7 — One-Way Slabs",
+   "texto": ""
+  },
+  {
+   "id": "8",
+   "nivel": 1,
+   "titulo": "Chapter 8 — Two-Way Slabs",
+   "texto": ""
+  },
+  {
+   "id": "9",
+   "nivel": 1,
+   "titulo": "Chapter 9 — Beams",
+   "texto": ""
+  },
+  {
+   "id": "9.6",
+   "nivel": 2,
+   "titulo": "Reinforcement limits",
+   "texto": ""
+  },
+  {
+   "id": "9.7",
+   "nivel": 2,
+   "titulo": "Reinforcement detailing",
+   "texto": ""
+  },
+  {
+   "id": "10",
+   "nivel": 1,
+   "titulo": "Chapter 10 — Columns",
+   "texto": ""
+  },
+  {
+   "id": "11",
+   "nivel": 1,
+   "titulo": "Chapter 11 — Walls",
+   "texto": ""
+  },
+  {
+   "id": "12",
+   "nivel": 1,
+   "titulo": "Chapter 12 — Diaphragms",
+   "texto": ""
+  },
+  {
+   "id": "13",
+   "nivel": 1,
+   "titulo": "Chapter 13 — Foundations",
+   "texto": ""
+  },
+  {
+   "id": "13.3",
+   "nivel": 2,
+   "titulo": "Shallow foundations",
+   "texto": ""
+  },
+  {
+   "id": "13.4",
+   "nivel": 2,
+   "titulo": "Deep foundations",
+   "texto": ""
+  },
+  {
+   "id": "14",
+   "nivel": 1,
+   "titulo": "Chapter 14 — Plain Concrete",
+   "texto": ""
+  },
+  {
+   "id": "15",
+   "nivel": 1,
+   "titulo": "Chapter 15 — Beam-Column and Slab-Column Joints",
+   "texto": ""
+  },
+  {
+   "id": "16",
+   "nivel": 1,
+   "titulo": "Chapter 16 — Connections Between Members",
+   "texto": ""
+  },
+  {
+   "id": "17",
+   "nivel": 1,
+   "titulo": "Chapter 17 — Anchoring to Concrete",
+   "texto": ""
+  },
+  {
+   "id": "17.6",
+   "nivel": 2,
+   "titulo": "Tensile strength",
+   "texto": ""
+  },
+  {
+   "id": "17.7",
+   "nivel": 2,
+   "titulo": "Shear strength",
+   "texto": ""
+  },
+  {
+   "id": "17.8",
+   "nivel": 2,
+   "titulo": "Tension and shear interaction",
+   "texto": ""
+  },
+  {
+   "id": "18",
+   "nivel": 1,
+   "titulo": "Chapter 18 — Earthquake-Resistant Structures",
+   "texto": ""
+  },
+  {
+   "id": "18.3",
+   "nivel": 2,
+   "titulo": "Ordinary moment frames",
+   "texto": ""
+  },
+  {
+   "id": "18.4",
+   "nivel": 2,
+   "titulo": "Intermediate moment frames",
+   "texto": ""
+  },
+  {
+   "id": "18.6",
+   "nivel": 2,
+   "titulo": "Beams of special moment frames",
+   "texto": ""
+  },
+  {
+   "id": "18.7",
+   "nivel": 2,
+   "titulo": "Columns of special moment frames",
+   "texto": ""
+  },
+  {
+   "id": "18.8",
+   "nivel": 2,
+   "titulo": "Joints of special moment frames",
+   "texto": ""
+  },
+  {
+   "id": "18.10",
+   "nivel": 2,
+   "titulo": "Special structural walls",
+   "texto": ""
+  },
+  {
+   "id": "19",
+   "nivel": 1,
+   "titulo": "Chapter 19 — Concrete: Design and Durability Requirements",
+   "texto": ""
+  },
+  {
+   "id": "19.2",
+   "nivel": 2,
+   "titulo": "Concrete design properties",
+   "texto": ""
+  },
+  {
+   "id": "20",
+   "nivel": 1,
+   "titulo": "Chapter 20 — Steel Reinforcement Properties, Durability, and Embedments",
+   "texto": ""
+  },
+  {
+   "id": "20.2",
+   "nivel": 2,
+   "titulo": "Nonprestressed bars and wires",
+   "texto": ""
+  },
+  {
+   "id": "21",
+   "nivel": 1,
+   "titulo": "Chapter 21 — Strength Reduction Factors",
+   "texto": ""
+  },
+  {
+   "id": "21.2",
+   "nivel": 2,
+   "titulo": "Strength reduction factors for structural concrete members and connections",
+   "texto": ""
+  },
+  {
+   "id": "22",
+   "nivel": 1,
+   "titulo": "Chapter 22 — Sectional Strength",
+   "texto": ""
+  },
+  {
+   "id": "22.2",
+   "nivel": 2,
+   "titulo": "Design assumptions for flexural and axial strength",
+   "texto": ""
+  },
+  {
+   "id": "22.3",
+   "nivel": 2,
+   "titulo": "Flexural strength",
+   "texto": ""
+  },
+  {
+   "id": "22.4",
+   "nivel": 2,
+   "titulo": "Axial strength or combined flexural and axial strength",
+   "texto": ""
+  },
+  {
+   "id": "22.5",
+   "nivel": 2,
+   "titulo": "One-way shear strength",
+   "texto": ""
+  },
+  {
+   "id": "22.6",
+   "nivel": 2,
+   "titulo": "Two-way shear strength",
+   "texto": ""
+  },
+  {
+   "id": "22.7",
+   "nivel": 2,
+   "titulo": "Torsional strength",
+   "texto": ""
+  },
+  {
+   "id": "23",
+   "nivel": 1,
+   "titulo": "Chapter 23 — Strut-and-Tie Method",
+   "texto": ""
+  },
+  {
+   "id": "24",
+   "nivel": 1,
+   "titulo": "Chapter 24 — Serviceability Requirements",
+   "texto": ""
+  },
+  {
+   "id": "24.2",
+   "nivel": 2,
+   "titulo": "Deflections due to service-level gravity loads",
+   "texto": ""
+  },
+  {
+   "id": "25",
+   "nivel": 1,
+   "titulo": "Chapter 25 — Reinforcement Details",
+   "texto": ""
+  },
+  {
+   "id": "25.4",
+   "nivel": 2,
+   "titulo": "Development of reinforcement",
+   "texto": ""
+  },
+  {
+   "id": "25.5",
+   "nivel": 2,
+   "titulo": "Splices",
+   "texto": ""
+  },
+  {
+   "id": "26",
+   "nivel": 1,
+   "titulo": "Chapter 26 — Construction Documents and Inspection",
+   "texto": ""
+  },
+  {
+   "id": "27",
+   "nivel": 1,
+   "titulo": "Chapter 27 — Strength Evaluation of Existing Structures",
+   "texto": ""
+  },
+  {
+   "id": "Appendix A",
+   "nivel": 1,
+   "titulo": "Design Verification Using Nonlinear Response History Analysis",
+   "texto": ""
+  },
+  {
+   "id": "Appendix B",
+   "nivel": 1,
+   "titulo": "Steel Reinforcement Information",
+   "texto": ""
+  },
+  {
+   "id": "Appendix C",
+   "nivel": 1,
+   "titulo": "Equivalence between SI-Metric, MKS-Metric, and U.S. Customary Units of Nonhomogeneous Equations in the Code",
+   "texto": ""
+  }
+ ]
+}

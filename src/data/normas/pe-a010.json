@@ -1,0 +1,120 @@
+{
+ "id": "A.010",
+ "alias": [
+  "A010",
+  "NTE A.010",
+  "A.010",
+  "Norma A.010"
+ ],
+ "titulo": "Norma A.010 Condiciones Generales de Diseño — Capítulo V Circulación vertical (escaleras)",
+ "pais": "PE",
+ "tipo": "texto",
+ "version": "RM N° 191-2021-VIVIENDA (El Peruano, 8 de julio de 2021) — solo Capítulo V",
+ "fuente": "https://cdn.www.gob.pe/uploads/document/file/2366528/35%20A.010%20CONDICIONES%20GENERALES%20DE%20DISE%C3%91O%20-%20RM%20N%C2%B0%20191-2021-VIVIENDA.pdf",
+ "licencia": "Texto oficial del Reglamento Nacional de Edificaciones (norma legal publicada por el Estado peruano); las disposiciones legales y reglamentarias no son objeto de protección por derecho de autor (D. Leg. 822, Art. 9).",
+ "notas": "Extracto: solo el Capítulo V (Circulación vertical: escaleras, ascensores y protección de aberturas) de la Norma A.010.",
+ "secciones": [
+  {
+   "id": "Cap. V",
+   "nivel": 1,
+   "titulo": "CIRCULACIÓN VERTICAL",
+   "texto": ""
+  },
+  {
+   "id": "Art. 22",
+   "nivel": 2,
+   "titulo": "Escaleras",
+   "texto": "Las escaleras pueden ser de los siguientes tipos:\na) Escaleras integradas\nb) Escaleras protegidas"
+  },
+  {
+   "id": "Art. 23",
+   "nivel": 2,
+   "titulo": "Diseño de las escaleras",
+   "texto": "23.1 Las escaleras en general están conformadas por tramos, descansos y barandas. Los tramos están formados por gradas. Las gradas están conformadas por pasos y contrapasos.\n23.2 Las condiciones de los componentes de las escaleras son:\na) Las escaleras cuentan con un máximo de diecisiete pasos entre descansos. Para escaleras lineales la longitud mínima del descanso es de 0.90 m y para otros tipos de escaleras el ancho del descanso es igual o mayor al del tramo de la escalera.\nb) La dimensión mínima del paso debe ser:\ni. 0.25 m en vivienda e industria.\nii. 0.28 m en hospedaje, comercio, oficinas y servicios comunales.\niii. 0.30 m en salud, educación, recreación y deportes, y transportes y comunicaciones.\nc) La dimensión máxima del contrapaso debe ser 0.18 m.\nd) El ancho establecido para las escaleras se mide entre los paramentos que la conforman, o entre sus límites en caso de tener uno o los dos lados abiertos. El ancho del pasamanos no constituye una reducción del ancho de la escalera, siempre que se encuentre dentro de la distancia de 10 cm a partir de la pared, a distancia mayor requiere aumentar el ancho.\ne) En las escaleras integradas se permite pasos en diagonal o en ángulo, siempre que, a 0.30 m del inicio del paso, este tenga cuando menos 0.28 m."
+  },
+  {
+   "id": "Art. 24",
+   "nivel": 2,
+   "titulo": "Escaleras integradas",
+   "texto": "24.1 Las escaleras integradas son aquellas que no están aisladas de las circulaciones horizontales y su objetivo es satisfacer las necesidades de tránsito de las personas.\n24.2 Pueden ser utilizadas como parte de la ruta de evacuación, siempre que cumplan con la distancia máxima de recorrido establecida en el literal c) del artículo 20.\n24.3 Las escaleras integradas pueden ser de tipo caracol cuando comunique máximo a dos pisos o niveles continuos y sirva a no más de cinco (5) personas, con pasamanos a ambos lados."
+  },
+  {
+   "id": "Art. 25",
+   "nivel": 2,
+   "titulo": "Escaleras protegidas",
+   "texto": "25.1 Las escaleras protegidas son a prueba de fuego y humos constituyendo un lugar seguro. La ruta de evacuación tiene como lugar de llegada la puerta de ingreso a estas escaleras. Dependiendo de su clasificación, pueden tener todos sus muros resistentes al fuego, en caso de estar ubicadas en el interior de las edificaciones, o tener solo un muro resistente al fuego, en caso de ubicarse en el exterior de las edificaciones, cumpliendo cada una con los requerimientos de su tipología.\n25.2 Son utilizadas para la evacuación de los ocupantes de la edificación, así como para el acceso del personal de respuesta a emergencias. Son obligatorias cuando se excede la distancia máxima de recorrido establecida en el literal c) del artículo 20.\n25.3 Las escaleras protegidas deben cumplir los siguientes requisitos:\na) Tener una ubicación y un diseño que permita la evacuación de los ocupantes en caso de emergencia de manera rápida y segura.\nb) Ser continuas del primer al último piso o azotea, pudiendo ser totalmente verticales o tener desplazamientos horizontales sin perder la continuidad de la compartimentación cortafuego a excepción de las escaleras de tipo abiertas.\n[Figura/tabla en imagen en el original: ver fuente]\nMUROS CORTAFUEGO\nAREA COMPARTIMENTADA CORTAFUEGO\nc) Entregar directamente a la vía pública o a un espacio compartimentado cortafuego que conduzca hacia la vía pública. En el caso de vivienda cuya edificación cuente con una sola escalera puede evacuar por pasajes de circulación o el hall de ingreso, debidamente compartimentado.\n[Figura/tabla en imagen en el original: ver fuente]\nd) Contar con una barrera de contención que imposibilite que las personas que evacuen la edificación, continúen bajando accidentalmente a niveles inferiores al de la salida a la vía pública.\ne) El vestíbulo previo debe tener dimensiones suficientes para permitir la maniobra de una camilla de emergencia.\nf) Los vanos de las puertas de acceso hacia el vestíbulo previo y hacia la caja de escalera tienen un ancho mínimo de 1.00 m.\ng) Las puertas de acceso deben abrir en la dirección del flujo de evacuación de las personas y su radio de apertura no puede ocupar más del 25% del área formada por el círculo que tiene como radio el ancho de la escalera.\nh) Tener un ancho libre mínimo entre paramentos o entre un paramento y el límite de la escalera de 1.20 m. Tener pasamanos instalados a ambos lados de la pared, cuyas dimensiones no reducen el ancho de la escalera, siempre que se encuentre dentro de la distancia de 10 cm a partir de la pared, a distancia mayor de separación del pasamanos se requiere aumentar el ancho de la escalera.\ni) Al interior de las escaleras protegidas o del vestíbulo previo se permite la instalación de los sistemas de protección contra incendios y los pases de conexión de la caja de escalera con el exterior deben contar con sellos cortafuego de resistencia igual a la de la caja.\nj) El cerramiento de la escalera protegida debe tener resistencia al fuego, según lo siguiente:\ni. Hasta 15.00 m de altura medidos a nivel de piso: 60 minutos de resistencia al fuego.\nii. Más de 15.00 m y 72.00 m de altura medidos a nivel de piso: 120 minutos de resistencia al fuego.\niii. Más de 72.00 m de altura medidos a nivel de piso: 180 minutos de resistencia al fuego.\nk) Las puertas de acceso a la escalera protegida deben contar con mecanismo de cierre automático y resistencia al fuego según lo siguiente:\ni. Hasta 15.00 m de altura: 45 minutos de resistencia al fuego.\nii. Más de 15.00 m y 72.00 m de altura: 90 minutos de resistencia al fuego.\niii. Más de 72.00 m de altura: 135 minutos de resistencia al fuego.\nl) Las puertas de acceso desde el interior del vestíbulo previo hacia la caja de escalera (zona de gradas) deben contar con resistencia al fuego mínima de 20 minutos.\nm) Dentro de la caja de escalera no debe existir ningún otro uso alguno, ni tener otro acceso que la(s) puerta(s) de evacuación.\nn) Debe existir en cada nivel un pase de 0.20 m x 0.20 m, cuyo nivel superior está a 0.30 m del suelo, cerrado con material frangible cortafuego, comunicado directamente entre la escalera y el ambiente al cual sirve o la circulación del piso, el cual debe estar señalizado como pase de manguera desde el interior de la escalera o ser visible y por el exterior un cartel para que no lo obstruyan con mobiliario. Este pase de manguera puede ser cuadrado o circular.\no) Solo para las edificaciones de salud, servicios comunales, establecimientos penitenciarios, centros comerciales, educación con más de 500 ocupantes, recreación y deportes con más de 1000 ocupantes, así como transportes y comunicaciones, se debe considerar un espacio para albergar una silla de ruedas en la escalera.\n[Figura/tabla en imagen en el original: ver fuente]"
+  },
+  {
+   "id": "Art. 26",
+   "nivel": 2,
+   "titulo": "Tipologías de escaleras protegidas",
+   "texto": "Las escaleras protegidas pueden ser de cinco tipos:\na) Con vestíbulo previo ventilado (B1)\n| b)     Presurizada (B2)\n| c)     Abierta (B3)\n| d)     Cerrada (B4)\n| e)     Mixtas (B5)"
+  },
+  {
+   "id": "Art. 27",
+   "nivel": 2,
+   "titulo": "Escaleras con vestíbulo previo ventilado (B1)",
+   "texto": "Las escaleras protegidas con vestíbulo previo ventilado pueden tener ventilación natural o a través de un sistema mecánico, por lo cual existen dos tipos:"
+  },
+  {
+   "id": "27.1",
+   "nivel": 3,
+   "titulo": "Escaleras protegidas con vestíbulo previo que ventila directo al exterior",
+   "texto": "Deben cumplir con los siguientes requisitos:\na) La apertura del vestíbulo previo debe ser hacia un lugar abierto y no debe ubicarse ninguna otra apertura a menos de 3.00 m de distancia.\nb) El vano del vestíbulo previo hacia el exterior no debe ser menor a 1.50 m2 sin elementos de cierre, y sus dimensiones son las resultantes del diseño."
+  },
+  {
+   "id": "27.2",
+   "nivel": 3,
+   "titulo": "Escaleras protegidas con vestíbulo previo con ventilación mecánica",
+   "texto": "Cuentan con ventilación por medio de un sistema de extracción mecánica, con equipos en cada nivel o mediante un sistema centralizado.\nDentro del vestíbulo se instalan dos rejillas, una para inyectar aire y otra para extraer el humo, con las siguientes características:\na) La rejilla para inyectar aire, debe ubicarse en la parte inferior del vestíbulo, a no más de 0.15 m del nivel del piso.\n[Figura/tabla en imagen en el original: ver fuente]\nb) La rejilla para extraer humo, debe ubicarse en la parte superior del vestíbulo, a no más de 0.15 m debajo del nivel del techo o cielorraso.\nc) La ubicación de las rejillas no debe ser obstruida por la puerta abierta del vestíbulo.\nd) El vestíbulo previo debe tener por lo menos un cambio de aire por minuto.\ne) La extracción de aire en el vestíbulo debe ser el 150% de la inyección.\nf) En la parte superior de la caja de escalera debe instalarse un dámper de alivio de presión, con capacidad suficiente para descargar al menos 70.8 m3/min y se mantenga en su interior una presión positiva no menor a\n0.00025 bar (0.10 pulgadas de agua) con todas las puertas entre la caja y el vestíbulo previo.\ng) No se requiere tener vestíbulo previo en el primer piso o nivel de descarga de la escalera.\n27.2.1 Las escaleras protegidas con vestíbulo previo y equipos de inyección y de extracción mecánica en cada nivel, deben cumplir con los siguientes requisitos:\na) Contar con un cerramiento a prueba de humos.\nb) Los equipos de inyección y extracción pueden ventilar directamente al exterior, o hacia un ducto exclusivo para los equipos. Un ducto para inyección y otro ducto para extracción, ambos tienen que tener cerramiento cortafuego.\nc) El vestíbulo previo puede ser cerrado o contar con iluminación natural.\nd) La distancia mínima entre los equipos de inyección de aire y la ventana más cercana de la edificación a la que sirve debe ser de 3.00 m.\ne) Los equipos de inyección y extracción de todos los niveles deben ser activados automáticamente en caso de emergencia a partir de un detector de humos ubicado a menos de 3.00 m del acceso al vestíbulo previo, conectado, al igual que los equipos al sistema de detección y alarma contra incendio de la edificación.\n27.2.2 Las escaleras protegidas con vestíbulo previo y sistema de inyección y de extracción mecánica centralizado, deben cumplir con los siguientes requisitos:\na) Los equipos de inyección y extracción de aire deben estar ubicados sobre el último nivel de la edificación y contar con un suministro de energía mediante conductores protegidos con resistencia al fuego no menor a 120 minutos.\nb) Para edificaciones residenciales de más de 30.00 m de altura, así como en otras tipologías, la fuente alterna de suministro de energía es de uso no exclusivo, para los equipos de inyección y extracción.\nc) Los equipos de inyección y extracción deben ser activados automáticamente en caso de emergencia a partir de un detector de humos ubicado a menos de 3.00 m del acceso al vestíbulo previo, conectado, al igual que los equipos al sistema de detección y alarma contra incendio de la edificación."
+  },
+  {
+   "id": "Art. 28",
+   "nivel": 2,
+   "titulo": "Escaleras Presurizadas (B2)",
+   "texto": "28.1 Las escaleras presurizadas no requieren de un vestíbulo previo, se ingresa directo a la caja de escalera, cumpliendo con las características aplicables de requisitos de las escaleras protegidas.\n28.2 Debe cumplir con las siguientes características:\na) Contar con una rejilla de ingreso de aire a presión en cada nivel.\nb) Contar con un sistema mecánico que inyecte aire a presión dentro de la caja de la escalera.\nc) Las características de las escaleras presurizadas se indican en la Norma Técnica A.130, Requisitos de Seguridad del RNE.\n[Figura/tabla en imagen en el original: ver fuente]\nd) Estar cerradas al exterior.\ne) No están permitidas en edificaciones residenciales."
+  },
+  {
+   "id": "Art. 29",
+   "nivel": 2,
+   "titulo": "Escaleras Abiertas (B3)",
+   "texto": "Debe cumplir con las siguientes características:\na) Están abiertas al exterior por lo menos en uno de sus lados con una superficie de al menos 1.50 m2 en cada piso.\nb) El vano abierto al exterior debe estar a una distancia de 3.00 m o más de un vano de la edificación a la que sirve.\nc) La separación de 3.00 m debe ser medida horizontal y perpendicular al vano; asimismo, debe mantener la resistencia al fuego de la escalera.\nd) Esta escalera también es aceptada para edificaciones mayores a 30.00 m de altura, siempre que el diseño minimice la percepción de vértigo, referido al impacto visual de la altura sobre los evacuantes.\n[Figura/tabla en imagen en el original: ver fuente]"
+  },
+  {
+   "id": "Art. 30",
+   "nivel": 2,
+   "titulo": "Escaleras Cerradas (B4)",
+   "texto": "Deben cumplir con las siguientes características:\na) Todos sus lados tienen un cerramiento con una resistencia no menor a 60 minutos, incluyendo la puerta. No requiere de ningún tipo de ventilación mecánica.\nb) Son aceptadas únicamente en edificaciones no mayores de 15.00 m de altura, medida desde el nivel de vereda hasta el último nivel de piso de circulación común de la escalera, y protegidas al 100% por un sistema de rociadores.\nc) En el caso de sótanos puede usarse hasta 15.00 m de profundidad con plantas protegidas al 100% por un sistema de rociadores. La distancia de profundidad no se restringe para el uso de estacionamiento.\n[Figura/tabla en imagen en el original: ver fuente]"
+  },
+  {
+   "id": "Art. 31",
+   "nivel": 2,
+   "titulo": "Escaleras Mixtas (B5)",
+   "texto": "Deben cumplir con las siguientes características:\na) Se usa escaleras cerradas (B4) en sótanos y en los pisos superiores escaleras con vestíbulo previo ventilado (B1).\nESCALERAS MIXTAS: CERRADAS Y CON VESTÍBULO PREVIO\nb) Se puede utilizar también escaleras cerradas (B4) en sótanos y escaleras presurizadas (B2) en pisos superiores, siempre y cuando en el primer piso o nivel de descarga de la escalera, estén separadas por muros resistentes al fuego. Se debe garantizar que, en caso de incendios en sótanos, el humo no suba a pisos superiores, y que sea hermética para que la presurización de la escalera en pisos superiores se mantenga.\n[Figura/tabla en imagen en el original: ver fuente]\nESCALERAS MIXTAS: CERRADAS Y PRESURIZADAS"
+  },
+  {
+   "id": "Art. 32",
+   "nivel": 2,
+   "titulo": "Número de escaleras",
+   "texto": "El número de escaleras en una edificación se calcula en función al número de personas por nivel o piso (aforo), según la distancia de recorrido del evacuante medido entre el punto más alejado del piso (en el caso de vivienda entre la puerta de ingreso al departamento) hasta el ingreso a un lugar seguro o al exterior, según se trate de escaleras protegidas o integradas, y la necesidad de contar con rutas alternativas de escape.\na) En edificaciones de oficinas, se puede contar con una sola escalera siempre que se cumplan los siguientes requisitos:\ni. Cuando no supere los 30.00 m de altura entre el nivel de acceso a la edificación y el nivel más alto de circulación común de la escalera.\nii. Cuando la distancia entre el lugar más alejado del último piso y la salida a la vía pública sea menor a\n45.00 m sin rociadores o 60.00 m con rociadores; en el caso de escaleras integradas.\niii. Cuando el hall del primer piso cuente con protección cortafuego igual al de la caja de escalera, y la distancia entre la puerta de la escalera y la salida a la vía pública sea menor a 15.00 m.\n[Figura/tabla en imagen en el original: ver fuente]\niv. Cuando la distancia entre el lugar más alejado del piso hasta la puerta de ingreso a la escalera protegida sea menor a 30.00 m.\nv. Cuando la distancia entre el lugar más alejado del piso hasta la puerta de ingreso al vestíbulo previo sea menor a 60.00 m y el área del piso con mayor dimensión, sea menor de 500 m2.\nvi. Cuando el piso de mayor aforo tenga menos de 100 personas.\nb) En edificaciones de hospedaje, se requieren como mínimo dos escaleras de evacuación, pudiendo excepcionalmente contar con una sola escalera si se cumplen todos los siguientes requisitos:\ni. No mayor de 12 m de altura, medidos desde el nivel de vereda hasta el último nivel de piso de circulación común de la escalera\nii. Presenta no más de 12 habitaciones por piso.\niii. La edificación se encuentra protegida con sistema de rociadores.\niv. La escalera protegida no sirve a más de la mitad del nivel del piso inferior al nivel de descarga.\nv. La distancia de recorrido desde la puerta de la habitación hasta la salida es menor de 10.70 m.\nvi. La escalera se encuentra compartimentada o separada del resto del edificio con muros de resistencia al fuego de mínimo 60 minutos.\nvii. En toda apertura del cerramiento que separa la escalera del edificio deberán ubicarse puertas con dispositivos de cierre automático y con resistencia al fuego para muros de 60 minutos.\nviii. Todos los corredores de acceso a la salida deben contar con una resistencia al fuego de mínima 60 minutos.\nix. La separación tanto vertical como horizontal entre las habitaciones deberán tener una resistencia al fuego mínima de 30 minutos.\nc) En edificaciones que no cumplan con los requisitos antes indicados y para otras tipologías se requieren como mínimo 02 escaleras.\nd) En edificaciones mayores a 120 m de altura entre el nivel de acceso a la edificación y el nivel más alto de circulación común de la escalera, deben contar mínimo con 03 escaleras."
+  },
+  {
+   "id": "Art. 33",
+   "nivel": 2,
+   "titulo": "Ubicación de las escaleras",
+   "texto": "Cuando se requieran dos o más escaleras están deben cumplir los siguientes requisitos:\na) Deben ubicarse en rutas opuestas de evacuación.\nb) La distancia máxima de recorrido del evacuante, entre el punto más alejado de la edificación hasta el ingreso a un lugar seguro o al exterior, es de 45.00 m sin rociadores y 60.00 m con rociadores.\nc) La distancia mínima entre las puertas de los vestíbulos previos o de las escaleras protegidas es igual a un tercio de la dimensión máxima del recorrido del evacuante."
+  },
+  {
+   "id": "Art. 34",
+   "nivel": 2,
+   "titulo": "Ascensores",
+   "texto": "34.1. Los ascensores ubicados en las edificaciones deben cumplir con las siguientes condiciones:\na) Son obligatorios a partir de un nivel de circulación común superior a 12.00 m sobre el nivel del ingreso a la edificación desde la vereda.\nb) Los ascensores deben entregar en los vestíbulos de distribución de los pisos a los que sirve. No se permiten paradas en descansos intermedios de escaleras.\nc) Todos los ascensores, sin importar el tipo de edificación a la que sirven, deben estar interconectados con el sistema de detección y alarma de incendios de la edificación, que no permita el uso de los mismos en caso de incendio, enviándolos automáticamente al nivel de salida.\nd) Todos los ascensores que comuniquen más de 7 pisos, medidos a partir del nivel del acceso desde la vía pública, deben cumplir con un sistema de llave exclusiva para uso de bomberos, que permita a los bomberos el control del ascensor desde el panel interno, eliminando cualquier dispositivo de llamada del edificio.\n34.2. Para el cálculo del número de ascensores, capacidad de las cabinas y velocidad, se debe considerar lo siguiente:\na) Uso del edificio.\nb) Número de pisos, altura de piso a piso y altura total.\nc) Área útil de cada piso.\nd) Número de ocupantes por piso.\ne) Número de personas visitantes.\nf) Tecnología a emplear.\n34.3 El cálculo del número de ascensores es responsabilidad del profesional responsable y del fabricante de los equipos. Este cálculo forma parte de los documentos del proyecto, considerando lo previsto en la Norma EM.070, Transporte Mecánico del RNE."
+  },
+  {
+   "id": "Art. 35",
+   "nivel": 2,
+   "titulo": "Elementos de protección para aberturas en altura",
+   "texto": "Todas las aberturas al exterior, mezanines, costados abiertos de escaleras, descansos, pasajes abiertos, rampas, balcones, terrazas, y ventanas de edificios, que se encuentren a una altura superior a 1.00 m sobre el suelo adyacente deben estar provistas de barandas o antepechos de solidez suficiente para evitar la caída fortuita de personas, debiendo tener las siguientes características:\na) Una altura mínima de 1.00 m, medida desde el nivel de piso interior terminado. En caso de tener una diferencia sobre el suelo adyacente de 11.00 m o más, la altura es de 1.10 m como mínimo. En el caso de azotea, la altura es de 1.10 m como mínimo. Deben resistir una sobrecarga horizontal, aplicada en cualquier punto de su estructura, superior a 50 kg por metro lineal, salvo en el caso de áreas de uso común en edificios de uso público en que dicha resistencia no puede ser menor a 100 kg por metro lineal.\nb) En los tramos inclinados de escaleras la altura mínima de baranda es de 0.85 m medida verticalmente desde la arista entre el paso y el contrapaso.\nc) Las barandas transparentes y abiertas tienen sus elementos de soporte u ornamentales dispuestos de manera tal que no permitan el paso de una esfera de 0.15 m de diámetro entre ellos.\nd) Se exceptúan de lo dispuesto en este artículo las áreas cuya función se impide con la instalación de barandas o antepechos, tales como andenes de descarga.\ne) No aplica para muro cortina de las edificaciones."
+  }
+ ]
+}

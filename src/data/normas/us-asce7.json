@@ -1,0 +1,221 @@
+{
+ "id": "ASCE 7-22",
+ "alias": [
+  "ASCE 7",
+  "ASCE7",
+  "ASCE/SEI 7-22",
+  "ASCE 7-16"
+ ],
+ "titulo": "ASCE/SEI 7-22 Minimum Design Loads and Associated Criteria for Buildings and Other Structures — Capítulos 11 y 12 (sismo)",
+ "pais": "US",
+ "tipo": "indice",
+ "version": "ASCE/SEI 7-22",
+ "fuente": "https://www.asce.org/publications-and-news/asce-7",
+ "licencia": "Norma protegida por derechos de autor de American Society of Civil Engineers. Solo índice (números y títulos oficiales), sin texto. Parámetros sísmicos de sitio: ASCE Hazard Tool (ascehazardtool.org).",
+ "secciones": [
+  {
+   "id": "11",
+   "nivel": 1,
+   "titulo": "Chapter 11 — Seismic Design Criteria",
+   "texto": ""
+  },
+  {
+   "id": "11.1",
+   "nivel": 2,
+   "titulo": "General",
+   "texto": ""
+  },
+  {
+   "id": "11.2",
+   "nivel": 2,
+   "titulo": "Definitions",
+   "texto": ""
+  },
+  {
+   "id": "11.3",
+   "nivel": 2,
+   "titulo": "Symbols",
+   "texto": ""
+  },
+  {
+   "id": "11.4",
+   "nivel": 2,
+   "titulo": "Seismic Ground Motion Values",
+   "texto": ""
+  },
+  {
+   "id": "11.5",
+   "nivel": 2,
+   "titulo": "Importance Factor and Risk Category",
+   "texto": ""
+  },
+  {
+   "id": "11.6",
+   "nivel": 2,
+   "titulo": "Seismic Design Category",
+   "texto": ""
+  },
+  {
+   "id": "11.7",
+   "nivel": 2,
+   "titulo": "Design Requirements for Seismic Design Category A",
+   "texto": ""
+  },
+  {
+   "id": "11.8",
+   "nivel": 2,
+   "titulo": "Geologic Hazards and Geotechnical Investigation",
+   "texto": ""
+  },
+  {
+   "id": "11.9",
+   "nivel": 2,
+   "titulo": "Vertical Ground Motions for Seismic Design",
+   "texto": ""
+  },
+  {
+   "id": "12",
+   "nivel": 1,
+   "titulo": "Chapter 12 — Seismic Design Requirements for Building Structures",
+   "texto": ""
+  },
+  {
+   "id": "12.1",
+   "nivel": 2,
+   "titulo": "Structural Design Basis",
+   "texto": ""
+  },
+  {
+   "id": "12.2",
+   "nivel": 2,
+   "titulo": "Structural System Selection",
+   "texto": ""
+  },
+  {
+   "id": "12.3",
+   "nivel": 2,
+   "titulo": "Diaphragm Flexibility, Configuration Irregularities, and Redundancy",
+   "texto": ""
+  },
+  {
+   "id": "12.4",
+   "nivel": 2,
+   "titulo": "Seismic Load Effects and Combinations",
+   "texto": ""
+  },
+  {
+   "id": "12.5",
+   "nivel": 2,
+   "titulo": "Direction of Loading",
+   "texto": ""
+  },
+  {
+   "id": "12.6",
+   "nivel": 2,
+   "titulo": "Analysis Procedure Selection",
+   "texto": ""
+  },
+  {
+   "id": "12.7",
+   "nivel": 2,
+   "titulo": "Modeling Criteria",
+   "texto": ""
+  },
+  {
+   "id": "12.8",
+   "nivel": 2,
+   "titulo": "Equivalent Lateral Force Procedure",
+   "texto": ""
+  },
+  {
+   "id": "12.8.1",
+   "nivel": 3,
+   "titulo": "Seismic Base Shear",
+   "texto": ""
+  },
+  {
+   "id": "12.8.2",
+   "nivel": 3,
+   "titulo": "Period Determination",
+   "texto": ""
+  },
+  {
+   "id": "12.8.3",
+   "nivel": 3,
+   "titulo": "Vertical Distribution of Seismic Forces",
+   "texto": ""
+  },
+  {
+   "id": "12.8.4",
+   "nivel": 3,
+   "titulo": "Horizontal Distribution of Forces",
+   "texto": ""
+  },
+  {
+   "id": "12.8.5",
+   "nivel": 3,
+   "titulo": "Overturning",
+   "texto": ""
+  },
+  {
+   "id": "12.8.6",
+   "nivel": 3,
+   "titulo": "Story Drift Determination",
+   "texto": ""
+  },
+  {
+   "id": "12.8.7",
+   "nivel": 3,
+   "titulo": "P-Delta Effects",
+   "texto": ""
+  },
+  {
+   "id": "12.9",
+   "nivel": 2,
+   "titulo": "Linear Dynamic Analysis",
+   "texto": ""
+  },
+  {
+   "id": "12.9.1",
+   "nivel": 3,
+   "titulo": "Modal Response Spectrum Analysis",
+   "texto": ""
+  },
+  {
+   "id": "12.9.2",
+   "nivel": 3,
+   "titulo": "Linear Response History Analysis",
+   "texto": ""
+  },
+  {
+   "id": "12.10",
+   "nivel": 2,
+   "titulo": "Diaphragms, Chords, and Collectors",
+   "texto": ""
+  },
+  {
+   "id": "12.11",
+   "nivel": 2,
+   "titulo": "Structural Walls and Their Anchorage",
+   "texto": ""
+  },
+  {
+   "id": "12.12",
+   "nivel": 2,
+   "titulo": "Drift and Deformation",
+   "texto": ""
+  },
+  {
+   "id": "12.13",
+   "nivel": 2,
+   "titulo": "Foundation Design",
+   "texto": ""
+  },
+  {
+   "id": "12.14",
+   "nivel": 2,
+   "titulo": "Simplified Alternative Structural Design Criteria for Simple Bearing Wall or Building Frame Systems",
+   "texto": ""
+  }
+ ]
+}

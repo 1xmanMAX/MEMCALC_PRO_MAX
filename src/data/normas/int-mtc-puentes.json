@@ -1,0 +1,1011 @@
+{
+ "id": "Manual de Puentes MTC",
+ "alias": [
+  "Manual de Puentes",
+  "Manual de Puentes MTC",
+  "Manual de Puentes MTC 2018",
+  "Manual de Puentes MTC (2018)",
+  "Manual de Puentes (2018)",
+  "Manual de Puentes 2018",
+  "MTC 2018",
+  "MC-04-16"
+ ],
+ "titulo": "Manual de Puentes (MC-04-16) — Ministerio de Transportes y Comunicaciones del Perú, DGCF",
+ "pais": "PE",
+ "tipo": "indice",
+ "version": "Nueva versión aprobada por RD N.º 19-2018-MTC/14 (27-12-2018)",
+ "fuente": "https://portal.mtc.gob.pe/transportes/caminos/normas_carreteras/manuales.html",
+ "licencia": "Documento normativo oficial del MTC (aprobado por resolución directoral, de cumplimiento obligatorio) y de libre descarga en el portal del MTC; como decisión de un organismo público no es objeto de derecho de autor (D. Leg. 822, Art. 9). Sin embargo, la única edición oficial es un PDF escaneado (631 páginas, sin capa de texto, 274 MB) con abundantes fórmulas, tablas y figuras, por lo que no puede reproducirse literalmente con fidelidad garantizada: se incluye el índice oficial (títulos transcritos del índice del propio manual, hasta 3–5 niveles en Cargas) y el enlace. Gran parte del manual adapta AASHTO LRFD (2010–2012).",
+ "secciones": [
+  {
+   "id": "Presentación",
+   "nivel": 1,
+   "titulo": "Presentación",
+   "texto": ""
+  },
+  {
+   "id": "Introducción",
+   "nivel": 1,
+   "titulo": "Introducción",
+   "texto": ""
+  },
+  {
+   "id": "I",
+   "nivel": 2,
+   "titulo": "Glosario de términos",
+   "texto": ""
+  },
+  {
+   "id": "II",
+   "nivel": 2,
+   "titulo": "Unidades y símbolos",
+   "texto": ""
+  },
+  {
+   "id": "Título I",
+   "nivel": 1,
+   "titulo": "De la Ingeniería Básica",
+   "texto": ""
+  },
+  {
+   "id": "1.1",
+   "nivel": 2,
+   "titulo": "Estudios Topográficos",
+   "texto": ""
+  },
+  {
+   "id": "1.1.1",
+   "nivel": 3,
+   "titulo": "Objetivos y Alcances",
+   "texto": ""
+  },
+  {
+   "id": "1.1.2",
+   "nivel": 3,
+   "titulo": "Instrumentación",
+   "texto": ""
+  },
+  {
+   "id": "1.1.3",
+   "nivel": 3,
+   "titulo": "Documentación",
+   "texto": ""
+  },
+  {
+   "id": "1.2",
+   "nivel": 2,
+   "titulo": "Estudios de Hidrología e Hidráulica",
+   "texto": ""
+  },
+  {
+   "id": "1.2.1",
+   "nivel": 3,
+   "titulo": "Objetivos",
+   "texto": ""
+  },
+  {
+   "id": "1.2.2",
+   "nivel": 3,
+   "titulo": "Alcances",
+   "texto": ""
+  },
+  {
+   "id": "1.2.3",
+   "nivel": 3,
+   "titulo": "Consideraciones para el Diseño",
+   "texto": ""
+  },
+  {
+   "id": "1.2.4",
+   "nivel": 3,
+   "titulo": "Interrelación con los Estudios Geológicos y Geotécnicos",
+   "texto": ""
+  },
+  {
+   "id": "1.2.5",
+   "nivel": 3,
+   "titulo": "Información de Apoyo",
+   "texto": ""
+  },
+  {
+   "id": "1.2.6",
+   "nivel": 3,
+   "titulo": "Documentación Requerida",
+   "texto": ""
+  },
+  {
+   "id": "1.3",
+   "nivel": 2,
+   "titulo": "Estudios Geológicos y Geotécnicos",
+   "texto": ""
+  },
+  {
+   "id": "1.3.1",
+   "nivel": 3,
+   "titulo": "Estudios Geológicos",
+   "texto": ""
+  },
+  {
+   "id": "1.3.2",
+   "nivel": 3,
+   "titulo": "Estudios Geotécnicos",
+   "texto": ""
+  },
+  {
+   "id": "1.3.3",
+   "nivel": 3,
+   "titulo": "Interrelación con los Estudios Hidrológicos",
+   "texto": ""
+  },
+  {
+   "id": "1.3.4",
+   "nivel": 3,
+   "titulo": "Documentación",
+   "texto": ""
+  },
+  {
+   "id": "1.4",
+   "nivel": 2,
+   "titulo": "Estudio Sísmico",
+   "texto": ""
+  },
+  {
+   "id": "1.4.1",
+   "nivel": 3,
+   "titulo": "Estudio de Peligro Sísmico",
+   "texto": ""
+  },
+  {
+   "id": "1.4.2",
+   "nivel": 3,
+   "titulo": "Requisitos Mínimos",
+   "texto": ""
+  },
+  {
+   "id": "1.4.3",
+   "nivel": 3,
+   "titulo": "Requerimiento de los Estudios",
+   "texto": ""
+  },
+  {
+   "id": "1.4.4",
+   "nivel": 3,
+   "titulo": "Alcances",
+   "texto": ""
+  },
+  {
+   "id": "1.4.5",
+   "nivel": 3,
+   "titulo": "Métodos de Análisis",
+   "texto": ""
+  },
+  {
+   "id": "1.4.6",
+   "nivel": 3,
+   "titulo": "Documentación",
+   "texto": ""
+  },
+  {
+   "id": "1.5",
+   "nivel": 2,
+   "titulo": "Estudio de Impacto Ambiental",
+   "texto": ""
+  },
+  {
+   "id": "1.5.1",
+   "nivel": 3,
+   "titulo": "Enfoque",
+   "texto": ""
+  },
+  {
+   "id": "1.5.2",
+   "nivel": 3,
+   "titulo": "Objetivos y Alcances",
+   "texto": ""
+  },
+  {
+   "id": "1.5.3",
+   "nivel": 3,
+   "titulo": "Requerimiento de los Estudios",
+   "texto": ""
+  },
+  {
+   "id": "1.6",
+   "nivel": 2,
+   "titulo": "Estudios de Tráfico",
+   "texto": ""
+  },
+  {
+   "id": "1.6.1",
+   "nivel": 3,
+   "titulo": "Objetivo",
+   "texto": ""
+  },
+  {
+   "id": "1.6.2",
+   "nivel": 3,
+   "titulo": "Metodología",
+   "texto": ""
+  },
+  {
+   "id": "1.6.3",
+   "nivel": 3,
+   "titulo": "Documentación",
+   "texto": ""
+  },
+  {
+   "id": "1.7",
+   "nivel": 2,
+   "titulo": "Estudios Complementarios",
+   "texto": ""
+  },
+  {
+   "id": "1.8",
+   "nivel": 2,
+   "titulo": "Estudios de Trazo y Diseño Vial de los Accesos",
+   "texto": ""
+  },
+  {
+   "id": "1.9",
+   "nivel": 2,
+   "titulo": "Estudios de Alternativas a Nivel de Anteproyecto",
+   "texto": ""
+  },
+  {
+   "id": "1.10",
+   "nivel": 2,
+   "titulo": "Clasificación de Puentes",
+   "texto": ""
+  },
+  {
+   "id": "Título II",
+   "nivel": 1,
+   "titulo": "Del Proyecto de Ingeniería",
+   "texto": ""
+  },
+  {
+   "id": "2.1",
+   "nivel": 2,
+   "titulo": "Elementos del Proyecto",
+   "texto": ""
+  },
+  {
+   "id": "2.1.1",
+   "nivel": 3,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "2.1.2",
+   "nivel": 3,
+   "titulo": "Información de la Ingeniería Básica",
+   "texto": ""
+  },
+  {
+   "id": "2.1.3",
+   "nivel": 3,
+   "titulo": "Elementos Básicos del Proyecto",
+   "texto": ""
+  },
+  {
+   "id": "2.1.4",
+   "nivel": 3,
+   "titulo": "Geometría",
+   "texto": ""
+  },
+  {
+   "id": "2.1.5",
+   "nivel": 3,
+   "titulo": "Señalización",
+   "texto": ""
+  },
+  {
+   "id": "2.2",
+   "nivel": 2,
+   "titulo": "Presentación del Proyecto",
+   "texto": ""
+  },
+  {
+   "id": "2.2.1",
+   "nivel": 3,
+   "titulo": "Memoria Descriptiva y Justificación",
+   "texto": ""
+  },
+  {
+   "id": "2.2.2",
+   "nivel": 3,
+   "titulo": "Memoria de Cálculo",
+   "texto": ""
+  },
+  {
+   "id": "2.2.3",
+   "nivel": 3,
+   "titulo": "Planos",
+   "texto": ""
+  },
+  {
+   "id": "2.2.4",
+   "nivel": 3,
+   "titulo": "Especificaciones Particulares",
+   "texto": ""
+  },
+  {
+   "id": "2.2.5",
+   "nivel": 3,
+   "titulo": "Metrados",
+   "texto": ""
+  },
+  {
+   "id": "2.3",
+   "nivel": 2,
+   "titulo": "Consideraciones Generales del Proyecto",
+   "texto": ""
+  },
+  {
+   "id": "2.3.1",
+   "nivel": 3,
+   "titulo": "Objetivos del Proyecto",
+   "texto": ""
+  },
+  {
+   "id": "2.3.2",
+   "nivel": 3,
+   "titulo": "Filosofía de Diseño",
+   "texto": ""
+  },
+  {
+   "id": "2.4",
+   "nivel": 2,
+   "titulo": "Cargas y Factores de Cargas",
+   "texto": ""
+  },
+  {
+   "id": "2.4.1",
+   "nivel": 3,
+   "titulo": "Clasificación y Definición",
+   "texto": ""
+  },
+  {
+   "id": "2.4.2",
+   "nivel": 3,
+   "titulo": "Determinación de Cargas Permanentes",
+   "texto": ""
+  },
+  {
+   "id": "2.4.2.1",
+   "nivel": 4,
+   "titulo": "Cargas Muertas: DC, DW, y EV",
+   "texto": ""
+  },
+  {
+   "id": "2.4.2.2",
+   "nivel": 4,
+   "titulo": "Cargas de Suelo: EH, ES, y DD",
+   "texto": ""
+  },
+  {
+   "id": "2.4.2.3",
+   "nivel": 4,
+   "titulo": "Deformaciones Impuestas",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3",
+   "nivel": 3,
+   "titulo": "Cargas Variables",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.1",
+   "nivel": 4,
+   "titulo": "Cargas Durante la Construcción",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.2",
+   "nivel": 4,
+   "titulo": "Cargas Vivas de Vehículos",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.3",
+   "nivel": 4,
+   "titulo": "Carga Dinámica Permitida: IM",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.4",
+   "nivel": 4,
+   "titulo": "Fuerzas Centrífugas: CE",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.5",
+   "nivel": 4,
+   "titulo": "Fuerzas de Frenado: BR",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.6",
+   "nivel": 4,
+   "titulo": "Cargas sobre Veredas, Barandas y Sardineles",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.7",
+   "nivel": 4,
+   "titulo": "Cargas en Puentes Peatonales",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.8",
+   "nivel": 4,
+   "titulo": "Empuje de Agua y Subpresiones: WA",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.9",
+   "nivel": 4,
+   "titulo": "Solicitaciones Provocadas por Deformaciones Superpuestas: TU, TG, SH, CR, SE, PS",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.10",
+   "nivel": 4,
+   "titulo": "Cargas de Viento WL y WS",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.11",
+   "nivel": 4,
+   "titulo": "Efectos de Sismo: EQ",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.11.1",
+   "nivel": 5,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.11.2",
+   "nivel": 5,
+   "titulo": "Peligro Sísmico",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.11.3",
+   "nivel": 5,
+   "titulo": "Caracterización del Peligro Sísmico",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.11.4",
+   "nivel": 5,
+   "titulo": "Categorías Según la Importancia del Puente",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.11.5",
+   "nivel": 5,
+   "titulo": "Zonas Sísmicas",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.11.6",
+   "nivel": 5,
+   "titulo": "Factores de Modificación de Respuesta",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.11.7",
+   "nivel": 5,
+   "titulo": "Combinación de Solicitaciones Sísmicas",
+   "texto": ""
+  },
+  {
+   "id": "2.4.3.11.8",
+   "nivel": 5,
+   "titulo": "Calculo de Fuerzas de Diseño",
+   "texto": ""
+  },
+  {
+   "id": "2.4.4",
+   "nivel": 3,
+   "titulo": "Requisitos para Puentes Temporarios y Puentes Construidos por Etapas",
+   "texto": ""
+  },
+  {
+   "id": "2.4.4.1",
+   "nivel": 4,
+   "titulo": "Empuje del Suelo: EH, ES, LS y DD",
+   "texto": ""
+  },
+  {
+   "id": "2.4.5",
+   "nivel": 3,
+   "titulo": "Factores de Cargas y Combinaciones de Cargas",
+   "texto": ""
+  },
+  {
+   "id": "2.4.5.1",
+   "nivel": 4,
+   "titulo": "Alcance",
+   "texto": ""
+  },
+  {
+   "id": "2.4.5.2",
+   "nivel": 4,
+   "titulo": "Cargas y Denominación de las Cargas",
+   "texto": ""
+  },
+  {
+   "id": "2.4.5.3",
+   "nivel": 4,
+   "titulo": "Factores de Carga y Combinaciones",
+   "texto": ""
+  },
+  {
+   "id": "2.4.5.4",
+   "nivel": 4,
+   "titulo": "Factores de Carga para Cargas Constructivas",
+   "texto": ""
+  },
+  {
+   "id": "2.4.5.5",
+   "nivel": 4,
+   "titulo": "Factores de Carga para Fuerzas de Tesado y Postensado",
+   "texto": ""
+  },
+  {
+   "id": "2.4.5.6",
+   "nivel": 4,
+   "titulo": "Factores de Carga para Tableros Ortotrópicos",
+   "texto": ""
+  },
+  {
+   "id": "2.5",
+   "nivel": 2,
+   "titulo": "Especificaciones de los Materiales",
+   "texto": ""
+  },
+  {
+   "id": "2.5.1",
+   "nivel": 3,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "2.5.2",
+   "nivel": 3,
+   "titulo": "Acero de Refuerzo",
+   "texto": ""
+  },
+  {
+   "id": "2.5.3",
+   "nivel": 3,
+   "titulo": "Aceros para Estructuras Metálicas",
+   "texto": ""
+  },
+  {
+   "id": "2.5.4",
+   "nivel": 3,
+   "titulo": "Concreto",
+   "texto": ""
+  },
+  {
+   "id": "2.6",
+   "nivel": 2,
+   "titulo": "Análisis Estructural",
+   "texto": ""
+  },
+  {
+   "id": "2.6.1",
+   "nivel": 3,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "2.6.2",
+   "nivel": 3,
+   "titulo": "Métodos Aceptables de Análisis Estructural",
+   "texto": ""
+  },
+  {
+   "id": "2.6.3",
+   "nivel": 3,
+   "titulo": "Modelos Matemáticos",
+   "texto": ""
+  },
+  {
+   "id": "2.6.4",
+   "nivel": 3,
+   "titulo": "Análisis Estático",
+   "texto": ""
+  },
+  {
+   "id": "2.6.5",
+   "nivel": 3,
+   "titulo": "Análisis Dinámico",
+   "texto": ""
+  },
+  {
+   "id": "2.6.5.1",
+   "nivel": 4,
+   "titulo": "Requisitos Básicos de la Dinámica Estructural",
+   "texto": ""
+  },
+  {
+   "id": "2.6.5.2",
+   "nivel": 4,
+   "titulo": "Respuestas Dinámicas Elásticas",
+   "texto": ""
+  },
+  {
+   "id": "2.6.5.3",
+   "nivel": 4,
+   "titulo": "Respuestas Dinámicas Inelásticas",
+   "texto": ""
+  },
+  {
+   "id": "2.6.5.4",
+   "nivel": 4,
+   "titulo": "Cargas Sísmicas para el Análisis",
+   "texto": ""
+  },
+  {
+   "id": "2.6.5.5",
+   "nivel": 4,
+   "titulo": "Disposiciones para el Diseño Sísmico",
+   "texto": ""
+  },
+  {
+   "id": "2.6.5.6",
+   "nivel": 4,
+   "titulo": "Longitud de Desarrollo y Empalmes del Acero de Refuerzo",
+   "texto": ""
+  },
+  {
+   "id": "2.7",
+   "nivel": 2,
+   "titulo": "Verificación de Seguridad",
+   "texto": ""
+  },
+  {
+   "id": "2.7.1",
+   "nivel": 3,
+   "titulo": "Resistencia de los Materiales en los Estados Límites",
+   "texto": ""
+  },
+  {
+   "id": "2.7.2",
+   "nivel": 3,
+   "titulo": "Consideraciones de Diseño",
+   "texto": ""
+  },
+  {
+   "id": "2.7.2.1",
+   "nivel": 4,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "2.7.2.2",
+   "nivel": 4,
+   "titulo": "Efectos de las Deformaciones Impuestas",
+   "texto": ""
+  },
+  {
+   "id": "2.7.2.3",
+   "nivel": 4,
+   "titulo": "Modelo de Bielas y Tirantes",
+   "texto": ""
+  },
+  {
+   "id": "2.7.2.4",
+   "nivel": 4,
+   "titulo": "Diseño para Flexión y Carga Axial",
+   "texto": ""
+  },
+  {
+   "id": "2.8",
+   "nivel": 2,
+   "titulo": "Cimentaciones",
+   "texto": ""
+  },
+  {
+   "id": "2.8.0",
+   "nivel": 3,
+   "titulo": "Alcance",
+   "texto": ""
+  },
+  {
+   "id": "2.8.1",
+   "nivel": 3,
+   "titulo": "Zapatas (Spread Footing: Cimiento Extendido)",
+   "texto": ""
+  },
+  {
+   "id": "2.8.2",
+   "nivel": 3,
+   "titulo": "Cimentaciones Profundas con Pilotes",
+   "texto": ""
+  },
+  {
+   "id": "2.9",
+   "nivel": 2,
+   "titulo": "Superestructuras",
+   "texto": ""
+  },
+  {
+   "id": "2.9.1",
+   "nivel": 3,
+   "titulo": "Superestructuras de Concreto",
+   "texto": ""
+  },
+  {
+   "id": "2.9.2",
+   "nivel": 3,
+   "titulo": "Estructuras de Acero",
+   "texto": ""
+  },
+  {
+   "id": "2.9.3",
+   "nivel": 3,
+   "titulo": "Materiales",
+   "texto": ""
+  },
+  {
+   "id": "2.9.4",
+   "nivel": 3,
+   "titulo": "Estados Límites",
+   "texto": ""
+  },
+  {
+   "id": "2.9.5.0",
+   "nivel": 3,
+   "titulo": "Miembros de Sección Doble T (I) Solicitados a Flexión",
+   "texto": ""
+  },
+  {
+   "id": "2.9.6",
+   "nivel": 3,
+   "titulo": "Elementos de Sección Tipo Cajón Solicitados a Flexión",
+   "texto": ""
+  },
+  {
+   "id": "2.9.7",
+   "nivel": 3,
+   "titulo": "Diversos Miembros Solicitados a Flexión",
+   "texto": ""
+  },
+  {
+   "id": "2.9.8",
+   "nivel": 3,
+   "titulo": "Uniones y Empalmes",
+   "texto": ""
+  },
+  {
+   "id": "2.9.9",
+   "nivel": 3,
+   "titulo": "Requisitos para Diferentes Tipos de Estructuras",
+   "texto": ""
+  },
+  {
+   "id": "2.9.10",
+   "nivel": 3,
+   "titulo": "Pilotes",
+   "texto": ""
+  },
+  {
+   "id": "2.9.11",
+   "nivel": 3,
+   "titulo": "Disposiciones para Diseño Sísmico",
+   "texto": ""
+  },
+  {
+   "id": "2.10",
+   "nivel": 2,
+   "titulo": "Requisitos para Apoyos",
+   "texto": ""
+  },
+  {
+   "id": "2.10.1",
+   "nivel": 3,
+   "titulo": "Generalidades",
+   "texto": ""
+  },
+  {
+   "id": "2.10.2",
+   "nivel": 3,
+   "titulo": "Características",
+   "texto": ""
+  },
+  {
+   "id": "2.10.3",
+   "nivel": 3,
+   "titulo": "Apoyos Elastoméricos Reforzados con Láminas de Acero: Método B",
+   "texto": ""
+  },
+  {
+   "id": "2.10.4",
+   "nivel": 3,
+   "titulo": "Blocs Elastoméricos y Apoyos Elastoméricos con Refuerzo de Acero- Método A",
+   "texto": ""
+  },
+  {
+   "id": "2.11",
+   "nivel": 2,
+   "titulo": "Diseño de Barreras de Sonido",
+   "texto": ""
+  },
+  {
+   "id": "2.11.1",
+   "nivel": 3,
+   "titulo": "Alcance",
+   "texto": ""
+  },
+  {
+   "id": "2.11.2",
+   "nivel": 3,
+   "titulo": "Notación",
+   "texto": ""
+  },
+  {
+   "id": "2.11.3",
+   "nivel": 3,
+   "titulo": "Características Generales",
+   "texto": ""
+  },
+  {
+   "id": "2.11.4",
+   "nivel": 3,
+   "titulo": "Estados Límites y Factores de Resistencia",
+   "texto": ""
+  },
+  {
+   "id": "2.11.5",
+   "nivel": 3,
+   "titulo": "Dispositivos de Expansión",
+   "texto": ""
+  },
+  {
+   "id": "2.11.6",
+   "nivel": 3,
+   "titulo": "Barreras de Sonido Instaladas en Puentes Existentes",
+   "texto": ""
+  },
+  {
+   "id": "2.11.7",
+   "nivel": 3,
+   "titulo": "Cargas",
+   "texto": ""
+  },
+  {
+   "id": "2.11.8",
+   "nivel": 3,
+   "titulo": "Diseño de Fundación",
+   "texto": ""
+  },
+  {
+   "id": "2.12",
+   "nivel": 2,
+   "titulo": "Disposiciones Constructivas",
+   "texto": ""
+  },
+  {
+   "id": "2.12.1",
+   "nivel": 3,
+   "titulo": "Movimiento de Tierras",
+   "texto": ""
+  },
+  {
+   "id": "2.12.2",
+   "nivel": 3,
+   "titulo": "Falso-Puente",
+   "texto": ""
+  },
+  {
+   "id": "2.12.3",
+   "nivel": 3,
+   "titulo": "Encofrados",
+   "texto": ""
+  },
+  {
+   "id": "2.12.4",
+   "nivel": 3,
+   "titulo": "Obras de Concreto",
+   "texto": ""
+  },
+  {
+   "id": "2.12.5",
+   "nivel": 3,
+   "titulo": "Armadura de Refuerzo",
+   "texto": ""
+  },
+  {
+   "id": "2.12.6",
+   "nivel": 3,
+   "titulo": "Estructuras Metálicas",
+   "texto": ""
+  },
+  {
+   "id": "2.12.7",
+   "nivel": 3,
+   "titulo": "Pre-esforzado",
+   "texto": ""
+  },
+  {
+   "id": "2.12.8",
+   "nivel": 3,
+   "titulo": "Acabados",
+   "texto": ""
+  },
+  {
+   "id": "2.12.9",
+   "nivel": 3,
+   "titulo": "Pruebas en Pilotes",
+   "texto": ""
+  },
+  {
+   "id": "2.12.10",
+   "nivel": 3,
+   "titulo": "Aspectos de la Supervisión",
+   "texto": ""
+  },
+  {
+   "id": "2.12.11",
+   "nivel": 3,
+   "titulo": "Prueba de Carga de Puentes Recién Construidos",
+   "texto": ""
+  },
+  {
+   "id": "Apéndices",
+   "nivel": 1,
+   "titulo": "Apéndices",
+   "texto": ""
+  },
+  {
+   "id": "Apéndice A3",
+   "nivel": 2,
+   "titulo": "Metodología de Construcción de Espectros de Diseño",
+   "texto": ""
+  },
+  {
+   "id": "Apéndice B5",
+   "nivel": 2,
+   "titulo": "Procedimiento General para Diseño por Corte Utilizando Tablas",
+   "texto": ""
+  },
+  {
+   "id": "Apéndice A6",
+   "nivel": 2,
+   "titulo": "Resistencia a la Flexión – Secciones I Compuestas en Flexión Negativa y Secciones I no Compuestas con Almas Compactas o no Compactas",
+   "texto": ""
+  },
+  {
+   "id": "Apéndice B6",
+   "nivel": 2,
+   "titulo": "Redistribución de Momentos en las Pilas Interiores en Secciones I, en Puentes de Tramos Continuos, Rectos",
+   "texto": ""
+  },
+  {
+   "id": "Apéndice D6",
+   "nivel": 2,
+   "titulo": "Cálculos Fundamentales para Elementos Solicitados a Flexión",
+   "texto": ""
+  },
+  {
+   "id": "Apéndice A11",
+   "nivel": 2,
+   "titulo": "Diseño Sísmico de Estructuras de Contención",
+   "texto": ""
+  },
+  {
+   "id": "Apéndice P",
+   "nivel": 2,
+   "titulo": "Apéndice de Puente Peatonal",
+   "texto": ""
+  }
+ ]
+}
